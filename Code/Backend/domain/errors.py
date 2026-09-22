@@ -6,10 +6,10 @@ Every error the application raises deliberately derives from
 (``frameworks_drivers/api/errors.py``), so an error's HTTP representation is
 decided in one place rather than at each raise site (plan §2A.3).
 
-This is the base vocabulary Phase 0 needs. Later phases add to it as they
-need it — ``InsufficientSample``, ``LayerUnavailable`` and
-``LabelLeakDetected`` arrive with the phases that raise them, rather than as
-unused classes now.
+This is the base vocabulary Phase 0 needs, plus what Phase 1 adds. Later
+phases add more as they need it — ``InsufficientSample``,
+``LayerUnavailable`` and ``LabelLeakDetected`` arrive with the phases that
+raise them, rather than as unused classes now.
 """
 
 from __future__ import annotations
@@ -58,3 +58,15 @@ class DependencyUnavailableError(NanoVoxInsightsError):
     """An external dependency (database, model provider) could not be reached."""
 
     code = "dependency_unavailable"
+
+
+class ReferenceIntegrityError(ValidationError):
+    """An imported reference row names a business key nothing else provides.
+
+    E.g. an employer's broker of record, or a member's employer, that the
+    same import didn't also include. Exposed to the caller — this is
+    diagnostic information about the *source data* (the workbook), useful to
+    whoever is running the import, not an internal detail to hide.
+    """
+
+    code = "reference_integrity_error"
