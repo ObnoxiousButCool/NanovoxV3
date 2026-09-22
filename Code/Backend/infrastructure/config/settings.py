@@ -28,6 +28,7 @@ from infrastructure.config.paths import (
     BACKEND_ROOT,
     DEFAULT_FRONTEND_DIST,
     DEFAULT_LOG_DIR,
+    DEFAULT_WORKBOOK_PATH,
     default_database_url,
 )
 
@@ -67,6 +68,9 @@ class Settings(BaseSettings):
     # Serving this from the API is what makes a deployment one process and
     # one origin. Left absent in development: Vite serves the frontend.
     frontend_dist_path: Path = DEFAULT_FRONTEND_DIST
+
+    # --- Reference data (plan §8 Phase 1) -----------------------------------
+    workbook_path: Path = DEFAULT_WORKBOOK_PATH
 
     # --- Logging -----------------------------------------------------------
     log_enabled: bool = True

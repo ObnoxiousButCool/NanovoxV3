@@ -13,6 +13,7 @@ from typing import Annotated
 from fastapi import Depends, Request
 
 from application.use_cases.get_health import GetHealth
+from application.use_cases.import_reference_data import ImportReferenceData
 from frameworks_drivers.container import Container
 from infrastructure.config.settings import Settings
 
@@ -37,5 +38,10 @@ def get_health_use_case(container: ContainerDep) -> GetHealth:
     return container.get_health()
 
 
+def get_import_reference_data_use_case(container: ContainerDep) -> ImportReferenceData:
+    return container.import_reference_data()
+
+
 SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
 GetHealthDep = Annotated[GetHealth, Depends(get_health_use_case)]
+ImportReferenceDataDep = Annotated[ImportReferenceData, Depends(get_import_reference_data_use_case)]

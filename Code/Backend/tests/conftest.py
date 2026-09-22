@@ -7,17 +7,20 @@ cannot make the suite pass or fail.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from frameworks_drivers.main import create_app
 from infrastructure.config.settings import Settings
 from infrastructure.persistence import tables as _tables  # noqa: F401
+from infrastructure.persistence.engine import create_database_engine, create_session_factory
 from infrastructure.persistence.models import Base
 from tests.support.settings import make_settings
 
@@ -47,6 +50,21 @@ def schema(settings: Settings) -> None:
         Base.metadata.create_all(engine)
     finally:
         engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def engine(settings: Settings, schema: None) -> AsyncIterator[AsyncEngine]:
+    """A real async engine over the same schema-bearing database `schema` built."""
+    async_engine = create_database_engine(settings)
+    try:
+        yield async_engine
+    finally:
+        await async_engine.dispose()
+
+
+@pytest.fixture
+def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+    return create_session_factory(engine)
 
 
 @pytest.fixture

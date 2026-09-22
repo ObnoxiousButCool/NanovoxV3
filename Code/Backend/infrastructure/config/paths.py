@@ -28,6 +28,14 @@ DEFAULT_CONFIG_DIR: Path = BACKEND_ROOT / "config"
 # process on one port. Absent during development, where Vite serves it.
 DEFAULT_FRONTEND_DIST: Path = PROJECT_ROOT / "Code" / "Frontend" / "dist"
 
+# The v9 build-bible workbook — git-ignored client material (plan §3.2,
+# decision D8). Absent on a machine that hasn't been handed the corpus;
+# importing reference data fails with a clear message rather than silently
+# reading nothing.
+DEFAULT_WORKBOOK_PATH: Path = (
+    PROJECT_ROOT / "data" / "source" / "nanovox_corpus_v9_build_bible_2.xlsx"
+)
+
 
 def default_database_url() -> str:
     """SQLite URL for the default on-disk database, as a POSIX-style path.

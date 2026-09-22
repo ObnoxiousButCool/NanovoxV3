@@ -18,10 +18,15 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from application.ports.clock import Clock
 from application.ports.health_probe import HealthProbe
+from application.ports.reference_repository import ReferenceRepository
+from application.ports.reference_source import ReferenceSource
 from application.use_cases.get_health import GetHealth
+from application.use_cases.import_reference_data import ImportReferenceData
 from infrastructure.config.settings import Settings
 from infrastructure.persistence.engine import create_database_engine, create_session_factory
 from infrastructure.persistence.health_probe import DatabaseHealthProbe
+from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
+from infrastructure.reference.xlsx_reference_source import XlsxReferenceSource
 from infrastructure.system_clock import SystemClock
 
 
@@ -34,20 +39,30 @@ class Container:
     session_factory: async_sessionmaker[AsyncSession]
     clock: Clock
     health_probes: tuple[HealthProbe, ...]
+    reference_source: ReferenceSource
+    reference_repository: ReferenceRepository
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
+
+    def import_reference_data(self) -> ImportReferenceData:
+        return ImportReferenceData(
+            source=self.reference_source, repository=self.reference_repository
+        )
 
 
 def build_container(settings: Settings) -> Container:
     """Wire the object graph for a running application."""
     engine = create_database_engine(settings)
+    session_factory = create_session_factory(engine)
     return Container(
         settings=settings,
         engine=engine,
-        session_factory=create_session_factory(engine),
+        session_factory=session_factory,
         clock=SystemClock(),
         health_probes=(DatabaseHealthProbe(engine),),
+        reference_source=XlsxReferenceSource(settings.workbook_path),
+        reference_repository=SqlReferenceRepository(session_factory),
     )
 
 
