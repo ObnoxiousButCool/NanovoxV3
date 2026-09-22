@@ -132,3 +132,22 @@ forbidden_modules = [
     "alembic",
     "uvicorn",
 ]
+
+# --- Extraction/answer-key separation (plan §8 Phase 2) --------------------
+# The answer key (category, archetype, cited rules, outcome, score, the CALL
+# TAGS block) exists only to score the pipeline in Phase 5. Extraction code
+# must not be able to reach it, structurally, not just by convention — this
+# is what a leak into an LLM prompt would look like at the source. Add every
+# future extraction-stage module (Phase 4's L1-L4) to source_modules here.
+[[tool.importlinter.contracts]]
+name = "Extraction cannot read the answer key"
+type = "forbidden"
+source_modules = [
+    "application.use_cases.ingest_transcripts",
+    "infrastructure.corpus.pdf_corpus_source",
+]
+forbidden_modules = [
+    "application.ports.answer_key_source",
+    "infrastructure.corpus.pdf_answer_key_source",
+    "domain.entities.answer_key",
+]
