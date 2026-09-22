@@ -13,14 +13,12 @@ actually uses (plan §8 Phase 1).
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infrastructure.persistence.models import Base
-
-_REFERENCE_LENGTH = 32
-_NAME_LENGTH = 256
-_SHORT_LENGTH = 64
 
 
 class BrokerRow(Base):
@@ -140,3 +138,80 @@ class TouchpointRow(Base):
     )  # enrolment_meeting, ...
     owner: Mapped[str] = mapped_column(nullable=False)
     controls: Mapped[str] = mapped_column(nullable=False)
+
+
+class CallRow(Base):
+    """The fact table (Data Model sheet) — one row per ingested call,
+    resolved or not. Never absent because resolution failed; see plan §8
+    Phase 2's rules and `domain/entities/ingested_call.py`.
+    """
+
+    __tablename__ = "calls"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    reference: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)  # C-0001
+    source: Mapped[str] = mapped_column(nullable=False)  # CallSource.value
+    occurred_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    aht_seconds: Mapped[int | None] = mapped_column(nullable=True)
+    caller_type: Mapped[str] = mapped_column(nullable=False)  # CallerType.value
+    caller_ref: Mapped[str] = mapped_column(nullable=False)
+    agent_ref: Mapped[str] = mapped_column(nullable=False)
+
+    resolution_status: Mapped[str] = mapped_column(nullable=False)  # CallResolutionStatus.value
+    resolution_reason: Mapped[str | None] = mapped_column(nullable=True)
+
+    # Null exactly when that half of the join didn't resolve — never a
+    # guess standing in for a missing join.
+    member_id: Mapped[int | None] = mapped_column(ForeignKey("members.id"), nullable=True)
+    employer_contact_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employer_contacts.id"), nullable=True
+    )
+    employer_id: Mapped[int | None] = mapped_column(ForeignKey("employers.id"), nullable=True)
+
+    # selectin: async-safe eager loading. The default lazy="select" would
+    # try to lazy-load this collection outside of an awaited context the
+    # moment the repository touches `row.turns`, and raise MissingGreenlet.
+    turns: Mapped[list[CallTurnRow]] = relationship(
+        back_populates="call",
+        cascade="all, delete-orphan",
+        order_by="CallTurnRow.sequence",
+        lazy="selectin",
+    )
+
+
+class CallTurnRow(Base):
+    """Separate from `CallRow`, like signals and rubric markers (Data Model
+    sheet): one call raises many turns, and normalising them lets a turn be
+    queried and quoted on its own — the same reason marker-level evidence is
+    kept auditable rather than folded into one blob.
+    """
+
+    __tablename__ = "call_turns"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), nullable=False)
+    sequence: Mapped[int] = mapped_column(nullable=False)
+    role: Mapped[str] = mapped_column(nullable=False)  # SpeakerRole.value
+    text: Mapped[str] = mapped_column(nullable=False)
+
+    call: Mapped[CallRow] = relationship(back_populates="turns")
+
+
+class IngestJobRow(Base):
+    """Generic across sources (plan §6.4) — not a PDF-specific job table.
+
+    One row per ingestion run. `result_call_reference` is populated only
+    for a job that ingests exactly one call (a future single-call source —
+    paste, audio); a bulk PDF batch import leaves it null, since "result"
+    would mean nothing for a hundred calls at once.
+    """
+
+    __tablename__ = "ingest_jobs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(nullable=False)  # e.g. "corpus_pdf"
+    status: Mapped[str] = mapped_column(nullable=False)  # RUNNING / COMPLETED / FAILED
+    message: Mapped[str | None] = mapped_column(nullable=True)
+    started_at: Mapped[datetime] = mapped_column(nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    result_call_reference: Mapped[str | None] = mapped_column(nullable=True)

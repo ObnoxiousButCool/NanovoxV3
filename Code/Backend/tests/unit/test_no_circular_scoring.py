@@ -22,6 +22,7 @@ ALLOWED = {
     "infrastructure/reference/xlsx_reference_source.py",
     "tests/unit/test_no_circular_scoring.py",
     "tests/integration/test_reference_repository.py",
+    "tests/integration/test_reference_lookup.py",
 }
 
 _BACKEND_ROOT = Path(__file__).resolve().parents[2]
