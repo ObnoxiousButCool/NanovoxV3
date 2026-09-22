@@ -35,6 +35,11 @@ DEFAULT_FRONTEND_DIST: Path = PROJECT_ROOT / "Code" / "Frontend" / "dist"
 DEFAULT_WORKBOOK_PATH: Path = (
     PROJECT_ROOT / "data" / "source" / "nanovox_corpus_v9_build_bible_2.xlsx"
 )
+# The matched-pair transcripts PDF (plan §11: workbook _2 with PDF _1, no
+# other pairing). Same git-ignored status as the workbook.
+DEFAULT_TRANSCRIPTS_PATH: Path = (
+    PROJECT_ROOT / "data" / "source" / "nanovox_v9_transcripts_batch1_001-100_1.pdf"
+)
 
 
 def default_database_url() -> str:

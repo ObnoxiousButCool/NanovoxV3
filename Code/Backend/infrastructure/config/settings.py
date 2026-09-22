@@ -28,6 +28,7 @@ from infrastructure.config.paths import (
     BACKEND_ROOT,
     DEFAULT_FRONTEND_DIST,
     DEFAULT_LOG_DIR,
+    DEFAULT_TRANSCRIPTS_PATH,
     DEFAULT_WORKBOOK_PATH,
     default_database_url,
 )
@@ -71,6 +72,7 @@ class Settings(BaseSettings):
 
     # --- Reference data (plan §8 Phase 1) -----------------------------------
     workbook_path: Path = DEFAULT_WORKBOOK_PATH
+    transcripts_path: Path = DEFAULT_TRANSCRIPTS_PATH
 
     # --- Logging -----------------------------------------------------------
     log_enabled: bool = True

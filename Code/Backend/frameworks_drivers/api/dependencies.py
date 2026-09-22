@@ -14,6 +14,7 @@ from fastapi import Depends, Request
 
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
+from application.use_cases.ingest_transcripts import IngestTranscripts
 from frameworks_drivers.container import Container
 from infrastructure.config.settings import Settings
 
@@ -42,6 +43,11 @@ def get_import_reference_data_use_case(container: ContainerDep) -> ImportReferen
     return container.import_reference_data()
 
 
+def get_ingest_transcripts_use_case(container: ContainerDep) -> IngestTranscripts:
+    return container.ingest_transcripts()
+
+
 SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
 GetHealthDep = Annotated[GetHealth, Depends(get_health_use_case)]
 ImportReferenceDataDep = Annotated[ImportReferenceData, Depends(get_import_reference_data_use_case)]
+IngestTranscriptsDep = Annotated[IngestTranscripts, Depends(get_ingest_transcripts_use_case)]

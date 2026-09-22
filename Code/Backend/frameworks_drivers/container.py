@@ -16,15 +16,22 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from application.ports.call_repository import CallRepository
 from application.ports.clock import Clock
 from application.ports.health_probe import HealthProbe
+from application.ports.reference_lookup import ReferenceLookup
 from application.ports.reference_repository import ReferenceRepository
 from application.ports.reference_source import ReferenceSource
+from application.ports.transcript_source import TranscriptSource
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
+from application.use_cases.ingest_transcripts import IngestTranscripts
 from infrastructure.config.settings import Settings
+from infrastructure.corpus.pdf_corpus_source import PdfCorpusSource
 from infrastructure.persistence.engine import create_database_engine, create_session_factory
 from infrastructure.persistence.health_probe import DatabaseHealthProbe
+from infrastructure.persistence.repositories.call_repository import SqlCallRepository
+from infrastructure.persistence.repositories.reference_lookup import SqlReferenceLookup
 from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
 from infrastructure.reference.xlsx_reference_source import XlsxReferenceSource
 from infrastructure.system_clock import SystemClock
@@ -41,6 +48,9 @@ class Container:
     health_probes: tuple[HealthProbe, ...]
     reference_source: ReferenceSource
     reference_repository: ReferenceRepository
+    transcript_source: TranscriptSource
+    reference_lookup: ReferenceLookup
+    call_repository: CallRepository
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
@@ -50,19 +60,30 @@ class Container:
             source=self.reference_source, repository=self.reference_repository
         )
 
+    def ingest_transcripts(self) -> IngestTranscripts:
+        return IngestTranscripts(
+            source=self.transcript_source,
+            lookup=self.reference_lookup,
+            repository=self.call_repository,
+        )
+
 
 def build_container(settings: Settings) -> Container:
     """Wire the object graph for a running application."""
     engine = create_database_engine(settings)
     session_factory = create_session_factory(engine)
+    clock = SystemClock()
     return Container(
         settings=settings,
         engine=engine,
         session_factory=session_factory,
-        clock=SystemClock(),
+        clock=clock,
         health_probes=(DatabaseHealthProbe(engine),),
         reference_source=XlsxReferenceSource(settings.workbook_path),
         reference_repository=SqlReferenceRepository(session_factory),
+        transcript_source=PdfCorpusSource(settings.transcripts_path),
+        reference_lookup=SqlReferenceLookup(session_factory),
+        call_repository=SqlCallRepository(session_factory, clock),
     )
 
 

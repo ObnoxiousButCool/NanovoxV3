@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingest/transcripts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ingest every call from the configured transcript source */
+        post: operations["ingest_transcripts_api_v1_ingest_transcripts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reference/import": {
         parameters: {
             query?: never;
@@ -96,6 +113,19 @@ export interface components {
             /** Warnings */
             warnings: string[];
         };
+        /** IngestCountsResponse */
+        IngestCountsResponse: {
+            /** Agent Unknown */
+            agent_unknown: number;
+            /** Caller Unresolved */
+            caller_unresolved: number;
+            /** Resolved */
+            resolved: number;
+            /** Speaker Unresolved */
+            speaker_unresolved: number;
+            /** Total */
+            total: number;
+        };
     };
     responses: never;
     parameters: never;
@@ -129,6 +159,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ingest_transcripts_api_v1_ingest_transcripts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestCountsResponse"];
+                };
             };
         };
     };

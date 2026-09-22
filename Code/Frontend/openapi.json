@@ -140,6 +140,39 @@
         ],
         "title": "ImportReferenceResponse",
         "type": "object"
+      },
+      "IngestCountsResponse": {
+        "properties": {
+          "agent_unknown": {
+            "title": "Agent Unknown",
+            "type": "integer"
+          },
+          "caller_unresolved": {
+            "title": "Caller Unresolved",
+            "type": "integer"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "type": "integer"
+          },
+          "speaker_unresolved": {
+            "title": "Speaker Unresolved",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "resolved",
+          "caller_unresolved",
+          "agent_unknown",
+          "speaker_unresolved"
+        ],
+        "title": "IngestCountsResponse",
+        "type": "object"
       }
     }
   },
@@ -171,6 +204,27 @@
         "summary": "Report application and dependency health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/v1/ingest/transcripts": {
+      "post": {
+        "operationId": "ingest_transcripts_api_v1_ingest_transcripts_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestCountsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ingest every call from the configured transcript source",
+        "tags": [
+          "ingest"
         ]
       }
     },
