@@ -1,0 +1,17 @@
+# NanoVox Insights backend — runtime dependencies.
+# Dev/test/lint tooling lives in requirements-dev.txt.
+#
+# Kept to what Phase 0 actually uses; later phases add to this file as they
+# need it (LLM provider SDKs in Phase 3, pypdf in Phase 2, PyYAML for
+# config/dashboard.yaml in Phase 1) rather than pulling everything in now.
+
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.32,<1.0
+pydantic>=2.9,<3.0
+pydantic-settings>=2.6,<3.0
+SQLAlchemy[asyncio]>=2.0.36,<2.1
+aiosqlite>=0.20,<1.0
+# Postgres driver (D9) — a deployment points DATABASE_URL at this instead of
+# aiosqlite, so storage survives a redeploy. Local/default dev stays on SQLite.
+asyncpg>=0.29,<1.0
+alembic>=1.14,<2.0

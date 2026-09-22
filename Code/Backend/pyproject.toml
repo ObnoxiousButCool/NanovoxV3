@@ -1,0 +1,134 @@
+# Tooling configuration for the NanoVox Insights backend.
+#
+# There is deliberately no [project] table: the backend is run as an application
+# from this directory, not installed as a distributable package. Runtime and dev
+# dependencies live in requirements.txt / requirements-dev.txt.
+#
+# Copied from NanoVox-V2's pyproject.toml and renamed, per plan §2A.0: when the
+# plan and NanoVox disagree on style, NanoVox wins.
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["."]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",      # pycodestyle
+    "F",           # pyflakes
+    "I",           # isort
+    "N",           # pep8-naming
+    "UP",          # pyupgrade
+    "B",           # flake8-bugbear
+    "A",           # flake8-builtins
+    "C4",          # flake8-comprehensions
+    "DTZ",         # flake8-datetimez
+    "T20",         # flake8-print (no stray print/pprint)
+    "SIM",         # flake8-simplify
+    "PTH",         # flake8-use-pathlib
+    "RUF",         # ruff-specific
+    "ANN",         # flake8-annotations
+    "ASYNC",       # flake8-async
+    "S",           # flake8-bandit
+    "TID",         # flake8-tidy-imports
+    "ERA",         # eradicate (no commented-out code)
+    "FIX",         # no TODO/FIXME left behind
+]
+ignore = [
+    "ANN401",      # allow typing.Any where a boundary genuinely needs it
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # assert is the point of a test
+"frameworks_drivers/cli/*" = ["T201"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_unreachable = true
+warn_no_return = true
+disallow_any_unimported = true
+show_error_codes = true
+pretty = true
+files = ["domain", "application", "infrastructure", "frameworks_drivers", "tests"]
+exclude = ["infrastructure/persistence/migrations/"]
+
+[[tool.mypy.overrides]]
+module = ["alembic.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q --strict-markers --strict-config"
+filterwarnings = [
+    "error",
+    "ignore::ResourceWarning",
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["domain", "application", "infrastructure", "frameworks_drivers"]
+branch = true
+omit = ["*/migrations/*", "*/__init__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 85
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]
+
+# --- Clean Architecture dependency rule (plan §2A.1) -----------------------
+# Enforced in CI. The domain layer imports nothing outward; each layer may only
+# import from layers listed below it.
+
+[tool.importlinter]
+root_packages = ["domain", "application", "infrastructure", "frameworks_drivers"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Clean Architecture layers point inward"
+type = "layers"
+layers = [
+    "frameworks_drivers",
+    "infrastructure",
+    "application",
+    "domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "Domain is framework-free"
+type = "forbidden"
+source_modules = ["domain"]
+forbidden_modules = [
+    "fastapi",
+    "starlette",
+    "sqlalchemy",
+    "alembic",
+    "pydantic",
+    "pydantic_settings",
+    "httpx",
+    "uvicorn",
+]
+
+[[tool.importlinter.contracts]]
+name = "Application depends on ports, not on frameworks"
+type = "forbidden"
+source_modules = ["application"]
+forbidden_modules = [
+    "fastapi",
+    "starlette",
+    "sqlalchemy",
+    "alembic",
+    "uvicorn",
+]
