@@ -1,0 +1,23 @@
+/* Minimal reset. Design tokens arrive in Phase 7 (plan §2A.6); nothing here
+   is a component style — components read tokens, never raw values. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}

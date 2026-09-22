@@ -1,0 +1,115 @@
+{
+  "components": {
+    "schemas": {
+      "ComponentHealthResponse": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComponentStatus"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ],
+        "title": "ComponentHealthResponse",
+        "type": "object"
+      },
+      "ComponentStatus": {
+        "description": "Outcome of probing a single component.",
+        "enum": [
+          "up",
+          "down"
+        ],
+        "title": "ComponentStatus",
+        "type": "string"
+      },
+      "HealthResponse": {
+        "properties": {
+          "application": {
+            "title": "Application",
+            "type": "string"
+          },
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentHealthResponse"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComponentStatus"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "application",
+          "version",
+          "environment",
+          "checked_at"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "summary": "Call intelligence for a general agency in employee-benefits insurance.",
+    "title": "NanoVox Insights API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "A component is unavailable."
+          }
+        },
+        "summary": "Report application and dependency health",
+        "tags": [
+          "system"
+        ]
+      }
+    }
+  }
+}
