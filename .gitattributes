@@ -1,0 +1,17 @@
+# The team works on Windows; normalise text to LF in the repo, checked out
+# as LF, so line endings don't churn diffs across machines.
+* text=auto eol=lf
+
+# Binary formats — never touched by line-ending normalisation.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.xlsx binary
+*.docx binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary

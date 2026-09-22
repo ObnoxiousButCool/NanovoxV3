@@ -1,0 +1,37 @@
+# Client source material — not tracked (see plan §3.2, decision D8)
+data/source/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+
+# Env files — never commit real secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
