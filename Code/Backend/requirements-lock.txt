@@ -1,0 +1,50 @@
+# Exact, fully-pinned runtime dependencies — the full transitive closure of
+# requirements.txt, computed from real installed package metadata (`pip show`,
+# walked recursively) rather than a blind `pip freeze`, so this holds only
+# what fastapi/uvicorn/pydantic/pydantic-settings/SQLAlchemy/aiosqlite/
+# asyncpg/alembic actually require, not everything that happened to be on
+# the machine that generated it.
+#
+# Install with: pip install -r requirements-lock.txt
+# Regenerate after changing requirements.txt, once a real `pip install -r
+# requirements.txt` into a clean venv has verified the new versions resolve:
+#   pip freeze --local | sort > requirements-lock.txt
+# (then re-add this header and re-check it still matches the closure below).
+#
+# NOT PINNED — flagging rather than guessing: `uvloop`, the Unix half of
+# uvicorn[standard]. This lock file was generated on Windows, where uvloop
+# doesn't install (uvicorn's own platform marker excludes it), so there is
+# no real installed version to pin here. A Linux/macOS install resolves it
+# fresh from the `uvicorn[standard]` spec in requirements.txt; pin it here
+# once someone has actually installed on that platform.
+
+aiosqlite==0.22.1
+alembic==1.19.2
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+async-timeout==5.0.1
+asyncpg==0.31.0
+click==8.5.0
+colorama==0.4.6 ; sys_platform == "win32"
+exceptiongroup==1.3.1 ; python_version < "3.11"
+fastapi==0.141.1
+greenlet==3.5.5
+h11==0.16.0
+httptools==0.8.0
+idna==3.19
+Mako==1.4.1
+MarkupSafe==3.0.3
+pydantic==2.13.5
+pydantic_core==2.46.5
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+PyYAML==6.0.3
+SQLAlchemy==2.0.52
+starlette==1.6.0
+tomli==2.4.1 ; python_version < "3.11"
+typing_extensions==4.16.0
+typing-inspection==0.4.4
+uvicorn==0.52.4
+watchfiles==1.2.0
+websockets==16.1.1
