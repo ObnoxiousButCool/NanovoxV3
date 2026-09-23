@@ -1,0 +1,609 @@
+<meta charset="utf-8">
+<title>Agent Conduct</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="app.css">
+<script>
+/* Stamp the theme before first paint, so the ground colour never flashes.
+   Light is the default and "system" is the only value that defers to the OS.
+   Mirrors NV.themeRead in app.js - keep the two in step. */
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") {
+    document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+  }
+} catch (e) {}
+</script>
+<style>
+  /* Coverage against the 30-call minimum, shown on every row. A rate is not
+     publishable until the bar is full, and the bar is the reason. */
+  .cov { display: flex; align-items: center; gap: 7px; min-width: 96px; }
+  .cov .track { flex: 1 1 auto; height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+  .cov .fill { display: block; height: 100%; background: var(--seq-2); }
+  .cov .n { font: 500 11px/1 var(--mono); color: var(--ink-3); white-space: nowrap; }
+  td.ev { font-variant-numeric: tabular-nums; }
+  td.ev b { color: var(--serious); }
+  .nd { color: var(--ink-3); }
+  th.rtxt, td.rtxt { white-space: normal; min-width: 210px; }
+  .band { font: 500 10px/1.5 var(--display); letter-spacing: .04em; text-transform: uppercase;
+          padding: 1px 6px; border-radius: 999px; border: 1px solid var(--rule-strong);
+          color: var(--ink-2); white-space: nowrap; }
+  /* Label/value pairs. app.css has no class for these, and the drawer elsewhere
+     styles its own inline - one rule here beats repeating it per row. */
+  dl.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; font-size: 12.5px; }
+  dl.kv dt { white-space: nowrap; }
+</style>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead">
+      <h1>What can we say about an agent yet?</h1>
+      <p class="q">At batch 1 an agent has a handful of calls, so <b>no rate on this page is a
+        performance measure</b>. What <i>is</i> attributable at this volume is <b>events</b> &mdash; a
+        disclosure that was missed, a published rule stated wrongly, an escalation that was
+        warranted and not given. Those are incidents, not estimates, and one is one.</p>
+      <div id="filters"></div>
+    </div>
+
+    <div class="wrap">
+      <div class="kpis" id="kpis"></div>
+
+      <section class="panel c12">
+        <header>
+          <div><h2>Why there is no agent scorecard here</h2></div>
+          <span class="cls cls-reference">reference</span>
+        </header>
+        <div id="why"></div>
+      </section>
+
+      <section class="panel c12">
+        <header>
+          <div><h2>Attributable events</h2></div>
+          <div class="row" style="gap:6px"><span class="cls cls-observed">observed</span></div>
+        </header>
+        <p class="sub">Agents with at least one event, worst first. A compliance exception is a
+          <b>breach, not a rate</b> &mdash; it either happened on that call or it did not, so it is
+          attributable however few calls the agent has. Click a row for the calls.</p>
+        <div id="events"></div>
+      </section>
+
+      <section class="panel c12">
+        <header>
+          <div><h2>The roster, and how far the corpus is from it</h2></div>
+          <div class="row" style="gap:6px"><span class="cls cls-reference">reference</span><span class="cls cls-observed">observed</span></div>
+        </header>
+        <p class="sub">The band, the designed call volume and the expected mean score are the
+          workbook's. Calls written and events are ours. <b>Observed quality is withheld per
+          agent</b> until the coverage bar is full &mdash; the roster sets the bar at 30 calls, not us.</p>
+        <div id="roster"></div>
+        <p class="note suppressed" style="margin-top:12px"><b>This table cannot discover an
+          underperformer, and it is important to know why.</b> The roster was written first, with a
+          designed band, an expected score and a dominant pattern for each agent &mdash; and the
+          calls were then authored to match. So when the agent whose designed pattern reads
+          &ldquo;disclosure lapses&rdquo; turns out to have disclosure lapses, that is the corpus
+          agreeing with its own specification, not a finding. It is the same circularity as scoring
+          an account on the churn profile it was generated from. What the page <i>does</i> prove is
+          that the pipeline attributes conduct events to the right agent, which is what has to work
+          before real calls arrive.</p>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>Which conduct rule was broken</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">The two exception types are not equivalent. Failing to disclose recording at
+          all is a different failure from disclosing it in the wrong order, and the first is
+          concentrated rather than spread.</p>
+        <div id="exctypes"></div>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>Callers who asked for a supervisor and did not get one</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">The clearest conduct event in the set: the caller said the words and the
+          call ended without one. Not inferred from a threshold &mdash; asked, and refused.</p>
+        <div id="refusals"></div>
+      </section>
+
+      <section class="panel c12">
+        <header>
+          <div><h2>Are the low scores explained by harder calls?</h2></div>
+          <span class="cls cls-inference">inference</span>
+        </header>
+        <p class="sub">The first objection to any quality gap is that the lower-scoring group was
+          handed the harder work. That objection is testable here, because every call carries a
+          complexity band, a caller type and a talk time.</p>
+        <div id="difficulty"></div>
+        <p class="note" style="margin-top:12px" id="diffnote"></p>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>Training problem, or documentation problem?</h2></div><span class="cls cls-inference">inference</span></header>
+        <p class="sub">A rule one agent gets wrong is probably training. The same rule misstated by
+          <b>more than one</b> agent &mdash; especially across bands &mdash; points at the rule's own
+          wording instead.</p>
+        <div id="shared"></div>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>When the events happened</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">Whether conduct events are spread across the quarter or bunched in one
+          stretch changes what they mean &mdash; and whether the shape can be trusted at all.</p>
+        <div id="timing"></div>
+        <p class="note suppressed" style="margin-top:12px" id="timingnote"></p>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>By band</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">Grouping recovers the sample an individual agent does not have. A band pools
+          thirty-odd calls, which clears the five-call floor the rest of the cockpit uses &mdash; so
+          a band average is publishable where an agent average is not.</p>
+        <div id="bands"></div>
+        <p class="note" style="margin-top:12px" id="bandnote"></p>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>The one trigger rule that watches agents</h2></div><span class="cls cls-inference">inference</span></header>
+        <p class="sub">Rule 9 of the workbook's trigger set is the only one scoped to an
+          individual, and it is scoped to <b>conduct</b> rather than to quality &mdash; which is the
+          same distinction this page is built on.</p>
+        <div id="trigger"></div>
+      </section>
+    </div>
+
+    <p class="srcline">
+      20 agents from the <code>Agent Roster</code> sheet of
+      <code>nanovox_corpus_v9_build_bible_2.xlsx</code>, joined to the agent on each of the 100
+      written calls. Band, planned calls, expected mean score and dominant pattern are the
+      workbook's own columns. Events are counted from the call tags.
+    </p>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  const AG = D.agents;
+  document.getElementById("rail").innerHTML = NV.rail("agents.html");
+
+  /* The roster's own words: "Twenty agents at thirty calls each, which is
+     exactly the minimum needed to quote an agent-level rate." Everything on this
+     page keys off that number rather than a threshold of our own choosing. */
+  const MIN_CALLS = 30;
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar({ compact: true });
+    NV.bindFilters(el);
+  }
+
+  function kpiTile(o) {
+    return '<div class="kpi ' + (o.tone || "") + '">' +
+      '<span class="k">' + o.k + '</span><span class="v">' + o.v + "</span>" +
+      '<span class="m">' + o.m + "</span></div>";
+  }
+
+  function cov(n) {
+    const p = Math.min(n / MIN_CALLS, 1) * 100;
+    return '<span class="cov" title="' + n + " of " + MIN_CALLS +
+      ' calls needed before a rate is publishable"><span class="track">' +
+      '<span class="fill" style="width:' + p.toFixed(0) + '%"></span></span>' +
+      '<span class="n">' + n + "/" + MIN_CALLS + "</span></span>";
+  }
+
+  function tbl(cols, rows) {
+    if (!rows.length) {
+      return '<div class="empty"><b>Nothing in scope</b>Widen the period or clear a filter.</div>';
+    }
+    return '<div class="tblwrap"><table><thead><tr>' +
+      cols.map((c) => "<th" + (c[1] ? ' class="' + c[1] + '"' : "") + ">" + c[0] + "</th>").join("") +
+      "</tr></thead><tbody>" + rows.map((r) =>
+        "<tr" + (r.id ? ' class="clickable" data-agent="' + r.id + '"' : "") + ">" +
+        r.cells.map((cell, i) => {
+          const cls = (cols[i] || [])[1];
+          return "<td" + (cls ? ' class="' + cls + '"' : "") + ">" + cell + "</td>";
+        }).join("") + "</tr>").join("") + "</tbody></table></div>";
+  }
+
+  const ev = (n) => (n ? "<b>" + n + "</b>" : '<span class="nd">–</span>');
+
+  function openAgent(id, stats) {
+    const a = AG[id] || {}, s = stats[id];
+    const rows = [
+      ["Band", a.band || "–"],
+      ["Designed call volume", (a.planned_calls || "–") + " at full corpus"],
+      ["Expected mean score", a.expected_score
+        ? a.expected_score + (a.score_variance ? " ± " + a.score_variance : "") : "–"],
+      ["Dominant pattern (designed)", a.pattern || "–"],
+      ["Calls written so far", s.calls.length + " of " + MIN_CALLS + " needed for a rate"],
+    ];
+    const body = '<div class="stack">' +
+      "<div><h4>The roster entry " + NV.clsChip("reference") + "</h4>" +
+      "<dl class='kv'>" + rows.map((r) =>
+        "<dt style='color:var(--ink-2)'>" + r[0] + "</dt><dd style='margin:0'>" +
+        NV.esc(String(r[1])) + "</dd>").join("") + "</dl></div>" +
+      (s.events
+        ? "<div><h4>Events on this agent's calls " + NV.clsChip("observed") + "</h4>" +
+          [["Compliance exceptions", s.ctrl, "a required disclosure was missed or made out of order"],
+           ["Rules stated incorrectly", s.kf, "a published rule was explained wrongly"],
+           ["Escalations not given", s.escMissed, "a supervisor was warranted and not provided"]]
+            .filter((r) => r[1]).map((r) =>
+            '<div class="row" style="justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--rule)">' +
+            "<span>" + r[0] + '<div class="sm">' + r[2] + "</div></span><b>" + r[1] +
+            "</b></div>").join("") + "</div>"
+        : "<div><h4>No events on this agent's calls</h4><p class='sm' style='margin:0'>" +
+          "No compliance exception, misstated rule or missed escalation. With " + s.calls.length +
+          " call" + (s.calls.length === 1 ? "" : "s") + " written, that is the absence of a " +
+          "recorded event rather than evidence of consistency.</p></div>") +
+      "<div><h4>Calls written " + NV.clsChip("observed") + "</h4>" +
+      s.calls.map((c) => {
+        const flags = [];
+        if (c.control_exceptions && c.control_exceptions.length) flags.push("compliance");
+        if (c.kf_present) flags.push("rule misstated");
+        if (c.esc_triggered && !c.esc_handled) flags.push("escalation missed");
+        return '<div class="row" style="justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--rule)">' +
+          '<a href="#" data-c="' + c.id + '" class="mono">' + c.id + "</a>" +
+          '<span class="sm">' + NV.esc(c.date) + " · " + NV.esc(c.category) +
+          " · " + c.outcome +
+          (flags.length ? " · <b style='color:var(--serious)'>" + flags.join(", ") + "</b>" : "") +
+          "</span></div>";
+      }).join("") +
+      "<p class='sm' style='margin:8px 0 0'>Quality scores are deliberately not shown per call " +
+      "here. They are visible on the call itself, where a single score is a single call rather " +
+      "than a judgement about a person.</p></div></div>";
+
+    NV.drawer(NV.esc(a.name || id), body, "reference", (root) =>
+      root.querySelectorAll("a[data-c]").forEach((x) =>
+        x.addEventListener("click", (e) => { e.preventDefault(); NV.openCall(x.dataset.c); })));
+  }
+
+  function render() {
+    const calls = NV.calls();
+    const ids = Object.keys(AG);
+
+    const stats = {};
+    ids.forEach((id) => {
+      const cs = calls.filter((c) => c.agent === id);
+      const ctrl = cs.filter((c) => c.control_exceptions && c.control_exceptions.length).length;
+      const kf = cs.filter((c) => c.kf_present).length;
+      const escMissed = cs.filter((c) => c.esc_triggered && !c.esc_handled).length;
+      stats[id] = {
+        calls: cs, ctrl: ctrl, kf: kf, escMissed: escMissed,
+        events: ctrl + kf + escMissed,
+        unresolved: cs.filter((c) => c.outcome === "UNRESOLVED").length,
+        avg: cs.length ? Math.round(cs.reduce((a, c) => a + c.score, 0) / cs.length) : null,
+      };
+    });
+
+    const withCalls = ids.filter((id) => stats[id].calls.length);
+    const withEvents = ids.filter((id) => stats[id].events);
+    const maxCalls = Math.max.apply(null, withCalls.map((id) => stats[id].calls.length).concat([0]));
+    const totalCtrl = ids.reduce((a, id) => a + stats[id].ctrl, 0);
+    const readyForRate = withCalls.filter((id) => stats[id].calls.length >= MIN_CALLS).length;
+
+    document.getElementById("kpis").innerHTML = [
+      kpiTile({ k: "Agents on the roster", v: ids.length, m: withCalls.length + " with a written call" }),
+      kpiTile({ k: "Most calls for one agent", v: maxCalls,
+                m: "the roster needs " + MIN_CALLS + " for a rate" }),
+      kpiTile({ k: "Agents ready for a rate", v: readyForRate,
+                m: "of " + ids.length + " — hence no scorecard", tone: "is-withheld" }),
+      kpiTile({ k: "Compliance exceptions", v: totalCtrl,
+                m: "attributable at any volume", tone: totalCtrl ? "is-crit" : "" }),
+      kpiTile({ k: "Rules stated incorrectly", v: ids.reduce((a, id) => a + stats[id].kf, 0),
+                m: "across " + withEvents.length + " agents" }),
+      kpiTile({ k: "Escalations not given", v: ids.reduce((a, id) => a + stats[id].escMissed, 0),
+                m: "warranted and not provided", tone: "is-warn" }),
+    ].join("");
+
+    /* ---- why there is no scorecard ---- */
+    document.getElementById("why").innerHTML =
+      '<p class="note suppressed" style="margin-top:0"><b>This is the workbook’s ' +
+      "threshold, not a caution of ours.</b> The Agent Roster reads: <i>“twenty agents at " +
+      "thirty calls each, which is exactly the minimum needed to quote an agent-level " +
+      "rate.”</i> Batch 1 has written " + calls.length + " calls, so the busiest agent has <b>" +
+      maxCalls + "</b> and " + readyForRate + " of " + ids.length + " are at the threshold. " +
+      "An average score on " + maxCalls + " calls has a confidence interval wide enough to " +
+      "cover most of the roster, and it would be attached to a named person.</p>" +
+      '<p class="sub" style="margin-bottom:0">So the page is built the other way round. ' +
+      "<b>Events are attributable and rates are not.</b> A missed disclosure happened on a " +
+      "specific call; it is not an estimate of anything and does not need a sample. A quality " +
+      "average is an estimate, and at four calls it is a bad one. Everything above the fold " +
+      "here is an event; the observed score sits behind a coverage bar until the corpus earns " +
+      "it, in roughly batch 4.</p>";
+
+    /* ---- attributable events ---- */
+    const evRows = withEvents.slice().sort((a, b) =>
+      stats[b].events - stats[a].events || stats[b].ctrl - stats[a].ctrl).map((id) => {
+      const a = AG[id], s = stats[id];
+      return { id: id, cells: [
+        '<span class="lead">' + NV.esc(a.name) + "</span>" +
+          '<span class="sm">' + NV.esc(id) + "</span>",
+        '<span class="band">' + NV.esc(a.band) + "</span>",
+        s.calls.length,
+        '<span class="ev">' + ev(s.ctrl) + "</span>",
+        '<span class="ev">' + ev(s.kf) + "</span>",
+        '<span class="ev">' + ev(s.escMissed) + "</span>",
+        "<b>" + s.events + "</b>",
+        s.ctrl === s.calls.length && s.calls.length > 1
+          ? "<b>every call</b>" : '<span class="nd">–</span>',
+      ] };
+    });
+    document.getElementById("events").innerHTML = tbl(
+      [["Agent"], ["Band"], ["Calls", "num"], ["Compliance", "num ev"],
+       ["Rule misstated", "num ev"], ["Escalation missed", "num ev"], ["Events", "num"],
+       ["Note"]], evRows);
+
+    /* ---- roster ---- */
+    const rosterRows = ids.slice().sort((a, b) =>
+      stats[b].events - stats[a].events || stats[b].calls.length - stats[a].calls.length).map((id) => {
+      const a = AG[id], s = stats[id];
+      return { id: id, cells: [
+        '<span class="lead">' + NV.esc(a.name) + "</span>" +
+          '<span class="sm">' + NV.esc(id) + "</span>",
+        '<span class="band">' + NV.esc(a.band) + "</span>",
+        a.expected_score
+          ? a.expected_score + (a.score_variance ? " ± " + a.score_variance : "")
+          : "–",
+        cov(s.calls.length),
+        /* The withheld cell. Not a zero, not an average of four calls. */
+        s.calls.length >= MIN_CALLS ? s.avg
+          : '<span class="nd" title="Withheld: ' + s.calls.length + " of " + MIN_CALLS +
+            ' calls. The roster sets the minimum, not us.">withheld</span>',
+        s.events ? "<b>" + s.events + "</b>" : '<span class="nd">–</span>',
+        '<span class="nd rtxt">' + NV.esc(a.pattern || "–") + "</span>",
+      ] };
+    });
+    document.getElementById("roster").innerHTML = tbl(
+      [["Agent"], ["Band"], ["Expected score", "num"], ["Coverage"], ["Observed score", "num"],
+       ["Events", "num"], ["Dominant pattern (designed)", "rtxt"]], rosterRows);
+
+    /* ---- by band ---- */
+    const bands = Array.from(new Set(ids.map((id) => AG[id].band))).filter(Boolean);
+    document.getElementById("bands").innerHTML = tbl(
+      [["Band"], ["Agents", "num"], ["Calls", "num"], ["Compliance", "num ev"],
+       ["Rule misstated", "num ev"], ["Escalation missed", "num ev"], ["Avg quality", "num"]],
+      bands.map((b) => {
+        const mine = ids.filter((id) => AG[id].band === b);
+        const cs = mine.reduce((a, id) => a.concat(stats[id].calls), []);
+        return { id: "", cells: [
+          '<span class="lead">' + NV.esc(b) + "</span>",
+          mine.length, cs.length,
+          ev(mine.reduce((a, id) => a + stats[id].ctrl, 0)),
+          ev(mine.reduce((a, id) => a + stats[id].kf, 0)),
+          ev(mine.reduce((a, id) => a + stats[id].escMissed, 0)),
+          /* A band pools 20-40 calls, which clears the five-call floor the rest
+             of the cockpit uses - so a band average is publishable where an
+             agent average is not. */
+          cs.length >= 5 ? Math.round(cs.reduce((a, c) => a + c.score, 0) / cs.length)
+            : '<span class="nd">–</span>',
+        ] };
+      }));
+
+    /* ---- which conduct rule was broken ---- */
+    const byType = {};
+    calls.forEach((c) => (c.control_exceptions || []).forEach((x) => {
+      const t = byType[x] || (byType[x] = { calls: [], agents: new Set(), bands: new Set() });
+      t.calls.push(c);
+      t.agents.add(c.agent);
+      if (AG[c.agent]) t.bands.add(AG[c.agent].band);
+    }));
+    const typeKeys = Object.keys(byType).sort((a, b) => byType[b].calls.length - byType[a].calls.length);
+    document.getElementById("exctypes").innerHTML = typeKeys.length
+      ? tbl([["Exception"], ["Calls", "num ev"], ["Agents", "num"], ["Bands"], ["Shape"]],
+          typeKeys.map((t) => {
+            const x = byType[t];
+            return { id: "", cells: [
+              '<span class="lead">' + NV.esc(NV.titleCase(t)) + "</span>",
+              "<b>" + x.calls.length + "</b>", x.agents.size,
+              Array.from(x.bands).map((b) => '<span class="band">' + NV.esc(b) + "</span>").join(" "),
+              x.agents.size === 1
+                ? "<b>one agent, every instance</b>"
+                : '<span class="nd">spread across ' + x.agents.size + " agents</span>",
+            ] };
+          }))
+      : '<div class="empty"><b>No compliance exceptions in scope</b>Widen the period.</div>';
+
+    /* ---- escalation refusals ---- */
+    const refused = calls.filter((c) => c.esc_requested && !c.esc_handled);
+    const refusedBy = {};
+    refused.forEach((c) => { refusedBy[c.agent] = (refusedBy[c.agent] || 0) + 1; });
+    const askedTotal = calls.filter((c) => c.esc_requested).length;
+    document.getElementById("refusals").innerHTML = (refused.length
+      ? tbl([["Call"], ["Agent"], ["Band"], ["Account"], ["Outcome"]],
+          refused.map((c) => ({ id: c.agent, cells: [
+            '<b class="mono">' + c.id + "</b>",
+            NV.esc((AG[c.agent] || {}).name || c.agent),
+            '<span class="band">' + NV.esc((AG[c.agent] || {}).band || "–") + "</span>",
+            NV.esc(NV.emp(c.employer).name),
+            c.outcome,
+          ] })))
+      : '<div class="empty"><b>No refusals in scope</b>Every caller who asked was put through.</div>') +
+      (refused.length
+        ? '<p class="note suppressed" style="margin-top:12px"><b>' + refused.length + " of " +
+          askedTotal + " requests were refused.</b> " +
+          (Object.keys(refusedBy).length < refused.length
+            ? "One agent appears twice, which is the only repeat on this page — and a repeat of " +
+              "the same conduct failure is the shape rule 9 exists to catch. "
+            : "") +
+          "Every refusal sits in one band. At this volume that is " +
+          Object.keys(refusedBy).length + " agents, so it names a list to review rather than " +
+          "establishing a rate.</p>"
+        : "");
+
+    /* ---- difficulty control ----
+       The obvious objection to the band gap is that the lower band was handed
+       harder calls. It is testable, and in this corpus it fails in the opposite
+       direction, which is worth showing rather than asserting. */
+    const diff = bands.map((b) => {
+      const cs = ids.filter((id) => AG[id].band === b)
+        .reduce((a, id) => a.concat(stats[id].calls), []);
+      const cx = (v) => cs.filter((c) => c.complexity_band === v).length;
+      return {
+        band: b, n: cs.length, high: cx("High"), med: cx("Medium"), low: cx("Low"),
+        employer: cs.filter((c) => c.caller_type === "EMPLOYER").length,
+        aht: cs.length ? Math.round(cs.reduce((a, c) => a + c.aht, 0) / cs.length) : null,
+        score: cs.length ? Math.round(cs.reduce((a, c) => a + c.score, 0) / cs.length) : null,
+      };
+    }).filter((r) => r.n);
+    /* The five-call floor the rest of the cockpit uses. A band pools thirty-odd
+       calls on the unfiltered view, but a region filter can leave two - and a
+       share quoted on two calls is the false precision every other page avoids. */
+    const FLOOR = 5;
+    const share = (n, d) => (d >= FLOOR
+      ? n + ' <span class="nd">(' + Math.round(n / d * 100) + "%)</span>"
+      : n + ' <span class="nd" title="Share suppressed: ' + d + " of " + FLOOR +
+        ' calls needed">(–)</span>');
+    document.getElementById("difficulty").innerHTML = tbl(
+      [["Band"], ["Calls", "num"], ["High complexity", "num"], ["Medium", "num"], ["Low", "num"],
+       ["Employer callers", "num"], ["Avg talk time", "num"], ["Avg quality", "num"]],
+      diff.map((r) => ({ id: "", cells: [
+        '<span class="lead">' + NV.esc(r.band) + "</span>", r.n,
+        share(r.high, r.n), r.med, r.low, share(r.employer, r.n),
+        r.n >= FLOOR ? NV.mmss(r.aht) : '<span class="nd">–</span>',
+        r.n >= FLOOR ? "<b>" + r.score + "</b>" : '<span class="nd">–</span>',
+      ] })));
+
+    const top = diff[0], bottom = diff[diff.length - 1];
+    const invert = top && bottom && (top.high / top.n) > (bottom.high / bottom.n);
+    /* The whole point of this panel is an inference, so it is the one thing that
+       must not be drawn on a thin slice. Both ends of the comparison have to
+       clear the floor before the argument is made at all. */
+    const comparable = top && bottom && top !== bottom && top.n >= FLOOR && bottom.n >= FLOOR;
+    document.getElementById("diffnote").innerHTML = !comparable
+      ? "<b>Not enough calls in this scope to test the objection.</b> Comparing bands needs at " +
+        "least " + FLOOR + " calls at each end, and this filter leaves " +
+        diff.map((r) => NV.esc(r.band) + " on " + r.n).join(", ") +
+        ". Clear the filter to see the comparison."
+      : "<b>The objection fails, and it fails backwards.</b> The <i>" + NV.esc(top.band) +
+        "</i> band handles <b>" + Math.round(top.high / top.n * 100) + "%</b> high-complexity " +
+        "calls and <b>" + Math.round(top.employer / top.n * 100) + "%</b> employer callers, on " +
+        NV.mmss(top.aht) + " a call, and scores <b>" + top.score + "</b>. The <i>" +
+        NV.esc(bottom.band) + "</i> band handles <b>" + Math.round(bottom.high / bottom.n * 100) +
+        "%</b> high-complexity calls and <b>" + Math.round(bottom.employer / bottom.n * 100) +
+        "%</b> employer callers, on " + NV.mmss(bottom.aht) + ", and scores <b>" + bottom.score +
+        "</b>. " + (invert
+          ? "So the lower-scoring band is handling the <b>simpler</b> work and still scoring " +
+            (top.score - bottom.score) + " points lower. Call difficulty does not explain the gap."
+          : "The harder work does sit with the lower-scoring band, so the gap cannot be read " +
+            "as a capability difference.") +
+        " <b>One caveat that matters:</b> the routing is part of the corpus design, not something " +
+        "observed. What this shows is that <i>within this data</i> the difficulty explanation is " +
+        "unavailable — not that real routing works this way.";
+
+    /* ---- shared vs isolated misstated rules ---- */
+    const kfByRule = {};
+    calls.forEach((c) => {
+      if (!c.kf_present || !c.kf_rule) return;
+      const r = kfByRule[c.kf_rule] || (kfByRule[c.kf_rule] = { agents: new Set(), bands: new Set(), calls: [] });
+      r.calls.push(c);
+      r.agents.add(c.agent);
+      if (AG[c.agent]) r.bands.add(AG[c.agent].band);
+    });
+    const ruleKeys = Object.keys(kfByRule).sort((a, b) =>
+      kfByRule[b].agents.size - kfByRule[a].agents.size || kfByRule[b].calls.length - kfByRule[a].calls.length);
+    const sharedRules = ruleKeys.filter((r) => kfByRule[r].agents.size > 1);
+    document.getElementById("shared").innerHTML = (ruleKeys.length
+      ? tbl([["Rule"], ["Area"], ["Agents", "num"], ["Bands"], ["Reads as"]],
+          ruleKeys.map((r) => {
+            const x = kfByRule[r], rule = (D.rules || {})[r] || {};
+            return { id: "", cells: [
+              '<b class="mono">' + NV.esc(r) + "</b>",
+              '<span class="nd">' + NV.esc(rule.area || "–") + "</span>",
+              x.agents.size > 1 ? "<b>" + x.agents.size + "</b>" : x.agents.size,
+              Array.from(x.bands).map((b) => '<span class="band">' + NV.esc(b) + "</span>").join(" "),
+              x.agents.size > 1
+                ? "<b>documentation</b>"
+                : '<span class="nd">training</span>',
+            ] };
+          }))
+      : '<div class="empty"><b>No misstated rules in scope</b>Widen the period.</div>') +
+      '<p class="note" style="margin-top:12px">' + (sharedRules.length
+        ? "<b>Of the " + ruleKeys.length + " misstated rules, " + sharedRules.length +
+          (sharedRules.length === 1 ? " was" : " were") +
+          " got wrong by more than one agent</b> — " +
+          sharedRules.map((r) => "<b>" + r + "</b>" +
+            (Array.from(kfByRule[r].bands).length > 1
+              ? " (across " + Array.from(kfByRule[r].bands).join(" and ") + ")" : "")).join(", ") +
+          ". A rule that a senior agent also states incorrectly is much more likely to be " +
+          "badly written than badly taught, and the fix is a rewrite rather than a coaching " +
+          "session. The other " + (ruleKeys.length - sharedRules.length) +
+          " sit with one agent each, which points the other way."
+        : "Every misstated rule sits with a single agent, so nothing here points at the " +
+          "wording of a rule rather than at training.") + "</p>";
+
+    /* ---- event timing ---- */
+    const evWeeks = D.weeks.map((w) => ({
+      w: w,
+      n: calls.filter((c) => c.w === w &&
+        ((c.control_exceptions && c.control_exceptions.length) || c.kf_present ||
+         (c.esc_triggered && !c.esc_handled))).length,
+    }));
+    const firstHalf = evWeeks.filter((x) => x.w <= 6).reduce((a, x) => a + x.n, 0);
+    const secondHalf = evWeeks.filter((x) => x.w > 6).reduce((a, x) => a + x.n, 0);
+    NV.chart.bars(document.getElementById("timing"), {
+      labelWidth: 64, rowHeight: 22,
+      rows: evWeeks.map((x) => ({
+        label: "Wk " + x.w, value: x.n, display: x.n || "",
+        color: x.n ? "var(--serious)" : "var(--surface-2)",
+        tip: "<b>Week " + x.w + "</b><dl><dt>Conduct events</dt><dd>" + x.n +
+          "</dd><dt>Calls written</dt><dd>" +
+          calls.filter((c) => c.w === x.w).length + "</dd></dl>",
+      })),
+      aria: "Conduct events by week",
+    });
+    document.getElementById("timingnote").innerHTML =
+      "<b>" + firstHalf + " of " + (firstHalf + secondHalf) + " conduct events fall in the first " +
+      "six weeks.</b> Read that as a caution, not as improvement. The transcripts were written in " +
+      "corpus order, so the front-loading may simply be where the authors placed the difficult " +
+      "cases — and weeks 6 and 12 are thin on calls to begin with. It would take a second " +
+      "batch, written independently, before a downward trend here meant anything.";
+
+    /* The band read is the one number on this page with a sample behind it, so
+       it is worth stating rather than leaving the reader to add the columns. */
+    const byBand = bands.map((b) => {
+      const mine = ids.filter((id) => AG[id].band === b);
+      return {
+        band: b, agents: mine.length,
+        calls: mine.reduce((a, id) => a + stats[id].calls.length, 0),
+        ctrl: mine.reduce((a, id) => a + stats[id].ctrl, 0),
+        escMissed: mine.reduce((a, id) => a + stats[id].escMissed, 0),
+      };
+    });
+    const conc = byBand.filter((b) => b.ctrl);
+    document.getElementById("bandnote").innerHTML = (conc.length === 1)
+      ? "<b>All " + totalCtrl + " compliance exceptions and all " +
+        conc[0].escMissed + " missed escalations sit in the <i>" + NV.esc(conc[0].band) +
+        "</i> band</b>, across " + conc[0].calls + " calls by " + conc[0].agents +
+        " agents. That is a pooled figure with a real sample behind it, and it points at " +
+        "onboarding rather than at any individual — which is both safer and more useful " +
+        "than a league table of twenty people on four calls each."
+      : "Compliance exceptions appear in " + conc.length + " of " + byBand.length +
+        " bands, so they are not concentrated in one cohort.";
+
+    /* ---- trigger rule 9 ---- */
+    const r9 = (D.qwa || []).find((q) => q.n === 9);
+    document.getElementById("trigger").innerHTML = r9
+      ? '<dl class="kv"><dt style="color:var(--ink-2)">Rule</dt><dd style="margin:0">' +
+        NV.esc(r9.threshold) + "</dd>" +
+        '<dt style="color:var(--ink-2)">Window</dt><dd style="margin:0">' + NV.esc(r9.window) +
+        "</dd><dt style='color:var(--ink-2)'>Highest reached</dt><dd style='margin:0'>" +
+        r9.best + " · " + NV.esc(r9.best_label || "–") +
+        "</dd><dt style='color:var(--ink-2)'>Firing</dt><dd style='margin:0'>" +
+        (r9.fires ? "<b>" + r9.fires + "</b>" : "0") + "</dd></dl>" +
+        '<p class="note" style="margin-top:12px">The rule counts <b>one exception type ' +
+        "repeated by one agent inside four weeks</b>. " + totalCtrl + " exceptions are on " +
+        "record, and the highest any single agent reached on one type in one window is <b>" +
+        r9.best + "</b>. It is below threshold and that is worth knowing: the exceptions are " +
+        "spread rather than concentrated in a single four-week run.</p>"
+      : '<div class="empty"><b>Rule 9 not present</b>The trigger set did not load.</div>';
+
+    document.querySelectorAll("tr[data-agent]").forEach((tr) =>
+      tr.addEventListener("click", () => openAgent(tr.dataset.agent, stats)));
+    NV.wireKeyboard(document);
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

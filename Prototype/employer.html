@@ -1,0 +1,283 @@
+<meta charset="utf-8">
+<title>Employer Intelligence</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="app.css">
+<script>
+/* Stamp the theme before first paint, so the ground colour never flashes.
+   Light is the default and "system" is the only value that defers to the OS.
+   Mirrors NV.themeRead in app.js - keep the two in step. */
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") {
+    document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+  }
+} catch (e) {}
+</script>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead">
+      <h1>Why is this account showing risk?</h1>
+      <p class="q">One employer at a time: what the account is, what its calls did, which indicators fired, and the sentence in the transcript behind each one.</p>
+      <div id="filters"></div>
+    </div>
+    <div class="wrap" id="body"></div>
+    <p class="srcline">
+      Account facts from the Employer, Member, Contact and Broker masters of
+      <code>nanovox_corpus_v9_build_bible_2.xlsx</code>. Call evidence from
+      <code>nanovox_v9_transcripts_batch1_001-100_1.pdf</code>.
+      Participation, fee band and COBRA regime are <b>derived</b> from eligible headcount and rule P-33 &mdash;
+      those columns are formulas with no cached value in the workbook.
+    </p>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("employer.html");
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+
+  function pickDefault() {
+    if (NV.S.employer && NV.emp(NV.S.employer).id) return NV.S.employer;
+    const pool = NV.employersInScope().slice().sort((a, b) =>
+      b.scoped_families - a.scoped_families || b.scoped_signals - a.scoped_signals);
+    return pool.length ? pool[0].id : null;
+  }
+
+  function chooser(current) {
+    const pool = NV.employersInScope().slice().sort((a, b) =>
+      b.scoped_families - a.scoped_families || a.name.localeCompare(b.name)).slice(0, 40);
+    return '<div class="panel c12"><header><div><h2>Pick an account</h2></div>' +
+      '<span class="cls cls-reference">reference</span></header>' +
+      '<p class="sub">' + NV.employersInScope().length + ' employers in scope, ordered by indicator families. Showing the first 40.</p>' +
+      '<div class="tblwrap"><table><thead><tr><th>Employer</th><th>Broker</th><th>Region</th><th>Band</th>' +
+      '<th class="num">Ind.</th><th class="num">Calls</th><th class="num">Lives</th></tr></thead><tbody>' +
+      pool.map((e) => '<tr class="clickable" data-e="' + e.id + '"' +
+        (e.id === current ? ' aria-selected="true"' : "") + '><td><span class="nm">' +
+        NV.esc(e.name) + '</span><span class="sm">' + NV.esc(e.industry) + '</span></td><td>' +
+        NV.esc(NV.brk(e.broker).agency) + "</td><td>" + NV.esc(e.region) + "</td><td>" +
+        NV.bandPill(e.scoped_band) + '</td><td class="num">' + e.scoped_families +
+        '</td><td class="num">' + e.scoped_written + '</td><td class="num">' + e.enrolled +
+        "</td></tr>").join("") + "</tbody></table></div></div>";
+  }
+
+  function render() {
+    const id = pickDefault();
+    const body = document.getElementById("body");
+    if (!id) {
+      body.innerHTML = '<div class="panel c12"><div class="empty"><b>No employer matches these filters</b>Clear a filter to bring accounts back into scope.</div></div>';
+      return;
+    }
+    const scopedEmp = NV.employersInScope().filter((x) => x.id === id)[0];
+    const e = Object.assign({}, NV.emp(id), scopedEmp || {});
+    const b = NV.brk(e.broker);
+    const allCalls = D.calls.filter((c) => c.employer === id);
+    const weeks = NV.activeWeeks();
+    const cs = allCalls.filter((c) => weeks.indexOf(c.w) !== -1);
+    const hidden = allCalls.length - cs.length;
+    const ids = new Set(cs.map((c) => c.id));
+    const inds = NV.indicatorsFor(cs);
+    const band = NV.bandFor(inds.length);
+
+    /* ---- header + account facts ---- */
+    const facts = [
+      ["Broker of record", b.agency + " · " + b.name],
+      ["Region", e.region],
+      ["Industry", e.industry],
+      ["Eligible / enrolled", e.eligible + " / " + e.enrolled],
+      ["Participation", e.participation !== null ? Math.round(e.participation * 100) + "%" : "–"],
+      ["Dental sponsorship", e.sponsorship === "ER" ? "Employer-sponsored" : "Voluntary"],
+      ["Lines held", e.lines],
+      ["Renewal month", e.renewal_month],
+      ["COBRA regime", e.cobra],
+      ["Admin fee band", "$" + e.fee_band + " per month"],
+      ["Planned calls at 600", e.planned_calls + " (" + e.planned_member + " member / " + e.planned_employer + " employer)"],
+      ["Contact rate", e.calls_per_100 !== null ? e.calls_per_100 + " per 100 lives / 12wk" : "–"],
+    ];
+
+    const head = '<div class="panel c12"><header><div>' +
+      "<h2 style=\"font-size:18px\">" + NV.esc(e.name) + "</h2>" +
+      '<p class="sub" style="margin:4px 0 0">' + e.id + " · " + NV.esc(b.agency) +
+      " · " + NV.esc(e.region) + " · renews " + NV.esc(e.renewal_month) + "</p></div>" +
+      '<div class="row" style="gap:10px">' + NV.bandPill(band) +
+      '<span class="cls cls-reference">account facts</span></div></header>' +
+      '<dl style="display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:10px 18px;margin:12px 0 0">' +
+      facts.map((f) => "<div><dt style=\"font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);font-weight:600\">" +
+        f[0] + '</dt><dd style="margin:3px 0 0;font-size:13px;font-weight:500">' + NV.esc(String(f[1])) + "</dd></div>").join("") +
+      "</dl>" +
+      '<p class="note" style="margin-top:14px">Design segment on file: <b>' + NV.esc(e.design_churn_profile) +
+      " churn profile</b>. This is an <i>input the corpus was built with</i>, not an observation, and it is deliberately excluded from the indicator count below &mdash; " +
+      "scoring an account on the label that generated it would be circular.</p>" +
+      (hidden ? '<p class="note suppressed" style="margin-top:10px"><b>' + hidden +
+        " of this account's " + allCalls.length + " written call" +
+        (allCalls.length === 1 ? "" : "s") + " fall outside the selected period</b> and are " +
+        "excluded from every figure below, including the risk band. Widen the period to see them.</p>" : "") +
+      "</div>";
+
+    /* ---- health summary ---- */
+    const sum = [
+      ["Calls in period", cs.length, allCalls.length + " written in total · " +
+        e.planned_calls + " planned at full corpus"],
+      ["Unique callers", new Set(cs.map((c) => c.caller_ref)).size, "member and employer contacts"],
+      ["Repeat contacts", cs.filter((c) => c.repeat_of).length, "same issue, called again"],
+      ["Resolved", cs.filter((c) => c.outcome === "RESOLVED").length + " / " + cs.length, "full resolution only"],
+      ["Escalations warranted", cs.filter((c) => c.esc_triggered).length, cs.filter((c) => c.esc_triggered && !c.esc_handled).length + " not handled"],
+      ["Average quality score", cs.length ? Math.round(cs.reduce((a, c) => a + c.score, 0) / cs.length) : "–", "agent handling, 0–100"],
+      ["Average member effort", cs.length ? Math.round(cs.reduce((a, c) => a + c.effort, 0) / cs.length) : "–", "derived composite"],
+      ["Talk time", NV.mmss(cs.reduce((a, c) => a + c.aht, 0)), "total across calls in period"],
+    ];
+    const health = '<div class="panel c12"><header><div><h2>Health summary</h2></div>' +
+      '<div class="row" style="gap:6px"><span class="cls cls-observed">observed</span><span class="cls cls-derived">derived</span></div></header>' +
+      '<div class="kpis" style="grid-column:auto">' + sum.map((s) =>
+        '<div class="kpi" style="cursor:default"><span class="k">' + s[0] +
+        '</span><span class="v" style="font-size:22px">' + s[1] + '</span><span class="m">' + s[2] + "</span></div>").join("") +
+      "</div></div>";
+
+    /* ---- what changed ---- */
+    const changed = '<div class="panel c6"><header><div><h2>What changed?</h2></div>' +
+      '<span class="cls cls-observed">observed</span></header>' +
+      (cs.length >= 4
+        ? '<div id="empTrend"></div>'
+        : '<div class="note suppressed"><b>Not computable for this account.</b><br>' +
+          "Period-over-period change needs at least two comparable windows. This employer has " +
+          cs.length + " written call" + (cs.length === 1 ? "" : "s") + " in twelve weeks, so there is no baseline to compare against. " +
+          "At the design volume of " + e.planned_calls + " calls this account would carry roughly " +
+          Math.round(e.planned_calls / 12 * 4) + " calls per four-week window.</div>") +
+      "</div>";
+
+    /* ---- why: indicators ---- */
+    const why = '<div class="panel c6"><header><div><h2>Why &mdash; indicators observed</h2></div>' +
+      '<span class="cls cls-observed">observed</span></header>' +
+      '<p class="sub">Each row is a distinct indicator family raised by this account’s own calls. The band above counts families, not incidents.</p>' +
+      (inds.length ? inds.map((i) =>
+        '<div class="claim"><div class="spread"><div class="t"><b>' + NV.esc(i.label) + "</b></div>" +
+        '<span class="sm">' + i.n + " call" + (i.n === 1 ? "" : "s") + "</span></div>" +
+        '<p class="sm" style="margin:3px 0 0">' + i.calls.map((cid) =>
+          '<a href="#" data-c="' + cid + '">' + cid + "</a>").join(" · ") + "</p></div>").join("")
+        : '<div class="empty"><b>No indicators raised</b>' + (cs.length
+            ? "None of the ten indicator families appears in this account’s calls for this period."
+            : "This account has no calls inside the selected period.") + "</div>") +
+      (e.structural.length ? '<h4 style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);margin:16px 0 6px">Account facts that raise the stakes ' +
+        NV.clsChip("reference") + "</h4>" + e.structural.map((s) =>
+        '<div class="claim" style="border-left-color:var(--rule)"><div class="t"><b>' + NV.esc(s.label) +
+        '</b></div><p class="sm" style="margin:2px 0 0">' + NV.esc(s.detail) + "</p></div>").join("") : "") +
+      "</div>";
+
+    /* ---- what are they calling about ---- */
+    const topics = '<div class="panel c6"><header><div><h2>What are they calling about?</h2></div>' +
+      '<span class="cls cls-observed">observed</span></header><div id="empTopics"></div></div>';
+
+    const risk = '<div class="panel c6"><header><div><h2>Reading of the pattern</h2></div>' +
+      '<span class="cls cls-inference">inference</span></header><div id="empInfer" class="stack"></div></div>';
+
+    /* ---- calls table ---- */
+    const callsPanel = '<div class="panel c12"><header><div><h2>Calls and evidence</h2></div>' +
+      '<span class="cls cls-observed">observed</span></header>' +
+      '<p class="sub">Every written call for this account. Click a row for the tags, the signals and the quoted turn.</p>' +
+      '<div class="tblwrap"><table><thead><tr><th>Call</th><th>Date</th><th>Caller</th><th>Category</th>' +
+      '<th>Touchpoint</th><th>Outcome</th><th class="num">Score</th><th class="num">Talk</th>' +
+      '<th class="num">Effort</th><th>Signals</th></tr></thead><tbody>' +
+      cs.map((c) => '<tr class="clickable" data-c="' + c.id + '"><td class="mono">' + c.id +
+        "</td><td>" + c.date + '</td><td>' + NV.esc(c.caller_name) + '<span class="sm">' +
+        c.caller_type.toLowerCase() + "</span></td><td>" + NV.esc(c.category) + '<span class="sm">' +
+        NV.esc(c.product_line) + "</span></td><td>" + (c.touchpoint ? NV.esc(NV.titleCase(c.touchpoint)) :
+        '<span class="sm">none</span>') + "</td><td>" + c.outcome + '</td><td class="num">' + c.score +
+        '</td><td class="num">' + NV.mmss(c.aht) + '</td><td class="num">' + c.effort +
+        "</td><td>" + (c.signals.length ? c.signals.map((s) =>
+          '<span class="sev sev-' + s.severity + '">' + NV.titleCase(s.code) + "</span>").join("<br>") :
+          '<span class="sm">–</span>') + "</td></tr>").join("") +
+      "</tbody></table></div></div>";
+
+    /* ---- actions for this account ---- */
+    const acts = D.actions.filter((a) => a.employer === id ||
+      (a.calls || []).some((cid) => ids.has(cid)));
+    const actPanel = '<div class="panel c12"><header><div><h2>Open actions and what happened after</h2></div>' +
+      '<span class="cls cls-recommendation">recommended</span></header>' +
+      (acts.length ? '<div class="tblwrap"><table><thead><tr><th>Issue</th><th>Evidence</th><th>Owner</th>' +
+        '<th>Status</th><th>Action taken</th><th>Outcome measured</th></tr></thead><tbody>' +
+        acts.map((a) => "<tr><td><span class=\"nm\">" + NV.esc(a.title) + '</span><span class="sm">' +
+          NV.esc(a.source) + "</span></td><td>" + NV.esc(a.evidence) + "</td><td>" +
+          NV.esc(a.owner_team) + '<span class="sm">' + NV.esc(a.owner || "unassigned") + "</span></td><td>" +
+          statusPill(a.status) + (a.due ? '<span class="sm">due ' + a.due + "</span>" : "") + "</td><td>" +
+          (a.action_taken ? NV.esc(a.action_taken) : '<span class="sm">–</span>') + "</td><td>" +
+          (a.outcome ? NV.esc(a.outcome) : '<span class="sm">not yet measured</span>') + "</td></tr>").join("") +
+        "</tbody></table></div>"
+        : '<div class="empty"><b>No actions raised for this account</b>Nothing in its calls has produced a process gap, knowledge failure, control exception or exit language.</div>') +
+      "</div>";
+
+    body.innerHTML = head + health + changed + why + topics + risk + callsPanel + actPanel + chooser(id);
+
+    /* ---- wire up ---- */
+    body.querySelectorAll("[data-c]").forEach((el) =>
+      el.addEventListener("click", (ev) => { ev.preventDefault(); NV.openCall(el.dataset.c); }));
+    body.querySelectorAll("tr[data-e]").forEach((tr) =>
+      tr.addEventListener("click", () => NV.set("employer", tr.dataset.e)));
+
+    if (cs.length >= 4) {
+      const weeks = D.weeks;
+      NV.chart.line(document.getElementById("empTrend"), {
+        labels: weeks.map((w) => "W" + w), height: 168, area: true,
+        series: [{ name: "Calls", color: "var(--s1)", values: weeks.map((w) => cs.filter((c) => c.w === w).length) }],
+        aria: "Weekly calls for this account",
+      });
+    }
+
+    const catCount = {};
+    cs.forEach((c) => { catCount[c.category] = (catCount[c.category] || 0) + 1; });
+    const rows = Object.keys(catCount).map((k) => ({ label: k, value: catCount[k],
+      tip: "<b>" + NV.esc(k) + "</b><dl><dt>Calls</dt><dd>" + catCount[k] + "</dd></dl>" }));
+    if (rows.length) {
+      NV.chart.bars(document.getElementById("empTopics"), { rows: rows, labelWidth: 200,
+        aria: "Calls by category for this account" });
+    } else {
+      document.getElementById("empTopics").innerHTML =
+        '<div class="empty"><b>No calls written</b>This account has no calls in batch 1.</div>';
+    }
+
+    /* inference block - explicitly a reading, with the counter-reading stated */
+    const inf = [];
+    const unres = cs.filter((c) => c.outcome === "UNRESOLVED");
+    const tps = {};
+    cs.forEach((c) => { if (c.touchpoint) tps[c.touchpoint] = (tps[c.touchpoint] || 0) + 1; });
+    const topTp = Object.keys(tps).sort((a, b) => tps[b] - tps[a])[0];
+    if (inds.length >= 2) {
+      inf.push("This account raises <b>" + inds.length + " distinct indicator families</b> — " +
+        inds.map((i) => i.label.toLowerCase()).join(", ") +
+        ". Several unrelated conditions on one account is the pattern the v9 metric sheet treats as an account risk flag.");
+    }
+    if (topTp) {
+      inf.push("Its calls concentrate on <b>" + NV.titleCase(topTp) + "</b>, owned by " +
+        NV.esc((D.touchpoints[topTp] || {}).owner || "an unnamed team") + ". If a fix is warranted, that is where it lands — not with the call centre.");
+    }
+    if (unres.length) {
+      inf.push("<b>" + unres.length + " call" + (unres.length === 1 ? "" : "s") +
+        " ended unresolved.</b> Under the v9 outcome test that means the caller was in the same position at disconnect, with nothing owned by anyone.");
+    }
+    inf.push("<b>None of this shows the account will leave.</b> The corpus carries no termination outcomes, so no figure here has been validated against real churn. Treat these as conditions worth a conversation, not a probability.");
+    NV.wireKeyboard(document);
+    document.getElementById("empInfer").innerHTML = inf.map((t, i) =>
+      '<div class="claim"' + (i === inf.length - 1 ? ' style="border-left-color:var(--serious)"' : "") +
+      '><div class="t" style="color:var(--ink-2)">' + t + "</div></div>").join("");
+  }
+
+  function statusPill(s) {
+    const map = { overdue: "pill-high", needs_action: "pill-elevated", assigned: "pill-watch",
+      in_progress: "pill-watch", action_taken: "pill-none", monitoring: "pill-none", completed: "pill-none" };
+    return '<span class="pill ' + (map[s] || "pill-none") + '">' + NV.titleCase(s) + "</span>";
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

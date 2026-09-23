@@ -1,0 +1,352 @@
+<meta charset="utf-8">
+<title>Rule Intelligence</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="app.css">
+<script>
+/* Stamp the theme before first paint, so the ground colour never flashes.
+   Light is the default and "system" is the only value that defers to the OS.
+   Mirrors NV.themeRead in app.js - keep the two in step. */
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") {
+    document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+  }
+} catch (e) {}
+</script>
+<style>
+  /* Rule text is the content here, so it gets room rather than a truncation. */
+  .ruletext { display: block; color: var(--ink-2); font-size: 11.5px; line-height: 1.4; margin-top: 3px; max-width: 62ch; }
+  .confused { display: block; color: var(--ink-3); font-size: 11px; line-height: 1.4; margin-top: 3px; max-width: 52ch; font-style: italic; }
+  /* Rule text is the widest thing on the page and the table wrapper scrolls, so
+     these columns get a floor rather than being squeezed to one word a line.
+     Not named "wrap": that is already the page's 12-column grid container in
+     app.css, and a td picking it up becomes a grid. */
+  th.rtxt, td.rtxt { white-space: normal; min-width: 280px; }
+  th.rtxt-sm, td.rtxt-sm { white-space: normal; min-width: 210px; }
+  .conf { font: 500 10px/1.5 var(--display); letter-spacing: .04em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--rule-strong); color: var(--ink-2); white-space: nowrap; }
+  .conf.is-secondary { border-color: var(--warning); color: var(--ink); }
+  .conf.is-unverified { border-color: var(--serious); color: var(--ink); font-weight: 600; }
+  .nd { color: var(--ink-3); }
+</style>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead">
+      <h1>What do we fail to explain?</h1>
+      <p class="q">The 122 published rules, read against the calls that cite them. A rule
+        stated incorrectly is a <b>knowledge failure</b> &mdash; the one place the corpus records us
+        getting our own product wrong. Click any rule for its calls.</p>
+      <div id="filters"></div>
+    </div>
+
+    <div class="wrap">
+      <div class="kpis" id="kpis"></div>
+
+      <section class="panel c12">
+        <header>
+          <div><h2>Rules we stated incorrectly</h2></div>
+          <div class="row" style="gap:6px">
+            <span class="cls cls-observed">observed</span><span class="cls cls-reference">reference</span>
+          </div>
+        </header>
+        <p class="sub">Each row is a published rule an agent got wrong on a call. The workbook's own
+          &ldquo;commonly confused with&rdquo; column is carried through, because it is the sheet's
+          explanation of <b>why</b> the rule is easy to get wrong &mdash; which is what decides whether
+          the fix is training or a rewrite.</p>
+        <div id="kf"></div>
+        <p class="note suppressed" style="margin-top:12px"><b>No failure rate per rule.</b>
+          A rule cited three times and misstated twice is not a 67% failure rate; it is two calls.
+          Counts only, and the <i>times cited</i> column is the denominator you would need before
+          any rate here meant anything.</p>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>By rule layer</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">Program rules are ours, administration rules are how we run it, carrier rules
+          belong to the underwriter. Where a failure sits decides who can fix it.</p>
+        <div id="layers"></div>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>How sure are we of our own rules?</h2></div><span class="cls cls-reference">reference</span></header>
+        <p class="sub">The workbook grades every rule's provenance. A rule we are unsure of that also
+          gets misstated is a documentation problem, not a training one.</p>
+        <div id="confidence"></div>
+      </section>
+
+      <section class="panel c12">
+        <header><div><h2>Rules the calls actually cite</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">Every rule referenced by at least one call in scope, most-cited first.
+          Citation is not a complaint &mdash; a rule cited often may simply govern a common question.
+          It becomes a finding when citations and failures rise together.</p>
+        <div id="cited"></div>
+      </section>
+
+      <section class="panel c12">
+        <header><div><h2>By subject area</h2></div><span class="cls cls-pattern">pattern</span></header>
+        <p class="sub">Areas with at least one call. A single area drawing calls across several rules
+          points at the material rather than at any one rule.</p>
+        <div id="areas"></div>
+      </section>
+
+      <section class="panel c12">
+        <header><div><h2>Rules no call in scope cites</h2></div><span class="cls cls-observed">observed</span></header>
+        <div id="uncited"></div>
+      </section>
+    </div>
+
+    <p class="srcline">
+      122 rules from the <code>Rules &mdash; Program</code>, <code>Rules &mdash; Administration</code> and
+      <code>Rules &mdash; Carrier</code> sheets of <code>nanovox_corpus_v9_build_bible_2.xlsx</code>,
+      joined to the <code>rule_id</code> references on the 100 written calls. Rule text, subject area,
+      the confused-with note and the confidence grade are the workbook's own columns, quoted not summarised.
+    </p>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  const RULES = D.rules;
+  document.getElementById("rail").innerHTML = NV.rail("rules.html");
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+
+  function kpiTile(o) {
+    return '<div class="kpi ' + (o.tone || "") + '">' +
+      '<span class="k">' + o.k + '</span><span class="v">' + o.v + "</span>" +
+      '<span class="m">' + o.m + "</span></div>";
+  }
+
+  function confChip(c) {
+    const cls = c === "UNVERIFIED" ? " is-unverified"
+      : /SECONDARY/.test(c || "") ? " is-secondary" : "";
+    const label = c === "VERIFIED (SECONDARY)" ? "secondary" : (c || "–").toLowerCase();
+    return '<span class="conf' + cls + '" title="' + NV.esc(c || "") + '">' +
+      NV.esc(label) + "</span>";
+  }
+
+  function tbl(cols, rows, id) {
+    if (!rows.length) {
+      return '<div class="empty"><b>Nothing in scope</b>Widen the period or clear a filter.</div>';
+    }
+    return '<div class="tblwrap"><table><thead><tr>' +
+      cols.map((c) => "<th" + (c[1] ? ' class="' + c[1] + '"' : "") + ">" + c[0] + "</th>").join("") +
+      "</tr></thead><tbody>" + rows.map((r) =>
+        '<tr class="clickable" data-rule="' + r.id + '">' + r.cells.map((cell, i) => {
+          const cls = (cols[i] || [])[1];
+          return "<td" + (cls ? ' class="' + cls + '"' : "") + ">" + cell + "</td>";
+        }).join("") + "</tr>").join("") + "</tbody></table></div>";
+  }
+
+  /* One rule, its calls, and the evidence behind each. Drilling into a call
+     opens the shared evidence drawer on top of this one, and Back returns
+     here. */
+  function openRule(id, stats) {
+    const r = RULES[id] || {};
+    const s = stats[id] || { cited: [], failed: [] };
+    const rows = s.cited.slice().sort((a, b) => (a.date < b.date ? -1 : 1));
+    const body =
+      '<div class="stack">' +
+      "<div><h4>The rule as published " + NV.clsChip("reference") + "</h4>" +
+      '<p style="margin:0;font-size:13px"><b class="mono">' + NV.esc(id) + "</b> · " +
+      NV.esc(r.area || "–") + " " + confChip(r.confidence) + "</p>" +
+      '<p style="margin:6px 0 0;font-size:13px">' + NV.esc(r.rule || "–") + "</p>" +
+      (r.confused ? '<p class="confused" style="margin-top:6px">Commonly confused with: ' +
+        NV.esc(r.confused) + "</p>" : "") + "</div>" +
+      "<div><h4>In the calls " + NV.clsChip("observed") + "</h4>" +
+      '<p style="margin:0 0 8px;font-size:12.5px">Cited on <b>' + s.cited.length +
+      "</b> call" + (s.cited.length === 1 ? "" : "s") + " across <b>" +
+      new Set(s.cited.map((c) => c.employer)).size + "</b> account" +
+      (new Set(s.cited.map((c) => c.employer)).size === 1 ? "" : "s") +
+      (s.failed.length ? ", and <b>stated incorrectly on " + s.failed.length + "</b>" : "") +
+      ".</p>" +
+      (rows.length ? rows.map((c) => {
+        const bad = s.failed.some((f) => f.id === c.id);
+        return '<div class="row" style="justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--rule)">' +
+          '<a href="#" data-c="' + c.id + '" class="mono">' + c.id + "</a>" +
+          '<span class="sm">' + NV.esc(c.date) + " · " + NV.esc(NV.emp(c.employer).name) +
+          " · " + NV.esc(c.category) + " · " + c.outcome +
+          (bad ? ' · <b style="color:var(--serious)">stated incorrectly</b>' : "") +
+          "</span></div>";
+      }).join("") : '<p class="sm">No call in the current scope cites this rule.</p>') +
+      "</div>" +
+      (s.failed.length ? "<div><h4>What was said " + NV.clsChip("observed") + "</h4>" +
+        s.failed.map((c) => '<p class="quote" style="margin-bottom:8px">' +
+          NV.esc(c.kf_statement) + "<cite>" + c.id + " · " +
+          NV.esc(NV.emp(c.employer).name) + "</cite></p>").join("") + "</div>" : "") +
+      "</div>";
+
+    NV.drawer("Rule " + id, body, "reference", (root) => {
+      root.querySelectorAll("a[data-c]").forEach((a) =>
+        a.addEventListener("click", (e) => { e.preventDefault(); NV.openCall(a.dataset.c); }));
+    });
+  }
+
+  function render() {
+    const calls = NV.calls();
+
+    /* Rule -> the calls that cite it, and the calls that got it wrong. Built
+       from the filtered call set, so every count on this page follows the
+       filter bar. */
+    const stats = {};
+    const touch = (id) => (stats[id] = stats[id] || { cited: [], failed: [] });
+    calls.forEach((c) => {
+      (c.rule_refs || []).forEach((id) => { if (RULES[id]) touch(id).cited.push(c); });
+      if (c.kf_present && c.kf_rule && RULES[c.kf_rule]) {
+        const s = touch(c.kf_rule);
+        s.failed.push(c);
+        /* A knowledge failure names the rule whether or not the call also
+           listed it in rule_refs - otherwise a failure could go uncounted. */
+        if (s.cited.indexOf(c) === -1) s.cited.push(c);
+      }
+    });
+
+    const ids = Object.keys(RULES);
+    const cited = ids.filter((id) => stats[id] && stats[id].cited.length);
+    const failedIds = ids.filter((id) => stats[id] && stats[id].failed.length);
+    const failedCalls = calls.filter((c) => c.kf_present);
+    const unverified = ids.filter((id) => RULES[id].confidence === "UNVERIFIED");
+
+    document.getElementById("kpis").innerHTML = [
+      kpiTile({ k: "Published rules", v: ids.length, m: "across three rule layers" }),
+      kpiTile({ k: "Cited by a call", v: cited.length,
+                m: Math.round(cited.length / ids.length * 100) + "% of the rulebook" }),
+      kpiTile({ k: "Stated incorrectly", v: failedIds.length,
+                m: "on " + failedCalls.length + " call" + (failedCalls.length === 1 ? "" : "s"),
+                tone: "is-crit" }),
+      /* "Not cited in scope", never "never cited" - the moment a filter is on,
+         "never" would be a claim about the rulebook made from one region. */
+      kpiTile({ k: "Not cited in scope", v: ids.length - cited.length,
+                m: "not a finding at this volume" }),
+      kpiTile({ k: "Unverified in the workbook", v: unverified.length,
+                m: unverified.join(", ") || "none", tone: unverified.length ? "is-warn" : "" }),
+      kpiTile({ k: "Verified via a second source", v:
+                ids.filter((id) => /SECONDARY/.test(RULES[id].confidence || "")).length,
+                m: "provenance is indirect" }),
+    ].join("");
+
+    /* ---- rules stated incorrectly ---- */
+    const kfRows = failedIds.slice().sort((a, b) =>
+      stats[b].failed.length - stats[a].failed.length ||
+      stats[b].cited.length - stats[a].cited.length).map((id) => {
+      const r = RULES[id], s = stats[id];
+      return { id: id, cells: [
+        '<b class="mono">' + id + "</b>",
+        NV.esc(r.layer === "P" ? "Program" : r.layer === "A" ? "Administration" : "Carrier"),
+        '<span class="lead">' + NV.esc(r.area || "–") + "</span>" +
+          '<span class="ruletext">' + NV.esc(r.rule || "") + "</span>",
+        '<span class="confused">' + NV.esc(r.confused || "–") + "</span>",
+        confChip(r.confidence),
+        s.cited.length,
+        "<b>" + s.failed.length + "</b>",
+        new Set(s.failed.map((c) => c.employer)).size,
+      ] };
+    });
+    document.getElementById("kf").innerHTML = tbl(
+      [["Rule"], ["Layer"], ["Area and rule as published", "rtxt"],
+       ["Commonly confused with", "rtxt-sm"], ["Provenance"], ["Times cited", "num"],
+       ["Misstated", "num"], ["Accounts", "num"]], kfRows);
+
+    /* ---- by layer ---- */
+    const LAYERS = [["P", "Program"], ["A", "Administration"], ["C", "Carrier"]];
+    document.getElementById("layers").innerHTML = tbl(
+      [["Layer"], ["Rules", "num"], ["Cited", "num"], ["Never cited", "num"],
+       ["Calls", "num"], ["Misstated", "num"]],
+      LAYERS.map(([k, label]) => {
+        const mine = ids.filter((id) => RULES[id].layer === k);
+        const c = mine.filter((id) => stats[id] && stats[id].cited.length);
+        return { id: "", cells: [
+          '<span class="lead">' + label + "</span>", mine.length, c.length,
+          mine.length - c.length,
+          c.reduce((a, id) => a + stats[id].cited.length, 0),
+          mine.filter((id) => stats[id] && stats[id].failed.length).length,
+        ] };
+      }));
+
+    /* ---- confidence ---- */
+    const CONF = ["VERIFIED", "VERIFIED (SECONDARY)", "UNVERIFIED"];
+    document.getElementById("confidence").innerHTML = tbl(
+      [["Provenance"], ["Rules", "num"], ["Cited", "num"], ["Misstated", "num"], ["Which"]],
+      CONF.map((c) => {
+        const mine = ids.filter((id) => (RULES[id].confidence || "") === c);
+        const bad = mine.filter((id) => stats[id] && stats[id].failed.length);
+        return { id: "", cells: [
+          confChip(c), mine.length,
+          mine.filter((id) => stats[id] && stats[id].cited.length).length,
+          bad.length,
+          mine.length <= 4
+            ? '<span class="mono">' + mine.join(", ") + "</span>"
+            : '<span class="nd">–</span>',
+        ] };
+      }).filter((r) => r.cells[1]));
+
+    /* ---- cited rules ---- */
+    const citedRows = cited.slice().sort((a, b) =>
+      stats[b].cited.length - stats[a].cited.length ||
+      stats[b].failed.length - stats[a].failed.length).map((id) => {
+      const r = RULES[id], s = stats[id];
+      return { id: id, cells: [
+        '<b class="mono">' + id + "</b>",
+        NV.esc(r.area || "–") + '<span class="ruletext">' + NV.esc(r.rule || "") + "</span>",
+        confChip(r.confidence),
+        s.cited.length,
+        new Set(s.cited.map((c) => c.employer)).size,
+        s.failed.length ? "<b>" + s.failed.length + "</b>" : '<span class="nd">–</span>',
+        s.cited.filter((c) => c.outcome === "UNRESOLVED").length,
+      ] };
+    });
+    document.getElementById("cited").innerHTML = tbl(
+      [["Rule"], ["Area and rule as published", "rtxt"], ["Provenance"], ["Calls", "num"],
+       ["Accounts", "num"], ["Misstated", "num"], ["Unresolved", "num"]], citedRows);
+
+    /* ---- by area ---- */
+    const byArea = {};
+    cited.forEach((id) => {
+      const a = RULES[id].area || "–";
+      const x = byArea[a] || (byArea[a] = { rules: 0, calls: 0, failed: 0, emps: new Set() });
+      x.rules += 1;
+      x.calls += stats[id].cited.length;
+      x.failed += stats[id].failed.length;
+      stats[id].cited.forEach((c) => x.emps.add(c.employer));
+    });
+    document.getElementById("areas").innerHTML = tbl(
+      [["Subject area"], ["Rules cited", "num"], ["Calls", "num"], ["Accounts", "num"],
+       ["Misstated", "num"]],
+      Object.keys(byArea).sort((a, b) => byArea[b].calls - byArea[a].calls ||
+        byArea[b].rules - byArea[a].rules).map((a) => ({ id: "", cells: [
+        '<span class="lead">' + NV.esc(a) + "</span>",
+        byArea[a].rules, byArea[a].calls, byArea[a].emps.size,
+        byArea[a].failed ? "<b>" + byArea[a].failed + "</b>" : '<span class="nd">–</span>',
+      ] })));
+
+    /* ---- uncited ---- */
+    const un = ids.filter((id) => !(stats[id] && stats[id].cited.length));
+    document.getElementById("uncited").innerHTML =
+      '<p class="sub" style="margin-top:0">' + un.length + " of " + ids.length +
+      " rules are cited by no call in scope. At " + calls.length + " calls against " +
+      ids.length + " rules that is expected — <b>it is not evidence the rule is unused " +
+      "or unnecessary</b>. The list is here so the gap is visible rather than implied.</p>" +
+      '<p class="mono" style="font-size:11px;line-height:1.7;color:var(--ink-2);margin:0">' +
+      un.join(" · ") + "</p>";
+
+    document.querySelectorAll("tr[data-rule]").forEach((tr) => {
+      if (!tr.dataset.rule) return;
+      tr.addEventListener("click", () => openRule(tr.dataset.rule, stats));
+    });
+    NV.wireKeyboard(document);
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

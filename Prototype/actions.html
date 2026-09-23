@@ -1,0 +1,262 @@
+<meta charset="utf-8">
+<title>Action Centre</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="app.css">
+<script>
+/* Stamp the theme before first paint, so the ground colour never flashes.
+   Light is the default and "system" is the only value that defers to the OS.
+   Mirrors NV.themeRead in app.js - keep the two in step. */
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") {
+    document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+  }
+} catch (e) {}
+</script>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead">
+      <h1>What should we do, and what have we done?</h1>
+      <p class="q">Each item traces to something a call actually raised. The lifecycle runs from detection to a measured outcome, so the platform can eventually answer which interventions changed anything.</p>
+      <div id="filters"></div>
+    </div>
+
+    <div class="wrap">
+      <section class="panel c12">
+        <header><div><h2>Lifecycle</h2></div><span class="cls cls-recommendation">workflow</span></header>
+        <p class="sub">An item only earns the last two states once a measurement exists. Counts are live against the filters above.</p>
+        <div id="flow"></div>
+      </section>
+
+      <div class="kpis" id="kpis"></div>
+
+      <section class="panel c12">
+        <header>
+          <div><h2>Board</h2></div>
+          <div class="row" style="gap:8px">
+            <div class="seg" role="group" aria-label="View">
+              <button type="button" id="v-board" aria-pressed="true">Board</button>
+              <button type="button" id="v-table" aria-pressed="false">Table</button>
+            </div>
+          </div>
+        </header>
+        <p class="sub">Click any item for its evidence chain: employer &rarr; issue &rarr; the calls behind it &rarr; the quoted turn.</p>
+        <div id="board"></div>
+        <div id="table" hidden></div>
+      </section>
+
+      <section class="panel c7">
+        <header><div><h2>Where the work came from</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">Every action is seeded from a corpus finding. Nothing here was invented to fill a lane.</p>
+        <div id="sources"></div>
+      </section>
+
+      <section class="panel c5">
+        <header><div><h2>Did it work?</h2></div><span class="cls cls-derived">derived</span></header>
+        <p class="sub">Outcome measurement for items that reached monitoring or completion.</p>
+        <div id="outcomes" class="stack"></div>
+        <p class="note suppressed" style="margin-top:12px"><b>This is the question the platform cannot answer yet.</b>
+        Measuring whether an intervention improved an account needs a before-and-after window per account, and batch 1 gives
+        85 of 92 employers a single call. The workflow is built so the measurement exists once the corpus does.</p>
+      </section>
+    </div>
+
+    <p class="srcline">
+      Sources are corpus-derived: 12 process-gap proposals, 11 knowledge failures, 4 escalation misses,
+      7 control exceptions and 4 exit-language calls from
+      <code>nanovox_v9_transcripts_batch1_001-100_1.pdf</code>.
+      Owning teams come from the Signal Taxonomy and Touchpoints sheets.
+      <b>Owners, assignment dates, due dates, actions taken and outcomes are prototype workflow data</b> &mdash; the corpus carries no action records.
+    </p>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("actions.html");
+
+  const LANES = [
+    ["needs_action", "Needs action", "detected, nobody owns it"],
+    ["assigned", "Assigned", "owner named, not started"],
+    ["in_progress", "In progress", "being worked"],
+    ["overdue", "Overdue", "past the due date"],
+    ["action_taken", "Action taken", "done, not yet measured"],
+    ["monitoring", "Monitoring", "measuring the effect"],
+    ["completed", "Completed", "outcome recorded"],
+  ];
+  const PILL = { overdue: "pill-high", needs_action: "pill-elevated", assigned: "pill-watch",
+    in_progress: "pill-watch", action_taken: "pill-none", monitoring: "pill-none", completed: "pill-none" };
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+
+  function scoped() {
+    const calls = NV.calls();
+    const ids = new Set(calls.map((c) => c.id));
+    const emps = new Set(NV.employersInScope().map((e) => e.id));
+    return D.actions.filter((a) => {
+      if (a.calls && a.calls.length && a.calls.some((c) => ids.has(c))) return true;
+      if (a.employer && emps.has(a.employer)) return true;
+      return !a.calls || !a.calls.length;
+    }).filter((a) => !NV.S.actionStatus || a.status === NV.S.actionStatus);
+  }
+
+  function flow(acts) {
+    const host = document.getElementById("flow");
+    host.innerHTML = '<div class="row" style="flex-wrap:wrap;gap:6px">' +
+      LANES.map(([k, label], i) => {
+        const n = acts.filter((a) => a.status === k).length;
+        return '<button class="btn" data-st="' + k + '" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:108px' +
+          (NV.S.actionStatus === k ? ";border-color:var(--brand);background:var(--brand-soft)" : "") + '">' +
+          '<span style="font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)">' +
+          (i + 1) + " · " + label + "</span>" +
+          '<span style="font:600 19px/1 var(--display)">' + n + "</span>" +
+          '<span style="font-size:10.5px;color:var(--ink-3)">' + LANES[i][2] + "</span></button>" +
+          (i < LANES.length - 1 ? '<span style="color:var(--ink-3);align-self:center">→</span>' : "");
+      }).join("") + "</div>";
+    host.querySelectorAll("[data-st]").forEach((b) => b.addEventListener("click", () =>
+      NV.set("actionStatus", NV.S.actionStatus === b.dataset.st ? "" : b.dataset.st)));
+  }
+
+  function kpis(acts) {
+    const open = acts.filter((a) => ["needs_action", "assigned", "in_progress", "overdue"].indexOf(a.status) !== -1);
+    const measured = acts.filter((a) => a.outcome);
+    const byTeam = {};
+    acts.forEach((a) => { byTeam[a.owner_team] = (byTeam[a.owner_team] || 0) + 1; });
+    const topTeam = Object.keys(byTeam).sort((a, b) => byTeam[b] - byTeam[a])[0];
+    document.getElementById("kpis").innerHTML = [
+      ["Items raised", acts.length, "from " + new Set(acts.flatMap((a) => a.calls || [])).size + " distinct calls", ""],
+      ["Open", open.length, acts.filter((a) => a.status === "overdue").length + " overdue", open.length ? "is-warn" : ""],
+      ["High priority", acts.filter((a) => a.priority === "High").length, "of " + acts.length + " items", "is-crit"],
+      ["Outcome measured", measured.length, "of " + acts.length + " items", "is-good"],
+      ["Busiest owner", topTeam ? byTeam[topTeam] : 0, topTeam || "–", ""],
+    ].map(([k, v, m, tone]) => '<div class="kpi ' + tone + '" style="cursor:default"><span class="k">' + k +
+      '</span><span class="v">' + v + '</span><span class="m">' + NV.esc(m) + "</span></div>").join("");
+  }
+
+  function board(acts) {
+    document.getElementById("board").innerHTML = '<div class="kanban">' +
+      LANES.map(([k, label]) => {
+        const items = acts.filter((a) => a.status === k);
+        return '<div class="lane"><h3>' + label + "<span>" + items.length + "</span></h3>" +
+          (items.length ? items.map((a) => '<div class="card prio-' + a.priority + '" data-a="' + a.id + '">' +
+            '<div class="ti">' + NV.esc(a.title) + "</div>" +
+            '<div class="me"><span class="mono">' + a.id + "</span><span>" + NV.esc(a.owner_team) + "</span>" +
+            (a.due ? "<span>due " + a.due + "</span>" : "") + "</div></div>").join("")
+            : '<p class="sm" style="margin:0;color:var(--ink-3)">Empty</p>') +
+          "</div>";
+      }).join("") + "</div>";
+    document.querySelectorAll("#board .card").forEach((el) =>
+      el.addEventListener("click", () => openAction(el.dataset.a)));
+  }
+
+  function table(acts) {
+    document.getElementById("table").innerHTML = '<div class="tblwrap"><table><thead><tr>' +
+      "<th>Item</th><th>Issue</th><th>Evidence</th><th>Recommended action</th><th>Owner</th>" +
+      "<th>Due</th><th>Status</th><th>Action taken</th><th>Outcome</th></tr></thead><tbody>" +
+      acts.map((a) => '<tr class="clickable" data-a="' + a.id + '">' +
+        '<td class="mono">' + a.id + "</td>" +
+        "<td><span class=\"nm\">" + NV.esc(a.title) + '</span><span class="sm">' + NV.esc(a.source) + "</span></td>" +
+        "<td>" + NV.esc(a.evidence) + "</td>" +
+        "<td>" + NV.esc(a.recommendation) + "</td>" +
+        "<td>" + NV.esc(a.owner_team) + '<span class="sm">' + NV.esc(a.owner || "unassigned") + "</span></td>" +
+        "<td>" + (a.due || '<span class="sm">–</span>') + "</td>" +
+        '<td><span class="pill ' + PILL[a.status] + '">' + NV.titleCase(a.status) + "</span></td>" +
+        "<td>" + (a.action_taken ? NV.esc(a.action_taken) : '<span class="sm">–</span>') + "</td>" +
+        "<td>" + (a.outcome ? NV.esc(a.outcome) : '<span class="sm">not yet measured</span>') + "</td></tr>").join("") +
+      "</tbody></table></div>";
+    document.querySelectorAll("#table tr[data-a]").forEach((tr) =>
+      tr.addEventListener("click", () => openAction(tr.dataset.a)));
+  }
+
+  function sources(acts) {
+    const by = {};
+    acts.forEach((a) => {
+      const key = a.source.split(" - ")[0].split(" · ")[0];
+      by[key] = (by[key] || 0) + 1;
+    });
+    NV.chart.bars(document.getElementById("sources"), {
+      labelWidth: 240,
+      rows: Object.keys(by).sort((a, b) => by[b] - by[a]).map((k) => ({
+        label: NV.titleCase(k), value: by[k],
+        tip: "<b>" + NV.esc(NV.titleCase(k)) + "</b><dl><dt>Items</dt><dd>" + by[k] + "</dd></dl>",
+      })),
+      aria: "Actions by the corpus finding that produced them",
+    });
+  }
+
+  function outcomes(acts) {
+    const m = acts.filter((a) => a.outcome);
+    document.getElementById("outcomes").innerHTML = m.length ? m.map((a) =>
+      '<div class="claim" style="border-left-color:var(--good-text)"><div class="t"><b>' +
+      NV.esc(a.title) + "</b></div>" +
+      '<p class="sm" style="margin:4px 0 0"><b>Did:</b> ' + NV.esc(a.action_taken || "–") + "</p>" +
+      '<p class="sm" style="margin:3px 0 0"><b>Measured:</b> ' + NV.esc(a.outcome) + "</p></div>").join("")
+      : '<div class="empty"><b>Nothing measured in this scope</b>No item has reached monitoring or completion.</div>';
+  }
+
+  function openAction(id) {
+    const a = D.actions.find((x) => x.id === id);
+    if (!a) return;
+    const rows = (a.calls || []).map((cid) => {
+      const c = NV.call(cid);
+      if (!c) return "";
+      const e = NV.emp(c.employer);
+      return '<tr class="clickable" data-c="' + cid + '"><td class="mono">' + cid +
+        "</td><td>" + NV.esc(e.name) + "</td><td>" + NV.esc(c.category) + "</td><td>" + c.outcome + "</td></tr>";
+    }).join("");
+    const steps = [
+      ["Insight detected", a.source, "observed"],
+      ["Evidence", a.evidence, "observed"],
+      ["Recommended action", a.recommendation, "recommendation"],
+      ["Owner", a.owner_team + (a.owner ? " · " + a.owner : " · unassigned"), "reference"],
+      ["Due", a.due || "not set", null],
+      ["Action taken", a.action_taken || "not yet", null],
+      ["Outcome", a.outcome || "not yet measured", "derived"],
+    ];
+    NV.drawer(NV.esc(a.title) + ' <span class="pill ' + PILL[a.status] + '" style="margin-left:8px">' +
+      NV.titleCase(a.status) + "</span>",
+      '<div><h4>Priority</h4><p style="margin:0;font-size:12.5px">' + a.priority + "</p></div>" +
+      steps.map(([label, val, cls]) => '<div><h4>' + label + (cls ? " " + NV.clsChip(cls) : "") +
+        '</h4><p style="margin:0;font-size:12.5px">' + NV.esc(val) + "</p></div>").join("") +
+      (rows ? '<div><h4>Calls behind it ' + NV.clsChip("observed") +
+        '</h4><div class="tblwrap"><table><thead><tr><th>Call</th><th>Employer</th><th>Category</th><th>Outcome</th></tr></thead><tbody>' +
+        rows + "</tbody></table></div></div>" : ""),
+      null,
+      (dlg) => dlg.querySelectorAll("tr[data-c]").forEach((tr) =>
+        tr.addEventListener("click", () => NV.openCall(tr.dataset.c))));
+  }
+
+  function render() {
+    const acts = scoped();
+    flow(acts); kpis(acts); board(acts); table(acts); sources(acts); outcomes(acts);
+    NV.wireKeyboard(document);
+  }
+
+  document.getElementById("v-board").addEventListener("click", () => {
+    document.getElementById("board").hidden = false;
+    document.getElementById("table").hidden = true;
+    document.getElementById("v-board").setAttribute("aria-pressed", "true");
+    document.getElementById("v-table").setAttribute("aria-pressed", "false");
+  });
+  document.getElementById("v-table").addEventListener("click", () => {
+    document.getElementById("board").hidden = true;
+    document.getElementById("table").hidden = false;
+    document.getElementById("v-board").setAttribute("aria-pressed", "false");
+    document.getElementById("v-table").setAttribute("aria-pressed", "true");
+  });
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>
