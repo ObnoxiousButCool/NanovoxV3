@@ -1,11 +1,23 @@
+# Backend setup and run, from Code/Backend.
+
 python -m venv .venv
 
 ./.venv/Scripts/python.exe -m pip install -r requirements-dev-lock.txt
 
 cp .env.example .env
 
+./.venv/Scripts/alembic.exe upgrade head
 
-./.venv/Scripts/python.exe -m uvicorn frameworks_drivers.main:app --host 127.0.0.1 --port 8000 --reload
+# Port 8001, not the 8000 in .env.example: another elevated uvicorn holds
+# 0.0.0.0:8000 on this machine and comes back after a reboot. A wildcard bind
+# claims the port on every interface, so 127.0.0.1:8000 is refused too --
+# Windows reports that as WinError 10013, which reads like a permissions
+# problem rather than the collision it is. Code/Frontend/.env points at 8001
+# to match; both .env files are git-ignored, so .env.example keeps the
+# project default of 8000 for a machine without the squatter.
+./.venv/Scripts/python.exe -m uvicorn frameworks_drivers.main:app --host 127.0.0.1 --port 8001 --reload
 
-
-powershell -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','taskkill /PID 4064 /T /F; Read-Host \"done - press Enter\"'"
+# If you do need 8000 back, find the holder by port rather than by a PID --
+# run this elevated. The PID changes on every reboot, so a hardcoded one
+# names an unrelated process later, or on someone else's machine.
+Get-NetTCPConnection -State Listen -LocalPort 8000 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
