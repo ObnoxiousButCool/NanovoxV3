@@ -20,9 +20,9 @@ approved visual design.
       parked in §7A pending Karim — that's the decision, not an open item)
 - [x] Phase 0 — Scaffold and gates (3 commits, pushed)
 - [x] Phase 1 — Domain model and reference data (4 commits, pushed, gates pass)
-- [x] Phase 2 — Transcript ingestion, label stripping, caller resolution, answer key (4 commits, pushed, gates pass; 100/100 real calls resolved)
-- [x] Phase 3 — LLM infrastructure (3 commits, not yet pushed — pushing at Phase 5)
-- [ ] Phase 4 — Extraction stages
+- [x] Phase 2 — Transcript ingestion, label stripping, caller resolution, answer key (4 commits, pushed, gates pass; 100/100 real calls resolved) — **except the AnswerKeyImporter task, see §8**
+- [x] Phase 3 — LLM infrastructure (3 commits, not yet pushed — pushing at Phase 5) — **except run orchestration wiring, see §8**
+- [~] Phase 4 — Extraction stages (L1 and L2 built and tested; L3, L4, the derivations and the pipeline use case not started)
 - [ ] Phase 5 — Evaluation harness  ← **check-in gate**
 - [ ] Phase 6 — Aggregations and read endpoints
 - [ ] Phase 7 — Frontend design system (can start any time after Phase 0)
@@ -664,10 +664,19 @@ type, caller reference, agent id and name, and the dialogue turns.
 
 Implement stripping in the ingestion adapter, and prove it:
 
-- ▸ a unit test on every one of the 100 calls asserting the rendered transcript
+- [x] ▸ a unit test on every one of the 100 calls asserting the rendered transcript
   sent to the LLM contains none of: `CALL TAGS`, `score `, `/100`, any outcome
   word in a header position, the archetype string, `rules `.
-- ▸ the stripped labels go to the answer-key importer, never discarded silently.
+- [ ] ▸ the stripped labels go to the answer-key importer, never discarded silently.
+
+  Status note (2026-09-23): the fixture-based leak test runs everywhere, but the
+  real 100-call proof (`tests/integration/test_real_ingest.py`) and the corpus
+  regression guard **skip silently on this machine** — they look for the corpus
+  under `data/source/`, which does not exist here; the workbook and PDF are in
+  `Documents/`. `pytest -rs` shows three SKIPPED, and `scripts/check.sh` still
+  reports all gates passed. Point `WORKBOOK_PATH`/`TRANSCRIPTS_PATH` at
+  `Documents/`, or place the pair under `data/source/`, before trusting this
+  property — §6.3 says every Phase 5 figure depends on it.
 
 If this property ever fails, every evaluation figure in Phase 5 is worthless.
 
@@ -794,66 +803,82 @@ is built against this, and D10's release gate has nothing to gate.
 
 Each ▸ is one task and one commit. Phase 7 may run in parallel with Phases 1–6.
 
+Task state, verified against the codebase on 2026-09-23 with `scripts/check.sh`
+passing: `[x]` done, `[~]` partly done with a status note beneath it, `[ ]` not
+started. Phase 8 has no ▸ tasks of its own — its table is the task list, and
+none of it is built.
+
 ### Phase 0 — Scaffold and gates
 
-- ▸ Backend skeleton: packages, FastAPI app, health endpoint, settings via
+- [x] ▸ Backend skeleton: packages, FastAPI app, health endpoint, settings via
   pydantic-settings, async SQLAlchemy + Alembic, pytest, import-linter contracts.
-- ▸ Frontend skeleton: Vite + React + TS, router, TanStack Query, Vitest,
+- [x] ▸ Frontend skeleton: Vite + React + TS, router, TanStack Query, Vitest,
   ESLint, OpenAPI type generation.
-- ▸ `scripts/check.sh` running every gate in §10; README says how to run it.
+- [x] ▸ `scripts/check.sh` running every gate in §10; README says how to run it.
 
 Acceptance: `scripts/check.sh` passes on an empty app.
 
 ### Phase 1 — Domain model and reference data
 
-- ▸ Domain entities: `Broker`, `Employer`, `Member`, `EmployerContact` (authority
+- [x] ▸ Domain entities: `Broker`, `Employer`, `Member`, `EmployerContact` (authority
   CAN_BIND / CANNOT_BIND), `Agent` (band, planned calls, expected score, score
   variance), `Rule` (id, layer P/A/C, area, text, commonly-confused-with,
   confidence), `Touchpoint` (code, owner team). Member → employer, contact →
   employer, employer → broker. A member never stores a broker.
-- ▸ Tables and first migration. Integer surrogate keys; business references
+- [x] ▸ Tables and first migration. Integer surrogate keys; business references
   (`BRK-12`, `EMP-1030`, `CB-7700205`, `CON-101`, `AGT-01`, `P-14`) as unique,
   indexed, non-null columns. `employers.broker_id` is a foreign key. Derived
   columns commented as derived: participation, fee band, annual fee, COBRA
   regime. `design_churn_profile` stored and never read (a test enforces it).
-- ▸ Workbook reader (infrastructure, behind a port). Port sheet parsing from
+- [x] ▸ Workbook reader (infrastructure, behind a port). Port sheet parsing from
   `tools/01_read_workbook.py` and derivations from `tools/03_join_corpus.py`: fee
   band by rule P-33 ($25 for 2–8 eligible, $30 for 9–20, $35 for 21–199, $50 for
   200+), COBRA regime (Cal-COBRA below 20 eligible, federal at 20+),
   participation = enrolled ÷ eligible. About 1,500 cells are formulas with no
   cached value — derive; never read them.
-- ▸ `ImportReferenceData` use case — idempotent upsert by reference, returns
+- [x] ▸ `ImportReferenceData` use case — idempotent upsert by reference, returns
   counts and warnings. CLI command and `POST /api/v1/reference/import`.
-- ▸ Tests assert the counts in the prototype's `tools/README.md` and spot-check
+- [x] ▸ Tests assert the counts in the prototype's `tools/README.md` and spot-check
   derived fields against the prototype's `data.js`.
 
 ### Phase 2 — Transcript ingestion, label stripping, caller resolution, answer key
 
-- ▸ `Transcript`, `Turn`, `CallSource` and the `TranscriptSource` port (§6.4).
-- ▸ `PdfCorpusSource`: split the PDF into 100 calls; read legitimate header
+- [x] ▸ `Transcript`, `Turn`, `CallSource` and the `TranscriptSource` port (§6.4).
+- [x] ▸ `PdfCorpusSource`: split the PDF into 100 calls; read legitimate header
   fields; **strip labels** (§6.3) with the 100-call leakage test.
-- ▸ Speaker roles: both speakers are labelled by first name. Match the header's
+- [x] ▸ Speaker roles: both speakers are labelled by first name. Match the header's
   agent (`AGT-01|Sarah Whitlock`) against the speaker label; the other speaker is
   the caller. Test on real calls.
-- ▸ Caller reference: recognise `CB-\d+` (member) and `CON-\d+` (contact). Resolve
+- [x] ▸ Caller reference: recognise `CB-\d+` (member) and `CON-\d+` (contact). Resolve
   to member or contact, then employer, then broker; store all resolved ids on the
   call. Unresolved references are stored, flagged, counted on Diagnostics, and
   excluded from account figures with the count shown — never guessed.
-- ▸ Ingest use case and `ingest_jobs`; CLI and endpoint.
-- ▸ `AnswerKeyImporter`: Transcript Tracker → `ground_truth`. Cross-check against
+- [x] ▸ Ingest use case and `ingest_jobs`; CLI and endpoint.
+- [~] ▸ `AnswerKeyImporter`: Transcript Tracker → `ground_truth`. Cross-check against
   the PDF's stripped `CALL TAGS`; report any disagreement.
+
+  Status note (2026-09-23): `AnswerKey`, the `AnswerKeySource` port and
+  `PdfAnswerKeySource` exist, so the PDF’s stripped `CALL TAGS` can be read.
+  Missing: the Transcript Tracker sheet is not read anywhere, there is no
+  `ground_truth` table, no importer use case, and no cross-check or
+  disagreement report. `PdfAnswerKeySource` is referenced only by tests.
 
 Acceptance: 100 calls, every one resolved to an employer and broker (or
 explicitly flagged), zero label leakage.
 
 ### Phase 3 — LLM infrastructure
 
-- ▸ Port the provider port, adapters, registry and probe from NanoVox; `/providers`
+- [x] ▸ Port the provider port, adapters, registry and probe from NanoVox; `/providers`
   endpoint listing configured providers.
-- ▸ Versioned prompt loading; JSON-schema-validated responses; retry policy;
+- [x] ▸ Versioned prompt loading; JSON-schema-validated responses; retry policy;
   token and duration accounting; the stage-output cache (§7).
-- ▸ Run orchestration: a run over a set of calls with progress, per-call status,
+- [~] ▸ Run orchestration: a run over a set of calls with progress, per-call status,
   resumability. Port from NanoVox's runner.
+
+  Status note (2026-09-23): `infrastructure/runner/background_runner.py`,
+  `domain/run_progress.py` and `domain/value_objects/run_status.py` exist and
+  are tested, but `BackgroundRunner` is referenced only by its own test file —
+  not by the container, a CLI or an endpoint. Built, not integrated.
 
 ### Phase 4 — Extraction layers
 
@@ -861,31 +886,37 @@ One task per layer: prompt file (where a model is involved), schema, domain
 value objects, persistence, validation, tests with recorded provider responses
 (no live calls in tests).
 
-- ▸ L1 deterministic extraction (`caller_ref`, opening-turn checks — code, no
+- [x] ▸ L1 deterministic extraction (`caller_ref`, opening-turn checks — code, no
   prompt)
-- ▸ L2 classification (with rule scoping by category and product line, so L3/L4
+- [x] ▸ L2 classification (with rule scoping by category and product line, so L3/L4
   see only the rules relevant to the call)
-- ▸ L3 quality & knowledge (ported rubric; `knowledge_failure` stored exactly
+
+  Status note (2026-09-23): L1 and L2 are built, migrated (`call_extractions`,
+  revisions `20260923_0517` and `20260923_0520`) and tested, but neither is
+  composed in `frameworks_drivers/container.py`, so nothing can run them end to
+  end yet. The pipeline task below is where that wiring belongs.
+
+- [ ] ▸ L3 quality & knowledge (ported rubric; `knowledge_failure` stored exactly
   as the schema defines it, never labelled an agent error — D7)
-- ▸ L4 signals & gaps (including `process_gap`). **Confirm against the Metrics
+- [ ] ▸ L4 signals & gaps (including `process_gap`). **Confirm against the Metrics
   sheet's build note for metric 5** whether `process_gap.present` alone covers
   self-inflicted demand's "calls caused by a logged process defect" component
   (insight 15), or whether "chasing an already-submitted action" needs a
   second condition — don't assume the one-field mapping proposed in §9 is
   final until this is checked against the workbook here.
-- ▸ Deterministic derivations: repeat contact (metric 4), effort, complexity
-- ▸ Pipeline use case wiring L1 → L2 → (L3 ∥ L4), essential vs degradable
+- [ ] ▸ Deterministic derivations: repeat contact (metric 4), effort, complexity
+- [ ] ▸ Pipeline use case wiring L1 → L2 → (L3 ∥ L4), essential vs degradable
 
 ### Phase 5 — Evaluation harness  ← stop and check in
 
-- ▸ Per-field agreement between pipeline output and `ground_truth`, for every
+- [ ] ▸ Per-field agreement between pipeline output and `ground_truth`, for every
   field that has an answer key: exact match for enums, set overlap for lists,
   rule-id match for knowledge failure, target match for complaint attribution
   (`complaint.attributed_to` — the Metrics sheet's own term for this dimension
   is "attribution target," not "party"; keep that word for this real field).
-- ▸ Diagnostics page: agreement per field, per layer; rejected-evidence counts;
+- [ ] ▸ Diagnostics page: agreement per field, per layer; rejected-evidence counts;
   unresolved callers; token cost of the last run.
-- ▸ No fault-record labelling tool. There is nothing to hand-label until D5 is
+- [ ] ▸ No fault-record labelling tool. There is nothing to hand-label until D5 is
   answered and §7A is (or isn't) built — D10 stays parked, not scheduled here.
 
 **Check in with Minnie with the numbers.** Screens are built on pipeline output,
@@ -900,7 +931,7 @@ Phase 7) plus `source`, and every response carries epistemic class, `n`, the cal
 ids behind each figure, and withheld reasons. Regenerate the typed client after
 each endpoint.
 
-- ▸ `config/dashboard.yaml`: min n is **per metric, from the Metrics sheet**
+- [ ] ▸ `config/dashboard.yaml`: min n is **per metric, from the Metrics sheet**
   (§3.0 — the workbook wins), not one global number — e.g. contact rate 30,
   complaint rate 10 calls, FCR 30, failure-driven repeat 30, self-inflicted
   demand 60, escalation integrity 30 triggers, control exceptions 30, knowledge
@@ -908,12 +939,12 @@ each endpoint.
   `cost_per_call: null`, peer size bands (2–24, 25–74, 75–199, 200+ lives),
   broker ranking floor (150 lives), broker pattern test (≥3 adverse mentions
   from ≥2 of that broker's employers), quality bands (good ≥86, average ≥60).
-- ▸ Risk flag (metric 10, D2): yes/no, not a band — eligible at ≥3 calls,
+- [ ] ▸ Risk flag (metric 10, D2): yes/no, not a band — eligible at ≥3 calls,
   flagged on ≥2 of its four named conditions, quoted at ≥10 calls. Separately,
   the ten indicator families (port `NV.INDICATORS`) render as "other conditions
   observed" on the account page, informational only, each firing above an
   absolute floor **and** a rate; they do not set the flag.
-- ▸ Peer contact rate; isolation (region → broker → employer tree, region ×
+- [ ] ▸ Peer contact rate; isolation (region → broker → employer tree, region ×
   category matrix, pattern test); agent events (port `agents.html`, from the
   `knowledge_error` signal, D7); rules (cited vs failed-to-explain, by rule
   layer P/A/C, provenance, area — counts only); exec scorecard; self-inflicted
@@ -922,34 +953,34 @@ each endpoint.
   ranking coloured by `complaint.attributed_to`; enrolment promise gap from
   `process_gap` + touchpoint. (Insights 6, 17 and 25 render their withheld
   panels instead — nothing to aggregate for them yet.)
-- ▸ One endpoint per screen: `exec`, `risk`, `accounts/{ref}`, `hierarchy`,
+- [ ] ▸ One endpoint per screen: `exec`, `risk`, `accounts/{ref}`, `hierarchy`,
   `demand`, `actions`, `rules`, `agents`, `value-pack/{broker_ref}`.
 
 ### Phase 7 — Frontend design system
 
 Reproduce the prototype's `app.css` and `app.js` behaviour as React.
 
-- ▸ Tokens from `app.css` `:root`, both dark blocks exactly as written. Fonts per
+- [ ] ▸ Tokens from `app.css` `:root`, both dark blocks exactly as written. Fonts per
   D3.
-- ▸ Three-state theme (Light default / Dark / Auto), persisted, stamped before
+- [ ] ▸ Three-state theme (Light default / Dark / Auto), persisted, stamped before
   first paint; charts redraw on switch (port `NV.inkOn`).
-- ▸ Shell: the left rail — brand mark, nav items each with a one-line question
+- [ ] ▸ Shell: the left rail — brand mark, nav items each with a one-line question
   beneath, theme control and corpus footnote at the foot, top bar under 820px.
-- ▸ Primitives with tests: `Panel`, `KpiTile` (crit / warn / good / withheld),
+- [ ] ▸ Primitives with tests: `Panel`, `KpiTile` (crit / warn / good / withheld),
   `BigRow`, `EpistemicChip`, `BandPill` (shape-coded, never colour alone),
   `SeverityLabel`, `Delta`, `Claim`, `Quote`, `Empty`, `Note`, `Withheld`.
-- ▸ Charts: line with crosshair, horizontal bars with direct labels, grouped bars
+- [ ] ▸ Charts: line with crosshair, horizontal bars with direct labels, grouped bars
   across time buckets, stacked composition with values in the legend, sparkline,
   region × category heatmap. Charts measure their container.
-- ▸ Stacked evidence drawer with Back (`NV.drawer`), and the call-evidence view
+- [ ] ▸ Stacked evidence drawer with Back (`NV.drawer`), and the call-evidence view
   (`NV.callEvidence`).
-- ▸ Filter bar: period (week / month / custom), region, broker, employer, risk
+- [ ] ▸ Filter bar: period (week / month / custom), region, broker, employer, risk
   band, and an *Advanced* disclosure (category, line, touchpoint, outcome, signal,
   escalation, repeat, compliance, effort, complexity, caller type, intent,
   complaint target, agent, quality). URL is the source of truth, mirrored to
   localStorage; "Copy link to this view"; an applied-filters row that always
   shows scope and call count.
-- ▸ Keyboard: every clickable row and card is focusable and activates on Enter
+- [ ] ▸ Keyboard: every clickable row and card is focusable and activates on Enter
   and Space.
 
 ### Phase 8 — Screens
@@ -978,23 +1009,23 @@ buildable half and withhold the rest, each with its own stated reason.
 
 ### Phase 9 — Action centre write path (D6)
 
-- ▸ `actions` table: title, source finding, evidence, calls (many-to-many), owner
+- [ ] ▸ `actions` table: title, source finding, evidence, calls (many-to-many), owner
   team (Touchpoints sheet), owner, priority, status (seven lifecycle states),
   assigned and due dates, action taken, outcome, measurement window.
-- ▸ Seeding, porting `add_action` in `04_build_app_data.py`: one item per process
+- [ ] ▸ Seeding, porting `add_action` in `04_build_app_data.py`: one item per process
   gap, knowledge-failure rule, escalation-miss cluster, control-exception type,
   exit-language call, fired pattern trigger.
-- ▸ `PATCH /insights/actions/{id}`; *monitoring* and *completed* require a
+- [ ] ▸ `PATCH /insights/actions/{id}`; *monitoring* and *completed* require a
   measurement.
-- ▸ Board and table views with the editor.
+- [ ] ▸ Board and table views with the editor.
 
 ### Phase 10 — Withheld panels, catalogue, docs
 
-- ▸ A withheld panel for every WITHHELD insight: the question, why it can't be
+- [ ] ▸ A withheld panel for every WITHHELD insight: the question, why it can't be
   answered, and exactly what data would unlock it.
-- ▸ `/catalogue`: the 32 insights, filterable by screen and origin, each linking
+- [ ] ▸ `/catalogue`: the 32 insights, filterable by screen and origin, each linking
   to where it renders.
-- ▸ README: setup, the three import commands, running an extraction, the gates,
+- [ ] ▸ README: setup, the three import commands, running an extraction, the gates,
   the architecture in one diagram.
 
 ---
