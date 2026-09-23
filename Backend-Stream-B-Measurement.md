@@ -117,9 +117,37 @@ which also shows the "fired and unfired" presentation §9 insight 13 asks for.
 Quality bands match exactly: `NV.QUALITY_BANDS` is GOOD ≥86, AVERAGE ≥60,
 POOR below.
 
-### ▸ B3 — `domain/aggregation/` pure functions · Large
+### ▸ B3 — `domain/aggregation/` pure functions · Large · **DONE 2026-09-23**
 
-Nine groups, all pure, all unit-testable without a database or a model:
+Done. All nine groups, plus the foundation they share: `CallTags` (the
+sixteen schema fields), `Figure` (the result envelope), and `patterns.py` —
+the Metrics sheet's own "four calculation patterns… rather than twenty-four
+reports", three of which are aggregations and the fourth of which is B4's.
+
+Insights 6, 17, 22 and 25 are withheld panels in `withheld.py`, each naming
+what would unlock it. No partial versions. **B4 is the next task.**
+
+Three things found while building, all of which affect someone else:
+
+- **Metric 4's repeat linkage is in `repeat_contact.py`, not Stream A.**
+  Stream A's A4 owns "repeat contact (metric 4)", but metric 5's first
+  component is failure-driven repeats and B3 cannot publish self-inflicted
+  demand without it. The two stream documents did not resolve that overlap.
+  Stream A should import this rather than write a second 14-day window.
+- **Metric 5's middle component is settled.** §9 insight 15 asked for it to
+  be checked rather than assumed: "chasing an already-submitted action" is
+  the `process_breakdown` signal, "a logged process defect" is
+  `process_gap.present`. Two fields, not one. Stream A's A3 was asked the
+  same question from the extraction side and the answers have to agree.
+- **Insight 18 duplicates insight 16's residual bucket**, as §9 suspected. It
+  is an accessor over the touchpoint ranking rather than its own panel.
+
+**`EpistemicClass` needs Minnie.** MEASURED / DERIVED / WITHHELD, inferred —
+the plan requires an epistemic class on every response and no source says
+what its values are.
+
+Originally: nine groups, all pure, all unit-testable without a database or a
+model:
 
 peer contact rate · isolation (region → broker → employer tree, region ×
 category matrix, pattern test) · agent events (from the `knowledge_error`
