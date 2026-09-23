@@ -10,12 +10,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from domain.entities.score_marker import ScoreMarker
 from domain.value_objects.broker_named_aloud import BrokerNamedAloud
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
+from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.intent_statement import IntentStatement
+from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.process_gap import ProcessGap
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.score import Score, ScoreStatus
+from domain.value_objects.signal import Signal
+from domain.value_objects.tier import Tier
 
 
 @dataclass(frozen=True)
@@ -33,3 +40,19 @@ class CallExtraction:
     broker_named_aloud: BrokerNamedAloud | None = None
     touchpoint: str | None = None
     summary: str | None = None
+
+    # --- L3 ---
+    quality_score: Score | None = None
+    quality_status: ScoreStatus | None = None
+    quality_tier: Tier | None = None
+    #: Only markers accepted by evidence checking — see
+    #: `application.ports.call_extraction_repository.RaisedMarker` for the
+    #: full raised-and-refused record this is read back from.
+    markers: tuple[ScoreMarker, ...] = ()
+    knowledge_failure: KnowledgeFailure | None = None
+
+    # --- L4 ---
+    signals: tuple[Signal, ...] = ()
+    escalation_handled: bool | None = None
+    escalation_trigger_type: EscalationTriggerType | None = None
+    process_gap: ProcessGap | None = None

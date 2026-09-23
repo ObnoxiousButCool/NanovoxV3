@@ -30,6 +30,7 @@ from infrastructure.config.paths import (
     DEFAULT_CONFIG_DIR,
     DEFAULT_FRONTEND_DIST,
     DEFAULT_LOG_DIR,
+    DEFAULT_RUBRIC_PATH,
     DEFAULT_TRANSCRIPTS_PATH,
     DEFAULT_WORKBOOK_PATH,
     default_database_url,
@@ -75,6 +76,7 @@ class Settings(BaseSettings):
     # --- Reference data (plan §8 Phase 1) -----------------------------------
     workbook_path: Path = DEFAULT_WORKBOOK_PATH
     transcripts_path: Path = DEFAULT_TRANSCRIPTS_PATH
+    rubric_path: Path = DEFAULT_RUBRIC_PATH
 
     # --- Dashboard thresholds (plan §8 Phase 6) ----------------------------
     # Min n per metric, the risk-flag numbers, peer bands and quality bands,

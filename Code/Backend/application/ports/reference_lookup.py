@@ -15,6 +15,7 @@ from domain.entities.broker import Broker
 from domain.entities.employer import Employer
 from domain.entities.employer_contact import EmployerContact
 from domain.entities.member import Member
+from domain.entities.rule import Rule
 
 
 class ReferenceLookup(ABC):
@@ -37,3 +38,9 @@ class ReferenceLookup(ABC):
         employer's own broker of record (Data Model sheet: a mismatch
         between the two is itself a finding, not something to search
         around)."""
+
+    @abstractmethod
+    async def list_rules(self) -> tuple[Rule, ...]:
+        """Every known rule — L3/L4 are shown only the subset
+        `domain.extraction.rule_scoping.scope_rules` selects for a call's
+        category and product lines (plan §7, "never all 122")."""

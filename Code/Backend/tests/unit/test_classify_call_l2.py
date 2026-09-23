@@ -15,6 +15,8 @@ from application.dto.l2_response import (
 from application.ports.call_extraction_repository import (
     CallExtractionRepository,
     L2Save,
+    L3Save,
+    L4Save,
 )
 from application.ports.call_repository import CallRepository, IngestCounts
 from application.ports.clock import Clock
@@ -29,6 +31,7 @@ from domain.entities.employer import Employer
 from domain.entities.employer_contact import EmployerContact
 from domain.entities.ingested_call import IngestedCall
 from domain.entities.member import Member
+from domain.entities.rule import Rule
 from domain.entities.transcript import Transcript
 from domain.entities.turn import Turn
 from domain.errors import ValidationError
@@ -150,10 +153,14 @@ class _FakeCalls(CallRepository):
 
 class _FakeLookup(ReferenceLookup):
     def __init__(
-        self, brokers: tuple[Broker, ...] = (), employers: tuple[Employer, ...] = ()
+        self,
+        brokers: tuple[Broker, ...] = (),
+        employers: tuple[Employer, ...] = (),
+        rules: tuple[Rule, ...] = (),
     ) -> None:
         self._brokers = brokers
         self._employers = {employer.reference: employer for employer in employers}
+        self._rules = rules
 
     async def find_agent(self, reference: str) -> Agent | None:
         return None
@@ -169,6 +176,9 @@ class _FakeLookup(ReferenceLookup):
 
     async def list_brokers(self) -> tuple[Broker, ...]:
         return self._brokers
+
+    async def list_rules(self) -> tuple[Rule, ...]:
+        return self._rules
 
 
 class _FakeStageCache(StageCache):
@@ -191,6 +201,15 @@ class _FakeExtractions(CallExtractionRepository):
 
     async def save_l2(self, call_reference: str, result: L2Save) -> None:
         self.saved[call_reference] = result
+
+    async def save_l3(self, call_reference: str, result: L3Save) -> None:
+        raise NotImplementedError
+
+    async def save_l4(self, call_reference: str, result: L4Save) -> None:
+        raise NotImplementedError
+
+    async def mark_l3_provisional(self, call_reference: str) -> None:
+        raise NotImplementedError
 
 
 class FixedClock(Clock):

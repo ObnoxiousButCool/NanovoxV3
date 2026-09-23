@@ -48,8 +48,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.container = container
     try:
         await verify_connection(container.engine)
+        reconciled = await container.run_extraction_over_corpus().reconcile_interrupted()
+        if reconciled:
+            logger.warning("Marked runs interrupted from a previous process: %s", reconciled)
         yield
     finally:
+        await container.background_runner.shutdown()
         await dispose_container(container)
         logger.info("Shutdown complete")
         shutdown_logging()

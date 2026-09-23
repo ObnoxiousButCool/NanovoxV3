@@ -16,13 +16,17 @@ from domain.entities.broker import Broker
 from domain.entities.employer import Employer
 from domain.entities.employer_contact import EmployerContact
 from domain.entities.member import Member
+from domain.entities.rule import Rule
 from domain.value_objects.authority import Authority
+from domain.value_objects.rule_confidence import RuleConfidence
+from domain.value_objects.rule_layer import RuleLayer
 from infrastructure.persistence.tables import (
     AgentRow,
     BrokerRow,
     EmployerContactRow,
     EmployerRow,
     MemberRow,
+    RuleRow,
 )
 
 
@@ -136,6 +140,23 @@ class SqlReferenceLookup(ReferenceLookup):
                     region=row.region,
                     groups_in_book=row.groups_in_book,
                     signal_profile=row.signal_profile,
+                )
+                for row in rows
+            )
+
+    async def list_rules(self) -> tuple[Rule, ...]:
+        async with self._session_factory() as session:
+            rows = (await session.execute(select(RuleRow))).scalars().all()
+            return tuple(
+                Rule(
+                    reference=row.reference,
+                    layer=RuleLayer(row.layer),
+                    area=row.area,
+                    text=row.text,
+                    commonly_confused_with=row.commonly_confused_with,
+                    source=row.source,
+                    confidence=RuleConfidence(row.confidence),
+                    call_scenarios=row.call_scenarios,
                 )
                 for row in rows
             )

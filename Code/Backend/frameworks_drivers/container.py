@@ -7,8 +7,14 @@ global.
 Long-lived resources (the engine, the session factory) are built once per
 process and held on the container; use cases are cheap and are built per
 request. Grows with each phase: Phase 1 added reference-data repositories,
-Phase 3 adds the LLM provider registry and audit log, and so on — nothing
-here anticipates a phase before it lands.
+Phase 3 the LLM provider registry and audit log, Phase 4 the extraction
+pipeline's own storage and prompts — nothing here anticipates a phase
+before it lands.
+
+L1 has no builder method of its own: it is a pure function
+(`domain.extraction.l1_deterministic.run_l1`) with no ports to inject, so
+`ClassifyCallL2` calls it directly rather than the container wiring it
+separately.
 """
 
 from __future__ import annotations
@@ -18,38 +24,55 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from application.ports.answer_key_source import AnswerKeySource
+from application.ports.call_extraction_repository import CallExtractionRepository
 from application.ports.call_repository import CallRepository
 from application.ports.clock import Clock
 from application.ports.ground_truth_repository import GroundTruthRepository
 from application.ports.ground_truth_source import GroundTruthSource
 from application.ports.health_probe import HealthProbe
+from application.ports.prompts import PromptSource
 from application.ports.reference_lookup import ReferenceLookup
 from application.ports.reference_repository import ReferenceRepository
 from application.ports.reference_source import ReferenceSource
+from application.ports.run_repository import RunRepository
 from application.ports.stage_cache import StageCache
 from application.ports.transcript_source import TranscriptSource
+from application.use_cases.classify_call_l2 import ClassifyCallL2
+from application.use_cases.classify_call_l3 import ClassifyCallL3
+from application.use_cases.classify_call_l4 import ClassifyCallL4
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_answer_key import ImportAnswerKey
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from application.use_cases.list_providers import ListProviders, ProviderProbe
+from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
+from application.use_cases.run_extraction_pipeline import ExtractionPipeline
+from domain.scoring.rubric import Rubric
+from infrastructure.config.rubric_loader import load_rubric
 from infrastructure.config.settings import Settings
 from infrastructure.corpus.pdf_answer_key_source import PdfAnswerKeySource
 from infrastructure.corpus.pdf_corpus_source import PdfCorpusSource
+from infrastructure.llm.prompt_source import FilePromptSource
+from infrastructure.llm.prompts import PromptLibrary
 from infrastructure.llm.provider_probe import RegistryProviderProbe
 from infrastructure.llm.registry import PROVIDER_NAMES, ProviderRegistry
 from infrastructure.logging.llm_audit import LlmAuditLog
 from infrastructure.persistence.engine import create_database_engine, create_session_factory
 from infrastructure.persistence.health_probe import DatabaseHealthProbe
+from infrastructure.persistence.repositories.call_extraction_repository import (
+    SqlCallExtractionRepository,
+)
 from infrastructure.persistence.repositories.call_repository import SqlCallRepository
 from infrastructure.persistence.repositories.ground_truth_repository import (
     SqlGroundTruthRepository,
 )
 from infrastructure.persistence.repositories.reference_lookup import SqlReferenceLookup
 from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
+from infrastructure.persistence.repositories.run_repository import SqlRunRepository
 from infrastructure.persistence.repositories.stage_cache import SqlStageCache
 from infrastructure.reference.xlsx_ground_truth_source import XlsxGroundTruthSource
 from infrastructure.reference.xlsx_reference_source import XlsxReferenceSource
+from infrastructure.runner.background_runner import BackgroundRunner
 from infrastructure.system_clock import SystemClock
 
 
@@ -70,6 +93,13 @@ class Container:
     provider_registry: ProviderRegistry
     provider_probe: ProviderProbe
     stage_cache: StageCache
+    call_extraction_repository: CallExtractionRepository
+    prompt_source: PromptSource
+    rubric: Rubric
+    run_repository: RunRepository
+    #: One instance for the process's lifetime — the set of in-flight run
+    #: tasks is itself state, not something a new instance could rebuild.
+    background_runner: BackgroundRunner
     # Answer key (plan §8 Phase 2). Held here like any other adapter; the
     # import-linter contract, not the composition root, is what keeps
     # extraction away from it.
@@ -106,6 +136,55 @@ class Container:
             default_name=self.settings.llm_provider,
         )
 
+    def classify_call_l2(self) -> ClassifyCallL2:
+        return ClassifyCallL2(
+            calls=self.call_repository,
+            reference_lookup=self.reference_lookup,
+            prompts=self.prompt_source,
+            stage_cache=self.stage_cache,
+            extractions=self.call_extraction_repository,
+            clock=self.clock,
+        )
+
+    def classify_call_l3(self) -> ClassifyCallL3:
+        return ClassifyCallL3(
+            calls=self.call_repository,
+            reference_lookup=self.reference_lookup,
+            prompts=self.prompt_source,
+            stage_cache=self.stage_cache,
+            extractions=self.call_extraction_repository,
+            rubric=self.rubric,
+            clock=self.clock,
+        )
+
+    def classify_call_l4(self) -> ClassifyCallL4:
+        return ClassifyCallL4(
+            calls=self.call_repository,
+            reference_lookup=self.reference_lookup,
+            prompts=self.prompt_source,
+            stage_cache=self.stage_cache,
+            extractions=self.call_extraction_repository,
+            clock=self.clock,
+        )
+
+    def run_extraction_pipeline(self) -> ExtractionPipeline:
+        return ExtractionPipeline(
+            l2=self.classify_call_l2(),
+            l3=self.classify_call_l3(),
+            l4=self.classify_call_l4(),
+            extractions=self.call_extraction_repository,
+        )
+
+    def run_extraction_over_corpus(self) -> RunExtractionOverCorpus:
+        return RunExtractionOverCorpus(
+            calls=self.call_repository,
+            runs=self.run_repository,
+            pipeline=self.run_extraction_pipeline(),
+            provider_registry=self.provider_registry,
+            background_runner=self.background_runner,
+            clock=self.clock,
+        )
+
 
 def build_container(settings: Settings) -> Container:
     """Wire the object graph for a running application."""
@@ -114,6 +193,7 @@ def build_container(settings: Settings) -> Container:
     clock = SystemClock()
     audit = LlmAuditLog(include_bodies=settings.log_llm_prompts)
     provider_registry = ProviderRegistry(settings, audit)
+    prompt_source = FilePromptSource(PromptLibrary())
     return Container(
         settings=settings,
         engine=engine,
@@ -130,6 +210,11 @@ def build_container(settings: Settings) -> Container:
             provider_registry, settings.llm_provider, settings.llm_probe_timeout_seconds
         ),
         stage_cache=SqlStageCache(session_factory, clock),
+        call_extraction_repository=SqlCallExtractionRepository(session_factory),
+        prompt_source=prompt_source,
+        rubric=load_rubric(settings.rubric_path),
+        run_repository=SqlRunRepository(session_factory),
+        background_runner=BackgroundRunner(),
         ground_truth_source=XlsxGroundTruthSource(settings.workbook_path),
         ground_truth_repository=SqlGroundTruthRepository(session_factory, clock),
         answer_key_source=PdfAnswerKeySource(settings.transcripts_path),

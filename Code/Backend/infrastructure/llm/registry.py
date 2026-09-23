@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 
 from application.ports.llm_provider import LLMProvider
+from application.ports.provider_registry import ProviderSource
 from domain.errors import ConfigurationError, NotFoundError
 from infrastructure.config.settings import Settings
 from infrastructure.llm.providers import anthropic_provider, ollama, openai_provider
@@ -124,7 +125,7 @@ def is_billable(name: str) -> bool:
     return resolved not in FACTORIES or resolved in BILLABLE_PROVIDERS
 
 
-class ProviderRegistry:
+class ProviderRegistry(ProviderSource):
     """Creates provider adapters by name."""
 
     def __init__(self, settings: Settings, audit: LlmAuditLog) -> None:

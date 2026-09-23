@@ -297,6 +297,116 @@ class CallExtractionRow(Base):
     l2_prompt_version: Mapped[str | None] = mapped_column(nullable=True)
     l2_completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
+    # --- L3 — quality & knowledge ---------------------------------------
+    quality_score: Mapped[int | None] = mapped_column(nullable=True)
+    quality_status: Mapped[str | None] = mapped_column(nullable=True)  # ScoreStatus.value
+    quality_tier: Mapped[str | None] = mapped_column(nullable=True)  # Tier.value
+    rubric_version: Mapped[str | None] = mapped_column(nullable=True)
+    knowledge_failure_present: Mapped[bool | None] = mapped_column(nullable=True)
+    knowledge_failure_rule_id: Mapped[str | None] = mapped_column(nullable=True)
+    knowledge_failure_correct_statement: Mapped[str | None] = mapped_column(nullable=True)
+
+    l3_provider: Mapped[str | None] = mapped_column(nullable=True)
+    l3_model: Mapped[str | None] = mapped_column(nullable=True)
+    l3_prompt_version: Mapped[str | None] = mapped_column(nullable=True)
+    l3_completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    # --- L4 — signals & gaps ---------------------------------------------
+    escalation_handled: Mapped[bool | None] = mapped_column(nullable=True)
+    escalation_trigger_type: Mapped[str | None] = mapped_column(nullable=True)
+    process_gap_present: Mapped[bool | None] = mapped_column(nullable=True)
+    process_gap_gap_type: Mapped[str | None] = mapped_column(nullable=True)
+    process_gap_touchpoint: Mapped[str | None] = mapped_column(nullable=True)
+    process_gap_proposed_change: Mapped[str | None] = mapped_column(nullable=True)
+    process_gap_raised_by: Mapped[str | None] = mapped_column(nullable=True)
+    process_gap_status: Mapped[str | None] = mapped_column(nullable=True)
+
+    l4_provider: Mapped[str | None] = mapped_column(nullable=True)
+    l4_model: Mapped[str | None] = mapped_column(nullable=True)
+    l4_prompt_version: Mapped[str | None] = mapped_column(nullable=True)
+    l4_completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
+class ScoreMarkerRow(Base):
+    """One rubric observation (Data Model sheet: "Rubric marker" — kept at
+    marker level, separate from the call, "so a refused marker is
+    visible. A score with no marker trail is not auditable.").
+
+    Every marker the model raised is stored, not just the ones that
+    survived evidence checking — `verification_status` is "accepted" or
+    an `EvidenceRejection` value (`domain/extraction/evidence.py`).
+    """
+
+    __tablename__ = "score_markers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), nullable=False, index=True)
+    dimension: Mapped[str] = mapped_column(nullable=False)
+    polarity: Mapped[str] = mapped_column(nullable=False)  # Polarity.value
+    description: Mapped[str] = mapped_column(nullable=False)
+    quote: Mapped[str] = mapped_column(nullable=False)
+    turn_seq: Mapped[int] = mapped_column(nullable=False)
+    verification_status: Mapped[str] = mapped_column(nullable=False)
+
+
+class SignalRow(Base):
+    """One raised signal (Data Model sheet: "Signal" — separate from the
+    call so one call can raise several, and so signal density counts
+    distinct types rather than occurrences).
+
+    Only signals that survived evidence checking are stored — severity is
+    never persisted here; it's derived from `type` on read
+    (`domain.value_objects.signal_type.severity_of`), so it can't drift
+    from the taxonomy.
+    """
+
+    __tablename__ = "signals"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), nullable=False, index=True)
+    type: Mapped[str] = mapped_column(nullable=False)  # SignalType.value
+    quote: Mapped[str] = mapped_column(nullable=False)
+    turn_seq: Mapped[int] = mapped_column(nullable=False)
+
+
+class RunRow(Base):
+    """One run of the extraction pipeline over a set of calls (plan §8
+    Phase 3, "run orchestration... resumability"). Like `IngestJobRow`,
+    one row per run makes the run itself a queryable record; unlike an
+    ingest job, a run's outcome is a status per call, not a single
+    message, so its per-item detail lives in `RunItemRow`.
+    """
+
+    __tablename__ = "runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    status: Mapped[str] = mapped_column(nullable=False)  # RunStatus.value
+    provider: Mapped[str] = mapped_column(nullable=False)
+    model: Mapped[str] = mapped_column(nullable=False)
+    created_at: Mapped[datetime] = mapped_column(nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    items: Mapped[list[RunItemRow]] = relationship(back_populates="run")
+
+
+class RunItemRow(Base):
+    """One call's place within a run. `error` is the failure's message,
+    kept for the operator running the CLI or watching the endpoint — not
+    a substitute for the pipeline's own error logging.
+    """
+
+    __tablename__ = "run_items"
+    __table_args__ = (UniqueConstraint("run_id", "call_reference", name="uq_run_item"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("runs.id"), nullable=False, index=True)
+    call_reference: Mapped[str] = mapped_column(nullable=False)
+    status: Mapped[str] = mapped_column(nullable=False)  # RunItemStatus.value
+    error: Mapped[str | None] = mapped_column(nullable=True)
+
+    run: Mapped[RunRow] = relationship(back_populates="items")
+
 
 class GroundTruthRow(Base):
     """The Transcript Tracker's answer for one call (plan §8 Phase 2).

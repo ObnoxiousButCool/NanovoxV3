@@ -42,6 +42,8 @@ DEFAULT_WORKBOOK_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_corpus_v9_build_bibl
 # The matched-pair transcripts PDF (plan §11: workbook _2 with PDF _1, no
 # other pairing).
 DEFAULT_TRANSCRIPTS_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_v9_transcripts_batch1_001-100_1.pdf"
+# L3's fixed scoring rubric (Call Quality Framework sheet).
+DEFAULT_RUBRIC_PATH: Path = DEFAULT_CONFIG_DIR / "rubric.yaml"
 
 
 def default_database_url() -> str:

@@ -1,0 +1,116 @@
+# NanoVox Insights agent scoring rubric.
+#
+# This file is the whole scoring policy. The model never returns a score —
+# it returns evidence-anchored markers, and this rubric turns them into a
+# number (Call Quality Framework sheet). Two consequences worth stating
+# plainly:
+#
+#   * The same transcript always produces the same score, on any provider.
+#   * Changing what a failure costs is a change to this file, reviewable by
+#     someone who does not read Python.
+#
+# Every number below — dimensions, weights, caps, tier boundaries — is
+# copied verbatim from the workbook's Call Quality Framework sheet, "THE
+# SIX DIMENSIONS" and "4. Banding" sections. Nothing here is invented.
+
+version: "1.0.0"
+
+# 100 means "nothing detracted from the call". Markers only ever move the
+# score down from here.
+base_score: 100
+
+# The most that positive markers may offset accumulated deductions, in
+# total. Strong handling can soften a poor outcome; it cannot cancel a
+# compliance failure, and it can never lift a call above base_score.
+# (Call Quality Framework sheet, stage 3: "positive markers offset
+# penalties up to a maximum of 15 points and never add above the base.")
+#
+# The sheet's own "OPEN DESIGN DECISIONS" #2 flags that this offset is
+# applied to the *total*, not per dimension, so warmth can currently pay
+# down a compliance penalty. Recorded here rather than fixed unilaterally
+# — the sheet's own recommended fix (exclude compliance_disclosure and
+# escalation_appropriateness from offset eligibility, plus a hard gate
+# capping any compliance negative at 60) is a rubric policy change for
+# Minnie to confirm, not an engineering default to assume.
+max_positive_offset: 15
+
+# --- Dimensions ------------------------------------------------------------
+# `positive` / `negative` are magnitudes for a single marker; the engine
+# applies the sign. `max_positive` / `max_negative` cap the total from one
+# dimension, so a model that phrases the same criticism five ways cannot
+# sink a call on one issue.
+dimensions:
+  empathy:
+    label: Empathy and acknowledgement
+    positive: 3
+    negative: 8
+    max_positive: 9
+    max_negative: 24
+
+  accuracy:
+    label: Factual and procedural accuracy
+    positive: 2
+    negative: 12
+    max_positive: 6
+    max_negative: 36
+
+  proactivity:
+    label: Proactive help beyond the question asked
+    positive: 3
+    negative: 6
+    max_positive: 9
+    max_negative: 18
+
+  compliance_disclosure:
+    label: Required disclosures and compliant conduct
+    positive: 2
+    negative: 15
+    max_positive: 6
+    max_negative: 45
+
+  resolution_ownership:
+    label: Ownership of the member's outcome
+    positive: 2
+    negative: 10
+    max_positive: 6
+    max_negative: 30
+
+  escalation_appropriateness:
+    label: Recognising and acting on urgency
+    positive: 3
+    negative: 20
+    max_positive: 9
+    max_negative: 40
+
+# --- Tiers -----------------------------------------------------------------
+# Lower bounds, inclusive (Call Quality Framework sheet, "4. Banding").
+# The sheet's own "OPEN DESIGN DECISIONS" #3 notes the 86 boundary is
+# derived circularly from the cohort currently employed, and recommends
+# calibrating against outcomes once the corpus supports it. Left as the
+# sheet states it, not recalculated here.
+tiers:
+  good: 86
+  average: 60
+
+# --- Significance ------------------------------------------------------------
+# Agents below this many calls are shown but not tier-rated; their raw
+# average is still published. The workbook's Metrics sheet marks metric 12
+# (agent quality score) "min n: n/a" — it scores per call, not as an
+# agent-level aggregate — so this specific threshold is not a workbook
+# number. It is NanoVox's own judgement about single-call volatility
+# (one call can move a small-sample average by several points), kept as a
+# reasonable default pending Minnie's confirmation, not presented as a v9
+# figure.
+min_calls_for_tier_rating: 5
+
+# --- Gates -----------------------------------------------------------------
+# Deliberately empty. See this file's counterpart, domain/scoring/rubric.py's
+# module docstring, for why: the Call Quality Framework sheet's clinical
+# withholding case needs `escalation.trigger_type == clinical_or_safety_risk`,
+# which L4 — not L3 — determines, and L3/L4 run concurrently (plan §7).
+# There is also no `clinical_risk` *signal* in the Signal Taxonomy sheet at
+# all, which is what a naive port of NanoVox's own gate would have keyed on
+# — it would never have fired. The real clinical suspension is applied once
+# both L3 and L4 have finished, in the pipeline wiring, not as a rubric gate
+# here.
+gates: []

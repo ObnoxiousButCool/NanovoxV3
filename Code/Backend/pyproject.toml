@@ -147,6 +147,10 @@ source_modules = [
     "infrastructure.corpus.pdf_corpus_source",
     "domain.extraction.l1_deterministic",
     "application.use_cases.classify_call_l2",
+    "application.use_cases.classify_call_l3",
+    "application.use_cases.classify_call_l4",
+    "application.use_cases.run_extraction_pipeline",
+    "application.use_cases.run_extraction_over_corpus",
 ]
 forbidden_modules = [
     "application.ports.answer_key_source",

@@ -24,10 +24,12 @@ import logging
 from collections.abc import Coroutine
 from typing import Any
 
+from application.ports.run_scheduler import RunScheduler
+
 logger = logging.getLogger(__name__)
 
 
-class BackgroundRunner:
+class BackgroundRunner(RunScheduler):
     """Owns the in-process tasks working background runs."""
 
     def __init__(self) -> None:

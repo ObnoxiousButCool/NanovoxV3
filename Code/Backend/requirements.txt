@@ -23,7 +23,7 @@ anthropic>=1.0,<2.0
 openai>=1.60,<3.0
 # Ollama speaks plain HTTP; httpx2 is already the transport anthropic 1.x uses.
 httpx2>=2.12,<3.0
-# Reading config/dashboard.yaml (Phase 6). Declared here rather than relied on
-# transitively: it arrives in the venv as somebody else's dependency today,
-# and a fresh environment that resolves that away would fail at startup.
+# config/rubric.yaml and config/dashboard.yaml. Declared directly rather than
+# relied on transitively (uvicorn[standard] pulls it in today): our own code
+# imports it, and a fresh environment that resolves it away would fail at startup.
 PyYAML>=6.0,<7.0
