@@ -1,0 +1,394 @@
+<meta charset="utf-8">
+<title>Account Signals</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="app.css">
+<script>
+/* Stamp the theme before first paint, so the ground colour never flashes.
+   Light is the default and "system" is the only value that defers to the OS.
+   Mirrors NV.themeRead in app.js - keep the two in step. */
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") {
+    document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+  }
+} catch (e) {}
+</script>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead">
+      <h1>Where is the retention risk?</h1>
+      <p class="q">Risk <b>indicators</b> observed in call behaviour, set against the account facts that decide how much a problem costs. Not a churn prediction &mdash; see the note at the foot of this page.</p>
+      <div id="filters"></div>
+    </div>
+
+    <div class="wrap">
+      <div class="kpis" id="kpis"></div>
+
+      <section class="panel c7">
+        <header>
+          <div><h2>Accounts carrying risk indicators</h2></div>
+          <div class="row" style="gap:6px">
+            <span class="cls cls-observed">observed</span><span class="cls cls-reference">reference</span>
+          </div>
+        </header>
+        <p class="sub">Ranked by how many <b>distinct</b> indicator families the account's calls raise &mdash; the same &ldquo;two or more conditions&rdquo; test the v9 metric sheet uses for its account risk flag. Click a row for the evidence.</p>
+        <div class="tblwrap"><table id="emptable"><thead><tr>
+          <th>Employer</th><th>Broker</th><th>Region</th><th>Risk band</th>
+          <th class="num">Signals</th><th class="num">Calls</th><th class="num">Lives</th><th>Renews</th>
+        </tr></thead><tbody></tbody></table></div>
+        <p class="note suppressed" style="margin-top:12px"><b>Risk movement is withheld.</b> Direction (improving / stable / deteriorating) needs two comparable periods per account. In batch 1, 85 of 92 employers have a single call, so no account has the history to support a trend. The figure returns at full corpus volume.</p>
+      </section>
+
+      <section class="panel c5">
+        <header><div><h2>Call volume and failure, by week</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">All 100 written calls across the 12-week window.</p>
+        <div id="trend"></div>
+        <div id="trend2" style="margin-top:14px"></div>
+      </section>
+
+      <section class="panel c5">
+        <header><div><h2>What the calls resolved to</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">Outcome is the field four metrics key off. Click a segment to filter everything on this page.</p>
+        <div id="outcome"></div>
+        <div id="esc" style="margin-top:16px"></div>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>How the calls went</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">Quality banded the way the v9 framework bands it &mdash; good at 86 and above,
+          poor below 60 &mdash; rather than averaged. An average hides the tail, and the tail is the
+          part worth acting on.</p>
+        <div id="qbands"></div>
+        <div id="arche" style="margin-top:18px"></div>
+        <p class="note suppressed" style="margin-top:12px" id="archenote"></p>
+      </section>
+
+      <section class="panel c6">
+        <header>
+          <div><h2>Risk drivers across the book</h2></div>
+          <span class="cls cls-pattern">pattern</span>
+        </header>
+        <p class="sub">Each driver counted as calls, split across three four-week buckets so direction is visible without quoting a rate on a thin sample. Hover for the split; click to filter.</p>
+        <div id="drivers"></div>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>Emerging issues</h2></div><span class="cls cls-pattern">pattern</span></header>
+        <p class="sub">Topics, touchpoints and signals whose latest four weeks exceed their first four. Counts only &mdash; at 100 calls a bucket share would be about three calls, and the v9 README deletes metrics built on windows that thin.</p>
+        <div id="emerging"></div>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>Questions the evidence raises</h2></div><span class="cls cls-inference">inference</span></header>
+        <p class="sub">Threshold rules from the v9 workbook, each measured against batch 1 with its own rolling window. A rule below threshold is shown with what it actually reached &mdash; the gap is the finding.</p>
+        <div id="qwa" class="stack"></div>
+      </section>
+
+      <section class="panel c12">
+        <header><div><h2>Action summary</h2></div><span class="cls cls-recommendation">recommended</span></header>
+        <p class="sub">Every item is seeded from something in the corpus &mdash; a process-gap proposal, a knowledge failure, an escalation miss, a control exception or exit language. Assignment, dates and outcomes are prototype workflow data.</p>
+        <div id="actionsum"></div>
+      </section>
+
+      <section class="panel c12">
+        <header><div><h2>How to read every figure on this page</h2></div></header>
+        <div class="legendcls" style="margin-bottom:12px"></div>
+        <div id="epistemic" class="stack"></div>
+      </section>
+    </div>
+
+    <p class="srcline">
+      Source: <code>nanovox_corpus_v9_build_bible_2.xlsx</code> (95 employers, 30 brokers, 20 agents, 122 rules)
+      and <code>nanovox_v9_transcripts_batch1_001-100_1.pdf</code> (100 written calls, 6 Jul &ndash; 21 Sep 2026).
+      Account facts are the design population at 600 calls; call evidence is the 100 calls actually written.
+    </p>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  const D = NV.D, K = D.kpis;
+  document.getElementById("rail").innerHTML = NV.rail("index.html");
+
+  const CHIPS = [
+    ["observed", "counted directly from the 100 written calls"],
+    ["reference", "a fact from the workbook's master sheets"],
+    ["derived", "computed from observed values"],
+    ["pattern", "a relationship across several observed values"],
+    ["inference", "a possible explanation, never asserted as cause"],
+    ["recommendation", "a suggested action based on the evidence"],
+  ];
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+
+  function kpiTile(o) {
+    return '<button class="kpi ' + (o.tone || "") + '" data-act="' + (o.act || "") + '">' +
+      '<span class="k">' + o.k + "</span><span class=\"v\">" + o.v + "</span>" +
+      '<span class="m">' + o.m + "</span></button>";
+  }
+
+  function render() {
+    const calls = NV.calls(), prior = NV.callsPrior();
+    const emps = NV.employersInScope();
+    const withCalls = new Set(calls.map((c) => c.employer));
+    const elevated = emps.filter((e) => e.scoped_band === "High" || e.scoped_band === "Elevated");
+    const high = emps.filter((e) => e.scoped_band === "High");
+    const acts = D.actions;
+    const open = acts.filter((a) => ["needs_action", "assigned", "in_progress"].indexOf(a.status) !== -1);
+    const overdue = acts.filter((a) => a.status === "overdue");
+    const unres = calls.filter((c) => c.outcome === "UNRESOLVED").length;
+    const unresPrior = prior.filter((c) => c.outcome === "UNRESOLVED").length;
+    const trig = calls.filter((c) => c.esc_triggered).length;
+    const handled = calls.filter((c) => c.esc_handled).length;
+
+    document.getElementById("kpis").innerHTML = [
+      kpiTile({ k: "Employers monitored", v: emps.length, m: withCalls.size + " with a call this period", act: "" }),
+      kpiTile({ k: "Carrying 2+ indicators", v: elevated.length, m: high.length + " at three or more", tone: "is-crit", act: "band:Elevated" }),
+      kpiTile({ k: "First flagged in Wk 9–12", v: K.employers_newly_flagged, m: "no earlier indicator on record", tone: "is-warn", act: "" }),
+      kpiTile({ k: "Unresolved calls", v: unres, m: prior.length ? "was " + unresPrior + " in the prior window" : "of " + calls.length + " in window", act: "outcome:UNRESOLVED" }),
+      kpiTile({ k: "Escalation integrity", v: trig ? Math.round(handled / trig * 100) + "%" : "–", m: handled + " handled of " + trig + " warranted", tone: trig && handled / trig < 0.8 ? "is-crit" : "", act: "esc:missed" }),
+      kpiTile({ k: "Open actions", v: open.length, m: overdue.length + " overdue", tone: overdue.length ? "is-warn" : "", act: "" }),
+      kpiTile({ k: "Signals raised", v: calls.reduce((a, c) => a + c.signals.length, 0), m: "on " + calls.filter((c) => c.signals.length).length + " calls", act: "" }),
+      kpiTile({ k: "Employers improving", v: "—", m: "withheld · needs a prior indicator per account", tone: "is-withheld", act: "" }),
+    ].join("");
+
+    document.querySelectorAll("#kpis .kpi").forEach((b) => {
+      b.addEventListener("click", () => {
+        const a = b.dataset.act;
+        if (!a) return;
+        const [k, v] = a.split(":");
+        NV.set(k, NV.S[k] === v ? "" : v);
+      });
+    });
+
+    /* ---- employer table ----
+       Bands are computed over the calls in the current period, so narrowing the
+       week narrows the risk as well. */
+    const ranked = emps.filter((e) => e.scoped_written > 0).sort((a, b) =>
+      b.scoped_families - a.scoped_families || b.scoped_signals - a.scoped_signals ||
+      b.enrolled - a.enrolled).slice(0, 12);
+    const tb = document.querySelector("#emptable tbody");
+    tb.innerHTML = ranked.map((e) => '<tr class="clickable" data-e="' + e.id + '">' +
+      '<td><span class="nm">' + NV.esc(e.name) + '</span><span class="sm">' + e.id + " · " + NV.esc(e.industry) + "</span></td>" +
+      "<td>" + NV.esc(NV.brk(e.broker).agency) + "</td>" +
+      "<td>" + NV.esc(e.region) + "</td>" +
+      "<td>" + NV.bandPill(e.scoped_band) + '<span class="sm">' + e.scoped_families + " famil" + (e.scoped_families === 1 ? "y" : "ies") + "</span></td>" +
+      '<td class="num">' + e.scoped_signals + "</td>" +
+      '<td class="num">' + e.scoped_written + "</td>" +
+      '<td class="num">' + e.enrolled + "</td>" +
+      "<td>" + NV.esc(e.renewal_month) + "</td></tr>").join("") ||
+      '<tr><td colspan="8"><div class="empty"><b>No accounts with calls in this period</b>Widen the period or clear a filter.</div></td></tr>';
+    tb.querySelectorAll("tr[data-e]").forEach((tr) => {
+      tr.addEventListener("click", () => openEmployer(tr.dataset.e));
+    });
+
+    /* ---- trends ---- */
+    const weeks = D.weeks;
+    const byWeek = (pred) => weeks.map((w) => calls.filter((c) => c.w === w && pred(c)).length);
+    NV.chart.line(document.getElementById("trend"), {
+      labels: weeks.map((w) => "W" + w), height: 168, area: true,
+      tipTitle: (i) => "Week " + weeks[i] + " · " + NV.weekDates(weeks[i]),
+      series: [{ name: "Calls", color: "var(--s1)", values: byWeek(() => true) }],
+      aria: "Weekly call volume across the 12-week window",
+    });
+    NV.chart.line(document.getElementById("trend2"), {
+      labels: weeks.map((w) => "W" + w), height: 168,
+      tipTitle: (i) => "Week " + weeks[i] + " · " + NV.weekDates(weeks[i]),
+      series: [
+        { name: "Unresolved", color: "var(--s2)", values: byWeek((c) => c.outcome === "UNRESOLVED") },
+        { name: "Repeat contact", color: "var(--s3)", values: byWeek((c) => !!c.repeat_of) },
+        { name: "Signals raised", color: "var(--s4)", values: byWeek((c) => c.signals.length > 0) },
+      ],
+      aria: "Weekly unresolved calls, repeat contacts and calls raising a signal",
+    });
+
+    /* ---- outcome composition ---- */
+    const OUT = [["RESOLVED", "var(--s1)"], ["PARTIALLY RESOLVED", "var(--s2)"],
+      ["ESCALATED", "var(--s3)"], ["UNRESOLVED", "var(--s4)"]];
+    NV.chart.stacked(document.getElementById("outcome"), {
+      aria: "Share of calls by outcome",
+      parts: OUT.map(([name, color]) => ({
+        name: name === "PARTIALLY RESOLVED" ? "Partially resolved" : NV.titleCase(name.toLowerCase()),
+        value: calls.filter((c) => c.outcome === name).length, color: color,
+        onClick: () => NV.set("outcome", NV.S.outcome === name ? "" : name),
+      })),
+    });
+
+    const missed = calls.filter((c) => c.esc_triggered && !c.esc_handled);
+    document.getElementById("esc").innerHTML =
+      '<h4 style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);margin:0 0 6px">Escalation integrity ' +
+      NV.clsChip("derived", "handled divided by triggered - never escalations divided by all calls") + "</h4>" +
+      '<p style="margin:0;font-size:12.5px">' +
+      "<b>" + handled + " of " + trig + "</b> calls that warranted a supervisor got one" +
+      (trig ? " — a <b>" + Math.round(100 - handled / trig * 100) + "% refusal rate</b>." : ".") +
+      " Measured against <i>all</i> calls instead, the same evidence reads as " +
+      (calls.length ? Math.round(calls.filter((c) => c.outcome === "ESCALATED").length / calls.length * 100) : 0) +
+      "% and looks unremarkable.</p>" +
+      (missed.length ? '<p class="sm" style="margin:8px 0 0">Refused on: ' +
+        missed.map((c) => '<a href="#" data-c="' + c.id + '">' + c.id + "</a>").join(", ") + "</p>" : "");
+    document.querySelectorAll("#esc a[data-c]").forEach((a) =>
+      a.addEventListener("click", (e) => { e.preventDefault(); NV.openCall(a.dataset.c); }));
+
+    /* ---- drivers ---- */
+    const drv = D.drivers.map((d) => {
+      const scoped = d.calls.filter((id) => calls.some((c) => c.id === id));
+      return Object.assign({}, d, { scoped: scoped.length, scopedIds: scoped });
+    }).filter((d) => d.scoped > 0).sort((a, b) => b.scoped - a.scoped);
+    /* ---- how the calls went ---- */
+    const qs = NV.qualitySplit(calls);
+    NV.chart.bars(document.getElementById("qbands"), {
+      labelWidth: 150, rowHeight: 30,
+      rows: NV.QUALITY_BANDS.map(([key, , label, range]) => ({
+        label: label + " (" + range + ")", value: qs[key],
+        display: qs[key] + "  ·  " + (calls.length ? Math.round(qs[key] / calls.length * 100) : 0) + "%",
+        color: key === "POOR" ? "var(--serious)" : key === "GOOD" ? "var(--good)" : "var(--warning)",
+        tip: "<b>" + label + "</b><dl><dt>Calls</dt><dd>" + qs[key] + "</dd><dt>Score</dt><dd>" +
+          range + "</dd></dl>",
+        onClick: () => NV.set("quality", NV.S.quality === key ? "" : key),
+      })),
+      aria: "Call quality banded good, average and poor",
+    });
+
+    const arche = NV.archetypeSplit(calls);
+    NV.chart.bars(document.getElementById("arche"), {
+      labelWidth: 210, rowHeight: 28,
+      rows: arche.map((a) => ({
+        label: a.name, value: a.n,
+        display: a.n + "  ·  avg quality " + a.avgScore,
+        color: a.adverse ? "var(--serious)" : "var(--seq-2)",
+        tip: "<b>" + NV.esc(a.name) + "</b><div style='color:var(--ink-2);margin:4px 0 6px'>" +
+          NV.esc(a.gloss) + "</div><dl><dt>Calls</dt><dd>" + a.n + "</dd><dt>Accounts</dt><dd>" +
+          a.employers + "</dd><dt>Avg quality</dt><dd>" + a.avgScore +
+          "</dd><dt>Unresolved</dt><dd>" + a.unresolved + "</dd></dl>",
+        onClick: () => NV.drawer("Calls handled as “" + a.name + "”",
+          '<p class="sub" style="margin-top:0">' + NV.esc(a.gloss) + "</p>" +
+          a.calls.map((c) => '<div class="row" style="justify-content:space-between;padding:5px 0;' +
+            'border-bottom:1px solid var(--rule)"><a href="#" data-c="' + c.id + '" class="mono">' +
+            c.id + '</a><span class="sm">' + NV.esc(NV.emp(c.employer).name) + " · " +
+            NV.esc(c.category) + " · quality " + c.score + "</span></div>").join(""),
+          "observed", (root) => root.querySelectorAll("a[data-c]").forEach((x) =>
+            x.addEventListener("click", (e) => { e.preventDefault(); NV.openCall(x.dataset.c); }))),
+      })),
+      aria: "How calls were handled, by archetype",
+    });
+    const bad = arche.filter((a) => a.adverse);
+    const badN = bad.reduce((t, a) => t + a.n, 0);
+    document.getElementById("archenote").innerHTML = badN
+      ? "<b>" + badN + " of " + calls.length + " calls ended badly on our side.</b> Handling maps " +
+        "onto outcome in this corpus, so this is not a second measure of failure — it is a " +
+        "<i>split</i> of the unresolved calls into " +
+        bad.map((a) => "<b>" + a.n + "</b> " + a.name.toLowerCase()).join(" and ") +
+        ". One is a behaviour and one is a process. They need different fixes, and an " +
+        "&ldquo;unresolved&rdquo; count alone cannot tell them apart."
+      : "No calls in scope were handled as a brush-off or went circular.";
+
+    NV.chart.bars(document.getElementById("drivers"), {
+      labelWidth: 228,
+      rows: drv.map((d) => ({
+        label: d.label, value: d.scoped,
+        display: d.scoped + "  (" + d.buckets.join(" → ") + ")",
+        color: d.code === "unresolved" || d.code === "escalation_missed" ? "var(--s2)" : "var(--seq-2)",
+        tip: "<b>" + NV.esc(d.label) + "</b><dl><dt>Calls in scope</dt><dd>" + d.scoped +
+          "</dd><dt>Employers</dt><dd>" + d.employers + "</dd><dt>Wk 1–4</dt><dd>" + d.buckets[0] +
+          "</dd><dt>Wk 5–8</dt><dd>" + d.buckets[1] + "</dd><dt>Wk 9–12</dt><dd>" + d.buckets[2] +
+          "</dd></dl><div style='margin-top:6px;color:var(--ink-2)'>Most often: " +
+          NV.esc(d.top_category) + (d.top_touchpoint ? " · " + NV.esc(NV.titleCase(d.top_touchpoint)) : "") + "</div>",
+        onClick: () => showDriver(d),
+      })),
+      aria: "Risk drivers by number of calls",
+    });
+
+    /* ---- emerging ---- */
+    const em = D.emerging.filter((e) => e.delta >= 1).slice(0, 8);
+    if (em.length) {
+      NV.chart.grouped(document.getElementById("emerging"), {
+        buckets: D.buckets, labelWidth: 208,
+        rows: em.map((e) => ({
+          label: NV.titleCase(e.key) + "  · " + e.kind,
+          values: e.buckets,
+          note: e.delta > 0 ? "Latest bucket is " + e.delta + " above the first." : "Flat across buckets.",
+        })),
+        aria: "Topics and signals by four-week bucket",
+      });
+    } else {
+      document.getElementById("emerging").innerHTML =
+        '<div class="empty"><b>Nothing rising in this scope</b>No topic, touchpoint or signal has more calls in Wk 9–12 than in Wk 1–4.</div>';
+    }
+
+    /* ---- questions worth asking ---- */
+    document.getElementById("qwa").innerHTML = D.qwa.map((q) => {
+      const fired = q.fires > 0;
+      return '<div class="claim" style="border-left-color:' + (fired ? "var(--serious)" : "var(--rule-strong)") + '">' +
+        '<div class="spread"><div class="t"><b>' + NV.esc(q.question) + "</b></div>" +
+        (fired ? '<span class="pill pill-elevated">fires ×' + q.fires + "</span>"
+               : '<span class="pill pill-none">below threshold</span>') + "</div>" +
+        '<p class="sm" style="margin:4px 0 0">Trigger ' + q.n + " · " + NV.esc(q.threshold) +
+        " · <b>" + q.lens + "</b><br>Highest observed: " + q.best + " — " + NV.esc(q.best_label) + "</p></div>";
+    }).join("");
+
+    /* ---- action summary ---- */
+    const LANES = [["needs_action", "Needs action"], ["assigned", "Assigned"],
+      ["in_progress", "In progress"], ["overdue", "Overdue"], ["action_taken", "Action taken"],
+      ["monitoring", "Monitoring"], ["completed", "Completed"]];
+    document.getElementById("actionsum").innerHTML =
+      '<div class="kpis" style="grid-column:auto">' + LANES.map(([k, label]) => {
+        const n = acts.filter((a) => a.status === k).length;
+        return '<a class="kpi" href="actions.html" style="text-decoration:none">' +
+          '<span class="k">' + label + '</span><span class="v">' + n + "</span>" +
+          '<span class="m">' + (k === "overdue" ? "past due date" : k === "monitoring" ? "outcome being measured" : "items") + "</span></a>";
+      }).join("") + "</div>";
+
+    /* ---- epistemic ledger ---- */
+    const topDriver = drv[0], topEm = em[0];
+    document.getElementById("epistemic").innerHTML = [
+      ["observed", "Counted", (topDriver ? topDriver.label.toLowerCase() + " appears on " + topDriver.scoped + " of " + calls.length + " calls in scope." : "No calls in scope.")],
+      ["reference", "Account fact", elevated.length + " of " + emps.length + " employers carry two or more indicator families; " + emps.filter((e) => e.renewal_m >= 10 || e.renewal_m <= 1).length + " of them renew within the next quarter."],
+      ["derived", "Calculated", "Escalation integrity is " + (trig ? Math.round(handled / trig * 100) + "%" : "not computable") + " — handled divided by triggered, not escalations divided by all calls."],
+      ["pattern", "Relationship", topEm ? NV.titleCase(topEm.key) + " moved " + topEm.buckets.join(" → ") + " across the three four-week buckets." : "No bucket movement in scope."],
+      ["inference", "Possible explanation", "Concentration of unresolved and repeat contacts on a single touchpoint <i>may</i> indicate resolution friction there. This is a reading of the pattern, not a demonstrated cause, and not evidence that any employer will leave."],
+      ["recommendation", "Suggested action", "Route the highest-count process-gap proposal to the touchpoint owner named in the workbook, then re-measure repeat contacts at that touchpoint after four weeks."],
+    ].map(([cls, label, text]) => '<div class="claim"><div class="row" style="gap:8px;margin-bottom:3px">' +
+      NV.clsChip(cls) + '<b style="font-size:12px">' + label + "</b></div>" +
+      '<div class="t" style="color:var(--ink-2)">' + text + "</div></div>").join("");
+
+    NV.wireKeyboard(document);
+  }
+
+  function showDriver(d) {
+    const rows = d.scopedIds.map((id) => {
+      const c = NV.call(id), e = NV.emp(c.employer);
+      return '<tr class="clickable" data-c="' + id + '"><td><span class="nm">' + id +
+        '</span><span class="sm">' + c.date + "</span></td><td>" + NV.esc(e.name) +
+        '<span class="sm">' + NV.esc(e.region) + "</span></td><td>" + NV.esc(c.category) +
+        "</td><td>" + c.outcome + "</td></tr>";
+    }).join("");
+    NV.drawer(NV.esc(d.label), '<p class="sub" style="margin:0">' + d.scoped +
+      " calls in the current scope, across " + d.employers + " employers. Most often " +
+      NV.esc(d.top_category) + (d.top_touchpoint ? " at " + NV.esc(NV.titleCase(d.top_touchpoint)) : "") +
+      ".</p><div class=\"tblwrap\"><table><thead><tr><th>Call</th><th>Employer</th><th>Category</th><th>Outcome</th></tr></thead><tbody>" +
+      rows + "</tbody></table></div>", "observed",
+      (dlg) => dlg.querySelectorAll("tr[data-c]").forEach((tr) =>
+        tr.addEventListener("click", () => NV.openCall(tr.dataset.c))));
+  }
+
+  function openEmployer(id) {
+    NV.set("employer", id);
+    window.location.href = NV.href("employer.html");
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+  document.querySelector("#epistemic").closest(".panel").querySelector(".legendcls").innerHTML =
+    CHIPS.map(([k, t]) => "<span>" + NV.clsChip(k) + " " + t + "</span>").join("");
+})();
+</script>

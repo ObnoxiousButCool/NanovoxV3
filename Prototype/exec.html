@@ -1,0 +1,501 @@
+<meta charset="utf-8">
+<title>Board Scorecard</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="app.css">
+<script>
+/* Stamp the theme before first paint, so the ground colour never flashes.
+   Light is the default and "system" is the only value that defers to the OS.
+   Mirrors NV.themeRead in app.js - keep the two in step. */
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") {
+    document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+  }
+} catch (e) {}
+</script>
+<style>
+  /* A scorecard, not an essay. Each section is a strip of figures over dense
+     tables, and prose is capped at one line - nothing has to be read to get to
+     the number. */
+  .qsec { grid-column: span 12; }
+  .qsec > header { align-items: baseline; border-bottom: 1px solid var(--rule); padding-bottom: 10px; margin-bottom: 14px; }
+  .qnum { font: 600 11px/1 var(--display); letter-spacing: .08em; color: var(--ink-3); text-transform: uppercase; }
+  .qsec h2 { font-size: 21px; letter-spacing: -.015em; }
+  .qsec .answer { font-size: 13px; line-height: 1.5; color: var(--ink-2); max-width: 92ch; margin: 0 0 14px; }
+  .qsec .answer b { font-weight: 600; color: var(--ink); }
+  .qsec h4 {
+    font: 600 11px/1 var(--display); text-transform: uppercase; letter-spacing: .05em;
+    color: var(--ink-3); margin: 18px 0 8px;
+  }
+
+  /* The headline strip. Denser than the working pages' tiles - these get read
+     from across a room, so the figure leads and its denominator is always on
+     the card. Hairline grid rather than gaps, so ten of them still scan as one
+     block. */
+  .bigrow {
+    display: grid; gap: 1px; background: var(--rule);
+    border: 1px solid var(--rule); border-radius: var(--r); overflow: hidden;
+    grid-template-columns: repeat(auto-fit, minmax(134px, 1fr));
+  }
+  .big { display: flex; flex-direction: column; gap: 3px; background: var(--surface); padding: 11px 12px; }
+  .big .k { font-size: 11px; color: var(--ink-2); line-height: 1.3; }
+  .big .v { font: 600 27px/1 var(--display); letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+  .big .m { font-size: 10.5px; color: var(--ink-3); line-height: 1.3; }
+  .big.withheld { box-shadow: inset 3px 0 0 var(--warning); }
+  .big.withheld .v { color: var(--ink-3); }
+
+  /* Tables carry the detail. Tighter than elsewhere: a board reads down a
+     column, so the rows have to fit on one screen. */
+  .qsec table { font-size: 12px; }
+  .qsec table td, .qsec table th { padding: 6px 9px; }
+  .qsec table .lead { font-weight: 600; }
+  .qsec table th.sparkcell, .qsec table td.sparkcell { width: 80px; padding-right: 0; }
+  .qsec table td.sparkcell svg { margin-left: auto; }
+  .nd { color: var(--ink-3); }
+  .qsec .note { margin-top: 12px; }
+</style>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead">
+      <h1>Board scorecard</h1>
+      <p class="q">Five questions, answered in figures. Every number is a count of something
+        observed in the calls or a fact from the workbook &mdash; nothing here is a forecast, and
+        nothing has been validated against real churn.</p>
+      <div id="filters"></div>
+    </div>
+    <div class="wrap" id="body"></div>
+    <p class="srcline">
+      100 written calls from <code>nanovox_v9_transcripts_batch1_001-100_1.pdf</code> against 95 employer
+      accounts from <code>nanovox_corpus_v9_build_bible_2.xlsx</code>, 6 Jul &ndash; 25 Sep 2026.
+      Every rate is shown with the count it is taken from, and suppressed below five calls.
+      The detail behind each figure is one click away in the left rail.
+    </p>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("exec.html");
+
+  const BUCKETS = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]];
+  const BLAB = ["Wk 1–4", "Wk 5–8", "Wk 9–12"];
+  const WEEKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+  /* A rate is only published when it has a denominator worth dividing by. Below
+     five calls a percentage is one call moving, which is how a scorecard starts
+     telling a story its sample cannot support. */
+  const MIN_N = 5;
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar({ compact: true });
+    NV.bindFilters(el);
+  }
+
+  function section(n, question, answerHtml, bodyHtml, chip, href, hrefLabel) {
+    return '<section class="panel qsec"><header class="spread"><div>' +
+      '<span class="qnum">Question ' + n + "</span>" +
+      "<h2>" + question + "</h2></div>" +
+      (chip ? NV.clsChip(chip) : "") + "</header>" +
+      (answerHtml ? '<p class="answer">' + answerHtml + "</p>" : "") + bodyHtml +
+      (href ? '<p style="margin:14px 0 0;font-size:12.5px"><a href="' + NV.href(href) + '">' +
+        hrefLabel + " →</a></p>" : "") + "</section>";
+  }
+
+  function big(k, v, m, cls) {
+    return '<div class="big ' + (cls || "") + '"><span class="k">' + k +
+      '</span><span class="v">' + v + '</span><span class="m">' + m + "</span></div>";
+  }
+  const tiles = (html) => '<div class="bigrow">' + html + "</div>";
+
+  /* cols: [label] or [label, cellClass]. rows: arrays of already-escaped html. */
+  function tbl(cols, rows) {
+    if (!rows.length) {
+      return '<div class="empty"><b>Nothing in scope</b>Widen the period or clear a filter.</div>';
+    }
+    return '<div class="tblwrap"><table><thead><tr>' +
+      cols.map((c) => "<th" + (c[1] ? ' class="' + c[1] + '"' : "") + ">" + c[0] + "</th>").join("") +
+      "</tr></thead><tbody>" + rows.map((r) => "<tr>" + r.map((cell, i) => {
+        const cls = (cols[i] || [])[1];
+        return "<td" + (cls ? ' class="' + cls + '"' : "") + ">" + cell + "</td>";
+      }).join("") + "</tr>").join("") + "</tbody></table></div>";
+  }
+
+  function pct(n, d) { return d ? Math.round(n / d * 100) + "%" : "–"; }
+
+  /* Money, rounded to something a board reads rather than to the cent. */
+  function money(v) {
+    if (!v) return "–";
+    return v >= 1000000 ? "$" + (v / 1000000).toFixed(2) + "m"
+      : v >= 10000 ? "$" + Math.round(v / 1000) + "k"
+      : "$" + Math.round(v).toLocaleString();
+  }
+  const premium = (list) => list.reduce((a, e) => a + (e.annual_premium || 0), 0);
+  const annualFee = (list) => list.reduce((a, e) => a + (e.annual_fee || 0), 0);
+  /* Read back off the data rather than restated, so it cannot drift from the
+     workbook lever the pipeline used. */
+  const PREM_PER_LIFE = (D.kpis.premium_total && D.kpis.enrolled_total)
+    ? Math.round(D.kpis.premium_total / D.kpis.enrolled_total) : null;
+
+  function suppressed(have) {
+    return '<span class="nd" title="Suppressed: ' + have + " of " + MIN_N +
+      ' calls needed">–</span>';
+  }
+  function rate(num, den) {
+    return den >= MIN_N ? Math.round(num / den * 100) + "%" : suppressed(den || 0);
+  }
+  function avgCell(vals, fmt) {
+    const v = vals.filter((x) => typeof x === "number");
+    if (v.length < MIN_N) return suppressed(v.length);
+    const m = Math.round(v.reduce((a, b) => a + b, 0) / v.length);
+    return fmt ? fmt(m) : m;
+  }
+
+  function render() {
+    const calls = NV.calls();
+    const emps = NV.employersInScope();
+    const acts = D.actions;
+
+    /* Bucket and per-week slices are computed from the filtered call set rather
+       than read off D.series: the stored series covers the whole corpus and
+       would stop agreeing with the table above it the moment a filter is on. */
+    const bcalls = BUCKETS.map((ws) => NV.callsIn(ws));
+    const wcalls = WEEKS.map((w) => NV.callsIn([w]));
+    /* callsIn deliberately ignores the period filter, so question 2 is always
+       the twelve-week picture. Its own totals have to come from the same place
+       - mixing a filtered total in beside unfiltered buckets is how a one-week
+       selection ends up reading as 41 / 30 / 29 against a total of 2. */
+    const all12 = NV.callsIn(WEEKS);
+
+    const elevated = emps.filter((e) => e.scoped_band === "High" || e.scoped_band === "Elevated");
+    const high = emps.filter((e) => e.scoped_band === "High");
+    const renewSoon = elevated.filter((e) => e.renewal_m >= 10 || e.renewal_m <= 1);
+    const lives = (list) => list.reduce((a, e) => a + e.enrolled, 0);
+
+    /* ---------- 1. Where is the risk? ---------- */
+    const regionRows = D.regions.map((r) => {
+      const rEmps = emps.filter((e) => e.region === r.region);
+      return {
+        name: r.region,
+        emps: rEmps,
+        calls: calls.filter((c) => c.region === r.region),
+        elev: rEmps.filter((e) => e.scoped_band === "High" || e.scoped_band === "Elevated"),
+      };
+    }).filter((x) => x.emps.length).sort((a, b) => b.elev.length - a.elev.length);
+
+    const top = elevated.slice().sort((a, b) =>
+      b.scoped_families - a.scoped_families || b.enrolled - a.enrolled).slice(0, 8);
+
+    const q1 = section(1, "Where is the risk?",
+      "Accounts raising two or more <b>unrelated</b> indicator families in their calls. " +
+      "A condition worth a conversation — not a prediction that anyone will leave.",
+      tiles(
+        big("Accounts monitored", emps.length,
+            D.kpis.employers_with_calls + " with a written call") +
+        big("Carrying 2+ indicators", elevated.length,
+            pct(elevated.length, emps.length) + " of the book") +
+        big("At three or more", high.length, "the shortest list to work") +
+        big("Renewing within a quarter", renewSoon.length, "of the flagged accounts") +
+        big("Lives behind them", lives(elevated).toLocaleString(),
+            "of " + lives(emps).toLocaleString() + " enrolled") +
+        big("Premium behind them", money(premium(elevated)),
+            pct(premium(elevated), premium(emps)) + " of " + money(premium(emps)) + " a year") +
+        big("Newly flagged", D.kpis.employers_newly_flagged, "first indicator this period")
+      ) +
+      '<p class="note"><b>Premium is headcount in different units.</b> ' +
+      "The workbook carries one flat reference figure — $" + PREM_PER_LIFE +
+      " of annual premium per enrolled life — and no per-line rate table. So this " +
+      "converts lives into dollars for a board, and it cannot tell two accounts " +
+      "of the same size apart. The <b>administration fee</b> does vary, and question 5 " +
+      "sets it against what each account costs to serve.</p>" +
+      "<h4>By region</h4>" +
+      tbl([["Region"], ["Employers", "num"], ["Lives", "num"], ["Calls", "num"],
+           ["2+ indicators", "num"], ["Unresolved", "num"], ["Signals", "num"],
+           ["Avg quality", "num"]],
+        regionRows.map((x) => [
+          '<span class="lead">' + NV.esc(x.name) + "</span>",
+          x.emps.length, lives(x.emps).toLocaleString(), x.calls.length, x.elev.length,
+          x.calls.filter((c) => c.outcome === "UNRESOLVED").length,
+          x.calls.reduce((a, c) => a + c.signals.length, 0),
+          avgCell(x.calls.map((c) => c.score)),
+        ])) +
+      "<h4>The accounts carrying the most</h4>" +
+      tbl([["Employer"], ["Broker"], ["Region"], ["Band"], ["Families", "num"],
+           ["Calls", "num"], ["Lives", "num"], ["Renews"]],
+        top.map((e) => [
+          '<span class="lead">' + NV.esc(e.name) + "</span>",
+          NV.esc(NV.brk(e.broker).agency), NV.esc(e.region),
+          NV.bandPill(e.scoped_band), e.scoped_families, e.scoped_written,
+          e.enrolled, NV.esc(e.renewal_month),
+        ])),
+      "observed", "index.html", "See every flagged account and its evidence");
+
+    /* ---------- 2. What changed? ---------- */
+    const counted = [
+      ["Calls written", (cs) => cs.length, null],
+      ["Unresolved", (cs) => cs.filter((c) => c.outcome === "UNRESOLVED").length, true],
+      ["Escalated outcome", (cs) => cs.filter((c) => c.outcome === "ESCALATED").length, true],
+      ["Escalation warranted", (cs) => cs.filter((c) => c.esc_triggered).length, true],
+      ["Escalation handled", (cs) => cs.filter((c) => c.esc_handled).length, false],
+      ["Repeat contacts", (cs) => cs.filter((c) => c.repeat_of).length, true],
+      ["Calls raising a signal", (cs) => cs.filter((c) => c.signals.length).length, true],
+      ["Complaints against us", (cs) =>
+        cs.filter((c) => c.complaint && c.complaint_to === "CHOICE").length, true],
+      ["High member effort", (cs) => cs.filter((c) => c.effort_band === "High").length, true],
+      ["Resolved", (cs) => cs.filter((c) => c.outcome === "RESOLVED").length, false],
+      ["Quality: poor", (cs) => NV.qualitySplit(cs).POOR, true],
+      ["Quality: good", (cs) => NV.qualitySplit(cs).GOOD, false],
+    ];
+    const rated = [
+      ["Resolution", (cs) => rate(cs.filter((c) => c.outcome === "RESOLVED").length, cs.length)],
+      ["Avg handling time", (cs) => avgCell(cs.map((c) => c.aht), NV.mmss)],
+      ["Avg call quality", (cs) => avgCell(cs.map((c) => c.score))],
+      ["Avg member effort", (cs) => avgCell(cs.map((c) => c.effort))],
+    ];
+    const emptyWeeks = wcalls.filter((cs) => !cs.length).length;
+    const thinWeeks = wcalls.filter((cs) => cs.length && cs.length < MIN_N).length;
+
+    const q2 = section(2, "What changed?",
+      "Three four-week buckets, and the change from the middle bucket to the latest. " +
+      "<b>Counts, not rates</b> — at roughly " + Math.round(all12.length / 12) +
+      " calls a week a percentage swing is one or two calls moving. This section always " +
+      "spans the twelve weeks; the period filter moves the rest of the page.",
+      tbl([["Measure"], [BLAB[0], "num"], [BLAB[1], "num"], [BLAB[2], "num"],
+           ["Change", "num"], ["12-week shape", "sparkcell"]],
+        counted.map((m) => {
+          const b = bcalls.map(m[1]);
+          return [
+            '<span class="lead">' + m[0] + "</span>", b[0], b[1], b[2],
+            m[2] === null ? '<span class="nd">–</span>' : NV.deltaChip(b[2], b[1], m[2]),
+            NV.chart.spark(wcalls.map(m[1])),
+          ];
+        })) +
+      "<h4>Rates, each shown with the count behind it</h4>" +
+      tbl([["Measure"], [BLAB[0], "num"], [BLAB[1], "num"], [BLAB[2], "num"],
+           ["All 12 weeks", "num"]],
+        rated.map((m) => [
+          '<span class="lead">' + m[0] + "</span>",
+          m[1](bcalls[0]), m[1](bcalls[1]), m[1](bcalls[2]), m[1](all12),
+        ]).concat([[
+          '<span class="nd">Calls the rate is taken from</span>',
+          '<span class="nd">' + bcalls[0].length + "</span>",
+          '<span class="nd">' + bcalls[1].length + "</span>",
+          '<span class="nd">' + bcalls[2].length + "</span>",
+          '<span class="nd">' + all12.length + "</span>",
+        ]])) +
+      '<p class="note suppressed"><b>Read the sparklines for shape, not for level.</b> ' +
+      (emptyWeeks ? emptyWeeks + " of the twelve weeks carr" +
+        (emptyWeeks === 1 ? "ies" : "y") + " no written calls at all, and " : "") +
+      thinWeeks + " carr" + (thinWeeks === 1 ? "ies" : "y") + " fewer than " + MIN_N +
+      " — a dip there is corpus coverage, not a change in the book. Batch 1 is " +
+      D.kpis.calls_written + " of a planned " + D.kpis.calls_planned + " calls, " +
+      pct(D.kpis.calls_written, D.kpis.calls_planned) + " of design volume, and every " +
+      "threshold on this page is sized for the full six hundred.</p>",
+      "observed", "index.html", "See the weekly series");
+
+    /* ---------- 3. Why? ---------- */
+    const inScope = {};
+    calls.forEach((c) => { inScope[c.id] = true; });
+    const drv = D.drivers.map((d) => ({
+      d: d, n: d.calls.filter((id) => inScope[id]).length,
+    })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
+
+    const fr = D.friction.map((f) => ({
+      f: f, calls: calls.filter((c) => c.category === f.topic),
+    })).filter((x) => x.calls.length).sort((a, b) => b.calls.length - a.calls.length);
+
+    const em = D.emerging.filter((e) => e.delta >= 1);
+
+    const q3 = section(3, "Why?",
+      "What the calls are about, and where it lands. Several drivers on one touchpoint is a " +
+      "<b>reading of the pattern worth testing</b> — not a demonstrated cause. Driver " +
+      "buckets are corpus-wide; the calls column follows your filters.",
+      "<h4>Drivers, by calls in scope</h4>" +
+      tbl([["Driver"], ["Calls", "num"], ["Accounts", "num"], ["Most often"], ["Touchpoint"],
+           [BLAB[0], "num"], [BLAB[1], "num"], [BLAB[2], "num"], ["Shape", "sparkcell"]],
+        drv.map((x) => [
+          '<span class="lead">' + NV.esc(x.d.label) + "</span>",
+          x.n, x.d.employers, NV.esc(x.d.top_category || "–"),
+          x.d.top_touchpoint ? NV.esc(NV.titleCase(x.d.top_touchpoint)) : "–",
+          x.d.buckets[0], x.d.buckets[1], x.d.buckets[2],
+          NV.chart.spark(x.d.buckets),
+        ])) +
+      "<h4>How the call was handled</h4>" +
+      tbl([["Handling"], ["What it means"], ["Calls", "num"], ["Accounts", "num"],
+           ["Avg quality", "num"], ["Unresolved", "num"], ["Called back", "num"]],
+        NV.archetypeSplit(calls).map((a) => [
+          '<span class="lead">' + NV.esc(a.name) + "</span>",
+          '<span class="nd">' + NV.esc(a.gloss) + "</span>",
+          a.adverse ? "<b>" + a.n + "</b>" : a.n,
+          a.employers, a.avgScore, a.unresolved, a.repeat,
+        ])) +
+      '<p class="note suppressed">' + (() => {
+        const bad = NV.archetypeSplit(calls).filter((a) => a.adverse);
+        const n = bad.reduce((t, a) => t + a.n, 0);
+        return "<b>" + n + " of " + calls.length + " calls ended badly on our side.</b> " +
+          "Handling maps onto outcome in this corpus, so this is not a second measure of " +
+          "failure — it is a <i>split</i> of the unresolved calls into two different " +
+          "problems. " + bad.map((a) => "<b>" + a.n + "</b> " + a.name.toLowerCase()).join(" and ") +
+          ". One is a behaviour and one is a process, and they need different fixes.";
+      })() + "</p>" +
+      "<h4>Friction by topic</h4>" +
+      /* Escalation is split into warranted and handled rather than shown as one
+         "escalated" column. The workbook's own friction sheet counts warranted,
+         the outcome field counts where a call ended up, and they are not the
+         same number - Coverage & Benefits is 2 warranted, 0 handled. One column
+         would publish whichever of those two happened to be picked. */
+      tbl([["Topic"], ["Calls", "num"], ["Avg handling", "num"], ["Unresolved", "num"],
+           ["Repeat", "num"], ["Esc. warranted", "num"], ["Esc. handled", "num"],
+           ["High effort", "num"], ["Avg effort", "num"], ["Avg quality", "num"]],
+        fr.map((x) => [
+          '<span class="lead">' + NV.esc(x.f.topic) + "</span>",
+          x.calls.length,
+          avgCell(x.calls.map((c) => c.aht), NV.mmss),
+          x.calls.filter((c) => c.outcome === "UNRESOLVED").length,
+          x.calls.filter((c) => c.repeat_of).length,
+          x.calls.filter((c) => c.esc_triggered).length,
+          x.calls.filter((c) => c.esc_handled).length,
+          x.calls.filter((c) => c.effort_band === "High").length,
+          avgCell(x.calls.map((c) => c.effort)),
+          avgCell(x.calls.map((c) => c.score)),
+        ])) +
+      (em.length ? "<h4>Rising across the quarter</h4>" +
+        tbl([["Topic, touchpoint or signal"], ["Kind"], [BLAB[0], "num"], [BLAB[1], "num"],
+             [BLAB[2], "num"], ["Total", "num"], ["Change", "num"]],
+          em.map((e) => [
+            '<span class="lead">' + NV.esc(NV.titleCase(e.key)) + "</span>",
+            NV.esc(e.kind), e.buckets[0], e.buckets[1], e.buckets[2], e.total,
+            NV.deltaChip(e.buckets[2], e.buckets[0], true),
+          ])) : ""),
+      "pattern", "hierarchy.html", "Test whether it is one account, one broker or the book");
+
+    /* ---------- 4. What are we doing? ---------- */
+    const OPEN = ["needs_action", "assigned", "in_progress", "overdue"];
+    const STAGES = ["needs_action", "assigned", "in_progress", "overdue", "action_taken",
+                    "monitoring", "completed"];
+    const open = acts.filter((a) => OPEN.indexOf(a.status) !== -1);
+    const byTeam = {};
+    acts.forEach((a) => {
+      const t = byTeam[a.owner_team] ||
+        (byTeam[a.owner_team] = { n: 0, open: 0, overdue: 0, measured: 0 });
+      t.n += 1;
+      if (OPEN.indexOf(a.status) !== -1) t.open += 1;
+      if (a.status === "overdue") t.overdue += 1;
+      if (a.outcome) t.measured += 1;
+    });
+    const teams = Object.keys(byTeam).sort((a, b) => byTeam[b].n - byTeam[a].n);
+
+    const q4 = section(4, "What are we doing?",
+      "Every item traces to a specific call and every item has an owner. " +
+      "<b>Assignment, dates and outcomes are prototype workflow data</b>, not corpus facts.",
+      tiles(
+        big("Items raised", acts.length, "all traced to a call") +
+        big("Still open", open.length, pct(open.length, acts.length) + " of the list") +
+        big("Overdue", acts.filter((a) => a.status === "overdue").length, "past the due date") +
+        big("Outcome recorded", acts.filter((a) => a.outcome).length,
+            "of " + acts.length + " items") +
+        big("Owning teams", teams.length, "no item without an owner") +
+        big("Accounts touched", new Set(acts.map((a) => a.employer).filter(Boolean)).size,
+            "of " + emps.length + " monitored")
+      ) +
+      "<h4>By owning team</h4>" +
+      tbl([["Team"], ["Items", "num"], ["Open", "num"], ["Overdue", "num"],
+           ["Outcome recorded", "num"], ["Share of list", "num"]],
+        teams.map((t) => [
+          '<span class="lead">' + NV.esc(t) + "</span>",
+          byTeam[t].n, byTeam[t].open, byTeam[t].overdue, byTeam[t].measured,
+          pct(byTeam[t].n, acts.length),
+        ])) +
+      "<h4>Where the list stands</h4>" +
+      tbl([["Stage"], ["Items", "num"], ["Share", "num"]],
+        STAGES.map((s) => {
+          const n = acts.filter((a) => a.status === s).length;
+          return ['<span class="lead">' + NV.titleCase(s) + "</span>", n, pct(n, acts.length)];
+        })),
+      "recommendation", "actions.html", "Open the action centre");
+
+    /* ---------- 5. Is it working? ---------- */
+    const measured = acts.filter((a) => a.outcome);
+    const trig = calls.filter((c) => c.esc_triggered).length;
+    const handled = calls.filter((c) => c.esc_handled).length;
+    const firing = D.qwa.filter((q) => q.fires).length;
+
+    const q5 = section(5, "Is it working?",
+      "Two different questions. <b>Is the control working</b> can be measured now. " +
+      "<b>Is the intervention working</b> cannot — that needs a before-and-after window per " +
+      "account, which this corpus does not yet carry.",
+      tiles(
+        big("Employers improving", "—", "needs a prior indicator per account", "withheld") +
+        big("Escalation integrity", rate(handled, trig),
+            handled + " handled of " + trig + " warranted") +
+        big("On the wrong denominator", rate(handled, calls.length),
+            handled + " of " + calls.length + " calls — reads as good news") +
+        big("Outcomes recorded", measured.length, "of " + acts.length + " items") +
+        big("In monitoring", acts.filter((a) => a.status === "monitoring").length,
+            "effect being measured") +
+        big("Trigger rules firing", firing + " of " + D.qwa.length, "sized for 600 calls")
+      ) +
+      "<h4>What we charge against what it costs to serve</h4>" +
+      (() => {
+        const withCost = emps.filter((e) => e.minutes_per_life);
+        if (!withCost.length) return "";
+        const med = D.kpis.minutes_per_life_median;
+        const top = withCost.slice().sort((a, b) => b.minutes_per_life - a.minutes_per_life).slice(0, 8);
+        return tbl([["Account"], ["Lives", "num"], ["Minutes a year", "num"],
+                    ["Per life", "num"], ["vs median", "num"], ["Annual fee", "num"],
+                    ["Premium", "num"]],
+          top.map((e) => [
+            '<span class="lead">' + NV.esc(e.name) + "</span>",
+            e.enrolled, Math.round(e.annual_minutes), e.minutes_per_life,
+            med ? "<b>" + Math.round(e.minutes_per_life / med) + "×</b>" : "–",
+            "$" + e.annual_fee, money(e.annual_premium),
+          ])) +
+        '<p class="note suppressed"><b>The fee steps by headcount and never by service ' +
+        "consumed.</b> The heaviest account here uses <b>" +
+        Math.round(top[0].minutes_per_life / med) + "×</b> the median minutes per life (" +
+        med + " minutes) on a fee of $" + top[0].annual_fee + " a year. Across the book we " +
+        "charge " + money(annualFee(emps)) + " in fees against " + money(premium(emps)) +
+        " of premium flowing through us. <b>Minutes, not money</b> — the workbook " +
+        "carries no cost per minute, so this shows effort consumed and stops short of " +
+        "what that effort costs.</p>";
+      })() +
+      "<h4>Trigger rules, measured against batch 1</h4>" +
+      tbl([["Lens"], ["Threshold"], ["Window"], ["Reached", "num"], ["Highest was"],
+           ["Firing", "num"]],
+        D.qwa.map((q) => [
+          '<span class="lead">' + NV.esc(q.lens) + "</span>",
+          NV.esc(q.threshold), NV.esc(q.window), q.best,
+          NV.esc(q.best_label || "–"),
+          q.fires ? "<b>" + q.fires + "</b>" : '<span class="nd">0</span>',
+        ])) +
+      (measured.length ? "<h4>What was done, and what was measured</h4>" +
+        tbl([["Item"], ["Action taken"], ["Measured outcome"]],
+          measured.map((a) => [
+            '<span class="lead">' + NV.esc(a.title) + "</span>",
+            NV.esc(a.action_taken || "–"), NV.esc(a.outcome),
+          ])) : "") +
+      '<p class="note suppressed"><b>Why &ldquo;employers improving&rdquo; is blank.</b> ' +
+      "An account counts as improving when an indicator it used to raise stops appearing. In " +
+      "batch 1, 85 of 92 employers have a single written call, so there is no earlier state to " +
+      "improve from. It is withheld rather than shown as zero, because zero reads as " +
+      "<i>nothing is getting better</i> when the truth is <i>we cannot yet tell</i>. " +
+      "That " + firing + " of " + D.qwa.length + " trigger rules fire is the design working " +
+      "rather than failing — they are sized for six times this call density, and lowering " +
+      "one to produce output here would flood at full volume.</p>",
+      "derived", "actions.html", "See the outcome tracking");
+
+    document.getElementById("body").innerHTML = q1 + q2 + q3 + q4 + q5;
+    NV.wireKeyboard(document);
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

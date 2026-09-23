@@ -1,0 +1,253 @@
+<meta charset="utf-8">
+<title>Broker &amp; Region Intelligence</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="app.css">
+<script>
+/* Stamp the theme before first paint, so the ground colour never flashes.
+   Light is the default and "system" is the only value that defers to the OS.
+   Mirrors NV.themeRead in app.js - keep the two in step. */
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") {
+    document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+  }
+} catch (e) {}
+</script>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead">
+      <h1>Is this isolated, or systemic?</h1>
+      <p class="q">The same evidence read at three levels &mdash; region, broker, employer &mdash; so a problem on one account can be told apart from a problem across a book.</p>
+      <div id="filters"></div>
+    </div>
+
+    <div class="wrap">
+      <section class="panel c12">
+        <header><div><h2>Region &rarr; broker &rarr; employer &rarr; call</h2></div>
+          <div class="row" style="gap:6px"><span class="cls cls-observed">observed</span><span class="cls cls-reference">reference</span></div></header>
+        <p class="sub">Expand to walk down. Brokers appear under every region where they hold a group, so a broker spanning regions shows in more than one branch &mdash; the hierarchy is a reading path, not a strict tree.</p>
+        <div class="tree" id="tree"></div>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>Regions</h2></div><span class="cls cls-observed">observed</span></header>
+        <p class="sub">Six regions of roughly sixteen employers each. Counts, not rates &mdash; a region holds about 16 calls in batch 1.</p>
+        <div id="regions"></div>
+      </section>
+
+      <section class="panel c6">
+        <header><div><h2>Concentration by region and category</h2></div><span class="cls cls-pattern">pattern</span></header>
+        <p class="sub">Darker means more calls. A column dark across every row is a book-wide topic; one dark cell is local.</p>
+        <div id="heat"></div>
+      </section>
+
+      <section class="panel c12">
+        <header><div><h2>Brokers</h2></div>
+          <div class="row" style="gap:6px"><span class="cls cls-reference">book size</span><span class="cls cls-observed">calls</span></div></header>
+        <p class="sub">Book size comes from the Broker Master, never from call counts &mdash; deriving the denominator from the numerator would make the rate self-referential. Click a broker to filter every prototype.</p>
+        <div class="tblwrap"><table id="brk"><thead><tr>
+          <th>Agency</th><th>Broker</th><th>Region</th>
+          <th class="num">Groups in book</th><th class="num">In corpus</th><th class="num">Calls</th>
+          <th class="num">Adverse mentions</th><th class="num">Employers affected</th>
+          <th class="num">Elevated accounts</th><th>Pattern test</th>
+        </tr></thead><tbody></tbody></table></div>
+        <p class="note suppressed" style="margin-top:12px"><b>No per-broker rate is published.</b>
+        The v9 README is explicit: a three-group broker carries about ten attributed calls, which
+        &ldquo;names a list credibly but does not support &lsquo;8.5 times the median&rsquo; as a spoken number&rdquo;.
+        These are counts.</p>
+      </section>
+
+      <section class="panel c12">
+        <header><div><h2>Is it the broker, the employer, or us?</h2></div><span class="cls cls-inference">inference</span></header>
+        <div id="attrib" class="stack"></div>
+      </section>
+    </div>
+
+    <p class="srcline">
+      Broker book sizes and regions from the Broker and Employer masters of
+      <code>nanovox_corpus_v9_build_bible_2.xlsx</code>. Adverse mentions are
+      <code>broker_conduct_adverse</code> signals, which require the caller to name the broker aloud.
+      The workbook has no organisation entity above broker, so region is the top level here.
+    </p>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("hierarchy.html");
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+
+  function render() {
+    const calls = NV.calls();
+    const emps = NV.employersInScope();
+    const empIds = new Set(emps.map((e) => e.id));
+
+    /* ---- tree ---- */
+    const regions = Array.from(new Set(emps.map((e) => e.region))).sort();
+    document.getElementById("tree").innerHTML = regions.map((rg) => {
+      const rEmps = emps.filter((e) => e.region === rg);
+      const rCalls = calls.filter((c) => c.region === rg);
+      const brokers = Array.from(new Set(rEmps.map((e) => e.broker))).sort();
+      return "<details><summary><span class=\"nm\"><b>" + NV.esc(rg) + "</b></span>" +
+        '<span class="sm">' + rEmps.length + " employers · " + brokers.length + " brokers · " +
+        rCalls.length + " calls · " + rEmps.filter((e) => e.scoped_band === "High" || e.scoped_band === "Elevated").length +
+        " elevated</span></summary>" +
+        brokers.map((bid) => {
+          const b = NV.brk(bid);
+          const bEmps = rEmps.filter((e) => e.broker === bid);
+          const bCalls = rCalls.filter((c) => c.broker === bid);
+          const adverse = bCalls.filter((c) => c.signals.some((s) => s.code === "broker_conduct_adverse"));
+          return '<details class="lv2"><summary><span class="nm">' + NV.esc(b.agency) + "</span>" +
+            '<span class="sm">' + bEmps.length + " group" + (bEmps.length === 1 ? "" : "s") +
+            " here · " + b.groups_in_book + " in book · " + bCalls.length + " calls" +
+            (adverse.length ? " · " + adverse.length + " adverse" : "") + "</span></summary>" +
+            bEmps.map((e) => {
+              const eCalls = bCalls.filter((c) => c.employer === e.id);
+              return '<details class="lv3"><summary><span class="nm">' + NV.esc(e.name) + "</span>" +
+                NV.bandPill(e.scoped_band) + '<span class="sm">' + e.enrolled + " lives · " +
+                eCalls.length + " calls</span></summary>" +
+                (eCalls.length ? '<div style="padding:0 0 10px 22px">' + eCalls.map((c) =>
+                  '<div class="row" style="justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--rule)">' +
+                  '<a href="#" data-c="' + c.id + '" class="mono">' + c.id + "</a>" +
+                  '<span class="sm">' + c.date + " · " + NV.esc(c.category) + " · " + c.outcome + "</span></div>").join("") +
+                  '<p class="sm" style="margin:8px 0 0"><a href="' + NV.href("employer.html") + '" data-e="' + e.id +
+                  '">Open full employer intelligence →</a></p></div>'
+                  : '<p class="sm" style="padding:6px 0 10px 22px">No calls written for this account in batch 1.</p>') +
+                "</details>";
+            }).join("") + "</details>";
+        }).join("") + "</details>";
+    }).join("") || '<div class="empty"><b>Nothing in scope</b>Clear a filter.</div>';
+
+    document.querySelectorAll("#tree a[data-c]").forEach((a) =>
+      a.addEventListener("click", (e) => { e.preventDefault(); NV.openCall(a.dataset.c); }));
+    document.querySelectorAll("#tree a[data-e]").forEach((a) =>
+      a.addEventListener("click", () => NV.set("employer", a.dataset.e)));
+
+    /* ---- regions bars ---- */
+    NV.chart.bars(document.getElementById("regions"), {
+      labelWidth: 150,
+      rows: D.regions.filter((r) => regions.indexOf(r.region) !== -1).map((r) => {
+        const rc = calls.filter((c) => c.region === r.region).length;
+        return {
+          label: r.region, value: rc,
+          display: rc + " calls · " + r.elevated + " elevated",
+          tip: "<b>" + NV.esc(r.region) + "</b><dl><dt>Employers</dt><dd>" + r.employers +
+            "</dd><dt>Enrolled lives</dt><dd>" + r.enrolled + "</dd><dt>Calls in scope</dt><dd>" + rc +
+            "</dd><dt>Elevated accounts</dt><dd>" + r.elevated + "</dd><dt>Signals</dt><dd>" + r.signals +
+            "</dd><dt>Average score</dt><dd>" + (r.avg_score === null ? "–" : r.avg_score) + "</dd></dl>",
+          onClick: () => NV.set("region", NV.S.region === r.region ? "" : r.region),
+        };
+      }),
+      aria: "Calls by region",
+    });
+
+    /* ---- heatmap: region x category ---- */
+    const cats = Array.from(new Set(D.calls.map((c) => c.category))).sort();
+    const cell = {};
+    let maxCell = 0;
+    calls.forEach((c) => {
+      const k = c.region + "|" + c.category;
+      cell[k] = (cell[k] || 0) + 1;
+      if (cell[k] > maxCell) maxCell = cell[k];
+    });
+    const CW = 72, RH = 26, LW = 120;
+    const W = LW + cats.length * CW + 8, H = regions.length * RH + 58;
+    let svg = '<svg class="chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Calls by region and category">';
+    cats.forEach((c, i) => {
+      const words = c.split(" ");
+      svg += '<text class="tick" x="' + (LW + i * CW + CW / 2) + '" y="14" text-anchor="middle">' +
+        NV.esc(words[0]) + '</text><text class="tick" x="' + (LW + i * CW + CW / 2) +
+        '" y="25" text-anchor="middle">' + NV.esc(words.slice(1).join(" ")) + "</text>";
+    });
+    regions.forEach((rg, ri) => {
+      svg += '<text class="tick" x="0" y="' + (36 + ri * RH + RH / 2 + 3) + '" style="font-size:11.5px" fill="var(--ink-2)">' +
+        NV.esc(rg) + "</text>";
+      cats.forEach((c, ci) => {
+        const v = cell[rg + "|" + c] || 0;
+        const t = maxCell ? v / maxCell : 0;
+        const step = v === 0 ? null : t > 0.66 ? "--seq-3" : t > 0.33 ? "--seq-2" : "--seq-1";
+        const fill = step ? "var(" + step + ")" : "var(--surface-2)";
+        /* ink-3 on surface-2 is 3.18:1 in light mode - too faint for an 11.5px
+           glyph even though the mark is only a placeholder. */
+        const ink = step ? NV.inkOn(step) : "var(--ink-2)";
+        svg += '<rect x="' + (LW + ci * CW + 1) + '" y="' + (36 + ri * RH + 1) + '" width="' + (CW - 3) +
+          '" height="' + (RH - 3) + '" rx="3" fill="' + fill + '"/>' +
+          '<text class="dlabel" x="' + (LW + ci * CW + CW / 2) + '" y="' + (36 + ri * RH + RH / 2 + 3.5) +
+          '" text-anchor="middle" fill="' + ink + '">' +
+          (v || "·") + "</text>";
+      });
+    });
+    svg += "</svg>";
+    document.getElementById("heat").innerHTML = svg +
+      '<div class="legend"><span><i style="background:var(--seq-1)"></i>1 call</span>' +
+      '<span><i style="background:var(--seq-2)"></i>2–3</span>' +
+      '<span><i style="background:var(--seq-3)"></i>4+</span>' +
+      '<span><i style="background:var(--surface-2)"></i>none</span></div>';
+
+    /* ---- brokers table ---- */
+    const brows = D.brokers.filter((b) => emps.some((e) => e.broker === b.id))
+      .map((b) => Object.assign({}, b, {
+        scopedElevated: emps.filter((e) => e.broker === b.id &&
+          (e.scoped_band === "High" || e.scoped_band === "Elevated")).length,
+        scopedCalls: calls.filter((c) => c.broker === b.id).length,
+        scopedAdverse: calls.filter((c) => c.broker === b.id &&
+          c.signals.some((s) => s.code === "broker_conduct_adverse")).length,
+      }))
+      .sort((a, b) => b.scopedAdverse - a.scopedAdverse || b.scopedElevated - a.scopedElevated ||
+        b.scopedCalls - a.scopedCalls);
+    document.querySelector("#brk tbody").innerHTML = brows.map((b) =>
+      '<tr class="clickable" data-b="' + b.id + '"><td><span class="nm">' + NV.esc(b.agency) +
+      '</span><span class="sm">' + b.id + "</span></td><td>" + NV.esc(b.name) + "</td><td>" +
+      NV.esc(b.region) + '</td><td class="num">' + b.groups_in_book + '</td><td class="num">' +
+      b.employers_in_corpus + '</td><td class="num">' + b.scopedCalls + '</td><td class="num">' +
+      (b.scopedAdverse || "–") + '</td><td class="num">' + (b.adverse_employers || "–") +
+      '</td><td class="num">' + (b.scopedElevated || "–") + "</td><td>" +
+      (b.trigger_broker_pattern
+        ? '<span class="pill pill-high">fires</span>'
+        : '<span class="pill pill-none">below</span><span class="sm">needs 3 from 2 employers</span>') +
+      "</td></tr>").join("") ||
+      '<tr><td colspan="10"><div class="empty"><b>No brokers in scope</b></div></td></tr>';
+    document.querySelectorAll("#brk tr[data-b]").forEach((tr) =>
+      tr.addEventListener("click", () => NV.set("broker", NV.S.broker === tr.dataset.b ? "" : tr.dataset.b)));
+
+    /* ---- attribution reading ---- */
+    const compl = {};
+    calls.forEach((c) => { if (c.complaint) compl[c.complaint_to] = (compl[c.complaint_to] || 0) + 1; });
+    const total = Object.values(compl).reduce((a, n) => a + n, 0);
+    const adverseCalls = calls.filter((c) => c.signals.some((s) => s.code === "broker_conduct_adverse"));
+    const adverseBrokers = new Set(adverseCalls.map((c) => c.broker));
+    const items = [];
+    if (total) {
+      items.push('<b>Complaint attribution is recorded, not inferred.</b> Of ' + total +
+        " complaints in scope: " + Object.keys(compl).sort((a, b) => compl[b] - compl[a])
+          .map((k) => "<b>" + compl[k] + "</b> against " + k.toLowerCase()).join(", ") +
+        ". The v9 tag schema makes attribution mandatory whenever a complaint is present, which is why this split exists at all.");
+    }
+    items.push("<b>" + adverseCalls.length + " call" + (adverseCalls.length === 1 ? "" : "s") +
+      " named a broker adversely</b>, spread across " + adverseBrokers.size + " different " +
+      (adverseBrokers.size === 1 ? "agency" : "agencies") +
+      ". No agency reaches the workbook's own pattern threshold of three adverse mentions from two employers, so this reads as <i>separate incidents</i> rather than one broker underserving a book.");
+    items.push("<b>What would change that reading:</b> the same agency appearing three times across two of its groups. At batch-1 density the test cannot fire, and at full corpus volume it becomes the difference between a conversation with one agency and a conversation with the channel.");
+    items.push("<b>A caution on what is missing.</b> A broker is only counted here when a caller <i>says the name aloud</i>. Silent accounts, and brokers whose clients never call, are invisible to this view &mdash; the v9 README parks that limitation by decision, not oversight.");
+    NV.wireKeyboard(document);
+    document.getElementById("attrib").innerHTML = items.map((t, i) =>
+      '<div class="claim"' + (i >= items.length - 2 ? ' style="border-left-color:var(--serious)"' : "") +
+      '><div class="t" style="color:var(--ink-2)">' + t + "</div></div>").join("");
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

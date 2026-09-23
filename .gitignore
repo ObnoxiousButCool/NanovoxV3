@@ -1,5 +1,9 @@
-# Client source material — not tracked (see plan §3.2, decision D8)
-data/source/
+# Local data, none of it tracked: the SQLite database and its -wal/-shm
+# siblings under data/db, application logs under data/logs, and client source
+# material under data/source (plan §3.2, decision D8). The whole directory is
+# excluded rather than the .db file alone -- the WAL holds committed pages that
+# haven't been checkpointed back yet, so it carries transcript content too.
+data/
 
 # Python
 __pycache__/
