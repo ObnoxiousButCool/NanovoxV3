@@ -13,6 +13,7 @@ import pytest
 from domain.dashboard_config import (
     BrokerPatternTest,
     DashboardConfig,
+    IndicatorGates,
     MetricThreshold,
     PeerSizeBand,
     QualityBands,
@@ -50,6 +51,7 @@ def _config(
         ),
         quality_bands=QualityBands(good_min=86, average_min=60),
         risk_flag=RiskFlagConfig(eligibility_min_calls=3, flag_threshold=2, quote_min_calls=10),
+        indicators=IndicatorGates(min_employer_calls=5, min_calls=2, min_rate=0.2),
     )
 
 

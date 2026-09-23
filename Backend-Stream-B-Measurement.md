@@ -162,9 +162,37 @@ touchpoint.
 **Insights 6, 17 and 25 render withheld panels — there is nothing to
 aggregate for them.** Do not build a partial version to fill the space.
 
-### ▸ B4 — Risk flag and indicator families · Medium
+### ▸ B4 — Risk flag and indicator families · Medium · **DONE 2026-09-23**
 
-Metric 10 is a **yes/no flag, not a band** (D2). This is the largest
+Done. `risk_flag.py` has metric 10's four conditions, eligibility, the flag,
+quotability and insight 14's exposure view; `indicators.py` has the ten
+families. The families do not feed the flag — `risk_flag.py` does not import
+`indicators.py`, and a test asserts an employer tripping five families and
+one condition is not flagged, which is precisely the case the prototype's
+band renders as High. **B5 is the next task, and is held until after the
+Phase 5 gate.**
+
+Four things found porting `NV.INDICATORS`, three of which are gaps:
+
+- **Only nine of the ten families are computable.** `high_effort` reads the
+  prototype's `effort_band`; member effort is a derived composite Stream A's
+  A4 owns and has not built. It reports as unavailable, never as zero — zero
+  would assert this account had no high-effort calls.
+- **The floor-and-rate gate is not a port.** The prototype's `indicatorsFor`
+  keeps any family with a single hit. The five-call floor in the config is
+  the prototype's own (`agents.html`: "the five-call floor the rest of the
+  cockpit uses"), `min_calls: 2` follows the workbook's "twice is intent,
+  once is a question", and **`min_rate: 0.2` has no source at all** and needs
+  calibrating against the full corpus.
+- **The prototype mislabels one family.** It calls `knowledge_failure`
+  "Agent stated a published rule incorrectly" — which is the
+  `knowledge_error` signal's definition. D7 is open on exactly that
+  conflation, so the label was dropped rather than carried across.
+- **Metric 10 never says how wide the renewal window is.** Ninety days is
+  borrowed from Questions Worth Asking trigger rule 4 and configured rather
+  than hard-coded, because it is borrowed.
+
+Originally: metric 10 is a **yes/no flag, not a band** (D2). This is the largest
 deliberate divergence from the prototype, which renders a four-level
 High/Elevated/Watch/None band. The workbook wins on definitions.
 

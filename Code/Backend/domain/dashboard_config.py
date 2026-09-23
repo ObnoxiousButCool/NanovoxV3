@@ -127,6 +127,10 @@ class RiskFlagConfig:
     eligibility_min_calls: int
     flag_threshold: int
     quote_min_calls: int
+    #: How close a renewal has to be for the fourth condition to apply.
+    #: Borrowed from Questions Worth Asking trigger rule 4 -- metric 10 says
+    #: "inside the renewal window" and never says how wide it is.
+    renewal_window_days: int = 90
 
     def eligible(self, calls: int) -> bool:
         """Does this employer have enough calls to be assessed at all?"""
@@ -139,6 +143,39 @@ class RiskFlagConfig:
     def quotable(self, calls: int) -> bool:
         """May the flag be quoted as a figure, rather than only shown?"""
         return calls >= self.quote_min_calls
+
+
+@dataclass(frozen=True)
+class IndicatorGates:
+    """When one of the ten families counts as observed.
+
+    Informational only. These never set the risk flag, and nothing in
+    `risk_flag.py` reads them -- D2 makes the flag metric 10's four named
+    conditions and nothing else, and a second scoring system feeding the
+    first is how a yes/no flag turns back into a band.
+    """
+
+    #: The employer needs this many calls before any family is assessed. The
+    #: prototype's own floor: "a share quoted on two calls is the false
+    #: precision every other page avoids."
+    min_employer_calls: int
+    #: And the family needs this many of them. "Twice is intent. Once is a
+    #: question" (Questions Worth Asking, trigger 8).
+    min_calls: int
+    #: And that many as a share of the employer's calls, so a family does not
+    #: fire on two calls out of ninety. No source; needs calibration.
+    min_rate: float
+
+    def fires(self, hits: int, employer_calls: int) -> bool:
+        """All three gates, or the family is not observed.
+
+        `and`, not `or`: the floor stops one incident reading as a condition,
+        and the rate stops a long-standing trickle reading as one. Either
+        alone lets through exactly what the other exists to catch.
+        """
+        if employer_calls < self.min_employer_calls or hits < self.min_calls:
+            return False
+        return hits / employer_calls >= self.min_rate
 
 
 @dataclass(frozen=True)
@@ -162,6 +199,7 @@ class DashboardConfig:
     broker_pattern_test: BrokerPatternTest
     quality_bands: QualityBands
     risk_flag: RiskFlagConfig
+    indicators: IndicatorGates
 
     def metric(self, key: str) -> MetricThreshold:
         for threshold in self.metrics:

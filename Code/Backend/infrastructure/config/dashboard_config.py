@@ -23,6 +23,7 @@ import yaml
 from domain.dashboard_config import (
     BrokerPatternTest,
     DashboardConfig,
+    IndicatorGates,
     MetricThreshold,
     PeerSizeBand,
     QualityBands,
@@ -42,6 +43,7 @@ _TOP_LEVEL_KEYS = frozenset(
         "broker",
         "quality_bands",
         "risk_flag",
+        "indicators",
     }
 )
 
@@ -195,7 +197,14 @@ def _risk_flag(raw: object, path: Path) -> RiskFlagConfig:
     block = _mapping(raw, "risk_flag", path)
     _exact_keys(
         block,
-        frozenset({"eligibility_min_calls", "flag_threshold", "quote_min_calls"}),
+        frozenset(
+            {
+                "eligibility_min_calls",
+                "flag_threshold",
+                "quote_min_calls",
+                "renewal_window_days",
+            }
+        ),
         "risk_flag",
         path,
     )
@@ -203,6 +212,7 @@ def _risk_flag(raw: object, path: Path) -> RiskFlagConfig:
         eligibility_min_calls=_int(block, "eligibility_min_calls", "risk_flag", path),
         flag_threshold=_int(block, "flag_threshold", "risk_flag", path),
         quote_min_calls=_int(block, "quote_min_calls", "risk_flag", path),
+        renewal_window_days=_int(block, "renewal_window_days", "risk_flag", path),
     )
     if flag.quote_min_calls < flag.eligibility_min_calls:
         raise _fail(
@@ -212,6 +222,33 @@ def _risk_flag(raw: object, path: Path) -> RiskFlagConfig:
             path,
         )
     return flag
+
+
+def _indicators(raw: object, path: Path) -> IndicatorGates:
+    block = _mapping(raw, "indicators", path)
+    _exact_keys(
+        block,
+        frozenset({"min_employer_calls", "min_calls", "min_rate"}),
+        "indicators",
+        path,
+    )
+    rate = block["min_rate"]
+    if isinstance(rate, bool) or not isinstance(rate, int | float) or not 0 < rate <= 1:
+        raise _fail(
+            f"indicators.min_rate: expected a share above 0 and at most 1, found {rate!r}", path
+        )
+    gates = IndicatorGates(
+        min_employer_calls=_int(block, "min_employer_calls", "indicators", path),
+        min_calls=_int(block, "min_calls", "indicators", path),
+        min_rate=float(rate),
+    )
+    if gates.min_calls > gates.min_employer_calls:
+        raise _fail(
+            f"indicators: min_calls {gates.min_calls} exceeds min_employer_calls "
+            f"{gates.min_employer_calls} — no family could ever fire",
+            path,
+        )
+    return gates
 
 
 def _cost_per_call(raw: object, path: Path) -> float | None:
@@ -249,6 +286,7 @@ def load_dashboard_config(path: Path) -> DashboardConfig:
         broker_pattern_test=pattern_test,
         quality_bands=_quality_bands(block["quality_bands"], path),
         risk_flag=_risk_flag(block["risk_flag"], path),
+        indicators=_indicators(block["indicators"], path),
     )
 
 

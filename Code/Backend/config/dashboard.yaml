@@ -273,3 +273,45 @@ risk_flag:
   eligibility_min_calls: 3
   flag_threshold: 2
   quote_min_calls: 10
+  # "A CHOICE-attributed UNRESOLVED inside the renewal window" is the fourth
+  # of metric 10's conditions, and the sheet does not say how wide the
+  # renewal window is. Ninety days is the workbook's own number for it:
+  # Questions Worth Asking, trigger rule 4, pairs a rising complaint rate
+  # with a renewal that "falls within 90 days", and records why -- "90 days
+  # is the point at which intervention is still possible". Taken from there
+  # rather than invented, but it is a borrowed number and not metric 10's
+  # own, so it is configured rather than hard-coded.
+  renewal_window_days: 90
+
+# --- Indicator families (decision D2, "other conditions observed") ---------
+#
+# The ten families ported from NV.INDICATORS in the prototype. They are
+# INFORMATIONAL and never set the risk flag -- the flag is metric 10's four
+# named conditions and nothing else. Two scoring systems on one page, one of
+# which quietly feeds the other, is how a yes/no flag turns back into a band.
+#
+# READ THIS BEFORE TUNING. The gates below are OURS, not a port:
+#
+#   min_employer_calls  IS the prototype's own. `agents.html` calls 5 "the
+#                       five-call floor the rest of the cockpit uses", and
+#                       says why: "a share quoted on two calls is the false
+#                       precision every other page avoids."
+#
+#   min_calls           is ours, on the workbook's own idiom. Questions Worth
+#                       Asking trigger 8 sets its threshold at two and
+#                       records the reasoning in four words -- "Twice is
+#                       intent. Once is a question."
+#
+#   min_rate            is ours, with NO source behind it at all. The
+#                       prototype gates the families on neither a floor nor a
+#                       rate: `indicatorsFor` shows any family with a single
+#                       hit. plan.md §8 asks for "an absolute floor AND a
+#                       rate", so a rate exists, but nobody has said what it
+#                       should be. 0.2 means an employer with twenty calls
+#                       needs four rather than two. It needs calibrating
+#                       against the full corpus, and until it is, it is the
+#                       weakest number in this file.
+indicators:
+  min_employer_calls: 5
+  min_calls: 2
+  min_rate: 0.2

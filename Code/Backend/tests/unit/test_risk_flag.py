@@ -1,0 +1,362 @@
+"""Metric 10 and the ten indicator families (B4).
+
+The tests that matter most here are about what the flag is *not*: not a
+band, not a prediction, and not something the indicator families can reach.
+The prototype renders a four-level band off a count of families, so every
+one of those is a live way for this to drift back.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from domain.aggregation.figure import WithheldReason
+from domain.aggregation.indicators import FAMILIES, observe, observed, unavailable
+from domain.aggregation.risk_flag import Condition, RiskAssessment, assess, exposure, flagged_share
+from domain.dashboard_config import DashboardConfig
+from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.control_exception_type import ControlExceptionType
+from domain.value_objects.escalation import Escalation
+from domain.value_objects.intent_type import IntentType
+from domain.value_objects.outcome import Outcome
+from domain.value_objects.signal_code import SignalCode
+from infrastructure.config.dashboard_config import load_dashboard_config
+from infrastructure.config.paths import DEFAULT_CONFIG_DIR
+from tests.fixtures.tagged_calls import WINDOW, call, calls, day, employer
+
+
+@pytest.fixture(scope="module")
+def config() -> DashboardConfig:
+    return load_dashboard_config(DEFAULT_CONFIG_DIR / "dashboard.yaml")
+
+
+# --- Eligibility is not the same as safety ---------------------------------
+
+
+def test_an_employer_under_three_calls_is_ineligible_not_unflagged(
+    config: DashboardConfig,
+) -> None:
+    """At batch-1 volume most of the 92 employers with calls have exactly
+    one. A page that renders them as "not flagged" is ninety reassuring rows
+    about accounts nobody assessed.
+    """
+    assessment = assess(config, employer(), calls(2), WINDOW)
+
+    assert assessment.eligible is False
+    assert assessment.flagged is False
+    assert "Not eligible" in assessment.state
+    assert "not the same as no risk" in assessment.state.lower()
+
+
+def test_an_eligible_employer_meeting_two_conditions_is_flagged(
+    config: DashboardConfig,
+) -> None:
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+
+    assessment = assess(config, employer(), traffic, WINDOW)
+
+    assert assessment.eligible is True
+    assert assessment.conditions_met == 2
+    assert assessment.flagged is True
+
+
+def test_one_condition_is_not_enough(config: DashboardConfig) -> None:
+    traffic = calls(5, intent=IntentType.MARKET_TEST)
+
+    assessment = assess(config, employer(), traffic, WINDOW)
+
+    assert assessment.conditions_met == 1
+    assert assessment.flagged is False
+    assert "Not flagged" in assessment.state
+
+
+def test_a_flag_below_ten_calls_is_shown_but_not_quotable(config: DashboardConfig) -> None:
+    """The gap between 3 and 10 is why these are two numbers."""
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+
+    assessment = assess(config, employer(), traffic, WINDOW)
+
+    assert assessment.flagged is True
+    assert assessment.quotable is False
+    assert "Too few calls to quote" in assessment.state
+
+
+def test_the_flag_is_never_described_as_a_prediction(config: DashboardConfig) -> None:
+    """No termination outcomes exist in this dataset to validate one."""
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+
+    state = assess(config, employer(), traffic, WINDOW).state
+
+    assert "Not a prediction" in state
+
+
+def test_there_is_no_band_anywhere_on_an_assessment(config: DashboardConfig) -> None:
+    """D2's whole point. The prototype renders High/Elevated/Watch/None; the
+    workbook wins, and nothing here exposes a level.
+    """
+    assessment = assess(config, employer(), calls(5), WINDOW)
+
+    assert not hasattr(assessment, "band")
+    assert not hasattr(assessment, "level")
+    assert isinstance(assessment.flagged, bool)
+
+
+# --- The four conditions ---------------------------------------------------
+
+
+def test_market_test_fires_but_expansion_does_not(config: DashboardConfig) -> None:
+    """Expansion is a commercial opportunity, not a risk. Widening this
+    would flag accounts that said they wanted to buy more.
+    """
+    wants_more = assess(config, employer(), calls(5, intent=IntentType.EXPANSION), WINDOW)
+    shopping = assess(config, employer(), calls(5, intent=IntentType.MARKET_TEST), WINDOW)
+
+    assert wants_more.conditions_met == 0
+    assert shopping.conditions_met == 1
+
+
+def test_a_rising_complaint_rate_is_compared_as_a_rate_not_a_count(
+    config: DashboardConfig,
+) -> None:
+    """An employer whose calls doubled and whose complaints doubled has not
+    deteriorated.
+    """
+    steady = (
+        call("C-0001", on=day(0), complaint_to=ComplaintAttribution.CHOICE),
+        call("C-0002", on=day(1)),
+        call("C-0003", on=day(60), complaint_to=ComplaintAttribution.CHOICE),
+        call("C-0004", on=day(61), complaint_to=ComplaintAttribution.CHOICE),
+        call("C-0005", on=day(62)),
+        call("C-0006", on=day(63)),
+    )
+
+    assessment = assess(config, employer(), steady, WINDOW)
+    rising = next(c for c in assessment.conditions if c.code == "complaint_rate_rising")
+
+    assert rising.met is False, "50% then 50% is not a rise"
+
+
+def test_the_renewal_condition_needs_all_three_parts_on_one_call(
+    config: DashboardConfig,
+) -> None:
+    """Ours, unresolved, and close to renewal. A call meeting two of three
+    is not this condition, and treating it as one flags most of the book.
+    """
+    # Window ends 28 Sep 2026; a January renewal is ~95 days out, so nothing
+    # inside the 90-day window. Same calls, an October renewal, and it fires.
+    traffic = calls(5, outcome=Outcome.UNRESOLVED, complaint_to=ComplaintAttribution.CHOICE)
+
+    far = assess(config, employer(renewal_month="January"), traffic, WINDOW)
+    near = assess(config, employer(renewal_month="October"), traffic, WINDOW)
+
+    assert _condition(far, "choice_unresolved_near_renewal").met is False
+    assert _condition(near, "choice_unresolved_near_renewal").met is True
+
+
+def test_an_unresolved_call_blamed_on_the_carrier_is_not_the_renewal_condition(
+    config: DashboardConfig,
+) -> None:
+    traffic = calls(5, outcome=Outcome.UNRESOLVED, complaint_to=ComplaintAttribution.CARRIER)
+
+    assessment = assess(config, employer(renewal_month="October"), traffic, WINDOW)
+
+    assert _condition(assessment, "choice_unresolved_near_renewal").met is False
+
+
+def test_an_unparseable_renewal_month_fires_nothing_rather_than_defaulting(
+    config: DashboardConfig,
+) -> None:
+    """Defaulting to January would quietly flag every account whose renewal
+    reference data does not carry.
+    """
+    traffic = calls(5, outcome=Outcome.UNRESOLVED, complaint_to=ComplaintAttribution.CHOICE)
+
+    assessment = assess(config, employer(renewal_month="Quartember"), traffic, WINDOW)
+
+    assert _condition(assessment, "choice_unresolved_near_renewal").met is False
+
+
+def test_a_flagged_assessment_opens_its_evidence(config: DashboardConfig) -> None:
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+
+    assessment = assess(config, employer(), traffic, WINDOW)
+
+    assert assessment.evidence == ("C-0001", "C-0003")
+
+
+# --- Exposure (insight 14) -------------------------------------------------
+
+
+def test_exposure_sums_lives_and_premium_and_calls_itself_exposure(
+    config: DashboardConfig,
+) -> None:
+    """ "Presented as exposure, never as expected loss — there is no
+    probability to apply to it."
+    """
+    flagging = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+    employers = [employer("EMP-01", enrolled=120), employer("EMP-02", enrolled=900)]
+
+    assessments = [assess(config, employers[0], flagging, WINDOW)]
+    total = exposure(assessments, employers)
+
+    assert total.employers == ("EMP-01",)
+    assert total.lives == 120
+    assert "not expected loss" in total.caveat
+
+
+def test_the_flagged_share_divides_by_eligible_employers_not_all_of_them(
+    config: DashboardConfig,
+) -> None:
+    """Dividing by the whole book buries the finding under the ninety
+    accounts nobody could assess, and gives a reassuring small percentage.
+    """
+    flagging = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+    eligible_flagged = assess(config, employer("EMP-01"), flagging, WINDOW)
+    eligible_clear = assess(config, employer("EMP-02"), calls(5, employer_ref="EMP-02"), WINDOW)
+    ineligible = assess(config, employer("EMP-03"), calls(1, employer_ref="EMP-03"), WINDOW)
+
+    figure = flagged_share(config, [eligible_flagged, eligible_clear, ineligible])
+
+    assert figure.value == pytest.approx(0.5), "1 of 2 eligible, not 1 of 3"
+
+
+def test_a_book_where_nobody_is_eligible_is_withheld_not_zero(
+    config: DashboardConfig,
+) -> None:
+    quiet = [assess(config, employer(), calls(1), WINDOW)]
+
+    figure = flagged_share(config, quiet)
+
+    assert figure.withheld_reason is WithheldReason.NOT_ELIGIBLE
+    assert figure.value is None
+
+
+# --- The ten indicator families --------------------------------------------
+
+
+def test_there_are_exactly_ten_families() -> None:
+    assert len(FAMILIES) == 10
+    assert len({family.code for family in FAMILIES}) == 10
+
+
+def test_the_families_do_not_feed_the_flag(config: DashboardConfig) -> None:
+    """Informational, never inputs. An employer tripping many families but
+    only one of metric 10's conditions is not flagged — which is exactly the
+    case the prototype's band would have rendered as High.
+    """
+    traffic = calls(
+        6,
+        outcome=Outcome.UNRESOLVED,
+        complaint_to=ComplaintAttribution.CHOICE,
+        control_exceptions=frozenset({ControlExceptionType.NO_RECORDING_DISCLOSURE}),
+        signals=frozenset({SignalCode.VERIFICATION_FAILURE}),
+        escalation=Escalation(triggered=True, handled=False),
+        knowledge_failure_rule="C-12",
+    )
+
+    assessment = assess(config, employer(renewal_month="January"), traffic, WINDOW)
+    families = observed(observe(config, employer(renewal_month="January"), traffic, WINDOW))
+
+    assert len(families) >= 5
+    assert assessment.conditions_met < config.risk_flag.flag_threshold
+    assert assessment.flagged is False
+
+
+def test_a_family_needs_the_floor_and_the_rate_not_either_alone(
+    config: DashboardConfig,
+) -> None:
+    """Two hits out of ninety calls is a trickle, not a condition; two out of
+    four is a condition on a sample too thin to say so.
+    """
+    thin = calls(4, outcome=Outcome.UNRESOLVED)
+    diluted = (
+        *calls(2, prefix="U", outcome=Outcome.UNRESOLVED),
+        *calls(88, prefix="R", outcome=Outcome.RESOLVED),
+    )
+
+    assert observed(observe(config, employer(), thin, WINDOW)) == ()
+    assert not any(
+        o.family.code == "unresolved"
+        for o in observed(observe(config, employer(), diluted, WINDOW))
+    )
+
+
+def test_a_family_over_both_gates_is_observed(config: DashboardConfig) -> None:
+    traffic = (
+        *calls(3, prefix="U", outcome=Outcome.UNRESOLVED),
+        *calls(3, prefix="R", outcome=Outcome.RESOLVED),
+    )
+
+    codes = {o.family.code for o in observed(observe(config, employer(), traffic, WINDOW))}
+
+    assert "unresolved" in codes
+
+
+def test_high_effort_is_unavailable_rather_than_zero(config: DashboardConfig) -> None:
+    """Member effort is a derived composite Stream A has not built. Showing
+    it as zero would assert this account had no high-effort calls.
+    """
+    unavailable_families = unavailable(observe(config, employer(), calls(10), WINDOW))
+
+    assert [o.family.code for o in unavailable_families] == ["high_effort"]
+    assert unavailable_families[0].rate is None
+    assert "not the same as it being absent" in unavailable_families[0].family.unavailable_because
+
+
+def test_the_knowledge_failure_family_does_not_blame_the_agent() -> None:
+    """The prototype labels this "Agent stated a published rule incorrectly",
+    which is the `knowledge_error` signal's definition. D7 is open on exactly
+    that conflation and carrying the wording across would settle it in code.
+    """
+    family = next(f for f in FAMILIES if f.code == "knowledge_failure")
+
+    assert "agent" not in family.label.lower()
+
+
+def test_every_family_is_returned_even_when_it_did_not_fire(
+    config: DashboardConfig,
+) -> None:
+    """A list of only the families that fired cannot tell a reader whether
+    the rest were checked and clear, or never checked.
+    """
+    observations = observe(config, employer(), calls(10), WINDOW)
+
+    assert len(observations) == 10
+
+
+def _condition(assessment: RiskAssessment, code: str) -> Condition:
+    return next(c for c in assessment.conditions if c.code == code)
+
+
+def test_an_employer_with_no_calls_has_no_indicator_rates(config: DashboardConfig) -> None:
+    """A rate over zero calls is undefined, not zero — and the account page
+    for a silent employer is exactly where a spurious 0% would appear.
+    """
+    observations = observe(config, employer("EMP-99"), (), WINDOW)
+
+    assert all(o.rate is None for o in observations)
+    assert all(o.observed is False for o in observations)

@@ -57,6 +57,11 @@ risk_flag:
   eligibility_min_calls: 3
   flag_threshold: 2
   quote_min_calls: 10
+  renewal_window_days: 90
+indicators:
+  min_employer_calls: 5
+  min_calls: 2
+  min_rate: 0.2
 """
 
 
@@ -306,3 +311,22 @@ def test_the_shipped_config_loads_and_is_what_settings_points_at() -> None:
     assert config.risk_flag.eligibility_min_calls == 3
     assert config.money_withheld is True
     assert config is get_dashboard_config(), "the config is cached, not re-read per call"
+
+
+def test_an_indicator_rate_outside_zero_to_one_is_refused(tmp_path: Path) -> None:
+    """A "rate" of 20 is someone writing a percentage where a share belongs,
+    and it would silently stop every family firing.
+    """
+    assert "share above 0 and at most 1" in _refusal(
+        _broken(tmp_path, "min_rate: 0.2", "min_rate: 20")
+    )
+
+
+def test_an_indicator_floor_above_the_employer_floor_is_refused(tmp_path: Path) -> None:
+    """No family could ever fire: the family needs more hits than the
+    employer needs calls. A config that silences the whole panel should not
+    load quietly.
+    """
+    assert "no family could ever fire" in _refusal(
+        _broken(tmp_path, "min_calls: 2", "min_calls: 9")
+    )
