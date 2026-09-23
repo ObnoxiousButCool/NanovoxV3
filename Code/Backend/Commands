@@ -1,0 +1,11 @@
+python -m venv .venv
+
+./.venv/Scripts/python.exe -m pip install -r requirements-dev-lock.txt
+
+cp .env.example .env
+
+
+./.venv/Scripts/python.exe -m uvicorn frameworks_drivers.main:app --host 127.0.0.1 --port 8000 --reload
+
+
+powershell -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','taskkill /PID 4064 /T /F; Read-Host \"done - press Enter\"'"
