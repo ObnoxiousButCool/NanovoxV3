@@ -153,7 +153,9 @@ If you find yourself reconciling them, stop and raise it.
 These three apply to both streams and exist because `scripts/check.sh` will
 fail the second person to merge otherwise.
 
-**Migrations — single head.** The gate enforces exactly one Alembic head.
+**Migrations — single head.** The gate enforces exactly one Alembic head —
+as of 2026-09-23 it actually does. It previously ran a bare `alembic heads`,
+which prints both heads and exits 0, so it reported rather than gated.
 Stream B adds a `ground_truth` table; you will add extraction storage. Two
 branches each generating a revision produces two heads. Merge migrations to
 `main` promptly and rebase before generating yours.

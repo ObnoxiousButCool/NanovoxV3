@@ -152,4 +152,13 @@ forbidden_modules = [
     "application.ports.answer_key_source",
     "infrastructure.corpus.pdf_answer_key_source",
     "domain.entities.answer_key",
+    # The workbook side of the same answer key (plan §8 Phase 2). The PDF
+    # entries above cover five fields; the Transcript Tracker carries
+    # twenty-four, so these matter more, not less.
+    "application.ports.ground_truth_source",
+    "application.ports.ground_truth_repository",
+    "application.use_cases.import_answer_key",
+    "domain.entities.ground_truth",
+    "infrastructure.reference.xlsx_ground_truth_source",
+    "infrastructure.persistence.repositories.ground_truth_repository",
 ]

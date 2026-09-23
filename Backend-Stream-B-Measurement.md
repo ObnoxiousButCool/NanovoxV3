@@ -18,12 +18,12 @@ defend.
 Nothing in Phase 5 or 6 exists yet. `Code/Backend/config/` and
 `domain/aggregation/` have not been created.
 
-The answer key is half-built: `domain/entities/answer_key.py`, the
-`AnswerKeySource` port and `infrastructure/corpus/pdf_answer_key_source.py`
-all exist, so the PDF's stripped `CALL TAGS` block can be read. What is
-missing is everything after that — the Transcript Tracker sheet is read
-nowhere, there is no `ground_truth` table, no importer use case, and no
-cross-check. `PdfAnswerKeySource` is currently referenced only by tests.
+**The answer key is done** (B1, 2026-09-23). Both sides of it now exist: the
+PDF's five-field `CALL TAGS` through `PdfAnswerKeySource`, and the workbook's
+twenty-four-column Transcript Tracker through `XlsxGroundTruthSource` into
+the `ground_truth` table. `ImportAnswerKey` reconciles the two and reports
+disagreements rather than resolving them. Phase 5 now has something to score
+against.
 
 Phase 1's reference data is complete and verified against the real workbook:
 95 employers, 30 brokers, 285 members, 101 contacts, 20 agents, 122 rules, 12
@@ -37,10 +37,15 @@ it rather than deriving those again.
 
 Each ▸ is one task and one commit, per the plan's convention.
 
-### ▸ B1 — AnswerKeyImporter and `ground_truth` · Large
+### ▸ B1 — AnswerKeyImporter and `ground_truth` · Large · **DONE 2026-09-23**
 
-Do this first. Phase 5 cannot start without it, and Phase 5 is the gate that
-releases Phase 8.
+Done. `ground_truth` (revision `20260923_0905`) holds all 24 tracker
+columns; `ImportAnswerKey` reconciles them against the PDF and the CLI exits
+2 when they disagree. The cross-check passes on the real corpus — all five
+shared fields agree across all 100 calls. **B2 is the next task.**
+
+Originally: do this first, because Phase 5 cannot start without it and
+Phase 5 is the gate that releases Phase 8.
 
 Read the workbook's **Transcript Tracker** sheet into a `ground_truth` table,
 then cross-check it against the `CALL TAGS` block that `PdfAnswerKeySource`
@@ -186,7 +191,9 @@ settled deliberately:
 These three apply to both streams and exist because `scripts/check.sh` will
 fail the second person to merge otherwise.
 
-**Migrations — single head.** The gate enforces exactly one Alembic head.
+**Migrations — single head.** The gate enforces exactly one Alembic head —
+as of 2026-09-23 it actually does. It previously ran a bare `alembic heads`,
+which prints both heads and exits 0, so it reported rather than gated.
 Your `ground_truth` table and Stream A's extraction storage are separate
 revisions. Two branches each generating one produces two heads. Merge
 migrations to `main` promptly and rebase before generating yours.

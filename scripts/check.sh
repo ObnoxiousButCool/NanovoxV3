@@ -41,7 +41,11 @@ run "Backend: lint" "$PY" -m ruff check .
 run "Backend: types" "$PY" -m mypy .
 run "Backend: architecture contracts" "$BIN/lint-imports"
 run "Backend: tests and coverage" "$PY" -m pytest --cov --cov-fail-under=85
-run "Backend: exactly one migration head" "$BIN/alembic" heads
+# `alembic heads` prints every head and exits 0, so on its own it reports
+# rather than gates: two heads read as green here for as long as this line
+# was a bare `alembic heads`. Counting the lines it marks `(head)` is what
+# makes it fail.
+run "Backend: exactly one migration head" bash -c   'test "$("$0" heads | grep -c "(head)")" -eq 1 || { "$0" heads; false; }' "$BIN/alembic"
 
 cd "$FRONTEND"
 run "Frontend: lint" npm run lint

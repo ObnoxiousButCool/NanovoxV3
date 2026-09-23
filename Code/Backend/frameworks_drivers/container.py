@@ -17,8 +17,11 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from application.ports.answer_key_source import AnswerKeySource
 from application.ports.call_repository import CallRepository
 from application.ports.clock import Clock
+from application.ports.ground_truth_repository import GroundTruthRepository
+from application.ports.ground_truth_source import GroundTruthSource
 from application.ports.health_probe import HealthProbe
 from application.ports.reference_lookup import ReferenceLookup
 from application.ports.reference_repository import ReferenceRepository
@@ -26,10 +29,12 @@ from application.ports.reference_source import ReferenceSource
 from application.ports.stage_cache import StageCache
 from application.ports.transcript_source import TranscriptSource
 from application.use_cases.get_health import GetHealth
+from application.use_cases.import_answer_key import ImportAnswerKey
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from application.use_cases.list_providers import ListProviders, ProviderProbe
 from infrastructure.config.settings import Settings
+from infrastructure.corpus.pdf_answer_key_source import PdfAnswerKeySource
 from infrastructure.corpus.pdf_corpus_source import PdfCorpusSource
 from infrastructure.llm.provider_probe import RegistryProviderProbe
 from infrastructure.llm.registry import PROVIDER_NAMES, ProviderRegistry
@@ -37,9 +42,13 @@ from infrastructure.logging.llm_audit import LlmAuditLog
 from infrastructure.persistence.engine import create_database_engine, create_session_factory
 from infrastructure.persistence.health_probe import DatabaseHealthProbe
 from infrastructure.persistence.repositories.call_repository import SqlCallRepository
+from infrastructure.persistence.repositories.ground_truth_repository import (
+    SqlGroundTruthRepository,
+)
 from infrastructure.persistence.repositories.reference_lookup import SqlReferenceLookup
 from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
 from infrastructure.persistence.repositories.stage_cache import SqlStageCache
+from infrastructure.reference.xlsx_ground_truth_source import XlsxGroundTruthSource
 from infrastructure.reference.xlsx_reference_source import XlsxReferenceSource
 from infrastructure.system_clock import SystemClock
 
@@ -61,6 +70,12 @@ class Container:
     provider_registry: ProviderRegistry
     provider_probe: ProviderProbe
     stage_cache: StageCache
+    # Answer key (plan §8 Phase 2). Held here like any other adapter; the
+    # import-linter contract, not the composition root, is what keeps
+    # extraction away from it.
+    ground_truth_source: GroundTruthSource
+    ground_truth_repository: GroundTruthRepository
+    answer_key_source: AnswerKeySource
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
@@ -68,6 +83,13 @@ class Container:
     def import_reference_data(self) -> ImportReferenceData:
         return ImportReferenceData(
             source=self.reference_source, repository=self.reference_repository
+        )
+
+    def import_answer_key(self) -> ImportAnswerKey:
+        return ImportAnswerKey(
+            source=self.ground_truth_source,
+            repository=self.ground_truth_repository,
+            pdf_source=self.answer_key_source,
         )
 
     def ingest_transcripts(self) -> IngestTranscripts:
@@ -108,6 +130,9 @@ def build_container(settings: Settings) -> Container:
             provider_registry, settings.llm_provider, settings.llm_probe_timeout_seconds
         ),
         stage_cache=SqlStageCache(session_factory, clock),
+        ground_truth_source=XlsxGroundTruthSource(settings.workbook_path),
+        ground_truth_repository=SqlGroundTruthRepository(session_factory, clock),
+        answer_key_source=PdfAnswerKeySource(settings.transcripts_path),
     )
 
 

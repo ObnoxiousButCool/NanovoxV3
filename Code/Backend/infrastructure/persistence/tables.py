@@ -296,3 +296,72 @@ class CallExtractionRow(Base):
     l2_model: Mapped[str | None] = mapped_column(nullable=True)
     l2_prompt_version: Mapped[str | None] = mapped_column(nullable=True)
     l2_completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
+class GroundTruthRow(Base):
+    """The Transcript Tracker's answer for one call (plan §8 Phase 2).
+
+    Answer-key material, and the only table that is. Phase 5 scores
+    `call_extractions` against this row by row, which is why the column
+    names deliberately mirror `CallExtractionRow`'s rather than the
+    tracker's spreadsheet headings: two records that name the same field
+    differently are a comparison waiting to be written wrong.
+
+    One row per call, hanging off `calls.id` like `call_extractions` does. A
+    tracker row naming a call that has not been ingested is reported by the
+    importer as unmatched, never written — there is nowhere to hang it, and
+    inventing a call to hold an answer would put a fabricated row in the
+    fact table.
+
+    Lists are JSON columns, following `CallExtractionRow.product_lines` and
+    `.intent`: the answer key is read whole and compared whole, never
+    queried a member at a time.
+    """
+
+    __tablename__ = "ground_truth"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), nullable=False, unique=True)
+
+    # --- the five the corpus PDF's header also carries -------------------
+    category: Mapped[str | None] = mapped_column(nullable=True)  # Category.value
+    archetype: Mapped[str] = mapped_column(nullable=False, default="")
+    rule_refs: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    outcome: Mapped[str | None] = mapped_column(nullable=True)  # Outcome.value
+    score: Mapped[int | None] = mapped_column(nullable=True)
+
+    # --- the nineteen only the tracker carries ---------------------------
+    product_line: Mapped[str] = mapped_column(nullable=False, default="")
+    touchpoint: Mapped[str] = mapped_column(nullable=False, default="")
+    aht_seconds: Mapped[int | None] = mapped_column(nullable=True)
+
+    complaint_present: Mapped[bool | None] = mapped_column(nullable=True)
+    complaint_attributed_to: Mapped[str | None] = mapped_column(nullable=True)
+
+    # Each item: {"code", "severity", "owner_team"}.
+    signals: Mapped[list[dict[str, str]]] = mapped_column(JSON, nullable=False, default=list)
+    control_exceptions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+
+    escalation_triggered: Mapped[bool | None] = mapped_column(nullable=True)
+    escalation_type: Mapped[str | None] = mapped_column(nullable=True)
+    escalation_requested_by_caller: Mapped[bool | None] = mapped_column(nullable=True)
+    escalation_handled: Mapped[bool | None] = mapped_column(nullable=True)
+
+    knowledge_failure_present: Mapped[bool | None] = mapped_column(nullable=True)
+    knowledge_failure_rule_ref: Mapped[str | None] = mapped_column(nullable=True)
+    knowledge_failure_statement: Mapped[str | None] = mapped_column(nullable=True)
+
+    intent_type: Mapped[str | None] = mapped_column(nullable=True)
+    intent_evidence: Mapped[str | None] = mapped_column(nullable=True)
+
+    process_gap_present: Mapped[bool | None] = mapped_column(nullable=True)
+    process_gap_description: Mapped[str | None] = mapped_column(nullable=True)
+
+    broker_named_present: Mapped[bool | None] = mapped_column(nullable=True)
+    broker_named_broker_ref: Mapped[str | None] = mapped_column(nullable=True)
+    broker_named_sentiment: Mapped[str | None] = mapped_column(nullable=True)
+
+    repeat_of_reference: Mapped[str | None] = mapped_column(nullable=True)
+    repeat_of_note: Mapped[str | None] = mapped_column(nullable=True)
+
+    imported_at: Mapped[datetime] = mapped_column(nullable=False)

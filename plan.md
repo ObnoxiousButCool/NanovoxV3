@@ -20,7 +20,7 @@ approved visual design.
       parked in §7A pending Karim — that's the decision, not an open item)
 - [x] Phase 0 — Scaffold and gates (3 commits, pushed)
 - [x] Phase 1 — Domain model and reference data (4 commits, pushed, gates pass)
-- [x] Phase 2 — Transcript ingestion, label stripping, caller resolution, answer key (4 commits, pushed, gates pass; 100/100 real calls resolved) — **except the AnswerKeyImporter task, see §8**
+- [x] Phase 2 — Transcript ingestion, label stripping, caller resolution, answer key (4 commits, pushed, gates pass; 100/100 real calls resolved). AnswerKeyImporter completed 2026-09-23 — tracker and PDF reconcile on all 100 calls
 - [x] Phase 3 — LLM infrastructure (3 commits, not yet pushed — pushing at Phase 5) — **except run orchestration wiring, see §8**
 - [~] Phase 4 — Extraction stages (L1 and L2 built and tested; L3, L4, the derivations and the pipeline use case not started)
 - [ ] Phase 5 — Evaluation harness  ← **check-in gate**
@@ -863,14 +863,21 @@ Acceptance: `scripts/check.sh` passes on an empty app.
   call. Unresolved references are stored, flagged, counted on Diagnostics, and
   excluded from account figures with the count shown — never guessed.
 - [x] ▸ Ingest use case and `ingest_jobs`; CLI and endpoint.
-- [~] ▸ `AnswerKeyImporter`: Transcript Tracker → `ground_truth`. Cross-check against
+- [x] ▸ `AnswerKeyImporter`: Transcript Tracker → `ground_truth`. Cross-check against
   the PDF's stripped `CALL TAGS`; report any disagreement.
 
-  Status note (2026-09-23): `AnswerKey`, the `AnswerKeySource` port and
-  `PdfAnswerKeySource` exist, so the PDF’s stripped `CALL TAGS` can be read.
-  Missing: the Transcript Tracker sheet is not read anywhere, there is no
-  `ground_truth` table, no importer use case, and no cross-check or
-  disagreement report. `PdfAnswerKeySource` is referenced only by tests.
+  Done 2026-09-23. `GroundTruth` + `GroundTruthSignal`, the
+  `GroundTruthSource`/`GroundTruthRepository` ports, `XlsxGroundTruthSource`
+  (all 24 tracker columns, including the `|`-packed composites),
+  `SqlGroundTruthRepository`, the `ground_truth` table (revision
+  `20260923_0905`), `ImportAnswerKey` and a CLI. All six new modules are
+  added to the "Extraction cannot read the answer key" contract, which was
+  verified to bite by deliberately importing one from L2.
+
+  The cross-check passes on the real corpus: the tracker and the PDF agree
+  on all five shared fields across all 100 calls, which is independent
+  evidence that workbook `_2` and PDF `_1` are the matched pair §11 warns
+  about. The CLI exits 2, distinctly from 1, when they do not.
 
 Acceptance: 100 calls, every one resolved to an employer and broker (or
 explicitly flagged), zero label leakage.
