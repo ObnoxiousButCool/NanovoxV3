@@ -11,6 +11,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from domain.entities.agent import Agent
+from domain.entities.broker import Broker
+from domain.entities.employer import Employer
 from domain.entities.employer_contact import EmployerContact
 from domain.entities.member import Member
 
@@ -24,3 +26,14 @@ class ReferenceLookup(ABC):
 
     @abstractmethod
     async def find_employer_contact(self, reference: str) -> EmployerContact | None: ...
+
+    @abstractmethod
+    async def find_employer(self, reference: str) -> Employer | None: ...
+
+    @abstractmethod
+    async def list_brokers(self) -> tuple[Broker, ...]:
+        """Every known broker — L1's `broker_named_aloud` candidate scan
+        checks a caller's words against all of them, not just the
+        employer's own broker of record (Data Model sheet: a mismatch
+        between the two is itself a finding, not something to search
+        around)."""

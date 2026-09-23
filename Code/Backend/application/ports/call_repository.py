@@ -25,3 +25,13 @@ class IngestCounts:
 class CallRepository(ABC):
     @abstractmethod
     async def upsert_all(self, calls: tuple[IngestedCall, ...]) -> IngestCounts: ...
+
+    @abstractmethod
+    async def get(self, reference: str) -> IngestedCall | None:
+        """One ingested call, for the extraction pipeline to read (plan §8
+        Phase 4) — `None` if no call with this reference has been
+        ingested."""
+
+    @abstractmethod
+    async def list_references(self) -> tuple[str, ...]:
+        """Every ingested call's reference, for a run over the whole corpus."""

@@ -12,10 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from application.ports.reference_lookup import ReferenceLookup
 from domain.entities.agent import Agent
+from domain.entities.broker import Broker
+from domain.entities.employer import Employer
 from domain.entities.employer_contact import EmployerContact
 from domain.entities.member import Member
 from domain.value_objects.authority import Authority
-from infrastructure.persistence.tables import AgentRow, EmployerContactRow, EmployerRow, MemberRow
+from infrastructure.persistence.tables import (
+    AgentRow,
+    BrokerRow,
+    EmployerContactRow,
+    EmployerRow,
+    MemberRow,
+)
 
 
 class SqlReferenceLookup(ReferenceLookup):
@@ -80,4 +88,54 @@ class SqlReferenceLookup(ReferenceLookup):
                 authority=Authority(contact_row.authority),
                 employer_ref=employer_reference,
                 planned_calls=contact_row.planned_calls,
+            )
+
+    async def find_employer(self, reference: str) -> Employer | None:
+        async with self._session_factory() as session:
+            row = (
+                await session.execute(
+                    select(EmployerRow, BrokerRow.reference)
+                    .join(BrokerRow, EmployerRow.broker_id == BrokerRow.id)
+                    .where(EmployerRow.reference == reference)
+                )
+            ).first()
+            if row is None:
+                return None
+            employer_row, broker_reference = row
+            return Employer(
+                reference=employer_row.reference,
+                name=employer_row.name,
+                industry=employer_row.industry,
+                design_churn_profile=employer_row.design_churn_profile,
+                eligible=employer_row.eligible,
+                enrolled=employer_row.enrolled,
+                region=employer_row.region,
+                renewal_month=employer_row.renewal_month,
+                broker_ref=broker_reference,
+                dental_sponsorship=employer_row.dental_sponsorship,
+                lines_held=employer_row.lines_held,
+                planned_calls=employer_row.planned_calls,
+                planned_member_calls=employer_row.planned_member_calls,
+                planned_employer_calls=employer_row.planned_employer_calls,
+                participation=employer_row.participation,
+                fee_band=employer_row.fee_band,
+                annual_fee=employer_row.annual_fee,
+                annual_premium=employer_row.annual_premium,
+                cobra_regime=employer_row.cobra_regime,
+                calls_per_100=employer_row.calls_per_100,
+            )
+
+    async def list_brokers(self) -> tuple[Broker, ...]:
+        async with self._session_factory() as session:
+            rows = (await session.execute(select(BrokerRow))).scalars().all()
+            return tuple(
+                Broker(
+                    reference=row.reference,
+                    name=row.name,
+                    agency=row.agency,
+                    region=row.region,
+                    groups_in_book=row.groups_in_book,
+                    signal_profile=row.signal_profile,
+                )
+                for row in rows
             )

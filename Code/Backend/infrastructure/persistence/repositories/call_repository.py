@@ -13,7 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from application.ports.call_repository import CallRepository, IngestCounts
 from application.ports.clock import Clock
 from domain.entities.ingested_call import IngestedCall
+from domain.entities.transcript import Transcript
+from domain.entities.turn import Turn
 from domain.value_objects.call_resolution_status import CallResolutionStatus
+from domain.value_objects.call_source import CallSource
+from domain.value_objects.caller_type import CallerType
+from domain.value_objects.speaker_role import SpeakerRole
 from infrastructure.persistence.tables import (
     CallRow,
     CallTurnRow,
@@ -59,6 +64,20 @@ class SqlCallRepository(CallRepository):
 
         return counts
 
+    async def get(self, reference: str) -> IngestedCall | None:
+        async with self._session_factory() as session:
+            row = (
+                await session.execute(select(CallRow).where(CallRow.reference == reference))
+            ).scalar_one_or_none()
+            if row is None:
+                return None
+            return _to_domain(row)
+
+    async def list_references(self) -> tuple[str, ...]:
+        async with self._session_factory() as session:
+            result = await session.execute(select(CallRow.reference))
+            return tuple(result.scalars().all())
+
     async def _upsert_call(self, session: AsyncSession, call: IngestedCall) -> None:
         row = (
             await session.execute(select(CallRow).where(CallRow.reference == call.reference))
@@ -71,6 +90,7 @@ class SqlCallRepository(CallRepository):
         row.source = transcript.source.value if transcript else ""
         row.occurred_at = transcript.occurred_at if transcript else None
         row.aht_seconds = transcript.aht_seconds if transcript else None
+        row.agent_name = transcript.agent_name if transcript else ""
         row.caller_type = call.caller_type.value
         row.caller_ref = call.caller_ref
         row.agent_ref = call.agent_ref
@@ -105,6 +125,40 @@ class SqlCallRepository(CallRepository):
             select(row_type.id).where(row_type.reference == reference)  # type: ignore[attr-defined]
         )
         return result.scalar_one_or_none()
+
+
+def _to_domain(row: CallRow) -> IngestedCall:
+    transcript = None
+    if row.source:
+        transcript = Transcript(
+            reference=row.reference,
+            source=CallSource(row.source),
+            occurred_at=row.occurred_at,
+            aht_seconds=row.aht_seconds,
+            caller_type=CallerType(row.caller_type),
+            caller_ref=row.caller_ref,
+            agent_ref=row.agent_ref,
+            agent_name=row.agent_name,
+            turns=tuple(
+                Turn(role=SpeakerRole(turn.role), text=turn.text)
+                for turn in sorted(row.turns, key=lambda turn: turn.sequence)
+            ),
+        )
+
+    return IngestedCall(
+        reference=row.reference,
+        caller_type=CallerType(row.caller_type),
+        caller_ref=row.caller_ref,
+        agent_ref=row.agent_ref,
+        transcript=transcript,
+        resolution_status=CallResolutionStatus(row.resolution_status),
+        resolution_reason=row.resolution_reason,
+        member_ref=row.member.reference if row.member is not None else None,
+        employer_contact_ref=(
+            row.employer_contact.reference if row.employer_contact is not None else None
+        ),
+        employer_ref=row.employer.reference if row.employer is not None else None,
+    )
 
 
 def _tally(calls: tuple[IngestedCall, ...]) -> IngestCounts:

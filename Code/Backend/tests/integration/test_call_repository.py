@@ -146,3 +146,57 @@ async def test_writes_one_ingest_job_per_run(
         assert job.status == "COMPLETED"
         assert job.finished_at is not None
         assert "1 resolved" in (job.message or "")
+
+
+class TestReadBack:
+    """`get`/`list_references` reconstruct what the pipeline (plan §8
+    Phase 4) needs from what `upsert_all` wrote — the reverse direction.
+    """
+
+    async def test_a_resolved_call_round_trips_with_its_transcript(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        repository = SqlCallRepository(session_factory, SystemClock())
+        await repository.upsert_all((_RESOLVED_CALL,))
+
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.resolution_status is CallResolutionStatus.RESOLVED
+        assert found.transcript is not None
+        assert found.transcript.agent_name == "Sarah Whitlock"
+        assert found.transcript.turns == _TRANSCRIPT.turns
+
+    async def test_an_unresolved_call_round_trips_with_no_transcript(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        repository = SqlCallRepository(session_factory, SystemClock())
+        await repository.upsert_all((_UNRESOLVED_CALL,))
+
+        found = await repository.get("C-0002")
+
+        assert found is not None
+        assert found.transcript is None
+        assert found.resolution_reason == _UNRESOLVED_CALL.resolution_reason
+
+    async def test_an_unknown_reference_resolves_to_none(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        repository = SqlCallRepository(session_factory, SystemClock())
+
+        assert await repository.get("C-9999") is None
+
+    async def test_list_references_names_every_ingested_call(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        repository = SqlCallRepository(session_factory, SystemClock())
+        await repository.upsert_all((_RESOLVED_CALL, _UNRESOLVED_CALL))
+
+        assert set(await repository.list_references()) == {"C-0001", "C-0002"}
+
+    async def test_list_references_is_empty_for_an_empty_table(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        repository = SqlCallRepository(session_factory, SystemClock())
+
+        assert await repository.list_references() == ()

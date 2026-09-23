@@ -146,6 +146,7 @@ source_modules = [
     "application.use_cases.ingest_transcripts",
     "infrastructure.corpus.pdf_corpus_source",
     "domain.extraction.l1_deterministic",
+    "application.use_cases.classify_call_l2",
 ]
 forbidden_modules = [
     "application.ports.answer_key_source",

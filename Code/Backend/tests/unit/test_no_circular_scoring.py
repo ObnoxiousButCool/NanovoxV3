@@ -19,8 +19,16 @@ ALLOWED = {
     "domain/entities/employer.py",
     "infrastructure/persistence/tables.py",
     "infrastructure/persistence/repositories/reference_repository.py",
+    # find_employer() round-trips the full Employer entity, same as
+    # reference_repository.py's own storage direction — still never
+    # compared, filtered or scored on.
+    "infrastructure/persistence/repositories/reference_lookup.py",
     "infrastructure/reference/xlsx_reference_source.py",
     "tests/unit/test_no_circular_scoring.py",
+    # Constructs an Employer fixture (all fields required) to exercise L2's
+    # broker-of-record cross-check — the field is set, never read for a
+    # decision.
+    "tests/unit/test_classify_call_l2.py",
     "tests/integration/test_reference_repository.py",
     "tests/integration/test_reference_lookup.py",
 }

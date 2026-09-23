@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import JSON, ForeignKey, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infrastructure.persistence.models import Base
@@ -156,6 +156,11 @@ class CallRow(Base):
     caller_type: Mapped[str] = mapped_column(nullable=False)  # CallerType.value
     caller_ref: Mapped[str] = mapped_column(nullable=False)
     agent_ref: Mapped[str] = mapped_column(nullable=False)
+    # The header's own agent name, alongside agent_ref — needed to
+    # reconstruct a Transcript when a call is read back for extraction
+    # (plan §8 Phase 4). Empty when there is no transcript to reconstruct
+    # (SPEAKER_UNRESOLVED).
+    agent_name: Mapped[str] = mapped_column(nullable=False, default="", server_default=text("''"))
 
     resolution_status: Mapped[str] = mapped_column(nullable=False)  # CallResolutionStatus.value
     resolution_reason: Mapped[str | None] = mapped_column(nullable=True)
@@ -177,6 +182,15 @@ class CallRow(Base):
         order_by="CallTurnRow.sequence",
         lazy="selectin",
     )
+    # Read-only from this side (no back_populates): these three exist so a
+    # call can be read back with its business references resolved, without
+    # a second round of by-reference lookups. selectin for the same reason
+    # as `turns` above.
+    member: Mapped[MemberRow | None] = relationship(foreign_keys=[member_id], lazy="selectin")
+    employer_contact: Mapped[EmployerContactRow | None] = relationship(
+        foreign_keys=[employer_contact_id], lazy="selectin"
+    )
+    employer: Mapped[EmployerRow | None] = relationship(foreign_keys=[employer_id], lazy="selectin")
 
 
 class CallTurnRow(Base):
@@ -240,3 +254,45 @@ class StageCacheEntryRow(Base):
     model: Mapped[str] = mapped_column(nullable=False)
     output_text: Mapped[str] = mapped_column(nullable=False)
     cached_at: Mapped[datetime] = mapped_column(nullable=False)
+
+
+class CallExtractionRow(Base):
+    """The pipeline's own output for one call — the Call Tag Schema's
+    sixteen fields, filled in as L1 → L2 → (L3 ∥ L4) run (plan §7, §8
+    Phase 4). One row per call (Data Model sheet: the call is the fact
+    table); separate from `CallRow`, which is Phase 2's ingestion record
+    and never touched again once a call is resolved.
+
+    Only L2's columns are non-null yet — L1 is pure and recomputed on
+    demand rather than stored, and L3/L4's columns arrive with those
+    commits. A call with no row here simply hasn't been analysed.
+    """
+
+    __tablename__ = "call_extractions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), nullable=False, unique=True)
+
+    # --- L2 — classification -------------------------------------------
+    outcome: Mapped[str | None] = mapped_column(nullable=True)  # Outcome.value
+    category: Mapped[str | None] = mapped_column(nullable=True)  # Category.value
+    product_lines: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    complaint_present: Mapped[bool | None] = mapped_column(nullable=True)
+    complaint_attributed_to: Mapped[str | None] = mapped_column(nullable=True)
+    # Each item: {"type", "quote", "turn_seq"}.
+    intent: Mapped[list[dict[str, str | int]] | None] = mapped_column(JSON, nullable=True)
+    escalation_triggered: Mapped[bool | None] = mapped_column(nullable=True)
+    escalation_requested_by_caller: Mapped[bool | None] = mapped_column(nullable=True)
+    broker_named_aloud_present: Mapped[bool | None] = mapped_column(nullable=True)
+    broker_named_aloud_broker_ref: Mapped[str | None] = mapped_column(nullable=True)
+    broker_named_aloud_sentiment: Mapped[str | None] = mapped_column(nullable=True)
+    broker_named_aloud_matches_employer_of_record: Mapped[bool | None] = mapped_column(
+        nullable=True
+    )
+    touchpoint: Mapped[str | None] = mapped_column(nullable=True)
+    summary: Mapped[str | None] = mapped_column(nullable=True)
+
+    l2_provider: Mapped[str | None] = mapped_column(nullable=True)
+    l2_model: Mapped[str | None] = mapped_column(nullable=True)
+    l2_prompt_version: Mapped[str | None] = mapped_column(nullable=True)
+    l2_completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
