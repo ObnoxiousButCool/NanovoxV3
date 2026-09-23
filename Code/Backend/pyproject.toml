@@ -145,6 +145,7 @@ type = "forbidden"
 source_modules = [
     "application.use_cases.ingest_transcripts",
     "infrastructure.corpus.pdf_corpus_source",
+    "domain.extraction.l1_deterministic",
 ]
 forbidden_modules = [
     "application.ports.answer_key_source",
