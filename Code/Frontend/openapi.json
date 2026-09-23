@@ -173,6 +173,91 @@
         ],
         "title": "IngestCountsResponse",
         "type": "object"
+      },
+      "ListProvidersResponse": {
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "string"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderResponse"
+            },
+            "title": "Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "default",
+          "providers"
+        ],
+        "title": "ListProvidersResponse",
+        "type": "object"
+      },
+      "ProviderResponse": {
+        "properties": {
+          "billable": {
+            "title": "Billable",
+            "type": "boolean"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "implemented": {
+            "title": "Implemented",
+            "type": "boolean"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "local": {
+            "title": "Local",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "selectable": {
+            "title": "Selectable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "model",
+          "configured",
+          "reachable",
+          "implemented",
+          "is_default",
+          "selectable",
+          "billable",
+          "local"
+        ],
+        "title": "ProviderResponse",
+        "type": "object"
       }
     }
   },
@@ -225,6 +310,27 @@
         "summary": "Ingest every call from the configured transcript source",
         "tags": [
           "ingest"
+        ]
+      }
+    },
+    "/api/v1/providers": {
+      "get": {
+        "operationId": "list_providers_api_v1_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListProvidersResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List every configured model provider and whether it is usable now",
+        "tags": [
+          "providers"
         ]
       }
     },

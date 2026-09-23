@@ -5,8 +5,9 @@ handlers are attached and no files are created, so switching logging off
 leaves no trace on disk rather than merely raising the threshold.
 
 Files rotate at midnight and ``LOG_RETENTION_DAYS`` rotated files are kept.
-An LLM audit logger arrives in Phase 3, alongside the first thing that needs
-auditing.
+The LLM audit logger (Phase 3) gets its own file, at INFO regardless of the
+configured level, since it is a cost and provenance record rather than a
+diagnostic one.
 """
 
 from __future__ import annotations
@@ -21,9 +22,11 @@ from typing import Any
 from domain.errors import ConfigurationError
 from infrastructure.config.settings import Settings
 from infrastructure.logging.correlation import CorrelationIdFilter
+from infrastructure.logging.llm_audit import LLM_AUDIT_LOGGER_NAME
 
 APP_LOG_FILENAME = "nanovox-insights-app.log"
 ACCESS_LOG_FILENAME = "nanovox-insights-access.log"
+LLM_AUDIT_LOG_FILENAME = "nanovox-insights-llm-audit.log"
 
 ACCESS_LOGGER_NAME = "nanovox_insights.access"
 
@@ -142,17 +145,21 @@ def configure_logging(settings: Settings) -> None:
     """
     root = logging.getLogger()
     access = logging.getLogger(ACCESS_LOGGER_NAME)
-    _reset(root, access)
+    audit = logging.getLogger(LLM_AUDIT_LOGGER_NAME)
+    _reset(root, access, audit)
 
-    # Access records go to their own file; propagating them would duplicate
-    # every request into the app log.
+    # Access and audit records go to their own files; propagating them would
+    # duplicate every request and every model call into the app log.
     access.propagate = False
+    audit.propagate = False
 
     if not settings.log_enabled:
         root.addHandler(logging.NullHandler())
         access.addHandler(logging.NullHandler())
+        audit.addHandler(logging.NullHandler())
         root.setLevel(logging.CRITICAL + 1)
         access.setLevel(logging.CRITICAL + 1)
+        audit.setLevel(logging.CRITICAL + 1)
         return
 
     _ensure_log_dir(settings.log_dir)
@@ -164,6 +171,11 @@ def configure_logging(settings: Settings) -> None:
 
     access.setLevel(level)
     access.addHandler(_file_handler(settings.log_dir, ACCESS_LOG_FILENAME, settings, formatter))
+
+    # Always at INFO: it is a cost and provenance record, and raising the
+    # global level to WARNING must not silently stop collecting it.
+    audit.setLevel(logging.INFO)
+    audit.addHandler(_file_handler(settings.log_dir, LLM_AUDIT_LOG_FILENAME, settings, formatter))
 
     if settings.log_to_console:
         console = logging.StreamHandler()
@@ -190,4 +202,8 @@ def configure_logging(settings: Settings) -> None:
 
 def shutdown_logging() -> None:
     """Detach and close handlers. Used on application shutdown and between tests."""
-    _reset(logging.getLogger(), logging.getLogger(ACCESS_LOGGER_NAME))
+    _reset(
+        logging.getLogger(),
+        logging.getLogger(ACCESS_LOGGER_NAME),
+        logging.getLogger(LLM_AUDIT_LOGGER_NAME),
+    )

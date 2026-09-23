@@ -6,8 +6,9 @@ global.
 
 Long-lived resources (the engine, the session factory) are built once per
 process and held on the container; use cases are cheap and are built per
-request. Grows with each phase: Phase 1 adds reference-data repositories,
-Phase 3 the LLM provider registry, and so on — nothing here anticipates them.
+request. Grows with each phase: Phase 1 added reference-data repositories,
+Phase 3 adds the LLM provider registry and audit log, and so on — nothing
+here anticipates a phase before it lands.
 """
 
 from __future__ import annotations
@@ -26,8 +27,12 @@ from application.ports.transcript_source import TranscriptSource
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
+from application.use_cases.list_providers import ListProviders, ProviderProbe
 from infrastructure.config.settings import Settings
 from infrastructure.corpus.pdf_corpus_source import PdfCorpusSource
+from infrastructure.llm.provider_probe import RegistryProviderProbe
+from infrastructure.llm.registry import PROVIDER_NAMES, ProviderRegistry
+from infrastructure.logging.llm_audit import LlmAuditLog
 from infrastructure.persistence.engine import create_database_engine, create_session_factory
 from infrastructure.persistence.health_probe import DatabaseHealthProbe
 from infrastructure.persistence.repositories.call_repository import SqlCallRepository
@@ -51,6 +56,8 @@ class Container:
     transcript_source: TranscriptSource
     reference_lookup: ReferenceLookup
     call_repository: CallRepository
+    provider_registry: ProviderRegistry
+    provider_probe: ProviderProbe
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
@@ -67,12 +74,21 @@ class Container:
             repository=self.call_repository,
         )
 
+    def list_providers(self) -> ListProviders:
+        return ListProviders(
+            probe=self.provider_probe,
+            names=PROVIDER_NAMES,
+            default_name=self.settings.llm_provider,
+        )
+
 
 def build_container(settings: Settings) -> Container:
     """Wire the object graph for a running application."""
     engine = create_database_engine(settings)
     session_factory = create_session_factory(engine)
     clock = SystemClock()
+    audit = LlmAuditLog(include_bodies=settings.log_llm_prompts)
+    provider_registry = ProviderRegistry(settings, audit)
     return Container(
         settings=settings,
         engine=engine,
@@ -84,6 +100,10 @@ def build_container(settings: Settings) -> Container:
         transcript_source=PdfCorpusSource(settings.transcripts_path),
         reference_lookup=SqlReferenceLookup(session_factory),
         call_repository=SqlCallRepository(session_factory, clock),
+        provider_registry=provider_registry,
+        provider_probe=RegistryProviderProbe(
+            provider_registry, settings.llm_provider, settings.llm_probe_timeout_seconds
+        ),
     )
 
 

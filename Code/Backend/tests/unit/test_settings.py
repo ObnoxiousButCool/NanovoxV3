@@ -46,3 +46,19 @@ def test_database_file_is_none_for_postgres() -> None:
 def test_is_production_only_when_app_env_is_prod() -> None:
     assert make_settings(app_env="prod").is_production
     assert not make_settings(app_env="local").is_production
+
+
+def test_llm_provider_is_trimmed_and_lowercased() -> None:
+    assert make_settings(llm_provider="  OpenAI ").llm_provider == "openai"
+
+
+def test_llm_provider_must_not_be_blank(monkeypatch: pytest.MonkeyPatch) -> None:
+    get_settings.cache_clear()
+    monkeypatch.setenv("LLM_PROVIDER", "   ")
+
+    try:
+        with pytest.raises(ConfigurationError) as excinfo:
+            get_settings()
+        assert "llm_provider" in (excinfo.value.detail or "")
+    finally:
+        get_settings.cache_clear()

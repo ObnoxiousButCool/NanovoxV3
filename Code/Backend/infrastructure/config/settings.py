@@ -7,10 +7,11 @@ else in the codebase reads ``os.environ``.
 Configuration is validated eagerly so a bad value fails at startup with an
 explicit message rather than surfacing as an obscure error on first use.
 
-Scoped to what Phase 0 needs (application, database, logging). Later phases
-add their own settings blocks here as they need them — LLM provider settings
-in Phase 3, corpus/ingestion settings in Phase 2, dashboard/rubric config
-paths in Phases 4 and 6 — rather than declaring fields nothing reads yet.
+Scoped to what Phase 0 needs (application, database, logging), plus what
+Phase 1 (reference data), Phase 2 (corpus/ingestion) and Phase 3 (model
+providers) have added since. Later phases add their own blocks the same
+way — dashboard/rubric config paths in Phases 4 and 6 — rather than
+declaring fields nothing reads yet.
 """
 
 from __future__ import annotations
@@ -74,6 +75,29 @@ class Settings(BaseSettings):
     workbook_path: Path = DEFAULT_WORKBOOK_PATH
     transcripts_path: Path = DEFAULT_TRANSCRIPTS_PATH
 
+    # --- Model providers (plan §8 Phase 3, decision D1) ---------------------
+    # OpenAI gpt-4o-mini is the default; Anthropic and Ollama are the only two
+    # extra configurable providers wired in. Azure Foundry is not ported.
+    llm_provider: str = "openai"
+    llm_timeout_seconds: float = Field(default=120.0, gt=0)
+    # Deliberately not llm_timeout_seconds. That budget is for generating one
+    # layer's worth of extraction; asking whether a provider is alive must
+    # answer in the time a person will wait for a dropdown, and an
+    # unreachable host must not hold the picker hostage for two minutes.
+    llm_probe_timeout_seconds: float = Field(default=5.0, gt=0, le=60)
+    llm_max_retries: int = Field(default=2, ge=0, le=10)
+    llm_max_output_tokens: int = Field(default=4096, ge=256, le=128_000)
+
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "qwen2.5:7b-instruct"
+
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    openai_base_url: str = ""
+
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-opus-5"
+
     # --- Logging -----------------------------------------------------------
     log_enabled: bool = True
     log_level: LogLevel = "INFO"
@@ -81,6 +105,9 @@ class Settings(BaseSettings):
     log_format: LogFormat = "json"
     log_retention_days: int = Field(default=14, ge=1, le=365)
     log_to_console: bool = True
+    # Off by default: transcripts are member conversations, and an audit log
+    # is not the place to accumulate them.
+    log_llm_prompts: bool = False
 
     @field_validator("api_prefix")
     @classmethod
@@ -102,6 +129,14 @@ class Settings(BaseSettings):
                 "Postgres"
             )
         return value
+
+    @field_validator("llm_provider")
+    @classmethod
+    def _provider_is_normalised(cls, value: str) -> str:
+        normalised = value.strip().lower()
+        if not normalised:
+            raise ValueError("LLM_PROVIDER must not be empty")
+        return normalised
 
     @property
     def cors_origin_list(self) -> list[str]:

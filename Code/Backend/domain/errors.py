@@ -6,10 +6,10 @@ Every error the application raises deliberately derives from
 (``frameworks_drivers/api/errors.py``), so an error's HTTP representation is
 decided in one place rather than at each raise site (plan §2A.3).
 
-This is the base vocabulary Phase 0 needs, plus what Phase 1 adds. Later
-phases add more as they need it — ``InsufficientSample``,
-``LayerUnavailable`` and ``LabelLeakDetected`` arrive with the phases that
-raise them, rather than as unused classes now.
+This is the base vocabulary Phase 0 needs, plus what Phase 1 and Phase 3
+add. Later phases add more as they need it — ``InsufficientSample`` and
+``LabelLeakDetected`` arrive with the phases that raise them, rather than as
+unused classes now.
 """
 
 from __future__ import annotations
@@ -70,3 +70,40 @@ class ReferenceIntegrityError(ValidationError):
     """
 
     code = "reference_integrity_error"
+
+
+class ProviderUnavailableError(DependencyUnavailableError):
+    """A model provider could not be reached, or refused the request transiently.
+
+    Distinct from a bad response: the request never produced an answer, so
+    retrying it is meaningful.
+
+    ``retry_after`` carries the provider's own instruction, in seconds, when
+    it sent one. A rate limiter knows when its bucket refills and blind
+    backoff does not, so honouring it is the difference between waiting once
+    and burning every remaining attempt against a window that was never
+    going to open in time.
+    """
+
+    code = "provider_unavailable"
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        detail: str | None = None,
+        retry_after: float | None = None,
+    ) -> None:
+        super().__init__(message, detail=detail)
+        self.retry_after = retry_after
+
+
+class ProviderResponseError(DependencyUnavailableError):
+    """A model provider answered, but never with the structure that was demanded.
+
+    Raised only after the repair attempt has also failed. The analysis is
+    abandoned rather than stored partially: a half-parsed layer would be
+    worse than no layer, because it would look like a result.
+    """
+
+    code = "provider_response_error"

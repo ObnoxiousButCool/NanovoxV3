@@ -7,10 +7,12 @@ import logging
 import sys
 from pathlib import Path
 
+from infrastructure.logging.llm_audit import LLM_AUDIT_LOGGER_NAME
 from infrastructure.logging.setup import (
     ACCESS_LOG_FILENAME,
     ACCESS_LOGGER_NAME,
     APP_LOG_FILENAME,
+    LLM_AUDIT_LOG_FILENAME,
     JsonFormatter,
     configure_logging,
     shutdown_logging,
@@ -46,6 +48,31 @@ def test_enabled_logging_writes_app_and_access_files(tmp_path: Path) -> None:
         app_record = json.loads(app_log.splitlines()[-1])
         assert app_record["message"] == "hello"
         assert access_log.splitlines()[-1]
+    finally:
+        shutdown_logging()
+
+
+def test_the_llm_audit_logger_writes_its_own_file_at_info_regardless_of_the_configured_level(
+    tmp_path: Path,
+) -> None:
+    log_dir = tmp_path / "logs"
+    # WARNING is above INFO; the audit log must still collect INFO records —
+    # it's a cost and provenance record, not a diagnostic one.
+    settings = make_settings(
+        log_enabled=True, log_to_console=False, log_dir=log_dir, log_level="WARNING"
+    )
+
+    try:
+        configure_logging(settings)
+        logging.getLogger(LLM_AUDIT_LOGGER_NAME).info("llm call", extra={"provider": "openai"})
+
+        audit_log = (log_dir / LLM_AUDIT_LOG_FILENAME).read_text(encoding="utf-8").strip()
+        record = json.loads(audit_log.splitlines()[-1])
+        assert record["provider"] == "openai"
+
+        # Not duplicated into the app log: audit propagation is off.
+        app_log = log_dir / APP_LOG_FILENAME
+        assert not app_log.exists() or "llm call" not in app_log.read_text(encoding="utf-8")
     finally:
         shutdown_logging()
 

@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List every configured model provider and whether it is usable now */
+        get: operations["list_providers_api_v1_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reference/import": {
         parameters: {
             query?: never;
@@ -126,6 +143,36 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** ListProvidersResponse */
+        ListProvidersResponse: {
+            /** Default */
+            default: string;
+            /** Providers */
+            providers: components["schemas"]["ProviderResponse"][];
+        };
+        /** ProviderResponse */
+        ProviderResponse: {
+            /** Billable */
+            billable: boolean;
+            /** Configured */
+            configured: boolean;
+            /** Detail */
+            detail?: string | null;
+            /** Implemented */
+            implemented: boolean;
+            /** Is Default */
+            is_default: boolean;
+            /** Local */
+            local: boolean;
+            /** Model */
+            model: string;
+            /** Name */
+            name: string;
+            /** Reachable */
+            reachable: boolean;
+            /** Selectable */
+            selectable: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -178,6 +225,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestCountsResponse"];
+                };
+            };
+        };
+    };
+    list_providers_api_v1_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListProvidersResponse"];
                 };
             };
         };
