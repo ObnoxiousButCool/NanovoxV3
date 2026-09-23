@@ -408,13 +408,13 @@ ask Minnie; don't pick one silently.
 
 | Folder | What to use it for |
 |---|---|
-| `C:\Users\ShlokaKulkarni\Downloads\Prototype\Prototype` | **Ranjit's Account Signals prototype — the design reference.** `app.css` is the design system. `app.js` is the shared behaviour to port: filter state in the URL, the theme switcher, the ten indicator families (`NV.INDICATORS`), bands (`NV.bandFor`), quality bands, call archetypes, the chart functions, the stacked drawer, the call-evidence renderer. Each `*.html` is a screen to reproduce. `tools/` is his workbook pipeline: `01_read_workbook.py` (sheet parsing), `03_join_corpus.py` (joins, derived fields), `04_build_app_data.py` (indicators, actions), `README.md` (expected counts). |
-| `C:\Users\ShlokaKulkarni\Technossus\NanoVox-V2` | **The existing NanoVox app — the engineering reference.** Same stack as this project. Copy proven pieces rather than rewriting them (list in §3.3). Its working tree may be on any branch; treat it as a library of patterns, not a source of truth for the corpus. |
+| `Prototype/` (in this repo) | **Ranjit’s Account Signals prototype — the design reference.** No longer an external folder: it was committed to this repo in `ac9cf83`, so it travels with the checkout and needs no path on any particular machine. `app.css` is the design system. `app.js` is the shared behaviour to port: filter state in the URL, the theme switcher, the ten indicator families (`NV.INDICATORS`), bands (`NV.bandFor`), quality bands, call archetypes, the chart functions, the stacked drawer, the call-evidence renderer. Each `*.html` is a screen to reproduce — there are seven, `agents.html` included. `tools/` is his workbook pipeline: `01_read_workbook.py` (sheet parsing), `03_join_corpus.py` (joins, derived fields), `04_build_app_data.py` (indicators, actions), `README.md` (expected counts). |
+| `C:\Technossus\Code\NanoVox-V2` | **The existing NanoVox app — the engineering reference.** Same stack as this project. Copy proven pieces rather than rewriting them (list in §3.3). Its working tree may be on any branch; treat it as a library of patterns, not a source of truth for the corpus. Note it also runs: an elevated uvicorn from this folder holds `0.0.0.0:8000` and returns after a reboot, which is why this project's backend runs on 8001 (see `Code/Backend/Commands`). |
 
 Serve the prototype beside the app while you build:
 
 ```bash
-python -m http.server 4599 --directory "/c/Users/ShlokaKulkarni/Downloads/Prototype/Prototype"
+python -m http.server 4599 --directory Prototype
 ```
 
 ### 3.2 Source documents — copy into this repo
@@ -464,9 +464,9 @@ git init -b main
 printf '\n# Local working plans - never committed\nplan.md\n' >> .git/info/exclude
 git status --short          # must NOT list plan.md
 mkdir -p data/source
-cp "/c/Users/ShlokaKulkarni/Technossus/NanoVox-V2/Documents/nanovox_corpus_v9_build_bible_2.xlsx" data/source/
-cp "/c/Users/ShlokaKulkarni/Technossus/NanoVox-V2/Documents/nanovox_v9_transcripts_batch1_001-100_1.pdf" data/source/
-cp "/c/Users/ShlokaKulkarni/Technossus/NanoVox-V2/Documents/Insights-Worth-Building.docx" data/source/
+cp "/c/Technossus/Code/NanoVox-V2/Documents/nanovox_corpus_v9_build_bible_2.xlsx" data/source/
+cp "/c/Technossus/Code/NanoVox-V2/Documents/nanovox_v9_transcripts_batch1_001-100_1.pdf" data/source/
+cp "/c/Technossus/Code/NanoVox-V2/Insights-Prototype/Insights-Worth-Building.docx" data/source/
 ```
 
 ### 4.2 Bootstrap commit, then branch
