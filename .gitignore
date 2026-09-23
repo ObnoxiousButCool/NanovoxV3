@@ -1,8 +1,8 @@
-# Local data, none of it tracked: the SQLite database and its -wal/-shm
-# siblings under data/db, application logs under data/logs, and client source
-# material under data/source (plan §3.2, decision D8). The whole directory is
-# excluded rather than the .db file alone -- the WAL holds committed pages that
-# haven't been checkpointed back yet, so it carries transcript content too.
+# Local artefacts only: the SQLite database under data/db, its -wal/-shm
+# siblings and application logs. The whole directory is excluded rather than the
+# .db file alone -- the WAL holds committed pages that haven't been checkpointed
+# back yet, so it carries transcript content too. The corpus is not here: it is
+# tracked in Documents/ (plan §3.2, decision D8 as reversed).
 data/
 
 # Python

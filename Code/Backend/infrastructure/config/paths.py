@@ -18,8 +18,9 @@ _THIS_FILE = Path(__file__).resolve()
 BACKEND_ROOT: Path = _THIS_FILE.parents[2]
 PROJECT_ROOT: Path = _THIS_FILE.parents[4]
 
-# data/ is git-ignored below data/db and data/logs (client source material
-# under data/source/ is separately excluded — plan §3.2, decision D8).
+# data/ holds only local artefacts — the SQLite database and the logs — and is
+# git-ignored whole. The corpus is not under it: it lives in Documents/ and is
+# tracked (see below).
 DEFAULT_DATA_DIR: Path = PROJECT_ROOT / "data"
 DEFAULT_DATABASE_FILE: Path = DEFAULT_DATA_DIR / "db" / "nanovox_insights.db"
 DEFAULT_LOG_DIR: Path = DEFAULT_DATA_DIR / "logs"
@@ -28,18 +29,19 @@ DEFAULT_CONFIG_DIR: Path = BACKEND_ROOT / "config"
 # process on one port. Absent during development, where Vite serves it.
 DEFAULT_FRONTEND_DIST: Path = PROJECT_ROOT / "Code" / "Frontend" / "dist"
 
-# The v9 build-bible workbook — git-ignored client material (plan §3.2,
-# decision D8). Absent on a machine that hasn't been handed the corpus;
-# importing reference data fails with a clear message rather than silently
-# reading nothing.
-DEFAULT_WORKBOOK_PATH: Path = (
-    PROJECT_ROOT / "data" / "source" / "nanovox_corpus_v9_build_bible_2.xlsx"
-)
+# The corpus, in Documents/ and tracked in git. It used to default to the
+# git-ignored data/source/, which no checkout ever populated: the corpus
+# tests then skipped silently while scripts/check.sh still reported every
+# gate passing, so the label-leak proof §6.3 calls the single most important
+# safety property was not actually running. Tracked and found by default, it
+# runs everywhere. Still overridable — a deployment that does not look like
+# this checkout sets WORKBOOK_PATH and TRANSCRIPTS_PATH.
+DEFAULT_CORPUS_DIR: Path = PROJECT_ROOT / "Documents"
+# The v9 build-bible workbook.
+DEFAULT_WORKBOOK_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_corpus_v9_build_bible_2.xlsx"
 # The matched-pair transcripts PDF (plan §11: workbook _2 with PDF _1, no
-# other pairing). Same git-ignored status as the workbook.
-DEFAULT_TRANSCRIPTS_PATH: Path = (
-    PROJECT_ROOT / "data" / "source" / "nanovox_v9_transcripts_batch1_001-100_1.pdf"
-)
+# other pairing).
+DEFAULT_TRANSCRIPTS_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_v9_transcripts_batch1_001-100_1.pdf"
 
 
 def default_database_url() -> str:

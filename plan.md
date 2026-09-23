@@ -391,7 +391,7 @@ Three source documents outrank this plan, and they outrank each other in
 different ways — each is authoritative on a different question, not on all
 of them:
 
-- **The v9 workbook** (`data/source/nanovox_corpus_v9_build_bible_2.xlsx`)
+- **The v9 workbook** (`Documents/nanovox_corpus_v9_build_bible_2.xlsx`)
   wins on **definitions**: the data model, the Call Tag Schema, metric
   formulas, denominators, windows, minimum n, triggers.
 - **Ranjit's prototype** wins on **presentation**: layout, visuals,
@@ -419,7 +419,8 @@ python -m http.server 4599 --directory Prototype
 
 ### 3.2 Source documents — copy into this repo
 
-Copy these three from `NanoVox-V2/Documents/` into `data/source/`:
+These three live in `Documents/` and are tracked in git. They were copied in
+from NanoVox-V2 (see §4.1); a fresh clone already has them.
 
 | File | Role |
 |---|---|
@@ -429,8 +430,9 @@ Copy these three from `NanoVox-V2/Documents/` into `data/source/`:
 
 **Use workbook `_2` with PDF `_1` and no other pairing.** See §11.
 
-`data/source/` is git-ignored by default (client material; see D8). Tests use
-small fixtures extracted from these files and committed under `tests/fixtures/`.
+They are tracked rather than git-ignored — D8 as originally written said the
+opposite, and §5 records why that changed. Tests still use small fixtures under
+`tests/fixtures/` for the fast path; the three corpus tests read the real files.
 
 ### 3.3 What to reuse from NanoVox-V2
 
@@ -497,7 +499,7 @@ Code/
     tests/
   Frontend/
     src/app/  src/features/<screen>/  src/shared/{api,ui,styles,hooks}
-data/source/                git-ignored inputs (§3.2)
+Documents/                  the corpus and the docx, tracked (§3.2)
 scripts/check.sh            runs every gate in §10
 README.md
 ```
@@ -585,9 +587,15 @@ able to fire with or without it. Agent conduct (insight 28) is built from the
 touchpoint; the `touchpoint = agent_conversation` gate this plan previously
 proposed does not appear anywhere in the workbook and is dropped.
 
-**D8 — Are the source documents tracked? DECIDED — recommended.** No — `data/source/` is
-git-ignored; tests use small committed fixtures. Minnie may prefer to track them
-as NanoVox does.
+**D8 — Are the source documents tracked? DECIDED — then reversed.** Originally no:
+`data/source/` git-ignored, tests on small committed fixtures, with a note that
+Minnie may prefer to track them as NanoVox does. Reversed on 2026-09-23 — they
+are tracked, in `Documents/`. The reason is not preference: nothing ever
+populated `data/source/`, so the three corpus tests skipped on every checkout
+while `scripts/check.sh` still reported all gates passing. The 100-call
+label-leak proof of §6.3 — the property that section calls the single most
+important one in the system — was not running anywhere. Tracked, it runs by
+default.
 
 **D9 — Database. DECIDED — recommended.** SQLite for local development, Postgres via
 `DATABASE_URL`, exactly as NanoVox does.
@@ -614,7 +622,7 @@ NanoVox's `pyproject.toml`.
 ### 6.2 Data flow
 
 ```
-data/source/ workbook (_2)                 data/source/ transcripts PDF (_1)
+Documents/ workbook (_2)                   Documents/ transcripts PDF (_1)
         │                                              │
         ▼                                              ▼
  ReferenceImporter                        TranscriptSource: PdfCorpusSource
@@ -669,14 +677,15 @@ Implement stripping in the ingestion adapter, and prove it:
   word in a header position, the archetype string, `rules `.
 - [ ] ▸ the stripped labels go to the answer-key importer, never discarded silently.
 
-  Status note (2026-09-23): the fixture-based leak test runs everywhere, but the
-  real 100-call proof (`tests/integration/test_real_ingest.py`) and the corpus
-  regression guard **skip silently on this machine** — they look for the corpus
-  under `data/source/`, which does not exist here; the workbook and PDF are in
-  `Documents/`. `pytest -rs` shows three SKIPPED, and `scripts/check.sh` still
-  reports all gates passed. Point `WORKBOOK_PATH`/`TRANSCRIPTS_PATH` at
-  `Documents/`, or place the pair under `data/source/`, before trusting this
-  property — §6.3 says every Phase 5 figure depends on it.
+  Status note (2026-09-23): this proof was **not running** until today. It, and
+  the corpus regression guard, looked for the pair under the git-ignored
+  `data/source/`, which no checkout ever populated — so `pytest -rs` reported
+  three SKIPPED while `scripts/check.sh` still printed "all gates passed", and
+  a green gate run did not mean what it appeared to. The corpus defaults to
+  `Documents/` now, where it is tracked, so all three run by default: 356
+  backend tests pass with none skipped. If a skip ever reappears here, treat it
+  as a failure — this is the property the section below says every Phase 5
+  figure depends on.
 
 If this property ever fails, every evaluation figure in Phase 5 is worthless.
 

@@ -2,8 +2,11 @@
 an end-to-end ingest — the two things plan §8 Phase 2 explicitly asks be
 checked against every call in the corpus, not just fixtures.
 
-Skipped when the corpus isn't present (git-ignored, decision D8) — runs
-locally, where the corpus actually is.
+The corpus is tracked under Documents/, so these run on any checkout. The
+skip guard stays for a deployment that points WORKBOOK_PATH and
+TRANSCRIPTS_PATH somewhere the files are genuinely absent — but it should no
+longer fire here, and a skip is now a signal that something is wrong rather
+than the normal state.
 """
 
 from __future__ import annotations
@@ -29,7 +32,7 @@ from tests.support.leak_check import assert_no_answer_key_leak
 
 pytestmark = pytest.mark.skipif(
     not (DEFAULT_WORKBOOK_PATH.exists() and DEFAULT_TRANSCRIPTS_PATH.exists()),
-    reason="data/source/ corpus not present locally (git-ignored, decision D8)",
+    reason="corpus not found — expected it under Documents/ (see infrastructure/config/paths.py)",
 )
 
 

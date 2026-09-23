@@ -1,11 +1,10 @@
-"""Regression guard against the real corpus: confirms `data/source/` holds
+"""Regression guard against the real corpus: confirms `Documents/` holds
 the matched pair the plan requires — workbook `_2` (the 17 Sep 2026
 re-issue) with transcripts PDF `_1` — not an earlier, internally-consistent
 but silently mismatched revision (plan §11's known trap).
 
-Skipped when the workbook isn't present: it's git-ignored client material
-(plan §3.2, decision D8), so CI has nothing to read. This runs where it
-matters — locally, on the machine that actually has the corpus.
+The workbook is tracked under Documents/, so this runs on any checkout
+rather than only on a machine that happens to hold the corpus.
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from infrastructure.reference.xlsx_reference_source import XlsxReferenceSource
 
 pytestmark = pytest.mark.skipif(
     not DEFAULT_WORKBOOK_PATH.exists(),
-    reason="data/source/ workbook not present locally (git-ignored, decision D8)",
+    reason="workbook not found — expected it under Documents/ (see infrastructure/config/paths.py)",
 )
 
 
