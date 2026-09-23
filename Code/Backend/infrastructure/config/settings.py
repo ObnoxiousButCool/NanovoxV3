@@ -8,10 +8,10 @@ Configuration is validated eagerly so a bad value fails at startup with an
 explicit message rather than surfacing as an obscure error on first use.
 
 Scoped to what Phase 0 needs (application, database, logging), plus what
-Phase 1 (reference data), Phase 2 (corpus/ingestion) and Phase 3 (model
-providers) have added since. Later phases add their own blocks the same
-way — dashboard/rubric config paths in Phases 4 and 6 — rather than
-declaring fields nothing reads yet.
+Phase 1 (reference data), Phase 2 (corpus/ingestion), Phase 3 (model
+providers) and Phase 6 (dashboard thresholds) have added since. Later
+phases add their own blocks the same way — the rubric config path in
+Phase 4 — rather than declaring fields nothing reads yet.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from domain.errors import ConfigurationError
 from infrastructure.config.paths import (
     BACKEND_ROOT,
+    DEFAULT_CONFIG_DIR,
     DEFAULT_FRONTEND_DIST,
     DEFAULT_LOG_DIR,
     DEFAULT_TRANSCRIPTS_PATH,
@@ -74,6 +75,13 @@ class Settings(BaseSettings):
     # --- Reference data (plan §8 Phase 1) -----------------------------------
     workbook_path: Path = DEFAULT_WORKBOOK_PATH
     transcripts_path: Path = DEFAULT_TRANSCRIPTS_PATH
+
+    # --- Dashboard thresholds (plan §8 Phase 6) ----------------------------
+    # Min n per metric, the risk-flag numbers, peer bands and quality bands,
+    # transcribed from the workbook. A path rather than the values themselves:
+    # thresholds are versioned data, and `.env` is not where a number anyone
+    # has to defend in front of a client belongs.
+    dashboard_config_path: Path = DEFAULT_CONFIG_DIR / "dashboard.yaml"
 
     # --- Model providers (plan §8 Phase 3, decision D1) ---------------------
     # OpenAI gpt-4o-mini is the default; Anthropic and Ollama are the only two

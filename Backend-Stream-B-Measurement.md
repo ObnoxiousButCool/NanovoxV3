@@ -66,10 +66,36 @@ Two things to respect while you are in here:
   every call *silently*, because either combination is internally
   consistent. `tests/integration/test_real_corpus_regression.py` guards this.
 
-### ▸ B2 — `config/dashboard.yaml` · Medium
+### ▸ B2 — `config/dashboard.yaml` · Medium · **DONE 2026-09-23**
 
-Thresholds are configuration, read from the workbook, not constants sprinkled
-through code.
+Done. `config/dashboard.yaml` holds the thresholds, `domain/dashboard_config.py`
+holds their shape and the decisions made from them (withheld, size band,
+eligible/flagged/quotable, quality band), and
+`infrastructure/config/dashboard_config.py` loads it strictly — an absent key
+is an error, never a default. `settings.dashboard_config_path` points at it.
+
+`tests/integration/test_dashboard_config_matches_workbook.py` reads the real
+workbook and fails if any shipped value has drifted from the Metrics, Call
+Quality Framework or Questions Worth Asking sheets, **including when a metric
+is added to a sheet and not to the config**. That is what makes the file a
+transcription rather than a second definition. **B3 is the next task.**
+
+Two things found while transcribing, neither of which changes what B2 built:
+
+- **The plan's §8 list is incomplete, as it says it is.** It names ten values;
+  the sheet has fourteen rows. Missing from the plan: metric 11 (commercial
+  intent capture, min n 10) and both base measures — call volume (no
+  threshold) and AHT (4wk, 30). All fourteen are configured. Treat the sheet
+  as the source, which is what §3.0 already says.
+- **The Questions Worth Asking sheet is a scheduled capability nobody has
+  scheduled.** Ten trigger rules with explicit thresholds, and the sheet
+  closes by insisting they are configuration rather than code. Only rule 2
+  (the broker pattern test) appears anywhere in the plan. The other nine are
+  not in B2's scope and are not built; they need a decision about where they
+  land before anyone writes them.
+
+Originally: thresholds are configuration, read from the workbook, not
+constants sprinkled through code.
 
 **Minimum n is per metric, from the Metrics sheet — there is no global
 number.** The plan's §8 Phase 6 lists the values: contact rate 30, complaint

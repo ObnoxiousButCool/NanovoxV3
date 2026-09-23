@@ -8,6 +8,9 @@ pytest-cov>=6.0,<8.0
 ruff>=0.8,<1.0
 mypy>=1.13,<2.0
 import-linter>=2.1,<3.0
+# PyYAML ships no inline types; mypy --strict needs the stubs to see
+# yaml.safe_load as anything other than Any.
+types-PyYAML>=6.0,<7.0
 
 # fastapi.testclient.TestClient is built on httpx.
 httpx>=0.27,<1.0

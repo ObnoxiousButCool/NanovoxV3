@@ -1,0 +1,275 @@
+# Dashboard thresholds — the numbers every published figure is gated on.
+#
+# Thresholds are configuration, not code. That is not a style preference: the
+# workbook's own Questions Worth Asking sheet closes with it ("Thresholds are
+# configuration, not code, and every threshold change is versioned like a
+# rubric change"), and the reason is that a threshold buried in a source file
+# cannot be argued with by the person who has to defend the number.
+#
+# WHERE THESE COME FROM
+#
+# The `metrics` block below is a transcription of the workbook's **Metrics**
+# sheet — its Window and Min n columns, row for row, including the two base
+# measures. It is not an interpretation of them. plan.md §8 Phase 6 lists ten
+# of these values inline as an "e.g."; that list is a cross-check, not the
+# source, and it is incomplete — it omits metric 11 and both base measures.
+#
+# `tests/integration/test_dashboard_config_matches_workbook.py` reads the real
+# workbook and fails if any value here has drifted from it. That test is what
+# makes this file a transcription rather than a second, competing definition.
+#
+# There is deliberately **no global min n**. One existed early (`min_n: 5`) and
+# was removed on 2026-09-22: min n is per metric, and a single global number is
+# wrong for every metric at once — it would publish self-inflicted demand at 5
+# calls where the sheet wants 60, and suppress nothing that matters.
+
+version: "1.0.0"
+
+# --- Metric gates ----------------------------------------------------------
+#
+# One entry per row of the Metrics sheet, keyed by a snake_case name and
+# carrying the sheet's own row label so a reader can find it.
+#
+# `min_n` is the sample size below which the figure is WITHHELD — suppressed,
+# with the reason shown. Withheld is not zero: zero reads as good news where
+# the truth is absence of evidence.
+#
+# `counts` is what n counts, and it is load-bearing rather than decoration.
+# The sheet qualifies three of these — "10 calls", "30 triggers", "10 calls per
+# employer" — and leaves the rest bare; a bare number counts calls. Flattening
+# them all to a plain integer is how escalation integrity ends up gated on 30
+# calls instead of 30 warranted escalations, which is a much weaker test: at
+# batch-1 volume there are 100 calls and 11 triggers.
+#
+# `window_weeks` is the rolling window the metric is computed over. `null`
+# means the row has no window of its own — metric 12 is scored per call, and
+# call volume is cut whatever way the caller asks for.
+#
+# `min_n: null` means the row is never withheld for sample size. That is true
+# only of those same two rows, and it is the sheet's own "n/a" and "—", not an
+# omission here.
+
+metrics:
+  - key: contact_rate
+    sheet_row: "1"
+    name: Contact rate
+    window_weeks: 12
+    min_n: 30
+    counts: calls
+
+  - key: complaint_rate
+    sheet_row: "2"
+    name: Complaint rate
+    window_weeks: 12
+    min_n: 10
+    counts: calls
+
+  - key: first_contact_resolution
+    sheet_row: "3"
+    name: First-contact resolution
+    window_weeks: 4
+    min_n: 30
+    counts: calls
+
+  - key: failure_driven_repeat_rate
+    sheet_row: "4"
+    name: Failure-driven repeat rate
+    window_weeks: 12
+    min_n: 30
+    counts: calls
+
+  - key: self_inflicted_demand
+    sheet_row: "5"
+    name: Self-inflicted demand
+    window_weeks: 12
+    min_n: 60
+    counts: calls
+
+  # "30 triggers", not 30 calls. The denominator is calls where
+  # escalation.triggered is true, and the point of the metric is that measuring
+  # against all calls makes a 0% handled rate read as good news.
+  - key: escalation_integrity
+    sheet_row: "6"
+    name: Escalation integrity
+    window_weeks: 12
+    min_n: 30
+    counts: triggers
+
+  - key: control_exception_rate
+    sheet_row: "7"
+    name: Control exception rate
+    window_weeks: 4
+    min_n: 30
+    counts: calls
+
+  - key: knowledge_failure_rate
+    sheet_row: "8"
+    name: Knowledge failure rate
+    window_weeks: 4
+    min_n: 30
+    counts: calls
+
+  - key: cost_to_serve
+    sheet_row: "9"
+    name: Cost to serve
+    window_weeks: 12
+    min_n: 30
+    counts: calls
+
+  # The sheet's Min n here is "10 calls per employer" and its denominator is
+  # "Employers with >=3 calls in window" — two different numbers doing two
+  # different jobs. The `risk_flag` block below carries both, because an
+  # aggregation has to tell "not eligible" from "eligible but not quotable".
+  - key: account_risk_flag
+    sheet_row: "10"
+    name: Account risk flag
+    window_weeks: 12
+    min_n: 10
+    counts: calls per employer
+
+  - key: commercial_intent_capture
+    sheet_row: "11"
+    name: Commercial intent capture
+    window_weeks: 12
+    min_n: 10
+    counts: calls
+
+  # Per call, so there is no sample that can be too small. The
+  # applicable-calls caveat the sheet asks for on the tile is a different
+  # mechanism from withholding and is not configured here.
+  - key: agent_quality_score
+    sheet_row: "12"
+    name: Agent quality score
+    window_weeks: null
+    min_n: null
+    counts: calls
+
+  - key: call_volume
+    sheet_row: "B1"
+    name: Call volume
+    window_weeks: null
+    min_n: null
+    counts: calls
+
+  - key: aht
+    sheet_row: "B2"
+    name: AHT
+    window_weeks: 4
+    min_n: 30
+    counts: calls
+
+# --- Money (decision D4) ---------------------------------------------------
+#
+# Unknown, and finance owns it. While this is null every money figure renders
+# withheld. There is never a placeholder number here and never one in code: a
+# plausible-looking cost per call is exactly the figure that escapes into a
+# client deck and is then defended by someone who did not invent it.
+cost_per_call: null
+
+# --- Peer size bands -------------------------------------------------------
+#
+# Insight 2 compares an employer's contact rate against the median of its own
+# size band, because "+25% vs peers" is a statement a reader can act on and a
+# bare per-1,000 rate is not.
+#
+# NEW BUILD, NOT A PORT: there is no size-band or peer concept anywhere in the
+# prototype.
+#
+# These are NOT the fee bands. Rule P-33 bands the administration fee at 2-8,
+# 9-20, 21-199 and 200+ *eligible employees*, and
+# `domain/reference_derivations.py` already computes that. These bands are
+# 2-24, 25-74, 75-199 and 200+ *enrolled lives* — different boundaries over a
+# different population for a different purpose. Conflating the two would band
+# a 22-life group against the wrong peers and nothing would say so.
+peer_size_bands:
+  - label: "2-24 lives"
+    min_lives: 2
+    max_lives: 24
+  - label: "25-74 lives"
+    min_lives: 25
+    max_lives: 74
+  - label: "75-199 lives"
+    min_lives: 75
+    max_lives: 199
+  - label: "200+ lives"
+    min_lives: 200
+    max_lives: null
+
+# --- Broker views ----------------------------------------------------------
+broker:
+  # Insight 10: no book under 150 lives is ranked. Book size comes from the
+  # Broker Master, never from call counts — that sheet is explicit that
+  # dividing attributed calls by book size is what surfaces the three-group
+  # agency raw volume can never show, and that only works if the denominator
+  # is the real book.
+  #
+  # NEW BUILD, NOT A PORT: the prototype has no ranking floor.
+  ranking_floor_lives: 150
+
+  # Questions Worth Asking, trigger rule 2, verbatim: ">=3 calls name the same
+  # broker adversely within a rolling 12 weeks, from >=2 different employers".
+  # The sheet records why each number sits where it does: two employers rules
+  # out a single disgruntled client, and three calls is the minimum that can
+  # distinguish a pattern from a bad week.
+  #
+  # Counted from `broker_named_aloud` with sentiment ADVERSE (Call Tag Schema
+  # field 14) — that is the only tag carrying a broker_ref, so it is the only
+  # one that can attribute a mention to a particular broker. The
+  # `broker_conduct_adverse` signal co-occurs with it but names no broker.
+  #
+  # Render fired AND unfired, with what it reached (insight 13). At batch-1
+  # density it cannot fire, and "below — needs 3 from 2 employers" is itself
+  # the finding: separate incidents, not one broker underserving a book.
+  pattern_test:
+    min_adverse_mentions: 3
+    min_distinct_employers: 2
+    window_weeks: 12
+
+# --- Call quality bands ----------------------------------------------------
+#
+# Call Quality Framework sheet, stage 4: "GOOD at 86 and above, AVERAGE at 60
+# and above, POOR below 60." The prototype's NV.QUALITY_BANDS agrees exactly.
+#
+# That sheet's own open decision 3 records that the 86 boundary is derived
+# circularly — it sits in the gap between the current cohort's agent averages,
+# so hiring a stronger team moves it. Configured rather than hard-coded partly
+# for that reason: recalibrating it against outcomes is a value change here,
+# not a code change.
+#
+# The scoring rubric itself — the six dimensions, their per-marker weights,
+# the per-dimension caps and the 15-point offset ceiling — is NOT here. The
+# workbook puts it in its own `config/rubric.yaml` under its own version stamp,
+# so that every score can record which rubric judged it.
+quality_bands:
+  good_min: 86
+  average_min: 60
+
+# --- Account risk flag (metric 10, decision D2) ----------------------------
+#
+# A yes/no flag, not a band. This is the largest deliberate divergence from
+# the prototype, which renders a four-level High/Elevated/Watch/None band; the
+# workbook wins on definitions (§3.0).
+#
+# Three numbers doing three distinct jobs:
+#
+#   eligibility_min_calls  the sheet's denominator, "Employers with >=3 calls
+#                          in window". Below it an employer is NOT ELIGIBLE,
+#                          which is not the same as not flagged. At batch-1
+#                          volume most of the 92 employers with calls have a
+#                          single call, so most are ineligible — the page has
+#                          to say that rather than show 90 reassuring rows.
+#
+#   flag_threshold         >=2 of the sheet's four named conditions: complaint
+#                          rate up month-on-month · a failure-driven repeat ·
+#                          market_test intent · a CHOICE-attributed UNRESOLVED
+#                          inside the renewal window.
+#
+#   quote_min_calls        the sheet's Min n, "10 calls per employer" — the
+#                          point at which the flag may be quoted as a figure.
+#
+# Never labelled a prediction. The sheet is explicit that no termination
+# outcomes exist in this dataset to validate one against.
+risk_flag:
+  eligibility_min_calls: 3
+  flag_threshold: 2
+  quote_min_calls: 10
