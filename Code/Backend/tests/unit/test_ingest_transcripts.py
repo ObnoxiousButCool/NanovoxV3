@@ -7,6 +7,8 @@ from application.ports.reference_lookup import ReferenceLookup
 from application.ports.transcript_source import RawCallRecord, TranscriptSource
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from domain.entities.agent import Agent
+from domain.entities.broker import Broker
+from domain.entities.employer import Employer
 from domain.entities.employer_contact import EmployerContact
 from domain.entities.ingested_call import IngestedCall
 from domain.entities.member import Member
@@ -78,6 +80,12 @@ class _FakeLookup(ReferenceLookup):
     async def find_employer_contact(self, reference: str) -> EmployerContact | None:
         return _CONTACT if reference == _CONTACT.reference else None
 
+    async def find_employer(self, reference: str) -> Employer | None:
+        return None
+
+    async def list_brokers(self) -> tuple[Broker, ...]:
+        return ()
+
 
 class _FakeRepository(CallRepository):
     def __init__(self) -> None:
@@ -88,6 +96,15 @@ class _FakeRepository(CallRepository):
         return IngestCounts(
             total=len(calls), resolved=0, caller_unresolved=0, agent_unknown=0, speaker_unresolved=0
         )
+
+    async def get(self, reference: str) -> IngestedCall | None:
+        for call in self.received or ():
+            if call.reference == reference:
+                return call
+        return None
+
+    async def list_references(self) -> tuple[str, ...]:
+        return tuple(call.reference for call in self.received or ())
 
 
 async def test_a_fully_resolvable_call_is_marked_resolved_with_its_employer() -> None:

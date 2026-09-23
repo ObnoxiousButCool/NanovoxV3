@@ -137,3 +137,41 @@ async def test_finds_a_known_employer_contact_with_its_employer_ref(
     assert contact is not None
     assert contact.authority is Authority.CANNOT_BIND
     assert contact.employer_ref == "EMP-1001"
+
+
+async def test_finds_a_known_employer_with_its_brokers_reference(
+    engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await _seed(session_factory)
+
+    employer = await SqlReferenceLookup(session_factory).find_employer("EMP-1001")
+
+    assert employer is not None
+    assert employer.name == "Cedar Point Workforce Partners"
+    assert employer.broker_ref == "BRK-01"
+
+
+async def test_unknown_employer_resolves_to_none(
+    engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    employer = await SqlReferenceLookup(session_factory).find_employer("EMP-9999")
+
+    assert employer is None
+
+
+async def test_lists_every_known_broker(
+    engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await _seed(session_factory)
+
+    brokers = await SqlReferenceLookup(session_factory).list_brokers()
+
+    assert [broker.reference for broker in brokers] == ["BRK-01"]
+
+
+async def test_an_empty_reference_dataset_lists_no_brokers(
+    engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    brokers = await SqlReferenceLookup(session_factory).list_brokers()
+
+    assert brokers == ()
