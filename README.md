@@ -9,5 +9,51 @@ questions, not on all of them: the v9 workbook wins on definitions — the data
 model, the Call Tag Schema, metric formulas, denominators, windows, minimum n,
 triggers; Ranjit's Account Signals prototype wins on presentation — layout,
 visuals, interaction; `Insights-Worth-Building.docx` wins on scope — which
-insights, why, and the principles behind them. Setup instructions, the import
-commands, and the architecture will follow as the codebase is built.
+insights, why, and the principles behind them. The import commands and an
+architecture diagram will follow as the codebase is built.
+
+## Setup
+
+Backend (`Code/Backend`) — `requirements-dev-lock.txt` is the exact, fully
+pinned install (`requirements.txt`/`requirements-dev.txt` are the
+human-curated ranges it was generated from — see that file's header to
+regenerate it):
+
+```bash
+python -m venv .venv
+./.venv/Scripts/pip install -r requirements-dev-lock.txt   # .venv/bin/pip on macOS/Linux
+cp .env.example .env
+alembic upgrade head
+python -m uvicorn frameworks_drivers.main:app --reload
+```
+
+Frontend (`Code/Frontend`) — `package-lock.json` is committed, so `npm ci` is
+the exact, reproducible install; `npm install` also works but can move
+lockfile-permitted minor versions:
+
+```bash
+npm ci
+cp .env.example .env
+npm run dev
+```
+
+**Fresh clone → clean install → `scripts/check.sh`** is the standard you
+should be able to reproduce on any machine: `git clone`, run the two install
+commands above exactly as written, then `./scripts/check.sh` from the repo
+root with no other setup. If that doesn't work on a clean machine, the lock
+files are wrong — say so rather than working around it locally.
+
+## Before every commit
+
+```bash
+./scripts/check.sh
+```
+
+Runs every gate: backend format, lint, strict types, the Clean Architecture
+import contracts, tests with coverage, and the single-migration-head check;
+frontend lint, strict types, tests with coverage, and the typed API client
+regenerated from the backend with no diff. Needs a backend `.venv` set up as
+above. The script's own exit code is non-zero if any gate failed — it isn't
+just printing warnings, `./scripts/check.sh; echo $?` after a failing gate
+prints `1`. Never commit past a failing gate, and never weaken a gate to
+make it pass.

@@ -17,6 +17,7 @@ htmlcov/
 node_modules/
 dist/
 .vite/
+coverage/
 
 # Env files — never commit real secrets
 .env

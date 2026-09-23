@@ -1,0 +1,31 @@
+# Exact, fully-pinned development/test/lint dependencies — requirements-lock.txt
+# plus the transitive closure of requirements-dev.txt's own direct deps,
+# computed the same way (see requirements-lock.txt's header).
+#
+# Install with: pip install -r requirements-dev-lock.txt
+# Regenerate the same way as requirements-lock.txt, after requirements-dev.txt
+# changes.
+
+-r requirements-lock.txt
+
+# certifi, httpcore and httpx now come in through requirements-lock.txt
+# (openai pulls httpx at runtime) — no longer listed here separately.
+coverage==7.16.0
+grimp==3.17
+import-linter==2.15
+iniconfig==2.3.0
+librt==0.15.0
+markdown-it-py==4.2.0
+mdurl==0.1.2
+mypy==1.20.2
+mypy_extensions==1.1.0
+packaging==26.3
+pathspec==1.1.1
+pluggy==1.6.0
+Pygments==2.21.0
+pytest==8.4.2
+pytest-asyncio==0.26.0
+pytest-cov==7.1.0
+rich==15.0.0
+ruff==0.16.6
+tzdata==2026.3

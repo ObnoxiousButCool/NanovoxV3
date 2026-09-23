@@ -1,0 +1,359 @@
+{
+  "components": {
+    "schemas": {
+      "ComponentHealthResponse": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComponentStatus"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ],
+        "title": "ComponentHealthResponse",
+        "type": "object"
+      },
+      "ComponentStatus": {
+        "description": "Outcome of probing a single component.",
+        "enum": [
+          "up",
+          "down"
+        ],
+        "title": "ComponentStatus",
+        "type": "string"
+      },
+      "HealthResponse": {
+        "properties": {
+          "application": {
+            "title": "Application",
+            "type": "string"
+          },
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentHealthResponse"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "environment": {
+            "title": "Environment",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ComponentStatus"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "application",
+          "version",
+          "environment",
+          "checked_at"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "ImportCountsResponse": {
+        "properties": {
+          "agents": {
+            "title": "Agents",
+            "type": "integer"
+          },
+          "brokers": {
+            "title": "Brokers",
+            "type": "integer"
+          },
+          "employer_contacts": {
+            "title": "Employer Contacts",
+            "type": "integer"
+          },
+          "employers": {
+            "title": "Employers",
+            "type": "integer"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "rules": {
+            "title": "Rules",
+            "type": "integer"
+          },
+          "touchpoints": {
+            "title": "Touchpoints",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "brokers",
+          "employers",
+          "members",
+          "employer_contacts",
+          "agents",
+          "rules",
+          "touchpoints"
+        ],
+        "title": "ImportCountsResponse",
+        "type": "object"
+      },
+      "ImportReferenceResponse": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/ImportCountsResponse"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "counts",
+          "warnings"
+        ],
+        "title": "ImportReferenceResponse",
+        "type": "object"
+      },
+      "IngestCountsResponse": {
+        "properties": {
+          "agent_unknown": {
+            "title": "Agent Unknown",
+            "type": "integer"
+          },
+          "caller_unresolved": {
+            "title": "Caller Unresolved",
+            "type": "integer"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "type": "integer"
+          },
+          "speaker_unresolved": {
+            "title": "Speaker Unresolved",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "resolved",
+          "caller_unresolved",
+          "agent_unknown",
+          "speaker_unresolved"
+        ],
+        "title": "IngestCountsResponse",
+        "type": "object"
+      },
+      "ListProvidersResponse": {
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "string"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderResponse"
+            },
+            "title": "Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "default",
+          "providers"
+        ],
+        "title": "ListProvidersResponse",
+        "type": "object"
+      },
+      "ProviderResponse": {
+        "properties": {
+          "billable": {
+            "title": "Billable",
+            "type": "boolean"
+          },
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "implemented": {
+            "title": "Implemented",
+            "type": "boolean"
+          },
+          "is_default": {
+            "title": "Is Default",
+            "type": "boolean"
+          },
+          "local": {
+            "title": "Local",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "selectable": {
+            "title": "Selectable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "model",
+          "configured",
+          "reachable",
+          "implemented",
+          "is_default",
+          "selectable",
+          "billable",
+          "local"
+        ],
+        "title": "ProviderResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "summary": "Call intelligence for a general agency in employee-benefits insurance.",
+    "title": "NanoVox Insights API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "A component is unavailable."
+          }
+        },
+        "summary": "Report application and dependency health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/ingest/transcripts": {
+      "post": {
+        "operationId": "ingest_transcripts_api_v1_ingest_transcripts_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestCountsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ingest every call from the configured transcript source",
+        "tags": [
+          "ingest"
+        ]
+      }
+    },
+    "/api/v1/providers": {
+      "get": {
+        "operationId": "list_providers_api_v1_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListProvidersResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List every configured model provider and whether it is usable now",
+        "tags": [
+          "providers"
+        ]
+      }
+    },
+    "/api/v1/reference/import": {
+      "post": {
+        "operationId": "import_reference_data_api_v1_reference_import_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReferenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Import the workbook's reference (master-data) sheets",
+        "tags": [
+          "reference"
+        ]
+      }
+    }
+  }
+}
