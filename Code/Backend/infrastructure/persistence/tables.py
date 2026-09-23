@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infrastructure.persistence.models import Base
@@ -215,3 +215,28 @@ class IngestJobRow(Base):
     started_at: Mapped[datetime] = mapped_column(nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(nullable=True)
     result_call_reference: Mapped[str | None] = mapped_column(nullable=True)
+
+
+class StageCacheEntryRow(Base):
+    """One extraction layer's cached raw completion (plan §7's stage cache).
+
+    ``output_text`` is the layer's raw completion text, not a parsed
+    value — see ``application/ports/stage_cache.py`` for why. The unique
+    constraint is the whole cache key; a repeat write for the same key
+    replaces rather than duplicates (`SqlStageCache` upserts by it).
+    """
+
+    __tablename__ = "stage_cache_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "transcript_hash", "layer", "prompt_version", "model", name="uq_stage_cache_key"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    transcript_hash: Mapped[str] = mapped_column(nullable=False, index=True)
+    layer: Mapped[str] = mapped_column(nullable=False)  # Layer.value
+    prompt_version: Mapped[str] = mapped_column(nullable=False)
+    model: Mapped[str] = mapped_column(nullable=False)
+    output_text: Mapped[str] = mapped_column(nullable=False)
+    cached_at: Mapped[datetime] = mapped_column(nullable=False)

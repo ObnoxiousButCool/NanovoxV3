@@ -23,6 +23,7 @@ from application.ports.health_probe import HealthProbe
 from application.ports.reference_lookup import ReferenceLookup
 from application.ports.reference_repository import ReferenceRepository
 from application.ports.reference_source import ReferenceSource
+from application.ports.stage_cache import StageCache
 from application.ports.transcript_source import TranscriptSource
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
@@ -38,6 +39,7 @@ from infrastructure.persistence.health_probe import DatabaseHealthProbe
 from infrastructure.persistence.repositories.call_repository import SqlCallRepository
 from infrastructure.persistence.repositories.reference_lookup import SqlReferenceLookup
 from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
+from infrastructure.persistence.repositories.stage_cache import SqlStageCache
 from infrastructure.reference.xlsx_reference_source import XlsxReferenceSource
 from infrastructure.system_clock import SystemClock
 
@@ -58,6 +60,7 @@ class Container:
     call_repository: CallRepository
     provider_registry: ProviderRegistry
     provider_probe: ProviderProbe
+    stage_cache: StageCache
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
@@ -104,6 +107,7 @@ def build_container(settings: Settings) -> Container:
         provider_probe=RegistryProviderProbe(
             provider_registry, settings.llm_provider, settings.llm_probe_timeout_seconds
         ),
+        stage_cache=SqlStageCache(session_factory, clock),
     )
 
 
