@@ -20,9 +20,11 @@ from application.use_cases.read_insights import (
     GetAccountDetail,
     GetAccountRisk,
     GetActions,
+    GetAgents,
     GetDemand,
     GetExecScorecard,
     GetHierarchy,
+    GetRules,
 )
 from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
 from domain.dashboard_config import DashboardConfig
@@ -90,6 +92,14 @@ def get_actions_use_case(container: ContainerDep) -> GetActions:
     return container.get_actions()
 
 
+def get_rules_use_case(container: ContainerDep) -> GetRules:
+    return container.get_rules()
+
+
+def get_agents_use_case(container: ContainerDep) -> GetAgents:
+    return container.get_agents()
+
+
 def get_dashboard_config(container: ContainerDep) -> DashboardConfig:
     """The Metrics sheet's thresholds, for endpoints that label a figure
     with the window or the name its metric was defined with.
@@ -112,3 +122,5 @@ GetAccountDetailDep = Annotated[GetAccountDetail, Depends(get_account_detail_use
 GetHierarchyDep = Annotated[GetHierarchy, Depends(get_hierarchy_use_case)]
 GetDemandDep = Annotated[GetDemand, Depends(get_demand_use_case)]
 GetActionsDep = Annotated[GetActions, Depends(get_actions_use_case)]
+GetRulesDep = Annotated[GetRules, Depends(get_rules_use_case)]
+GetAgentsDep = Annotated[GetAgents, Depends(get_agents_use_case)]

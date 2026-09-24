@@ -31,7 +31,14 @@ from typing import TYPE_CHECKING
 
 from application.ports.insights_source import CorpusQuery
 from domain.aggregation.actions import ActionItem, OwnerWorkload, action_items, by_owner
-from domain.aggregation.agent_events import CONTROL_DENOMINATOR_CAVEAT, control_exception_rates
+from domain.aggregation.agent_events import (
+    CONTROL_DENOMINATOR_CAVEAT,
+    AgentEvents,
+    AgentQuality,
+    agent_events,
+    agent_quality,
+    control_exception_rates,
+)
 from domain.aggregation.broker_friction import BrokerFriction, ranked_book_friction
 from domain.aggregation.call_tags import Window
 from domain.aggregation.contact_rate import PeerComparison, employer_contact_rate, peer_comparison
@@ -57,6 +64,15 @@ from domain.aggregation.risk_flag import (
     exposure,
     flagged_share,
 )
+from domain.aggregation.rules import (
+    RuleRow,
+    failures_by_area,
+    failures_by_layer,
+    failures_by_provenance,
+    failures_by_rule,
+    failures_by_touchpoint,
+    knowledge_failure_rate,
+)
 from domain.aggregation.touchpoints import (
     PromiseGap,
     TouchpointRow,
@@ -79,6 +95,8 @@ if TYPE_CHECKING:
     from domain.value_objects.call_source import CallSource
     from domain.value_objects.category import Category
     from domain.value_objects.control_exception_type import ControlExceptionType
+    from domain.value_objects.rule_confidence import RuleConfidence
+    from domain.value_objects.rule_layer import RuleLayer
 
 
 @dataclass(frozen=True)
@@ -419,3 +437,120 @@ class GetActions:
             did_it_work=DID_IT_WORK,
             window=window,
         )
+
+
+@dataclass(frozen=True)
+class RulesView:
+    """Screen 5 — rules we fail to explain.
+
+    Counts, never a per-rule rate. §9 insight 23 forbids one: the
+    denominator would have to be "calls where this rule was relevant", and
+    nothing records that. `overall_rate` is the one rate here and it is
+    about the corpus, not about any rule.
+    """
+
+    scope: ScopedCorpus
+    rules: tuple[RuleRow, ...]
+    by_layer: tuple[tuple[RuleLayer, int], ...]
+    by_area: tuple[tuple[str, int], ...]
+    by_provenance: tuple[tuple[RuleConfidence, int], ...]
+    by_touchpoint: tuple[tuple[str, int], ...]
+    overall_rate: Figure
+    window: Window
+
+
+@dataclass(frozen=True)
+class AgentView:
+    """One agent's events and score range."""
+
+    events: AgentEvents
+    quality: AgentQuality
+
+
+@dataclass(frozen=True)
+class AgentsView:
+    """Screen 6 — agent conduct and handling.
+
+    Events, not scores, is the prototype's own framing: the list leads with
+    what happened on a call rather than with a number about the agent.
+    `quality` is a range with a caveat computed from its own `n`, never a
+    ranking — at batch-1 volume no agent has enough scored calls to be
+    separated from another.
+    """
+
+    scope: ScopedCorpus
+    agents: tuple[AgentView, ...]
+    window: Window
+    #: Null when the quality metric is not windowed, which it is not: a
+    #: score is a property of the call, and `agent_quality_score` carries
+    #: `window_weeks: null` in the Metrics sheet.
+    quality_window_weeks: int | None
+
+
+class GetRules:
+    def __init__(self, reader: InsightsReader, config: DashboardConfig) -> None:
+        self._reader = reader
+        self._config = config
+
+    async def execute(self, request: InsightsRequest) -> RulesView:
+        scope = await self._reader.scope(request)
+        window = window_for(self._config.metric("knowledge_failure_rate"), scope.as_of)
+        if window is None:  # pragma: no cover - the config would have to drop the window
+            raise ValueError(
+                "Knowledge failure rate is defined over a window and the config gives "
+                "it none; a rate with no period is not the metric the sheet defines."
+            )
+
+        calls = scope.filtered.calls
+        rows = failures_by_rule(scope.corpus.rules, calls, window)
+        return RulesView(
+            scope=scope,
+            rules=rows,
+            by_layer=failures_by_layer(rows),
+            by_area=failures_by_area(rows),
+            by_provenance=failures_by_provenance(rows),
+            by_touchpoint=failures_by_touchpoint(calls, window),
+            overall_rate=knowledge_failure_rate(self._config, calls, window),
+            window=window,
+        )
+
+
+class GetAgents:
+    def __init__(self, reader: InsightsReader, config: DashboardConfig) -> None:
+        self._reader = reader
+        self._config = config
+
+    async def execute(self, request: InsightsRequest) -> AgentsView:
+        scope = await self._reader.scope(request)
+        events_window = _events_window(self._config, scope.as_of)
+        quality = self._config.metric("agent_quality_score")
+
+        calls = scope.filtered.calls
+        refs = sorted({call.agent_ref for call in calls if call.agent_ref is not None})
+        return AgentsView(
+            scope=scope,
+            agents=tuple(
+                AgentView(
+                    events=agent_events(self._config, ref, calls, events_window),
+                    quality=agent_quality(ref, calls, events_window),
+                )
+                for ref in refs
+            ),
+            window=events_window,
+            quality_window_weeks=quality.window_weeks,
+        )
+
+
+def _events_window(config: DashboardConfig, as_of: date) -> Window:
+    """The window the agent *events* are counted over.
+
+    Metric 12 itself is unwindowed — a quality score is a property of the
+    call, not of a period — but the events beside it are counts over a
+    period and need one. The knowledge failure rate's four weeks is used,
+    because the knowledge-error events are the same measure at agent level,
+    and the response states it rather than leaving a reader to assume.
+    """
+    window = window_for(config.metric("knowledge_failure_rate"), as_of)
+    if window is None:  # pragma: no cover - the config would have to drop the window
+        raise ValueError("Agent events need a period and the config gives none.")
+    return window

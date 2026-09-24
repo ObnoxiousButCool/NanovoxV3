@@ -53,6 +53,7 @@ from domain.aggregation.call_tags import (
     EmployerFacts,
     book_lives_for,
 )
+from domain.aggregation.rules import RuleFacts
 from domain.value_objects.broker_named_aloud import BrokerNamedAloud
 from domain.value_objects.broker_sentiment import BrokerSentiment
 from domain.value_objects.category import Category
@@ -66,12 +67,15 @@ from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.process_gap import ProcessGap, ProcessGapStatus, RaisedBy
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.rule_confidence import RuleConfidence
+from domain.value_objects.rule_layer import RuleLayer
 from domain.value_objects.signal_type import SignalType
 from infrastructure.persistence.tables import (
     BrokerRow,
     CallExtractionRow,
     CallRow,
     EmployerRow,
+    RuleRow,
     SignalRow,
 )
 
@@ -98,12 +102,14 @@ class SqlInsightsSource(InsightsSource):
     async def load(self, query: CorpusQuery) -> CorpusSlice:
         async with self._session_factory() as session:
             employers, brokers = await self._reference_data(session)
+            rules = await self._rules(session)
             calls, undated, unanalysed, unavailable = await self._calls(session, query)
 
         return CorpusSlice(
             calls=calls,
             employers=employers,
             brokers=brokers,
+            rules=rules,
             undated=undated,
             unanalysed=unanalysed,
             unavailable_fields=unavailable,
@@ -139,6 +145,25 @@ class SqlInsightsSource(InsightsSource):
             for row in broker_rows
         )
         return employers, brokers
+
+    async def _rules(self, session: AsyncSession) -> tuple[RuleFacts, ...]:
+        """Every rule, in reference order.
+
+        All of them, not only the cited ones: the rewrite list ranks over
+        the whole rulebook, and a rule nobody got wrong is a different
+        thing from a rule that does not exist.
+        """
+        rows = (await session.execute(select(RuleRow).order_by(RuleRow.reference))).scalars().all()
+        return tuple(
+            RuleFacts(
+                reference=row.reference,
+                layer=RuleLayer(row.layer),
+                area=row.area,
+                confidence=RuleConfidence(row.confidence),
+                commonly_confused_with=row.commonly_confused_with,
+            )
+            for row in rows
+        )
 
     async def _calls(
         self, session: AsyncSession, query: CorpusQuery

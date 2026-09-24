@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     from datetime import date
 
     from domain.aggregation.call_tags import BrokerFacts, CallContext, EmployerFacts
+    from domain.aggregation.rules import RuleFacts
     from domain.value_objects.call_source import CallSource
 
 
@@ -87,6 +88,12 @@ class CorpusSlice:
     #: move with call volume.
     employers: tuple[EmployerFacts, ...] = ()
     brokers: tuple[BrokerFacts, ...] = ()
+    #: Every rule in the Rules sheets, not only those someone got wrong. A
+    #: rule with no failures against it is the normal case and the rewrite
+    #: list is built by ranking over all of them; restricting the read to
+    #: cited rules would make "no failures" and "rule does not exist"
+    #: indistinguishable.
+    rules: tuple[RuleFacts, ...] = ()
 
     #: Calls left out for want of `occurred_at`, by reference.
     undated: tuple[str, ...] = ()

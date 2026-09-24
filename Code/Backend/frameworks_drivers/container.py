@@ -52,9 +52,11 @@ from application.use_cases.read_insights import (
     GetAccountDetail,
     GetAccountRisk,
     GetActions,
+    GetAgents,
     GetDemand,
     GetExecScorecard,
     GetHierarchy,
+    GetRules,
     InsightsReader,
 )
 from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
@@ -152,6 +154,12 @@ class Container:
 
     def get_actions(self) -> GetActions:
         return GetActions(self.insights_reader(), self.dashboard_config)
+
+    def get_rules(self) -> GetRules:
+        return GetRules(self.insights_reader(), self.dashboard_config)
+
+    def get_agents(self) -> GetAgents:
+        return GetAgents(self.insights_reader(), self.dashboard_config)
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)

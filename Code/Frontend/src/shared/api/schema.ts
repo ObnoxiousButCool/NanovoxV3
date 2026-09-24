@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/insights/agents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Agent events, with each agent's own score range */
+        get: operations["read_agents_api_v1_insights_agents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/insights/demand": {
         parameters: {
             query?: never;
@@ -132,6 +149,23 @@ export interface paths {
         };
         /** Account risk flags, with what could not be assessed */
         get: operations["read_account_risk_api_v1_insights_risk_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rules we fail to explain, by rule, layer, area, provenance and touchpoint */
+        get: operations["read_rules_api_v1_insights_rules_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -378,6 +412,70 @@ export interface components {
             window_weeks: number;
         };
         /**
+         * AgentQualityResponse
+         * @description Metric 12 as a range, never as a ranking position.
+         */
+        AgentQualityResponse: {
+            /**
+             * Caveat
+             * @description Computed from this agent's own n. Says plainly that a distribution this small cannot separate one agent from another.
+             */
+            caveat: string;
+            /** Highest */
+            highest?: number | null;
+            /** Lowest */
+            lowest?: number | null;
+            /**
+             * Median Score
+             * @description Median, not mean. Null when no call was scored.
+             */
+            median_score?: number | null;
+            /** Scored Calls */
+            scored_calls: string[];
+        };
+        /** AgentResponse */
+        AgentResponse: {
+            /** Agent Ref */
+            agent_ref: string;
+            /** Calls */
+            calls: string[];
+            /** Control Exceptions */
+            control_exceptions: components["schemas"]["ControlExceptionCountResponse"][];
+            /**
+             * Escalations Missed
+             * @description Calls where an explicit escalation request went nowhere.
+             */
+            escalations_missed: string[];
+            knowledge_error_rate: components["schemas"]["FigureResponse"];
+            /**
+             * Knowledge Errors
+             * @description Calls where this agent stated a published rule incorrectly.
+             */
+            knowledge_errors: string[];
+            quality: components["schemas"]["AgentQualityResponse"];
+        };
+        /** AgentsResponse */
+        AgentsResponse: {
+            /**
+             * Agents
+             * @description Agents with calls in the window, by reference.
+             */
+            agents: components["schemas"]["AgentResponse"][];
+            /** As Of */
+            as_of: string;
+            /**
+             * Quality Window Weeks
+             * @description Null: a quality score is a property of the call, not of a period, so the Metrics sheet gives metric 12 no window.
+             */
+            quality_window_weeks?: number | null;
+            scope: components["schemas"]["ScopeResponse"];
+            /**
+             * Window Weeks
+             * @description The period the events are counted over.
+             */
+            window_weeks: number;
+        };
+        /**
          * AppliedFilterResponse
          * @description One active filter, for the applied-filters row.
          */
@@ -467,11 +565,25 @@ export interface components {
             /** Met */
             met: boolean;
         };
+        /** ControlExceptionCountResponse */
+        ControlExceptionCountResponse: {
+            /** Calls */
+            calls: number;
+            /** Exception Type */
+            exception_type: string;
+        };
         /** ControlExceptionResponse */
         ControlExceptionResponse: {
             /** Exception Type */
             exception_type: string;
             figure: components["schemas"]["FigureResponse"];
+        };
+        /** CountResponse */
+        CountResponse: {
+            /** Failures */
+            failures: number;
+            /** Label */
+            label: string;
         };
         /** DemandResponse */
         DemandResponse: {
@@ -900,6 +1012,68 @@ export interface components {
              */
             window_weeks: number;
         };
+        /**
+         * RuleRowResponse
+         * @description One rule and the calls that got it wrong. No rate — see the module docstring.
+         */
+        RuleRowResponse: {
+            /** Area */
+            area: string;
+            /**
+             * Commonly Confused With
+             * @description The Rules sheets' own column — what people mistake this rule for.
+             * @default
+             */
+            commonly_confused_with: string;
+            /**
+             * Confidence
+             * @description The rule's own provenance grade from the Rules sheets. Provenance of the rule, not of any figure about it, and not an epistemic class.
+             */
+            confidence: string;
+            /** Failed Call Ids */
+            failed_call_ids: string[];
+            /** Failures */
+            failures: number;
+            /**
+             * Layer
+             * @description Program, Administration or Carrier — whose rulebook it is.
+             */
+            layer: string;
+            /** Rule Ref */
+            rule_ref: string;
+        };
+        /** RulesResponse */
+        RulesResponse: {
+            /** As Of */
+            as_of: string;
+            /** By Area */
+            by_area: components["schemas"]["CountResponse"][];
+            /**
+             * By Layer
+             * @description Whose rulebook is the problem.
+             */
+            by_layer: components["schemas"]["CountResponse"][];
+            /**
+             * By Provenance
+             * @description A misstated UNVERIFIED rule says our source is weak; a misstated VERIFIED one says our training is.
+             */
+            by_provenance: components["schemas"]["CountResponse"][];
+            /**
+             * By Touchpoint
+             * @description Where the failure originated — the same rule in two documents is two fixes.
+             */
+            by_touchpoint: components["schemas"]["CountResponse"][];
+            /** @description Metric 8: calls carrying a knowledge failure, over all calls. About the corpus, never about one rule. */
+            overall_rate: components["schemas"]["FigureResponse"];
+            /**
+             * Rules
+             * @description The rewrite list, worst first. Every rule, including those with no failures.
+             */
+            rules: components["schemas"]["RuleRowResponse"][];
+            scope: components["schemas"]["ScopeResponse"];
+            /** Window Weeks */
+            window_weeks: number;
+        };
         /** RunProgressResponse */
         RunProgressResponse: {
             /** Cancelled */
@@ -1237,6 +1411,62 @@ export interface operations {
             };
         };
     };
+    read_agents_api_v1_insights_agents_get: {
+        parameters: {
+            query?: {
+                /** @description Employer region. */
+                region?: string[] | null;
+                /** @description Broker of record, from reference data — not who was named aloud. */
+                broker?: string[] | null;
+                /** @description Employer reference. */
+                employer?: string[] | null;
+                /** @description Agent reference. */
+                agent?: string[] | null;
+                category?: components["schemas"]["Category"][] | null;
+                /** @description Calls touching this line. A call may touch several. */
+                product_line?: components["schemas"]["ProductLine"][] | null;
+                /** @description Where the failure originated, not where it surfaced. */
+                touchpoint?: string[] | null;
+                outcome?: components["schemas"]["Outcome"][] | null;
+                signal?: components["schemas"]["SignalType"][] | null;
+                intent?: components["schemas"]["IntentType"][] | null;
+                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
+                quality_band?: components["schemas"]["QualityBand"][] | null;
+                escalated?: boolean | null;
+                /** @description Whether a complaint was made. */
+                complaint?: boolean | null;
+                compliance_exception?: boolean | null;
+                /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
+                source?: components["schemas"]["CallSource"][] | null;
+                /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_demand_api_v1_insights_demand_get: {
         parameters: {
             query?: {
@@ -1448,6 +1678,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RiskScreenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_rules_api_v1_insights_rules_get: {
+        parameters: {
+            query?: {
+                /** @description Employer region. */
+                region?: string[] | null;
+                /** @description Broker of record, from reference data — not who was named aloud. */
+                broker?: string[] | null;
+                /** @description Employer reference. */
+                employer?: string[] | null;
+                /** @description Agent reference. */
+                agent?: string[] | null;
+                category?: components["schemas"]["Category"][] | null;
+                /** @description Calls touching this line. A call may touch several. */
+                product_line?: components["schemas"]["ProductLine"][] | null;
+                /** @description Where the failure originated, not where it surfaced. */
+                touchpoint?: string[] | null;
+                outcome?: components["schemas"]["Outcome"][] | null;
+                signal?: components["schemas"]["SignalType"][] | null;
+                intent?: components["schemas"]["IntentType"][] | null;
+                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
+                quality_band?: components["schemas"]["QualityBand"][] | null;
+                escalated?: boolean | null;
+                /** @description Whether a complaint was made. */
+                complaint?: boolean | null;
+                compliance_exception?: boolean | null;
+                /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
+                source?: components["schemas"]["CallSource"][] | null;
+                /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RulesResponse"];
                 };
             };
             /** @description Validation Error */

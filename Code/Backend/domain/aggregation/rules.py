@@ -45,6 +45,11 @@ class RuleFacts:
     #: UNVERIFIED. This is provenance of the *rule*, not of any figure about
     #: it, and it is not the panel's epistemic class.
     confidence: RuleConfidence
+    #: The Rules sheets' own column. §9 insight 23 asks the screen to carry
+    #: it: a rule people get wrong is far more actionable next to the rule
+    #: they confuse it with. Descriptive only — nothing here is scored on
+    #: it, and no figure divides by it.
+    commonly_confused_with: str = ""
 
 
 @dataclass(frozen=True)
@@ -57,6 +62,9 @@ class RuleRow:
     confidence: RuleConfidence
     #: Calls whose `knowledge_failure` cited this rule.
     failed_call_ids: tuple[str, ...]
+    #: Carried through from the rule's own sheet row for the screen to
+    #: show beside it. Descriptive; nothing is scored or divided by it.
+    commonly_confused_with: str = ""
 
     @property
     def failures(self) -> int:
@@ -86,6 +94,7 @@ def failures_by_rule(
             area=rule.area,
             confidence=rule.confidence,
             failed_call_ids=tuple(sorted(cited.get(rule.reference, ()))),
+            commonly_confused_with=rule.commonly_confused_with,
         )
         for rule in rules
     ]
