@@ -16,8 +16,9 @@ from typing import Any
 
 import httpx2 as httpx
 
-from application.ports.llm_provider import LlmRequest, ProviderStatus, TModel, TokenUsage
+from application.ports.llm_provider import LlmRequest, ProviderStatus, TModel
 from domain.errors import ProviderUnavailableError
+from domain.value_objects.token_usage import TokenUsage
 from infrastructure.llm.base import DETERMINISTIC_TEMPERATURE, RawCompletion, StructuredProvider
 from infrastructure.logging.llm_audit import LlmAuditLog
 

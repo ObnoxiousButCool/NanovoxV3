@@ -165,4 +165,14 @@ forbidden_modules = [
     "domain.entities.ground_truth",
     "infrastructure.reference.xlsx_ground_truth_source",
     "infrastructure.persistence.repositories.ground_truth_repository",
+    # Phase 5's evaluation harness. The comparators themselves hold no
+    # answers — they are handed two values — but the package is where the
+    # harness that reads both sides will live (E4), and this is the phase
+    # that gives an extraction module something new and dangerous to import.
+    # Forbidden now, while the list is short and the reason is fresh.
+    "domain.evaluation",
+    # Phase 5's harness itself (E4). It holds both sides at once — the
+    # answers and the pipeline's output — which makes it the single object
+    # an extraction module must never be able to reach.
+    "application.use_cases.evaluate_extraction",
 ]

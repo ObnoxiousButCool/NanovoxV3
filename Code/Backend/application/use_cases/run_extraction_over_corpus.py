@@ -29,6 +29,7 @@ it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Protocol
 
 from application.ports.call_repository import CallRepository
@@ -40,6 +41,19 @@ from application.ports.run_scheduler import RunScheduler
 from domain.errors import ConflictError, NotFoundError
 from domain.run_progress import RunProgress, summarise
 from domain.value_objects.run_status import RunItemStatus, RunStatus
+from domain.value_objects.token_usage import TokenUsage
+
+
+class _PipelineOutcome(Protocol):
+    """The one thing this use case reads off a pipeline result.
+
+    Narrowed to `usage` rather than typed as `ExtractionPipelineResult` for
+    the same reason `_CallPipeline` exists: a test double should not have to
+    build L1-L4's whole result to exercise a per-item loop.
+    """
+
+    @property
+    def usage(self) -> TokenUsage: ...
 
 
 class _CallPipeline(Protocol):
@@ -47,7 +61,7 @@ class _CallPipeline(Protocol):
     let a test double stand in without building L1-L4's whole fake stack
     again for what is, here, a per-item loop concern."""
 
-    async def execute(self, call_reference: str, provider: LLMProvider) -> object: ...
+    async def execute(self, call_reference: str, provider: LLMProvider) -> _PipelineOutcome: ...
 
 
 @dataclass(frozen=True)
@@ -152,15 +166,24 @@ class RunExtractionOverCorpus:
                     continue
 
                 await self._runs.set_item_status(run_id, item.call_reference, RunItemStatus.RUNNING)
+                started = self._clock.now()
                 try:
-                    await self._pipeline.execute(item.call_reference, provider)
+                    result = await self._pipeline.execute(item.call_reference, provider)
                 except Exception as exc:
                     await self._runs.set_item_status(
-                        run_id, item.call_reference, RunItemStatus.FAILED, error=str(exc)
+                        run_id,
+                        item.call_reference,
+                        RunItemStatus.FAILED,
+                        error=str(exc),
+                        duration_ms=_elapsed_ms(started, self._clock.now()),
                     )
                 else:
                     await self._runs.set_item_status(
-                        run_id, item.call_reference, RunItemStatus.COMPLETED
+                        run_id,
+                        item.call_reference,
+                        RunItemStatus.COMPLETED,
+                        usage=result.usage,
+                        duration_ms=_elapsed_ms(started, self._clock.now()),
                     )
 
             final_status = RunStatus.CANCELLED if cancelled else RunStatus.COMPLETED
@@ -172,3 +195,13 @@ class RunExtractionOverCorpus:
             # to anything that hasn't crashed; FAILED makes it resumable.
             await self._runs.set_status(run_id, RunStatus.FAILED, at=self._clock.now())
             raise
+
+
+def _elapsed_ms(started: datetime, finished: datetime) -> float:
+    """Wall clock between two readings of the injected clock.
+
+    Never `time.monotonic()`: the domain and application layers take their
+    time from the clock they were given, so a test can run a whole corpus
+    without waiting for one (plan §2A.1 — no clock, pass it in).
+    """
+    return (finished - started).total_seconds() * 1000

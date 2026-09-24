@@ -17,9 +17,9 @@ from application.ports.llm_provider import (
     ProviderStatus,
     StructuredResult,
     TModel,
-    TokenUsage,
 )
 from domain.errors import ProviderUnavailableError
+from domain.value_objects.token_usage import TokenUsage
 from infrastructure.llm.base import RawCompletion, StructuredProvider
 from infrastructure.logging.llm_audit import LlmAuditLog
 

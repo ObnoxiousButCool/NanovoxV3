@@ -38,7 +38,7 @@ from domain.aggregation.figure import Figure
 from domain.aggregation.patterns import share
 from domain.dashboard_config import DashboardConfig
 from domain.value_objects.control_exception_type import ControlExceptionType
-from domain.value_objects.signal_code import SignalCode
+from domain.value_objects.signal_type import SignalType
 
 
 @dataclass(frozen=True)
@@ -88,8 +88,8 @@ def agent_events(
     """Everything `agents.html` shows for one agent, for one window."""
     mine = [call for call in window.calls_in(tuple(calls)) if call.agent_ref == agent_ref]
 
-    errors = tuple(call for call in mine if SignalCode.KNOWLEDGE_ERROR in call.tags.signals)
-    missed = tuple(call for call in mine if SignalCode.ESCALATION_MISSED in call.tags.signals)
+    errors = tuple(call for call in mine if SignalType.KNOWLEDGE_ERROR in call.tags.signals)
+    missed = tuple(call for call in mine if SignalType.ESCALATION_MISSED in call.tags.signals)
 
     exceptions = dict.fromkeys(ControlExceptionType, 0)
     for call in mine:

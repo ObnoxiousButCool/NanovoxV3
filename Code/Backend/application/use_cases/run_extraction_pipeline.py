@@ -39,6 +39,7 @@ from application.use_cases.classify_call_l4 import ClassifyCallL4, ClassifyCallL
 from domain.layers import ESSENTIAL_LAYERS, Layer
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.score import ScoreStatus
+from domain.value_objects.token_usage import TokenUsage
 
 T = TypeVar("T")
 
@@ -54,6 +55,21 @@ class ExtractionPipelineResult:
     #: essential — empty while `ESSENTIAL_LAYERS` names every layer this
     #: pipeline runs.
     degraded: tuple[Layer, ...] = ()
+
+    @property
+    def usage(self) -> TokenUsage:
+        """What this call cost across every layer that ran.
+
+        A degraded layer contributes nothing because it produced nothing —
+        which is a reported zero, not an unknown. A layer answered from the
+        stage cache also contributes a reported zero, because it genuinely
+        was free. The total is a floor only when some provider that did run
+        declined to report its usage, and `TokenUsage.__add__` carries that
+        through.
+        """
+        return TokenUsage.total(
+            layer.usage for layer in (self.l2, self.l3, self.l4) if layer is not None
+        )
 
 
 class ExtractionPipeline:

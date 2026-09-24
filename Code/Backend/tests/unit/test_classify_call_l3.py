@@ -30,6 +30,7 @@ from domain.entities.rule import Rule
 from domain.entities.transcript import Transcript
 from domain.entities.turn import Turn
 from domain.errors import ValidationError
+from domain.extraction.evidence import EvidenceRejection
 from domain.value_objects.call_resolution_status import CallResolutionStatus
 from domain.value_objects.call_source import CallSource
 from domain.value_objects.caller_type import CallerType
@@ -275,6 +276,77 @@ class TestBasicScoring:
 
 
 class TestMarkerEvidence:
+    async def test_a_dimension_outside_the_rubric_refuses_the_marker_not_the_call(self) -> None:
+        """Refuse the marker, score the rest — the Call Quality Framework's
+        own handling ("Refused, zero points").
+
+        Not reachable from a hallucination: `MarkerResponse.dimension` is a
+        Literal of the six, so an invented name fails schema validation at
+        the provider boundary. It is reachable from *drift*. The rubric is
+        data — `config/rubric.yaml`, versioned, "weights are data, not
+        code" — and the DTO's Literal is code, so a rubric that drops or
+        renames a dimension still admits it through the schema and then
+        hits `Rubric.dimension()`, which raises. That failed the whole L3
+        pass for the call. This rubric defines only `empathy`, which is
+        exactly that situation.
+        """
+        calls = _FakeCalls((_call(),))
+        use_case, extractions = _use_case(calls=calls, lookup=_FakeLookup())
+        response = _response(
+            markers=[
+                MarkerResponse(
+                    dimension="accuracy",
+                    polarity="NEGATIVE",
+                    description="Valid in the DTO, absent from this rubric.",
+                    quote="it's not covered",
+                    turn_seq=1,
+                ),
+                MarkerResponse(
+                    dimension="empathy",
+                    polarity="NEGATIVE",
+                    description="Dismissed the member's frustration.",
+                    quote="it's not covered",
+                    turn_seq=1,
+                ),
+            ]
+        )
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        assert [m.dimension for m in result.quality.markers] == ["empathy"]
+        assert result.rejected_markers.has_rejections
+        rejected = result.rejected_markers.rejected[0]
+        assert rejected.reason is EvidenceRejection.UNKNOWN_DIMENSION
+        assert "does not define" in rejected.explanation
+        # Both are stored, refused one included — the Data Model sheet keeps
+        # markers at marker level "so a refused marker is visible".
+        assert len(extractions.saved["C-0001"].markers) == 2
+
+    async def test_every_marker_naming_an_unknown_dimension_is_not_a_quiet_call(self) -> None:
+        """`all_rejected` has to see refusals made before the transcript was
+        consulted. A call whose every marker named a dimension this rubric
+        does not define is a call nobody has evidenced, not a call with
+        nothing to report — and the framework scores those two very
+        differently.
+        """
+        calls = _FakeCalls((_call(),))
+        use_case, _ = _use_case(calls=calls, lookup=_FakeLookup())
+        response = _response(
+            markers=[
+                MarkerResponse(
+                    dimension="accuracy",
+                    polarity="NEGATIVE",
+                    description="Valid in the DTO, absent from this rubric.",
+                    quote="it's not covered",
+                    turn_seq=1,
+                )
+            ]
+        )
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        assert result.rejected_markers.all_rejected is True
+
     async def test_an_invented_quote_is_rejected_not_scored(self) -> None:
         calls = _FakeCalls((_call(),))
         use_case, extractions = _use_case(calls=calls, lookup=_FakeLookup())

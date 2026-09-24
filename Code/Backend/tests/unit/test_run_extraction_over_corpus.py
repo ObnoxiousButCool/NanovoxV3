@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 import pytest
@@ -19,6 +20,7 @@ from domain.errors import ConflictError, NotFoundError
 from domain.value_objects.call_resolution_status import CallResolutionStatus
 from domain.value_objects.caller_type import CallerType
 from domain.value_objects.run_status import RunItemStatus, RunStatus
+from domain.value_objects.token_usage import TokenUsage
 from infrastructure.llm.registry import ProviderRegistry
 from infrastructure.logging.llm_audit import LlmAuditLog
 from infrastructure.runner.background_runner import BackgroundRunner
@@ -61,6 +63,15 @@ class FixedClock(Clock):
         return _NOW
 
 
+@dataclass(frozen=True)
+class _FakeOutcome:
+    """Just the `usage` the runner reads off a pipeline result."""
+
+    usage: TokenUsage = field(
+        default_factory=lambda: TokenUsage(input_tokens=100, output_tokens=20)
+    )
+
+
 class _FakePipeline:
     """Stands in for `ExtractionPipeline` — the use case only ever calls
     `execute`, so that's the entire surface a fake needs here."""
@@ -68,15 +79,16 @@ class _FakePipeline:
     def __init__(self) -> None:
         self.executed: list[str] = []
         self._fail_for: frozenset[str] = frozenset()
+        self.outcome = _FakeOutcome()
 
     def fail_for(self, *references: str) -> None:
         self._fail_for = frozenset(references)
 
-    async def execute(self, call_reference: str, provider: LLMProvider) -> object:
+    async def execute(self, call_reference: str, provider: LLMProvider) -> _FakeOutcome:
         self.executed.append(call_reference)
         if call_reference in self._fail_for:
             raise ValueError(f"simulated failure for {call_reference}")
-        return None
+        return self.outcome
 
 
 class _FakeRuns(RunRepository):
@@ -140,7 +152,14 @@ class _FakeRuns(RunRepository):
         )
 
     async def set_item_status(
-        self, run_id: int, call_reference: str, status: RunItemStatus, *, error: str | None = None
+        self,
+        run_id: int,
+        call_reference: str,
+        status: RunItemStatus,
+        *,
+        error: str | None = None,
+        usage: TokenUsage | None = None,
+        duration_ms: float | None = None,
     ) -> None:
         items = self._items[run_id]
         for index, item in enumerate(items):

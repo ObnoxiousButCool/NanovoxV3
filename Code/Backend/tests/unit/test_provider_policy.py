@@ -9,8 +9,9 @@ from typing import Any
 
 import pytest
 
-from application.ports.llm_provider import LlmRequest, TokenUsage
+from application.ports.llm_provider import LlmRequest
 from domain.errors import ProviderResponseError, ProviderUnavailableError
+from domain.value_objects.token_usage import TokenUsage
 from infrastructure.llm.base import (
     OUTCOME_INVALID_SCHEMA,
     OUTCOME_OK,

@@ -32,7 +32,6 @@ from application.ports.llm_provider import (
     ProviderStatus,
     StructuredResult,
     TModel,
-    TokenUsage,
 )
 from application.ports.prompts import PromptSource
 from application.ports.reference_lookup import ReferenceLookup
@@ -58,6 +57,7 @@ from domain.value_objects.call_source import CallSource
 from domain.value_objects.caller_type import CallerType
 from domain.value_objects.score import ScoreStatus
 from domain.value_objects.speaker_role import SpeakerRole
+from domain.value_objects.token_usage import TokenUsage
 from infrastructure.llm.prompt_source import FilePromptSource
 from infrastructure.llm.prompts import PromptLibrary
 from tests.support.rubric import dimension, rubric

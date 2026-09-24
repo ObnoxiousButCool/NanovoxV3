@@ -12,7 +12,7 @@ rather than asked of the model.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from application.dto.l2_response import L2Response
 from application.ports.call_extraction_repository import (
@@ -43,6 +43,7 @@ from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.token_usage import TokenUsage
 
 _PROMPT_ID = "l2_classification"
 
@@ -54,6 +55,9 @@ class ClassifyCallL2Result:
     #: against the transcript — kept for Diagnostics (plan §8 Phase 5),
     #: never silently discarded.
     rejected_intent: EvidenceValidation[IntentStatement]
+    #: Tokens this layer consumed. A reported zero where the stage cache
+    #: answered — genuinely free, not unknown. See `TokenUsage`.
+    usage: TokenUsage = field(default_factory=TokenUsage)
 
 
 class ClassifyCallL2:
@@ -96,6 +100,7 @@ class ClassifyCallL2:
             model=provider.model,
         )
 
+        usage = TokenUsage()
         cached = await self._stage_cache.get(key)
         if cached is not None:
             response = L2Response.model_validate_json(cached)
@@ -109,6 +114,7 @@ class ClassifyCallL2:
                 )
             )
             response = result.value
+            usage = result.usage
             await self._stage_cache.put(key, response.model_dump_json())
 
         employer = await self._resolve_employer(call.employer_ref)
@@ -142,7 +148,11 @@ class ClassifyCallL2:
             ),
         )
 
-        return ClassifyCallL2Result(classification=classification, rejected_intent=rejected_intent)
+        return ClassifyCallL2Result(
+            classification=classification,
+            rejected_intent=rejected_intent,
+            usage=usage,
+        )
 
     async def _resolve_employer(self, employer_ref: str | None) -> Employer | None:
         if employer_ref is None:

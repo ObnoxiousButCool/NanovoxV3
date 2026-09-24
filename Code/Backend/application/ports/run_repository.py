@@ -11,10 +11,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 from domain.value_objects.run_status import RunItemStatus, RunStatus
+from domain.value_objects.token_usage import TokenUsage
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,15 @@ class RunItemRecord:
     call_reference: str
     status: RunItemStatus
     error: str | None = None
+    #: What this call cost. A reported zero for an item answered entirely
+    #: from the stage cache, and unreported where a provider that ran
+    #: declined to say — the two must not be confused, because the second
+    #: makes every total above it a floor (plan §8 Phase 5 asks the
+    #: diagnostics for "token cost of the last run").
+    usage: TokenUsage = field(default_factory=TokenUsage)
+    #: Wall-clock milliseconds the pipeline spent on this call, or None
+    #: where the item has not run.
+    duration_ms: float | None = None
 
 
 class RunRepository(ABC):
@@ -68,8 +78,21 @@ class RunRepository(ABC):
 
     @abstractmethod
     async def set_item_status(
-        self, run_id: int, call_reference: str, status: RunItemStatus, *, error: str | None = None
-    ) -> None: ...
+        self,
+        run_id: int,
+        call_reference: str,
+        status: RunItemStatus,
+        *,
+        error: str | None = None,
+        usage: TokenUsage | None = None,
+        duration_ms: float | None = None,
+    ) -> None:
+        """Move one item, optionally recording what it cost.
+
+        Usage is written on the transition that finishes the item, not on
+        the one that starts it. Passing `None` leaves whatever was recorded
+        alone, so a resumed run does not zero the cost of work already
+        done."""
 
     @abstractmethod
     async def active_run_ids(self) -> tuple[int, ...]:

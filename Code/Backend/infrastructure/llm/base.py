@@ -29,9 +29,9 @@ from application.ports.llm_provider import (
     LlmRequest,
     StructuredResult,
     TModel,
-    TokenUsage,
 )
 from domain.errors import ProviderResponseError, ProviderUnavailableError
+from domain.value_objects.token_usage import TokenUsage
 from infrastructure.logging.llm_audit import LlmAuditLog
 
 # Deterministic decoding is a requirement, not a preference (plan §7's

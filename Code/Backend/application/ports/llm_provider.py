@@ -17,29 +17,9 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 
+from domain.value_objects.token_usage import TokenUsage
+
 TModel = TypeVar("TModel", bound=BaseModel)
-
-
-@dataclass(frozen=True)
-class TokenUsage:
-    """Tokens consumed by one request.
-
-    Zero means "the provider did not report it", not "free". The audit log
-    keeps the distinction visible so a cost figure is never quietly
-    understated.
-    """
-
-    input_tokens: int = 0
-    output_tokens: int = 0
-    reported: bool = True
-
-    @property
-    def total_tokens(self) -> int:
-        return self.input_tokens + self.output_tokens
-
-    @classmethod
-    def unreported(cls) -> TokenUsage:
-        return cls(input_tokens=0, output_tokens=0, reported=False)
 
 
 @dataclass(frozen=True)

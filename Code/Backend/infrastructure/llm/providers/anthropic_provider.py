@@ -29,8 +29,9 @@ from __future__ import annotations
 import anthropic
 from anthropic import AsyncAnthropic
 
-from application.ports.llm_provider import LlmRequest, ProviderStatus, TModel, TokenUsage
+from application.ports.llm_provider import LlmRequest, ProviderStatus, TModel
 from domain.errors import ProviderUnavailableError
+from domain.value_objects.token_usage import TokenUsage
 from infrastructure.llm.base import RawCompletion, StructuredProvider
 from infrastructure.llm.json_schema import to_strict_schema
 from infrastructure.logging.llm_audit import LlmAuditLog

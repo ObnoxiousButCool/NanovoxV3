@@ -48,7 +48,7 @@ from domain.aggregation.patterns import share, time_aggregate
 from domain.aggregation.repeat_contact import failure_driven_repeats
 from domain.dashboard_config import DashboardConfig
 from domain.value_objects.complaint_attribution import ComplaintAttribution
-from domain.value_objects.signal_code import SignalCode
+from domain.value_objects.signal_type import SignalType
 
 
 @dataclass(frozen=True)
@@ -74,7 +74,7 @@ def self_inflicted_demand(
     in_window = window.calls_in(tuple(calls))
 
     repeats = failure_driven_repeats(in_window)
-    chasing = tuple(call for call in in_window if SignalCode.PROCESS_BREAKDOWN in call.tags.signals)
+    chasing = tuple(call for call in in_window if SignalType.PROCESS_BREAKDOWN in call.tags.signals)
     defects = tuple(
         call
         for call in in_window

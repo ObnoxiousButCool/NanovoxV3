@@ -24,7 +24,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from application.ports.clock import Clock
 from application.ports.ground_truth_repository import GroundTruthCounts, GroundTruthRepository
-from domain.entities.ground_truth import GroundTruth
+from domain.entities.ground_truth import GroundTruth, GroundTruthSignal
+from domain.value_objects.category import Category
+from domain.value_objects.outcome import Outcome
 from infrastructure.persistence.tables import CallRow, GroundTruthRow
 
 
@@ -77,6 +79,17 @@ class SqlGroundTruthRepository(GroundTruthRepository):
 
         return GroundTruthCounts(written=written, unmatched=tuple(unmatched))
 
+    async def all(self) -> tuple[GroundTruth, ...]:
+        async with self._session_factory() as session:
+            rows = (
+                await session.execute(
+                    select(GroundTruthRow, CallRow.reference)
+                    .join(CallRow, GroundTruthRow.call_id == CallRow.id)
+                    .order_by(CallRow.reference)
+                )
+            ).all()
+            return tuple(_to_domain(row, reference) for row, reference in rows)
+
 
 def _apply(row: GroundTruthRow, truth: GroundTruth, imported_at: datetime) -> None:
     """Copy every answer onto the row. Enum values are stored by `.value`."""
@@ -119,3 +132,43 @@ def _apply(row: GroundTruthRow, truth: GroundTruth, imported_at: datetime) -> No
     row.repeat_of_note = truth.repeat_of_note
 
     row.imported_at = imported_at
+
+
+def _to_domain(row: GroundTruthRow, reference: str) -> GroundTruth:
+    """Read one stored answer back.
+
+    The reference comes from the joined call rather than from the answer
+    row, because `ground_truth` keys on `calls.id` — the business reference
+    lives on the call and is not duplicated here.
+    """
+    return GroundTruth(
+        reference=reference,
+        category=Category(row.category) if row.category else None,
+        archetype=row.archetype or "",
+        rule_refs=tuple(row.rule_refs or ()),
+        outcome=Outcome(row.outcome) if row.outcome else None,
+        score=row.score,
+        product_line=row.product_line or "",
+        touchpoint=row.touchpoint or "",
+        aht_seconds=row.aht_seconds,
+        complaint_present=row.complaint_present,
+        complaint_attributed_to=row.complaint_attributed_to,
+        signals=tuple(GroundTruthSignal(**signal) for signal in (row.signals or ())),
+        control_exceptions=tuple(row.control_exceptions or ()),
+        escalation_triggered=row.escalation_triggered,
+        escalation_type=row.escalation_type,
+        escalation_requested_by_caller=row.escalation_requested_by_caller,
+        escalation_handled=row.escalation_handled,
+        knowledge_failure_present=row.knowledge_failure_present,
+        knowledge_failure_rule_ref=row.knowledge_failure_rule_ref,
+        knowledge_failure_statement=row.knowledge_failure_statement,
+        intent_type=row.intent_type,
+        intent_evidence=row.intent_evidence,
+        process_gap_present=row.process_gap_present,
+        process_gap_description=row.process_gap_description,
+        broker_named_present=row.broker_named_present,
+        broker_named_broker_ref=row.broker_named_broker_ref,
+        broker_named_sentiment=row.broker_named_sentiment,
+        repeat_of_reference=row.repeat_of_reference,
+        repeat_of_note=row.repeat_of_note,
+    )

@@ -56,7 +56,7 @@ from domain.value_objects.intent_type import IntentType
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
-from domain.value_objects.signal_code import SignalCode
+from domain.value_objects.signal_type import SignalType
 from infrastructure.config.dashboard_config import load_dashboard_config
 from infrastructure.config.paths import DEFAULT_CONFIG_DIR
 from tests.fixtures.tagged_calls import WINDOW, broker, call, calls, day, employer
@@ -180,7 +180,7 @@ def test_agent_events_count_knowledge_error_not_knowledge_failure(
     attributed to an agent.
     """
     traffic = (
-        call("C-0001", signals=frozenset({SignalCode.KNOWLEDGE_ERROR})),
+        call("C-0001", signals=frozenset({SignalType.KNOWLEDGE_ERROR})),
         call("C-0002", knowledge_failure_rule="C-12"),
     )
 
@@ -332,7 +332,7 @@ def test_the_total_is_distinct_calls_not_the_sum_of_the_components(
     """
     both = call(
         "C-0001",
-        signals=frozenset({SignalCode.PROCESS_BREAKDOWN}),
+        signals=frozenset({SignalType.PROCESS_BREAKDOWN}),
         process_gap_change="name the waiting period",
         touchpoint="denial_letter_eob",
     )
@@ -349,7 +349,7 @@ def test_the_two_middle_components_read_different_fields(config: DashboardConfig
     "Chasing an already-submitted action" is the process_breakdown signal;
     "a logged process defect" is process_gap.present. They are not one field.
     """
-    chasing_only = calls(30, prefix="A", signals=frozenset({SignalCode.PROCESS_BREAKDOWN}))
+    chasing_only = calls(30, prefix="A", signals=frozenset({SignalType.PROCESS_BREAKDOWN}))
     defect_only = calls(
         30, prefix="B", process_gap_change="name the waiting period", touchpoint="enrolment_meeting"
     )
@@ -622,7 +622,7 @@ def test_control_exceptions_are_counted_per_agent_by_type(config: DashboardConfi
             "C-0001",
             control_exceptions=frozenset({ControlExceptionType.NO_RECORDING_DISCLOSURE}),
         ),
-        call("C-0002", signals=frozenset({SignalCode.ESCALATION_MISSED})),
+        call("C-0002", signals=frozenset({SignalType.ESCALATION_MISSED})),
     )
 
     events = agent_events(config, "AG-01", traffic, WINDOW)

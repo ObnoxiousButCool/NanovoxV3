@@ -1,7 +1,7 @@
-"""`SignalCode` against the Signal Taxonomy sheet it was transcribed from.
+"""`SignalType` against the Signal Taxonomy sheet it was transcribed from.
 
 Same guard as `test_dashboard_config_matches_workbook.py`, for the same
-reason. Severity drives ranking and owner drives routing, and the sheet
+reason. SignalSeverity drives ranking and owner drives routing, and the sheet
 calls both mandatory — so a severity that has drifted silently reorders the
 Inferences screen, and a wrong owner team routes a compliance failure to the
 call centre.
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import pytest
 
-from domain.value_objects.signal_code import SignalCode, owner_team_of, severity_of
+from domain.value_objects.signal_type import SignalType, owner_team_of, severity_of
 from infrastructure.config.paths import DEFAULT_WORKBOOK_PATH
 from infrastructure.reference.workbook_xml import Sheets, read_workbook_sheets
 
@@ -51,7 +51,7 @@ def _taxonomy(sheets: Sheets) -> dict[str, tuple[str, str]]:
 
 
 def test_the_enum_is_exactly_the_sheets_signal_types(sheets: Sheets) -> None:
-    assert {signal.value for signal in SignalCode} == set(_taxonomy(sheets))
+    assert {signal.value for signal in SignalType} == set(_taxonomy(sheets))
 
 
 def test_every_severity_and_owner_matches_the_sheet(sheets: Sheets) -> None:
@@ -60,7 +60,7 @@ def test_every_severity_and_owner_matches_the_sheet(sheets: Sheets) -> None:
     mismatched = [
         f"{signal.value}: code says ({severity_of(signal).value}, {owner_team_of(signal)!r}), "
         f"sheet says {from_sheet[signal.value]}"
-        for signal in SignalCode
+        for signal in SignalType
         if (severity_of(signal).value, owner_team_of(signal)) != from_sheet[signal.value]
     ]
 
@@ -79,5 +79,5 @@ def test_knowledge_error_is_the_agent_conduct_signal_and_stands_alone(sheets: Sh
     """
     taxonomy = _taxonomy(sheets)
 
-    assert taxonomy[SignalCode.KNOWLEDGE_ERROR.value] == ("MEDIUM", "Knowledge Management")
+    assert taxonomy[SignalType.KNOWLEDGE_ERROR.value] == ("MEDIUM", "Knowledge Management")
     assert "knowledge_failure" not in taxonomy

@@ -15,7 +15,7 @@ something adjacent to what was actually said.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import Generic, Protocol, TypeVar
@@ -51,6 +51,13 @@ class EvidenceRejection(str, Enum):
     MISSING_TURN = "missing_turn"
     QUOTE_NOT_IN_TURN = "quote_not_in_turn"
     EMPTY_QUOTE = "empty_quote"
+    #: The Call Quality Framework's third named refusal: "the dimension is
+    #: not in the rubric". A marker-level refusal, not a failed call — the
+    #: sheet's own example refuses one marker for zero points and scores the
+    #: rest. Before this existed the rubric raised NotFoundError on an
+    #: unknown code, so one hallucinated dimension name failed the whole L3
+    #: pass for that call.
+    UNKNOWN_DIMENSION = "unknown_dimension"
 
 
 @dataclass(frozen=True)
@@ -62,6 +69,8 @@ class RejectedEvidence(Generic[T]):
 
     @property
     def explanation(self) -> str:
+        if self.reason is EvidenceRejection.UNKNOWN_DIMENSION:
+            return "Cites a dimension the rubric does not define."
         if self.reason is EvidenceRejection.EMPTY_QUOTE:
             return "Cited no quote."
         if self.reason is EvidenceRejection.MISSING_TURN:
@@ -119,3 +128,27 @@ def validate_evidence(items: Iterable[T], transcript: Transcript) -> EvidenceVal
             rejected.append(RejectedEvidence(item=item, reason=reason))
 
     return EvidenceValidation(accepted=tuple(accepted), rejected=tuple(rejected))
+
+
+def also_rejected(
+    validation: EvidenceValidation[T],
+    items: Sequence[T],
+    reason: EvidenceRejection,
+) -> EvidenceValidation[T]:
+    """Fold in items refused before the transcript was ever consulted.
+
+    L3 filters markers whose dimension is not in the rubric before checking
+    quotes, because there is no point asking whether a quote supports a
+    dimension that does not exist. Those refusals still belong in the same
+    `EvidenceValidation` — `all_rejected` has to see them, or a call whose
+    every marker named an invented dimension would look like a call that
+    cited nothing, and the Call Quality Framework treats those two very
+    differently.
+    """
+    if not items:
+        return validation
+    return EvidenceValidation(
+        accepted=validation.accepted,
+        rejected=validation.rejected
+        + tuple(RejectedEvidence(item=item, reason=reason) for item in items),
+    )

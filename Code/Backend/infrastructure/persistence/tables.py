@@ -405,6 +405,16 @@ class RunItemRow(Base):
     status: Mapped[str] = mapped_column(nullable=False)  # RunItemStatus.value
     error: Mapped[str | None] = mapped_column(nullable=True)
 
+    # What this call cost (plan §8 Phase 5: "token cost of the last run").
+    # `usage_reported` is not redundant with zero tokens: a stage answered
+    # from the cache is genuinely free, while a provider that declined to
+    # report spent tokens nobody counted — and any total containing one of
+    # those is a floor rather than a cost.
+    input_tokens: Mapped[int] = mapped_column(nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(nullable=False, default=0)
+    usage_reported: Mapped[bool] = mapped_column(nullable=False, default=True)
+    duration_ms: Mapped[float | None] = mapped_column(nullable=True)
+
     run: Mapped[RunRow] = relationship(back_populates="items")
 
 

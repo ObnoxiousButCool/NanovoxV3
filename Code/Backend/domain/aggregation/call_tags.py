@@ -50,7 +50,7 @@ from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.process_gap import ProcessGap
 from domain.value_objects.product_line import ProductLine
-from domain.value_objects.signal_code import SignalCode
+from domain.value_objects.signal_type import SignalType
 
 
 @dataclass(frozen=True)
@@ -78,7 +78,7 @@ class CallTags:
     # 4-8
     complaint: Complaint | None = None
     #: Distinct types per call, never occurrences (Signal Taxonomy sheet).
-    signals: frozenset[SignalCode] = frozenset()
+    signals: frozenset[SignalType] = frozenset()
     escalation: Escalation | None = None
     control_exceptions: frozenset[ControlExceptionType] = frozenset()
     knowledge_failure: KnowledgeFailure | None = None

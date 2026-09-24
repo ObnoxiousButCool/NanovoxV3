@@ -43,7 +43,8 @@ from domain.dashboard_config import DashboardConfig
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.intent_type import IntentType
 from domain.value_objects.outcome import Outcome
-from domain.value_objects.signal_code import Severity, SignalCode, severity_of
+from domain.value_objects.signal_severity import SignalSeverity
+from domain.value_objects.signal_type import SignalType, severity_of
 
 Predicate = Callable[[CallContext], bool]
 
@@ -85,7 +86,7 @@ class Observation:
 
 
 def _critical_signal(call: CallContext) -> bool:
-    return any(severity_of(code) is Severity.CRITICAL for code in call.tags.signals)
+    return any(severity_of(code) is SignalSeverity.CRITICAL for code in call.tags.signals)
 
 
 def _complaint_against_choice(call: CallContext) -> bool:
@@ -146,7 +147,7 @@ FAMILIES: tuple[Family, ...] = (
     Family(
         "broker_adverse",
         "Broker named adversely by the caller",
-        lambda c: SignalCode.BROKER_CONDUCT_ADVERSE in c.tags.signals,
+        lambda c: SignalType.BROKER_CONDUCT_ADVERSE in c.tags.signals,
     ),
 )
 

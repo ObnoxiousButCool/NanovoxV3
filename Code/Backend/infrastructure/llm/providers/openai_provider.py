@@ -19,8 +19,9 @@ import openai
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
-from application.ports.llm_provider import LlmRequest, ProviderStatus, TModel, TokenUsage
+from application.ports.llm_provider import LlmRequest, ProviderStatus, TModel
 from domain.errors import ProviderUnavailableError
+from domain.value_objects.token_usage import TokenUsage
 from infrastructure.llm.base import DETERMINISTIC_TEMPERATURE, RawCompletion, StructuredProvider
 from infrastructure.llm.json_schema import to_strict_schema
 from infrastructure.logging.llm_audit import LlmAuditLog

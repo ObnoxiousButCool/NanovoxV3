@@ -67,6 +67,9 @@ class FakeRepository(GroundTruthRepository):
             written=len(rows) - len(self._unmatched), unmatched=self._unmatched
         )
 
+    async def all(self) -> tuple[GroundTruth, ...]:
+        return self.saved
+
 
 def _use_case(
     truths: tuple[GroundTruth, ...],

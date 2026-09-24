@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from application.ports.run_repository import RunItemRecord, RunRecord, RunRepository
 from domain.errors import NotFoundError
 from domain.value_objects.run_status import RunItemStatus, RunStatus
+from domain.value_objects.token_usage import TokenUsage
 from infrastructure.persistence.tables import RunItemRow, RunRow
 
 
@@ -72,6 +73,12 @@ class SqlRunRepository(RunRepository):
                     call_reference=row.call_reference,
                     status=RunItemStatus(row.status),
                     error=row.error,
+                    usage=TokenUsage(
+                        input_tokens=row.input_tokens,
+                        output_tokens=row.output_tokens,
+                        reported=row.usage_reported,
+                    ),
+                    duration_ms=row.duration_ms,
                 )
                 for row in rows
             )
@@ -92,7 +99,14 @@ class SqlRunRepository(RunRepository):
                 row.finished_at = at
 
     async def set_item_status(
-        self, run_id: int, call_reference: str, status: RunItemStatus, *, error: str | None = None
+        self,
+        run_id: int,
+        call_reference: str,
+        status: RunItemStatus,
+        *,
+        error: str | None = None,
+        usage: TokenUsage | None = None,
+        duration_ms: float | None = None,
     ) -> None:
         async with self._session_factory() as session, session.begin():
             row = (
@@ -106,6 +120,14 @@ class SqlRunRepository(RunRepository):
                 raise NotFoundError(f"Run {run_id} has no item for call {call_reference!r}.")
             row.status = status.value
             row.error = error
+            # Left alone when not supplied, so the RUNNING transition at the
+            # start of an item does not wipe the cost of a previous attempt.
+            if usage is not None:
+                row.input_tokens = usage.input_tokens
+                row.output_tokens = usage.output_tokens
+                row.usage_reported = usage.reported
+            if duration_ms is not None:
+                row.duration_ms = duration_ms
 
     async def active_run_ids(self) -> tuple[int, ...]:
         async with self._session_factory() as session:

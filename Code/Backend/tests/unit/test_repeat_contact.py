@@ -1,109 +1,150 @@
-"""Failure-driven repeat contact, exactly as metric 4 defines it — not as
-the Transcript Tracker's own "Repeat of" column happens to read.
+"""Metric 4's linkage, at the boundaries that decide it.
+
+Consolidated from the two implementations the parallel streams each built —
+Stream A's `domain/derivations/repeat_contact.py` and Stream B's
+`domain/aggregation/repeat_contact.py`. They agreed on every rule and
+differed only in types, so one survives and both sets of cases are kept
+here. The boundary and direction cases came from Stream A's suite and are
+the ones a second implementation would most likely get differently.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from collections.abc import Sequence
 
-from domain.derivations.repeat_contact import (
-    CallForRepeatContact,
+from domain.aggregation.call_tags import CallContext
+from domain.aggregation.repeat_contact import (
+    EXPOSURE_DAYS,
+    exposed_unresolved,
     failure_driven_repeats,
-    has_full_exposure_window,
+    repeats,
 )
+from domain.value_objects.category import Category
+from domain.value_objects.outcome import Outcome
+from tests.fixtures.tagged_calls import WINDOW, call, day
 
-_DAY_ZERO = datetime(2026, 7, 6, 9, 0, tzinfo=timezone.utc)
+
+def _refs(calls: Sequence[CallContext]) -> set[str]:
+    return {call.reference for call in calls}
 
 
-def _call(
-    reference: str, caller_ref: str, *, days_after_zero: float, unresolved: bool
-) -> CallForRepeatContact:
-    return CallForRepeatContact(
-        reference=reference,
-        caller_ref=caller_ref,
-        occurred_at=_DAY_ZERO + timedelta(days=days_after_zero),
-        is_unresolved=unresolved,
+def test_an_unresolved_call_followed_within_fourteen_days_is_a_repeat() -> None:
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
     )
 
-
-def test_an_unresolved_call_followed_by_a_same_caller_contact_within_14_days_is_flagged() -> None:
-    first = _call("C-0001", "CB-1", days_after_zero=0, unresolved=True)
-    second = _call("C-0002", "CB-1", days_after_zero=10, unresolved=False)
-
-    assert failure_driven_repeats([first, second]) == frozenset({"C-0001"})
+    assert _refs(failure_driven_repeats(traffic)) == {"C-0001"}
 
 
-def test_a_contact_exactly_at_the_14_day_boundary_still_counts() -> None:
-    first = _call("C-0001", "CB-1", days_after_zero=0, unresolved=True)
-    second = _call("C-0002", "CB-1", days_after_zero=14, unresolved=False)
+def test_a_contact_exactly_on_the_fourteenth_day_still_counts() -> None:
+    """The boundary is inclusive. Two implementations of a 14-day window
+    disagree here first, and neither would look wrong.
+    """
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(EXPOSURE_DAYS)),
+    )
 
-    assert "C-0001" in failure_driven_repeats([first, second])
-
-
-def test_a_contact_just_past_14_days_does_not_count() -> None:
-    first = _call("C-0001", "CB-1", days_after_zero=0, unresolved=True)
-    second = _call("C-0002", "CB-1", days_after_zero=14.01, unresolved=False)
-
-    assert failure_driven_repeats([first, second]) == frozenset()
+    assert _refs(failure_driven_repeats(traffic)) == {"C-0001"}
 
 
-def test_a_resolved_call_is_never_flagged_even_with_a_later_contact() -> None:
-    first = _call("C-0001", "CB-1", days_after_zero=0, unresolved=False)
-    second = _call("C-0002", "CB-1", days_after_zero=5, unresolved=False)
+def test_a_contact_one_day_past_the_window_does_not_count() -> None:
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(EXPOSURE_DAYS + 1)),
+    )
 
-    assert failure_driven_repeats([first, second]) == frozenset()
-
-
-def test_a_different_callers_later_contact_does_not_count() -> None:
-    first = _call("C-0001", "CB-1", days_after_zero=0, unresolved=True)
-    second = _call("C-0002", "CB-2", days_after_zero=5, unresolved=False)
-
-    assert failure_driven_repeats([first, second]) == frozenset()
+    assert failure_driven_repeats(traffic) == ()
 
 
-def test_an_earlier_contact_from_the_same_caller_does_not_count() -> None:
-    # The window looks forward only — a call before the UNRESOLVED one is
-    # not a repeat of it.
-    earlier = _call("C-0001", "CB-1", days_after_zero=0, unresolved=False)
-    unresolved = _call("C-0002", "CB-1", days_after_zero=5, unresolved=True)
+def test_a_resolved_call_is_never_failure_driven_however_often_they_call_back() -> None:
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.RESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(2)),
+    )
 
-    assert failure_driven_repeats([earlier, unresolved]) == frozenset()
-
-
-def test_an_unresolved_call_with_no_follow_up_is_not_flagged() -> None:
-    lone = _call("C-0001", "CB-1", days_after_zero=0, unresolved=True)
-
-    assert failure_driven_repeats([lone]) == frozenset()
+    assert failure_driven_repeats(traffic) == ()
 
 
-def test_same_category_is_not_required() -> None:
-    # This project's own earlier addition, deliberately dropped — the
-    # function takes no category argument at all, so there is nothing to
-    # assert beyond "a plain caller-and-window match is sufficient",
-    # already covered above.
-    first = _call("C-0001", "CB-1", days_after_zero=0, unresolved=True)
-    second = _call("C-0002", "CB-1", days_after_zero=1, unresolved=False)
+def test_another_callers_later_contact_is_not_a_repeat() -> None:
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-2", on=day(2)),
+    )
 
-    assert failure_driven_repeats([first, second]) == frozenset({"C-0001"})
+    assert failure_driven_repeats(traffic) == ()
 
 
-def test_multiple_unresolved_calls_from_one_caller_are_each_evaluated() -> None:
-    first = _call("C-0001", "CB-1", days_after_zero=0, unresolved=True)
-    second = _call("C-0002", "CB-1", days_after_zero=20, unresolved=True)
-    third = _call("C-0003", "CB-1", days_after_zero=25, unresolved=False)
+def test_an_earlier_contact_from_the_same_caller_is_not_a_repeat() -> None:
+    """Direction matters. A call that *follows* is a repeat; one that
+    preceded it is the thing being repeated.
+    """
+    traffic = (
+        call("C-0001", caller_ref="CB-1", on=day(0)),
+        call("C-0002", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(5)),
+    )
 
-    # C-0001 has no contact within its own 14-day window (next contact is
-    # 20 days out); C-0002 does (5 days later).
-    assert failure_driven_repeats([first, second, third]) == frozenset({"C-0002"})
+    assert failure_driven_repeats(traffic) == ()
 
 
-class TestExposureWindow:
-    def test_a_call_with_a_full_14_days_before_window_end_has_exposure(self) -> None:
-        window_end = _DAY_ZERO + timedelta(days=14)
+def test_an_unresolved_call_nobody_followed_up_is_not_a_repeat() -> None:
+    traffic = (call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),)
 
-        assert has_full_exposure_window(_DAY_ZERO, window_end)
+    assert failure_driven_repeats(traffic) == ()
 
-    def test_a_call_inside_the_last_14_days_has_no_exposure_yet(self) -> None:
-        window_end = _DAY_ZERO + timedelta(days=10)
 
-        assert not has_full_exposure_window(_DAY_ZERO, window_end)
+def test_the_repeat_need_not_be_about_the_same_thing() -> None:
+    """ "Same category" is not a workbook condition and was deliberately
+    dropped. A member who calls about a denial and then an ID card called
+    twice.
+    """
+    traffic = (
+        call(
+            "C-0001",
+            caller_ref="CB-1",
+            outcome=Outcome.UNRESOLVED,
+            category=Category.CLAIMS_AND_EOB,
+            on=day(0),
+        ),
+        call(
+            "C-0002",
+            caller_ref="CB-1",
+            category=Category.ENROLLMENT_AND_ID_CARDS,
+            on=day(3),
+        ),
+    )
+
+    assert _refs(failure_driven_repeats(traffic)) == {"C-0001"}
+
+
+def test_each_unresolved_call_from_one_caller_is_judged_on_its_own() -> None:
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(3)),
+        call("C-0003", caller_ref="CB-1", on=day(5)),
+    )
+
+    assert _refs(failure_driven_repeats(traffic)) == {"C-0001", "C-0002"}
+
+
+def test_a_call_with_no_caller_reference_links_to_nothing() -> None:
+    """An unresolved caller is a known gap the Phase 5 diagnostics count,
+    not something to guess at here.
+    """
+    traffic = (
+        call("C-0001", caller_ref=None, outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref=None, on=day(2)),
+    )
+
+    assert repeats(traffic) == ()
+
+
+def test_the_last_fourteen_days_of_the_window_have_no_exposure() -> None:
+    """A call from yesterday has not had its fourteen days, and counting it
+    as a non-repeat asserts something nobody knows yet.
+    """
+    early = call("C-0001", outcome=Outcome.UNRESOLVED, on=day(0))
+    late = call("C-0002", outcome=Outcome.UNRESOLVED, on=WINDOW.end)
+
+    assert _refs(exposed_unresolved((early, late), WINDOW)) == {"C-0001"}

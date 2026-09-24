@@ -27,6 +27,7 @@ from application.ports.answer_key_source import AnswerKeySource
 from application.ports.call_extraction_repository import CallExtractionRepository
 from application.ports.call_repository import CallRepository
 from application.ports.clock import Clock
+from application.ports.diagnostics_source import DiagnosticsSource
 from application.ports.ground_truth_repository import GroundTruthRepository
 from application.ports.ground_truth_source import GroundTruthSource
 from application.ports.health_probe import HealthProbe
@@ -40,6 +41,7 @@ from application.ports.transcript_source import TranscriptSource
 from application.use_cases.classify_call_l2 import ClassifyCallL2
 from application.use_cases.classify_call_l3 import ClassifyCallL3
 from application.use_cases.classify_call_l4 import ClassifyCallL4
+from application.use_cases.evaluate_extraction import EvaluateExtraction
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_answer_key import ImportAnswerKey
 from application.use_cases.import_reference_data import ImportReferenceData
@@ -63,6 +65,7 @@ from infrastructure.persistence.repositories.call_extraction_repository import (
     SqlCallExtractionRepository,
 )
 from infrastructure.persistence.repositories.call_repository import SqlCallRepository
+from infrastructure.persistence.repositories.diagnostics_source import SqlDiagnosticsSource
 from infrastructure.persistence.repositories.ground_truth_repository import (
     SqlGroundTruthRepository,
 )
@@ -103,6 +106,7 @@ class Container:
     # Answer key (plan §8 Phase 2). Held here like any other adapter; the
     # import-linter contract, not the composition root, is what keeps
     # extraction away from it.
+    diagnostics_source: DiagnosticsSource
     ground_truth_source: GroundTruthSource
     ground_truth_repository: GroundTruthRepository
     answer_key_source: AnswerKeySource
@@ -120,6 +124,18 @@ class Container:
             source=self.ground_truth_source,
             repository=self.ground_truth_repository,
             pdf_source=self.answer_key_source,
+        )
+
+    def evaluate_extraction(self) -> EvaluateExtraction:
+        """Phase 5's harness. Holds both sides — the answers and the
+        pipeline's output — which is why it and everything under it are
+        forbidden to extraction by the import-linter contract, not merely
+        kept apart by convention.
+        """
+        return EvaluateExtraction(
+            ground_truth=self.ground_truth_repository,
+            extractions=self.call_extraction_repository,
+            diagnostics=self.diagnostics_source,
         )
 
     def ingest_transcripts(self) -> IngestTranscripts:
@@ -215,6 +231,7 @@ def build_container(settings: Settings) -> Container:
         rubric=load_rubric(settings.rubric_path),
         run_repository=SqlRunRepository(session_factory),
         background_runner=BackgroundRunner(),
+        diagnostics_source=SqlDiagnosticsSource(session_factory),
         ground_truth_source=XlsxGroundTruthSource(settings.workbook_path),
         ground_truth_repository=SqlGroundTruthRepository(session_factory, clock),
         answer_key_source=PdfAnswerKeySource(settings.transcripts_path),

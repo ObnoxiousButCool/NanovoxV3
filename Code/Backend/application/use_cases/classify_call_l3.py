@@ -13,7 +13,7 @@ Quality Framework sheet: "The score is not written by the model").
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from application.dto.l3_response import L3Response
 from application.ports.call_extraction_repository import (
@@ -33,7 +33,12 @@ from domain.entities.rule import Rule
 from domain.entities.score_marker import ScoreMarker
 from domain.entities.transcript import Transcript
 from domain.errors import ValidationError
-from domain.extraction.evidence import EvidenceValidation, validate_evidence
+from domain.extraction.evidence import (
+    EvidenceRejection,
+    EvidenceValidation,
+    also_rejected,
+    validate_evidence,
+)
 from domain.extraction.rule_scoping import scope_rules
 from domain.layers import Layer
 from domain.scoring.rubric import Rubric
@@ -41,6 +46,7 @@ from domain.scoring.rubric_engine import RubricEngine
 from domain.transcript_hash import content_hash
 from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.polarity import Polarity
+from domain.value_objects.token_usage import TokenUsage
 
 _PROMPT_ID = "l3_quality"
 _ACCEPTED = "accepted"
@@ -50,6 +56,9 @@ _ACCEPTED = "accepted"
 class ClassifyCallL3Result:
     quality: L3Quality
     rejected_markers: EvidenceValidation[ScoreMarker]
+    #: Tokens this layer consumed. A reported zero where the stage cache
+    #: answered — genuinely free, not unknown. See `TokenUsage`.
+    usage: TokenUsage = field(default_factory=TokenUsage)
 
 
 class ClassifyCallL3:
@@ -70,6 +79,10 @@ class ClassifyCallL3:
         self._stage_cache = stage_cache
         self._extractions = extractions
         self._engine = RubricEngine(rubric)
+        # Kept alongside the engine: the engine scores accepted markers, and
+        # this needs to ask the rubric what it defines *before* anything is
+        # accepted.
+        self._rubric = rubric
         self._clock = clock
 
     async def execute(self, call_reference: str, provider: LLMProvider) -> ClassifyCallL3Result:
@@ -108,6 +121,7 @@ class ClassifyCallL3:
             model=provider.model,
         )
 
+        usage = TokenUsage()
         cached = await self._stage_cache.get(key)
         if cached is not None:
             response = L3Response.model_validate_json(cached)
@@ -121,6 +135,7 @@ class ClassifyCallL3:
                 )
             )
             response = result.value
+            usage = result.usage
             await self._stage_cache.put(key, response.model_dump_json())
 
         marker_candidates = tuple(
@@ -133,7 +148,17 @@ class ClassifyCallL3:
             )
             for item in response.markers
         )
-        marker_validation = validate_evidence(marker_candidates, transcript)
+        # A dimension the rubric does not define is refused here, before the
+        # transcript is consulted: there is no point asking whether a quote
+        # supports a dimension that does not exist, and `Rubric.dimension()`
+        # raises on an unknown code — so without this filter one invented
+        # dimension name failed the entire L3 pass for the call. The Call
+        # Quality Framework refuses the marker and scores the rest.
+        known = tuple(m for m in marker_candidates if self._rubric.has_dimension(m.dimension))
+        unknown = tuple(m for m in marker_candidates if not self._rubric.has_dimension(m.dimension))
+        marker_validation = also_rejected(
+            validate_evidence(known, transcript), unknown, EvidenceRejection.UNKNOWN_DIMENSION
+        )
 
         known_rule_ids = frozenset(rule.reference for rule in scoped_rules)
         knowledge_failure = _validate_knowledge_failure(response, known_rule_ids)
@@ -172,7 +197,11 @@ class ClassifyCallL3:
             ),
         )
 
-        return ClassifyCallL3Result(quality=quality, rejected_markers=marker_validation)
+        return ClassifyCallL3Result(
+            quality=quality,
+            rejected_markers=marker_validation,
+            usage=usage,
+        )
 
 
 def _render_transcript(transcript: Transcript) -> str:

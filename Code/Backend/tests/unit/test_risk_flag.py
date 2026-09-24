@@ -19,7 +19,7 @@ from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.escalation import Escalation
 from domain.value_objects.intent_type import IntentType
 from domain.value_objects.outcome import Outcome
-from domain.value_objects.signal_code import SignalCode
+from domain.value_objects.signal_type import SignalType
 from infrastructure.config.dashboard_config import load_dashboard_config
 from infrastructure.config.paths import DEFAULT_CONFIG_DIR
 from tests.fixtures.tagged_calls import WINDOW, call, calls, day, employer
@@ -273,7 +273,7 @@ def test_the_families_do_not_feed_the_flag(config: DashboardConfig) -> None:
         outcome=Outcome.UNRESOLVED,
         complaint_to=ComplaintAttribution.CHOICE,
         control_exceptions=frozenset({ControlExceptionType.NO_RECORDING_DISCLOSURE}),
-        signals=frozenset({SignalCode.VERIFICATION_FAILURE}),
+        signals=frozenset({SignalType.VERIFICATION_FAILURE}),
         escalation=Escalation(triggered=True, handled=False),
         knowledge_failure_rule="C-12",
     )

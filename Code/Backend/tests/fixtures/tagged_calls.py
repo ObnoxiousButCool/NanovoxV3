@@ -30,7 +30,7 @@ from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.process_gap import ProcessGap, ProcessGapStatus, RaisedBy
 from domain.value_objects.product_line import ProductLine
-from domain.value_objects.signal_code import SignalCode
+from domain.value_objects.signal_type import SignalType
 
 #: The corpus's own 12-week window (batch 1: 6 Jul to 25 Sep 2026).
 WINDOW_START = date(2026, 7, 6)
@@ -54,7 +54,7 @@ def call(
     category: Category | None = Category.CLAIMS_AND_EOB,
     product_lines: tuple[ProductLine, ...] = (ProductLine.DENTAL,),
     complaint_to: ComplaintAttribution | None = None,
-    signals: frozenset[SignalCode] = frozenset(),
+    signals: frozenset[SignalType] = frozenset(),
     escalation: Escalation | None = None,
     control_exceptions: frozenset[ControlExceptionType] = frozenset(),
     knowledge_failure_rule: str | None = None,

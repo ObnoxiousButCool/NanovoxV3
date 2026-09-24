@@ -4,14 +4,22 @@ Metric 4's linkage. Deterministic and model-free: a call is a repeat if the
 same caller contacted us again inside the exposure period, which is a
 comparison of two dates and a caller reference.
 
-**Note for Stream A.** `Backend-Stream-A-Extraction-Pipeline.md` gives A4
-"repeat contact (metric 4)" among the deterministic derivations, and this
-module overlaps with it. It is here because metric 5's first component is
-failure-driven repeats and B3 cannot publish self-inflicted demand without
-it — the two stream documents did not resolve that overlap. Import this
-rather than writing a second one; two implementations of a 14-day window
-will disagree at the boundary and only one of them will be wrong on any
-given day.
+**Never read the tracker's "Repeat of" column.** The linkage is computed
+from our own extracted `outcome` and Phase 2's `caller_ref`/`occurred_on`,
+never from the Transcript Tracker. That column is answer-key material Stream
+B's `ground_truth` owns, and using it here would both violate the
+"extraction cannot read the answer key" contract in spirit and make the
+pipeline's own repeat detection circular — Phase 5 would then be measuring
+the agreement of a value with itself.
+
+**Consolidated 2026-09-23.** Stream A's A4 and Stream B's B3 each built this, because
+the two stream documents both claimed it — A4 as a deterministic derivation,
+B3 because metric 5's first component is failure-driven repeats and
+self-inflicted demand cannot be published without it. The two agreed on
+every rule and differed only in types. This is the surviving one;
+`domain/derivations/repeat_contact.py` is gone. Import this rather than
+writing a third: two implementations of a 14-day boundary eventually
+disagree on one day, and nothing says which is right.
 
 Three definitions that are narrower than they look, all from the Metrics
 sheet's own build notes:

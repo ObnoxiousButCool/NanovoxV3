@@ -11,7 +11,7 @@ are (plan §7).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from application.dto.l4_response import L4Response
 from application.ports.call_extraction_repository import (
@@ -37,6 +37,7 @@ from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.process_gap import ProcessGap, ProcessGapStatus, RaisedBy
 from domain.value_objects.signal import Signal
 from domain.value_objects.signal_type import SignalType
+from domain.value_objects.token_usage import TokenUsage
 
 _PROMPT_ID = "l4_signals"
 
@@ -45,6 +46,9 @@ _PROMPT_ID = "l4_signals"
 class ClassifyCallL4Result:
     findings: L4SignalsAndGaps
     rejected_signals: EvidenceValidation[Signal]
+    #: Tokens this layer consumed. A reported zero where the stage cache
+    #: answered — genuinely free, not unknown. See `TokenUsage`.
+    usage: TokenUsage = field(default_factory=TokenUsage)
 
 
 class ClassifyCallL4:
@@ -101,6 +105,7 @@ class ClassifyCallL4:
             model=provider.model,
         )
 
+        usage = TokenUsage()
         cached = await self._stage_cache.get(key)
         if cached is not None:
             response = L4Response.model_validate_json(cached)
@@ -114,6 +119,7 @@ class ClassifyCallL4:
                 )
             )
             response = result.value
+            usage = result.usage
             await self._stage_cache.put(key, response.model_dump_json())
 
         signal_candidates = tuple(
@@ -160,7 +166,11 @@ class ClassifyCallL4:
             ),
         )
 
-        return ClassifyCallL4Result(findings=findings, rejected_signals=signal_validation)
+        return ClassifyCallL4Result(
+            findings=findings,
+            rejected_signals=signal_validation,
+            usage=usage,
+        )
 
 
 def _render_transcript(transcript: Transcript) -> str:

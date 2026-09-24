@@ -24,10 +24,10 @@ from domain.value_objects.escalation import Escalation
 from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.process_gap import ProcessGap, ProcessGapStatus, RaisedBy
 from domain.value_objects.product_line import ProductLine
-from domain.value_objects.signal_code import (
+from domain.value_objects.signal_severity import SignalSeverity
+from domain.value_objects.signal_type import (
     SEVERITY_ORDER,
-    Severity,
-    SignalCode,
+    SignalType,
     owner_team_of,
     severity_of,
 )
@@ -134,21 +134,21 @@ def test_every_signal_has_a_severity_and_an_owner() -> None:
     drives routing. A signal missing either is a signal that cannot be shown
     or cannot be sent to anyone.
     """
-    for signal in SignalCode:
+    for signal in SignalType:
         assert severity_of(signal) in SEVERITY_ORDER
         assert owner_team_of(signal).strip()
 
 
 def test_severity_order_runs_worst_first() -> None:
-    assert SEVERITY_ORDER[0] is Severity.CRITICAL
-    assert SEVERITY_ORDER[-1] is Severity.LOW
+    assert SEVERITY_ORDER[0] is SignalSeverity.CRITICAL
+    assert SEVERITY_ORDER[-1] is SignalSeverity.LOW
 
 
 def test_knowledge_error_is_owned_by_knowledge_management_not_the_call_centre() -> None:
     """D7: this is the agent-conduct event, and it routes to the people who
     own the article — not to Operations, and not to the agent.
     """
-    assert owner_team_of(SignalCode.KNOWLEDGE_ERROR) == "Knowledge Management"
+    assert owner_team_of(SignalType.KNOWLEDGE_ERROR) == "Knowledge Management"
 
 
 # --- CallTags --------------------------------------------------------------
@@ -175,7 +175,7 @@ def test_signals_are_distinct_types_not_occurrences() -> None:
     """
     tags = CallTags(
         reference="C-0001",
-        signals=frozenset({SignalCode.BILLING_DEFECT, SignalCode.BILLING_DEFECT}),
+        signals=frozenset({SignalType.BILLING_DEFECT, SignalType.BILLING_DEFECT}),
     )
 
     assert len(tags.signals) == 1

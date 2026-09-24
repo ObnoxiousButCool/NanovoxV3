@@ -40,3 +40,14 @@ class GroundTruthRepository(ABC):
         same or a revised workbook updates in place. A tracker row whose
         call is not ingested is returned in `unmatched`, never written.
         """
+
+    @abstractmethod
+    async def all(self) -> tuple[GroundTruth, ...]:
+        """Every stored answer, ordered by call reference.
+
+        Phase 5 scores the pipeline against all of them at once, so this
+        reads the lot rather than offering a per-call lookup: an evaluation
+        that fetched one row at a time would make "the pipeline produced
+        nothing for this call" indistinguishable from "this call has no
+        answer", and those are different findings.
+        """
