@@ -30,6 +30,10 @@ ALLOWED = {
     # decision.
     "tests/unit/test_classify_call_l2.py",
     "tests/integration/test_reference_repository.py",
+    # Seeds an EmployerRow to exercise the insights corpus source. The
+    # column is NOT NULL so a fixture has to set it; the assertion it
+    # supports is that `EmployerFacts` does *not* carry it through.
+    "tests/integration/test_insights_source.py",
     "tests/integration/test_reference_lookup.py",
 }
 
