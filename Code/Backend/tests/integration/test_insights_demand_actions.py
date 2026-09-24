@@ -93,9 +93,12 @@ class TestActions:
         """The write path is Phase 9; a default 'open' would be invented."""
         await seed_signals(session_factory, signals_per_call=[[SignalType.BILLING_DEFECT]])
 
-        body = client.get("/api/v1/insights/actions", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/actions", params={"asOf": AS_OF}).json()
 
-        assert body["items"][0]["signal"] == "billing_defect"
+        assert body["items"][0]["signal"] == {
+            "code": "billing_defect",
+            "label": "Billing defect",
+        }
         assert "status" not in body["items"][0]
 
     async def test_severity_and_owner_come_from_the_taxonomy(
@@ -105,17 +108,18 @@ class TestActions:
             session_factory, signals_per_call=[[SignalType.COMPLIANCE_DISCLOSURE_MISSING]]
         )
 
-        body = client.get("/api/v1/insights/actions", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/actions", params={"asOf": AS_OF}).json()
 
-        assert body["items"][0]["owner_team"] == "Compliance"
-        assert body["items"][0]["severity"] == "HIGH"
+        assert body["items"][0]["ownerTeam"] == "Compliance"
+        assert body["items"][0]["severity"]["code"] == "HIGH"
+        assert body["items"][0]["severity"]["label"] == "High"
 
     async def test_a_signal_nobody_raised_is_absent_not_zero(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
         await seed_signals(session_factory, signals_per_call=[[SignalType.BILLING_DEFECT]])
 
-        body = client.get("/api/v1/insights/actions", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/actions", params={"asOf": AS_OF}).json()
 
         assert len(body["items"]) == 1
 
@@ -128,10 +132,10 @@ class TestActions:
             signals_per_call=[[SignalType.PROCESS_BREAKDOWN, SignalType.ESCALATION_MISSED]],
         )
 
-        body = client.get("/api/v1/insights/actions", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/actions", params={"asOf": AS_OF}).json()
 
         (operations,) = body["owners"]
-        assert operations["owner_team"] == "Operations"
+        assert operations["ownerTeam"] == "Operations"
         assert len(operations["items"]) == 2
         assert operations["calls"] == 1
 
@@ -145,25 +149,25 @@ class TestActions:
             control_exceptions=[ControlExceptionType.NO_RECORDING_DISCLOSURE.value],
         )
 
-        body = client.get("/api/v1/insights/actions", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/actions", params={"asOf": AS_OF}).json()
 
-        types = {row["exception_type"] for row in body["control_exceptions"]}
+        types = {row["exceptionType"]["code"] for row in body["controlExceptions"]}
         assert types == {
             "no_recording_disclosure",
             "disclosure_before_verification",
             "missing_benefit_disclosure",
         }
-        assert "floor on the true exception rate" in body["control_denominator_caveat"]
+        assert "floor on the true exception rate" in body["controlDenominatorCaveat"]
 
     async def test_the_withheld_panel_states_what_would_unlock_it(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
         await seed_signals(session_factory, signals_per_call=[[]])
 
-        body = client.get("/api/v1/insights/actions", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/actions", params={"asOf": AS_OF}).json()
 
-        assert body["did_it_work"]["insight"] == 22
-        assert "second batch" in body["did_it_work"]["unlocked_by"]
+        assert body["didItWork"]["insight"] == 22
+        assert "second batch" in body["didItWork"]["unlockedBy"]
 
 
 class TestDemand:
@@ -176,13 +180,13 @@ class TestDemand:
             signals_per_call=[[SignalType.PROCESS_BREAKDOWN] for _ in range(3)],
         )
 
-        body = client.get("/api/v1/insights/demand", params={"as_of": AS_OF}).json()
-        demand = body["self_inflicted"]
+        body = client.get("/api/v1/insights/demand", params={"asOf": AS_OF}).json()
+        demand = body["selfInflicted"]
 
         assert set(demand) == {
-            "failure_driven_repeats",
-            "chasing_submitted_action",
-            "logged_process_defect",
+            "failureDrivenRepeats",
+            "chasingSubmittedAction",
+            "loggedProcessDefect",
             "total",
         }
 
@@ -192,21 +196,21 @@ class TestDemand:
         """Related to, but not the same as, how much volume we created."""
         await seed_signals(session_factory, signals_per_call=[[]])
 
-        body = client.get("/api/v1/insights/demand", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/demand", params={"asOf": AS_OF}).json()
 
-        assert "complaints_about_us" in body
-        assert "complaints_about_us" not in body["self_inflicted"]
+        assert "complaintsAboutUs" in body
+        assert "complaintsAboutUs" not in body["selfInflicted"]
 
     async def test_touchpoints_are_counts_with_their_calls(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
         await seed_signals(session_factory, signals_per_call=[[], [], []])
 
-        body = client.get("/api/v1/insights/demand", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/demand", params={"asOf": AS_OF}).json()
 
         (row,) = body["touchpoints"]
         assert row["calls"] == 3
-        assert len(row["call_ids"]) == 3
+        assert len(row["callIds"]) == 3
         assert "rate" not in row
 
     async def test_untagged_touchpoints_land_in_the_residual_bucket(
@@ -215,10 +219,10 @@ class TestDemand:
         """Read off the ranking, so insights 16 and 18 cannot disagree."""
         await seed_signals(session_factory, signals_per_call=[[], []])
 
-        body = client.get("/api/v1/insights/demand", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/demand", params={"asOf": AS_OF}).json()
 
         assert len(body["unattributed"]) == 2
-        residual = next(r for r in body["touchpoints"] if r["call_ids"] == body["unattributed"])
+        residual = next(r for r in body["touchpoints"] if r["callIds"] == body["unattributed"])
         assert residual["calls"] == 2
 
     async def test_a_small_sample_is_withheld_not_zero(
@@ -227,9 +231,10 @@ class TestDemand:
         """Metric 5's min n is 60."""
         await seed_signals(session_factory, signals_per_call=[[], []])
 
-        body = client.get("/api/v1/insights/demand", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/demand", params={"asOf": AS_OF}).json()
 
-        total = body["self_inflicted"]["total"]
+        total = body["selfInflicted"]["total"]
         assert total["published"] is False
         assert total["value"] is None
-        assert total["withheld_reason"] == "BELOW_MIN_N"
+        assert total["withheldReason"]["code"] == "BELOW_MIN_N"
+        assert total["withheldReason"]["label"] == "Too few calls to publish"

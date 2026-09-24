@@ -4,6 +4,13 @@ One model because the filter bar is one filter bar: the prototype's scope
 row is the same on all nine screens, and nine endpoints each parsing their
 own subset would let the screens quietly disagree about what a filter means.
 
+## camelCase, like the response keys
+
+A query parameter is the same surface a client reads, so the multi-word
+ones are `productLine` and `asOf` rather than `product_line` and `as_of`.
+Splitting the convention between the response body and the query string
+would leave every caller guessing which half they are in.
+
 ## Repeated parameters, not comma-separated lists
 
 `?category=Claims%20%26%20EOB&category=Billing%20%26%20Premium` rather than
@@ -69,7 +76,10 @@ class InsightsQuery:
     category: Annotated[list[Category] | None, Query()] = None
     product_line: Annotated[
         list[ProductLine] | None,
-        Query(description="Calls touching this line. A call may touch several."),
+        Query(
+            alias="productLine",
+            description="Calls touching this line. A call may touch several.",
+        ),
     ] = None
     touchpoint: Annotated[
         list[str] | None,
@@ -78,13 +88,15 @@ class InsightsQuery:
     outcome: Annotated[list[Outcome] | None, Query()] = None
     signal: Annotated[list[SignalType] | None, Query()] = None
     intent: Annotated[list[IntentType] | None, Query()] = None
-    complaint_target: Annotated[list[ComplaintAttribution] | None, Query()] = None
-    quality_band: Annotated[list[QualityBand] | None, Query()] = None
+    complaint_target: Annotated[
+        list[ComplaintAttribution] | None, Query(alias="complaintTarget")
+    ] = None
+    quality_band: Annotated[list[QualityBand] | None, Query(alias="qualityBand")] = None
 
     # --- Yes/no. Omitted means unset; false is a real selection.
     escalated: Annotated[bool | None, Query()] = None
     complaint: Annotated[bool | None, Query(description="Whether a complaint was made.")] = None
-    compliance_exception: Annotated[bool | None, Query()] = None
+    compliance_exception: Annotated[bool | None, Query(alias="complianceException")] = None
 
     # --- Corpus scope, which is not a filter over calls
     source: Annotated[
@@ -100,10 +112,11 @@ class InsightsQuery:
     as_of: Annotated[
         date | None,
         Query(
+            alias="asOf",
             description=(
                 "The date every window ends on. Omitted means today. Supplying it "
                 "makes a figure reproducible."
-            )
+            ),
         ),
     ] = None
 

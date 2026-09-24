@@ -31,8 +31,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import DashboardConfigDep, GetAccountDetailDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
@@ -44,14 +45,14 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 
-class WindowedFigureResponse(BaseModel):
+class WindowedFigureResponse(CamelModel):
     """A figure with the period it was computed over."""
 
     window_weeks: int
     figure: FigureResponse
 
 
-class AccountFactsResponse(BaseModel):
+class AccountFactsResponse(CamelModel):
     """§9 insight 8 — the facts that raise the stakes on everything else.
 
     From reference data, not from the pipeline, so nothing here depends on
@@ -71,7 +72,7 @@ class AccountFactsResponse(BaseModel):
     annual_fee: int
 
 
-class PeerComparisonResponse(BaseModel):
+class PeerComparisonResponse(CamelModel):
     band: str | None = Field(
         default=None, description="The size band, in lives. Null when the employer fits none."
     )
@@ -90,7 +91,7 @@ class PeerComparisonResponse(BaseModel):
     )
 
 
-class AccountResponse(BaseModel):
+class AccountResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
     facts: AccountFactsResponse

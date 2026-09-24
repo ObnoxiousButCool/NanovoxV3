@@ -30,21 +30,23 @@ missing from. The list is built from the calls themselves.
 from __future__ import annotations
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetAgentsDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 
-class ControlExceptionCountResponse(BaseModel):
-    exception_type: str
+class ControlExceptionCountResponse(CamelModel):
+    exception_type: CodedValue
     calls: int
 
 
-class AgentQualityResponse(BaseModel):
+class AgentQualityResponse(CamelModel):
     """Metric 12 as a range, never as a ranking position."""
 
     scored_calls: list[str]
@@ -61,7 +63,7 @@ class AgentQualityResponse(BaseModel):
     )
 
 
-class AgentResponse(BaseModel):
+class AgentResponse(CamelModel):
     agent_ref: str
     calls: list[str]
     knowledge_errors: list[str] = Field(
@@ -75,7 +77,7 @@ class AgentResponse(BaseModel):
     quality: AgentQualityResponse
 
 
-class AgentsResponse(BaseModel):
+class AgentsResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
     window_weeks: int = Field(description="The period the events are counted over.")
@@ -114,7 +116,7 @@ async def read_agents(
                 knowledge_errors=list(entry.events.knowledge_errors),
                 escalations_missed=list(entry.events.escalations_missed),
                 control_exceptions=[
-                    ControlExceptionCountResponse(exception_type=exception.value, calls=count)
+                    ControlExceptionCountResponse(exception_type=coded(exception), calls=count)
                     for exception, count in entry.events.control_exceptions
                 ],
                 knowledge_error_rate=FigureResponse.of(entry.events.knowledge_error_rate),

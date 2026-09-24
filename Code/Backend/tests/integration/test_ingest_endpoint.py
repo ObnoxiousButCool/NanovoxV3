@@ -33,4 +33,4 @@ def test_ingest_reports_counts(app: FastAPI) -> None:
     body = response.json()
     assert body["total"] == 100
     assert body["resolved"] == 97
-    assert body["caller_unresolved"] == 3
+    assert body["callerUnresolved"] == 3

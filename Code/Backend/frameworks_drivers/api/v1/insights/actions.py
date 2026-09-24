@@ -33,10 +33,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetActionsDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 if TYPE_CHECKING:
@@ -45,11 +47,11 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 
-class ActionItemResponse(BaseModel):
+class ActionItemResponse(CamelModel):
     """One finding. No status — see this module's docstring."""
 
-    signal: str
-    severity: str
+    signal: CodedValue
+    severity: CodedValue
     owner_team: str = Field(
         description="From the Signal Taxonomy's Owner column, which the sheet calls mandatory."
     )
@@ -57,7 +59,7 @@ class ActionItemResponse(BaseModel):
     call_ids: list[str]
 
 
-class OwnerWorkloadResponse(BaseModel):
+class OwnerWorkloadResponse(CamelModel):
     owner_team: str
     critical: int
     calls: int = Field(
@@ -69,19 +71,19 @@ class OwnerWorkloadResponse(BaseModel):
     items: list[ActionItemResponse]
 
 
-class ControlExceptionResponse(BaseModel):
-    exception_type: str
+class ControlExceptionResponse(CamelModel):
+    exception_type: CodedValue
     figure: FigureResponse
 
 
-class WithheldPanelResponse(BaseModel):
+class WithheldPanelResponse(CamelModel):
     insight: int
     question: str
     why: str
     unlocked_by: str
 
 
-class ActionsResponse(BaseModel):
+class ActionsResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
     window_weeks: int
@@ -130,7 +132,7 @@ async def read_actions(
         ],
         control_exceptions=[
             ControlExceptionResponse(
-                exception_type=exception.value, figure=FigureResponse.of(figure)
+                exception_type=coded(exception), figure=FigureResponse.of(figure)
             )
             for exception, figure in view.control_exceptions
         ],
@@ -146,8 +148,8 @@ async def read_actions(
 
 def _item(item: ActionItem) -> ActionItemResponse:
     return ActionItemResponse(
-        signal=item.signal.value,
-        severity=item.severity.value,
+        signal=coded(item.signal),
+        severity=coded(item.severity),
         owner_team=item.owner_team,
         calls=item.calls,
         call_ids=list(item.call_ids),

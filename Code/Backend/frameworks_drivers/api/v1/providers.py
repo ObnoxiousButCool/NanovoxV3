@@ -7,14 +7,14 @@ it would leave the caller with no idea why their choice is absent.
 from __future__ import annotations
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import ListProvidersDep
 
 router = APIRouter(prefix="/providers", tags=["providers"])
 
 
-class ProviderResponse(BaseModel):
+class ProviderResponse(CamelModel):
     name: str
     model: str
     configured: bool
@@ -27,7 +27,7 @@ class ProviderResponse(BaseModel):
     detail: str | None = None
 
 
-class ListProvidersResponse(BaseModel):
+class ListProvidersResponse(CamelModel):
     default: str
     providers: list[ProviderResponse]
 

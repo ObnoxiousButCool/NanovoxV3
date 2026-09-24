@@ -26,9 +26,10 @@ together in one field rather than as two entries a client can pick between.
 from __future__ import annotations
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from domain.aggregation.exec_scorecard import SCORECARD_METRICS, escalation_integrity_pair
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import DashboardConfigDep, GetExecScorecardDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
@@ -36,7 +37,7 @@ from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 
-class MetricFigureResponse(BaseModel):
+class MetricFigureResponse(CamelModel):
     """One published metric, with the window it was computed over."""
 
     key: str = Field(description="The metric's key in dashboard.yaml.")
@@ -51,12 +52,12 @@ class MetricFigureResponse(BaseModel):
     figure: FigureResponse
 
 
-class LabelledFigureResponse(BaseModel):
+class LabelledFigureResponse(CamelModel):
     label: str
     figure: FigureResponse
 
 
-class ExecScorecardResponse(BaseModel):
+class ExecScorecardResponse(CamelModel):
     scope: ScopeResponse
     as_of: str = Field(description="The date every window on this screen ends on.")
     calls: int = Field(

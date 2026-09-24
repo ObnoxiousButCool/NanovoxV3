@@ -21,7 +21,7 @@ class TestWithheldNeverBecomesZero:
     def test_a_withheld_figure_serialises_value_as_null(self) -> None:
         figure = Figure.withheld(WithheldReason.BELOW_MIN_N, ("C-1", "C-2"))
 
-        payload = json.loads(FigureResponse.of(figure).model_dump_json())
+        payload = json.loads(FigureResponse.of(figure).model_dump_json(by_alias=True))
 
         assert payload["value"] is None
         assert payload["value"] != 0
@@ -51,7 +51,9 @@ class TestWithheldNeverBecomesZero:
     def test_a_withheld_figure_always_carries_a_reason(self) -> None:
         payload = FigureResponse.of(Figure.withheld(WithheldReason.MONEY_UNKNOWN))
 
-        assert payload.withheld_reason is WithheldReason.MONEY_UNKNOWN
+        assert payload.withheld_reason is not None
+        assert payload.withheld_reason.code == "MONEY_UNKNOWN"
+        assert payload.withheld_reason.label == "Cost per call not set"
 
     def test_a_published_figure_carries_no_reason(self) -> None:
         assert FigureResponse.of(Figure.measured(1.0, ("C-1",))).withheld_reason is None
@@ -86,19 +88,26 @@ class TestEvidence:
 class TestEpistemicClass:
     def test_derived_is_labelled_on_the_wire(self) -> None:
         """Composites "must be labelled as derived wherever they surface"."""
-        payload = json.loads(FigureResponse.of(Figure.derived(3.2, ("C-1",))).model_dump_json())
-
-        assert payload["epistemic"] == "DERIVED"
-
-    def test_measured_and_withheld_serialise_as_their_names(self) -> None:
-        measured = json.loads(FigureResponse.of(Figure.measured(1.0, ("C-1",))).model_dump_json())
-        withheld = json.loads(
-            FigureResponse.of(Figure.withheld(WithheldReason.NOT_ELIGIBLE)).model_dump_json()
+        payload = json.loads(
+            FigureResponse.of(Figure.derived(3.2, ("C-1",))).model_dump_json(by_alias=True)
         )
 
-        assert measured["epistemic"] == "MEASURED"
-        assert withheld["epistemic"] == "WITHHELD"
-        assert withheld["withheld_reason"] == "NOT_ELIGIBLE"
+        assert payload["epistemic"] == {"code": "DERIVED", "label": "Derived"}
+
+    def test_measured_and_withheld_serialise_as_their_names(self) -> None:
+        measured = json.loads(
+            FigureResponse.of(Figure.measured(1.0, ("C-1",))).model_dump_json(by_alias=True)
+        )
+        withheld = json.loads(
+            FigureResponse.of(Figure.withheld(WithheldReason.NOT_ELIGIBLE)).model_dump_json(
+                by_alias=True
+            )
+        )
+
+        assert measured["epistemic"]["code"] == "MEASURED"
+        assert withheld["epistemic"]["code"] == "WITHHELD"
+        assert withheld["withheldReason"]["code"] == "NOT_ELIGIBLE"
+        assert withheld["withheldReason"]["label"] == "Not enough calls to assess"
 
     def test_the_three_classes_are_the_whole_vocabulary(self) -> None:
         """Pinned deliberately: this enum has no source and needs confirming.

@@ -51,9 +51,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
-from domain.aggregation.figure import EpistemicClass, WithheldReason
+from frameworks_drivers.api.camel import CamelModel
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 
 if TYPE_CHECKING:
     from application.ports.insights_source import CorpusQuery, CorpusSlice
@@ -61,7 +62,7 @@ if TYPE_CHECKING:
     from domain.aggregation.filters import FilteredCalls
 
 
-class FigureResponse(BaseModel):
+class FigureResponse(CamelModel):
     """One number and everything needed to judge it."""
 
     value: float | None = Field(
@@ -78,14 +79,14 @@ class FigureResponse(BaseModel):
         )
     )
     n: int = Field(description="The sample behind the figure. Equals the number of call ids.")
-    epistemic: EpistemicClass = Field(
+    epistemic: CodedValue = Field(
         description=(
             "MEASURED: computed from the Call Tag Schema's own fields. DERIVED: our "
             "composite rather than a workbook field, and labelled as such wherever it "
             "surfaces. WITHHELD: suppressed, with a reason."
         )
     )
-    withheld_reason: WithheldReason | None = Field(
+    withheld_reason: CodedValue | None = Field(
         default=None,
         description="Non-null exactly when `published` is false.",
     )
@@ -108,28 +109,30 @@ class FigureResponse(BaseModel):
             value=figure.value,
             published=figure.published,
             n=figure.n,
-            epistemic=figure.epistemic,
-            withheld_reason=figure.withheld_reason,
+            epistemic=coded(figure.epistemic),
+            withheld_reason=(
+                coded(figure.withheld_reason) if figure.withheld_reason is not None else None
+            ),
             caveats=list(figure.caveats),
             call_ids=list(figure.call_ids),
         )
 
 
-class AppliedFilterResponse(BaseModel):
+class AppliedFilterResponse(CamelModel):
     """One active filter, for the applied-filters row."""
 
     field: str
     values: list[str]
 
 
-class UnmeasurableResponse(BaseModel):
+class UnmeasurableResponse(CamelModel):
     """Calls dropped by a filter for want of a value, not for differing."""
 
     field: str
     calls: int
 
 
-class ScopeResponse(BaseModel):
+class ScopeResponse(CamelModel):
     """The population a response's figures were computed over.
 
     Both counts are here because either alone misleads. `matched` without

@@ -112,12 +112,12 @@ async def test_exec_states_a_window_per_metric(
     """The reason the response is not a flat row of figures."""
     await seed(session_factory, calls_per_employer={"EMP-01": 5})
 
-    body = client.get("/api/v1/insights/exec", params={"as_of": AS_OF}).json()
+    body = client.get("/api/v1/insights/exec", params={"asOf": AS_OF}).json()
 
-    windows = {metric["key"]: metric["window_weeks"] for metric in body["metrics"]}
+    windows = {metric["key"]: metric["windowWeeks"] for metric in body["metrics"]}
     assert windows["first_contact_resolution"] == 4
     assert windows["escalation_integrity"] == 12
-    assert body["as_of"] == AS_OF
+    assert body["asOf"] == AS_OF
 
 
 @pytest.mark.asyncio
@@ -127,14 +127,14 @@ async def test_a_withheld_figure_is_never_a_zero_on_the_wire(
     """Five calls is under every min n on this screen."""
     await seed(session_factory, calls_per_employer={"EMP-01": 5})
 
-    body = client.get("/api/v1/insights/exec", params={"as_of": AS_OF}).json()
+    body = client.get("/api/v1/insights/exec", params={"asOf": AS_OF}).json()
 
     withheld = [m for m in body["metrics"] if not m["figure"]["published"]]
     assert withheld, "expected small samples to be withheld"
     for metric in withheld:
         assert metric["figure"]["value"] is None
-        assert metric["figure"]["withheld_reason"] is not None
-        assert metric["figure"]["epistemic"] == "WITHHELD"
+        assert metric["figure"]["withheldReason"] is not None
+        assert metric["figure"]["epistemic"]["code"] == "WITHHELD"
 
 
 @pytest.mark.asyncio
@@ -143,10 +143,10 @@ async def test_intent_routed_is_withheld_for_want_of_a_field(
 ) -> None:
     await seed(session_factory, calls_per_employer={"EMP-01": 5})
 
-    body = client.get("/api/v1/insights/exec", params={"as_of": AS_OF}).json()
+    body = client.get("/api/v1/insights/exec", params={"asOf": AS_OF}).json()
 
-    assert body["intent_routed"]["withheld_reason"] == "NO_FIELD"
-    assert body["intent_routed"]["value"] is None
+    assert body["intentRouted"]["withheldReason"]["code"] == "NO_FIELD"
+    assert body["intentRouted"]["value"] is None
 
 
 @pytest.mark.asyncio
@@ -155,7 +155,7 @@ async def test_both_escalation_views_travel_together(
 ) -> None:
     await seed(session_factory, calls_per_employer={"EMP-01": 5})
 
-    body = client.get("/api/v1/insights/exec", params={"as_of": AS_OF}).json()
+    body = client.get("/api/v1/insights/exec", params={"asOf": AS_OF}).json()
 
     assert len(body["escalation"]) == 2
     assert "warranted" in body["escalation"][0]["label"]
@@ -168,7 +168,7 @@ async def test_scope_reports_the_population_not_just_the_figures(
     await seed(session_factory, calls_per_employer={"EMP-01": 5})
 
     body = client.get(
-        "/api/v1/insights/exec", params={"as_of": AS_OF, "source": "CORPUS_PDF"}
+        "/api/v1/insights/exec", params={"asOf": AS_OF, "source": "CORPUS_PDF"}
     ).json()
 
     assert body["scope"]["considered"] == 5
@@ -183,11 +183,11 @@ async def test_a_filter_narrows_and_says_so(
 ) -> None:
     await seed(session_factory, calls_per_employer={"EMP-01": 3, "EMP-02": 2})
 
-    body = client.get("/api/v1/insights/exec", params={"as_of": AS_OF, "employer": "EMP-01"}).json()
+    body = client.get("/api/v1/insights/exec", params={"asOf": AS_OF, "employer": "EMP-01"}).json()
 
     assert body["scope"]["matched"] == 3
     assert body["scope"]["considered"] == 5
-    assert body["scope"]["applied_filters"] == [{"field": "employer_refs", "values": ["EMP-01"]}]
+    assert body["scope"]["appliedFilters"] == [{"field": "employer_refs", "values": ["EMP-01"]}]
 
 
 @pytest.mark.asyncio
@@ -213,12 +213,12 @@ async def test_risk_keeps_ineligible_accounts_out_of_the_assessed_list(
     """
     await seed(session_factory, calls_per_employer={"EMP-01": 4, "EMP-02": 1})
 
-    body = client.get("/api/v1/insights/risk", params={"as_of": AS_OF}).json()
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
 
-    assessed = {account["employer_ref"] for account in body["assessed"]}
+    assessed = {account["employerRef"] for account in body["assessed"]}
     assert assessed == {"EMP-01"}
     assert body["ineligible"] == ["EMP-02"]
-    assert body["ineligible_count"] == 1
+    assert body["ineligibleCount"] == 1
 
 
 @pytest.mark.asyncio
@@ -227,7 +227,7 @@ async def test_an_assessed_account_carries_its_state_sentence(
 ) -> None:
     await seed(session_factory, calls_per_employer={"EMP-01": 4})
 
-    body = client.get("/api/v1/insights/risk", params={"as_of": AS_OF}).json()
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
 
     account = body["assessed"][0]
     assert account["eligible"] is True
@@ -242,13 +242,13 @@ async def test_unavailable_indicator_families_are_not_reported_as_zero(
 ) -> None:
     await seed(session_factory, calls_per_employer={"EMP-01": 4})
 
-    body = client.get("/api/v1/insights/risk", params={"as_of": AS_OF}).json()
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
 
     unavailable = [o for o in body["assessed"][0]["observations"] if not o["available"]]
     assert unavailable, "at least one family needs a field v9 does not have"
     for observation in unavailable:
         assert observation["rate"] is None
-        assert observation["unavailable_because"]
+        assert observation["unavailableBecause"]
 
 
 @pytest.mark.asyncio
@@ -257,7 +257,7 @@ async def test_exposure_is_never_an_expected_loss(
 ) -> None:
     await seed(session_factory, calls_per_employer={"EMP-01": 4})
 
-    body = client.get("/api/v1/insights/risk", params={"as_of": AS_OF}).json()
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
 
     assert "not expected loss" in body["exposure"]["caveat"]
 
@@ -269,9 +269,9 @@ async def test_flagged_share_divides_by_the_eligible_not_the_book(
     """With nothing eligible the share is withheld, never reported as 0%."""
     await seed(session_factory, calls_per_employer={"EMP-01": 1, "EMP-02": 1})
 
-    body = client.get("/api/v1/insights/risk", params={"as_of": AS_OF}).json()
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
 
     assert body["assessed"] == []
-    assert body["flagged_share"]["published"] is False
-    assert body["flagged_share"]["value"] is None
-    assert body["flagged_share"]["withheld_reason"] == "NOT_ELIGIBLE"
+    assert body["flaggedShare"]["published"] is False
+    assert body["flaggedShare"]["value"] is None
+    assert body["flaggedShare"]["withheldReason"]["code"] == "NOT_ELIGIBLE"

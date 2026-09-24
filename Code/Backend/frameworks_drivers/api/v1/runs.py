@@ -9,24 +9,24 @@ request open for however long the whole corpus takes.
 from __future__ import annotations
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel
 
 from domain.errors import NotFoundError
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import RunExtractionOverCorpusDep
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
 
-class StartRunRequest(BaseModel):
+class StartRunRequest(CamelModel):
     provider: str | None = None
     model: str | None = None
 
 
-class StartRunResponse(BaseModel):
+class StartRunResponse(CamelModel):
     id: int
 
 
-class RunProgressResponse(BaseModel):
+class RunProgressResponse(CamelModel):
     total: int
     completed: int
     failed: int
@@ -37,7 +37,7 @@ class RunProgressResponse(BaseModel):
     percent_complete: float
 
 
-class RunStatusResponse(BaseModel):
+class RunStatusResponse(CamelModel):
     id: int
     status: str
     provider: str

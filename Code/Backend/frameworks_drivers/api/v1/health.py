@@ -11,21 +11,22 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Response, status
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from domain.value_objects.health import ComponentStatus, HealthReport
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetHealthDep, SettingsDep
 
 router = APIRouter(tags=["system"])
 
 
-class ComponentHealthResponse(BaseModel):
+class ComponentHealthResponse(CamelModel):
     name: str
     status: ComponentStatus
     detail: str | None = None
 
 
-class HealthResponse(BaseModel):
+class HealthResponse(CamelModel):
     status: ComponentStatus
     application: str
     version: str

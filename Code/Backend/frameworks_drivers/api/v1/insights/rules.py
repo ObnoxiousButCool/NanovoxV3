@@ -31,22 +31,26 @@ only cited rules could not tell a reader which they were looking at.
 from __future__ import annotations
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetRulesDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 
-class RuleRowResponse(BaseModel):
+class RuleRowResponse(CamelModel):
     """One rule and the calls that got it wrong. No rate — see the module docstring."""
 
     rule_ref: str
-    layer: str = Field(description="Program, Administration or Carrier — whose rulebook it is.")
+    layer: CodedValue = Field(
+        description="Program, Administration or Carrier — whose rulebook it is."
+    )
     area: str
-    confidence: str = Field(
+    confidence: CodedValue = Field(
         description=(
             "The rule's own provenance grade from the Rules sheets. Provenance of the "
             "rule, not of any figure about it, and not an epistemic class."
@@ -60,12 +64,15 @@ class RuleRowResponse(BaseModel):
     failed_call_ids: list[str]
 
 
-class CountResponse(BaseModel):
-    label: str
+class CountResponse(CamelModel):
+    """One cut of the failures. `value` carries its own label where the
+    thing being counted is a coded value rather than free text."""
+
+    value: CodedValue
     failures: int
 
 
-class RulesResponse(BaseModel):
+class RulesResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
     window_weeks: int
@@ -110,19 +117,25 @@ async def read_rules(
         rules=[
             RuleRowResponse(
                 rule_ref=row.rule_ref,
-                layer=row.layer.value,
+                layer=coded(row.layer),
                 area=row.area,
-                confidence=row.confidence.value,
+                confidence=coded(row.confidence),
                 commonly_confused_with=row.commonly_confused_with,
                 failures=row.failures,
                 failed_call_ids=list(row.failed_call_ids),
             )
             for row in view.rules
         ],
-        by_layer=[CountResponse(label=layer.value, failures=n) for layer, n in view.by_layer],
-        by_area=[CountResponse(label=area, failures=n) for area, n in view.by_area],
-        by_provenance=[
-            CountResponse(label=grade.value, failures=n) for grade, n in view.by_provenance
+        by_layer=[CountResponse(value=coded(layer), failures=n) for layer, n in view.by_layer],
+        by_area=[
+            CountResponse(value=CodedValue(code=area, label=area), failures=n)
+            for area, n in view.by_area
         ],
-        by_touchpoint=[CountResponse(label=where, failures=n) for where, n in view.by_touchpoint],
+        by_provenance=[
+            CountResponse(value=coded(grade), failures=n) for grade, n in view.by_provenance
+        ],
+        by_touchpoint=[
+            CountResponse(value=CodedValue(code=where, label=where), failures=n)
+            for where, n in view.by_touchpoint
+        ],
     )

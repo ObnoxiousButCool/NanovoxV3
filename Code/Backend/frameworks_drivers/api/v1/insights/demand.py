@@ -29,16 +29,18 @@ calls.
 from __future__ import annotations
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetDemandDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 
-class SelfInflictedResponse(BaseModel):
+class SelfInflictedResponse(CamelModel):
     failure_driven_repeats: FigureResponse
     chasing_submitted_action: FigureResponse
     logged_process_defect: FigureResponse
@@ -50,12 +52,12 @@ class SelfInflictedResponse(BaseModel):
     )
 
 
-class AttributionCountResponse(BaseModel):
-    attributed_to: str
+class AttributionCountResponse(CamelModel):
+    attributed_to: CodedValue
     calls: int
 
 
-class TouchpointRowResponse(BaseModel):
+class TouchpointRowResponse(CamelModel):
     touchpoint: str
     calls: int
     call_ids: list[str]
@@ -70,7 +72,7 @@ class TouchpointRowResponse(BaseModel):
     )
 
 
-class PromiseGapResponse(BaseModel):
+class PromiseGapResponse(CamelModel):
     touchpoint: str
     proposed_change: str
     calls: int
@@ -82,7 +84,7 @@ class PromiseGapResponse(BaseModel):
     )
 
 
-class DemandResponse(BaseModel):
+class DemandResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
     window_weeks: int
@@ -133,7 +135,7 @@ async def read_demand(
                 calls=row.calls,
                 call_ids=list(row.call_ids),
                 attribution=[
-                    AttributionCountResponse(attributed_to=party.value, calls=count)
+                    AttributionCountResponse(attributed_to=coded(party), calls=count)
                     for party, count in row.attribution
                 ],
                 without_complaint=row.without_complaint,

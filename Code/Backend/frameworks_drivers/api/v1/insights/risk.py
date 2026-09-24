@@ -41,8 +41,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetAccountRiskDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
@@ -57,7 +58,7 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 
-class ConditionResponse(BaseModel):
+class ConditionResponse(CamelModel):
     """One of metric 10's four conditions, met or not."""
 
     code: str
@@ -68,7 +69,7 @@ class ConditionResponse(BaseModel):
     )
 
 
-class ObservationResponse(BaseModel):
+class ObservationResponse(CamelModel):
     """One indicator family's standing. Informational — it does not set the flag."""
 
     code: str
@@ -86,7 +87,7 @@ class ObservationResponse(BaseModel):
     unavailable_because: str = ""
 
 
-class AccountRiskResponse(BaseModel):
+class AccountRiskResponse(CamelModel):
     employer_ref: str
     calls: int = Field(description="Calls for this employer in the window.")
     eligible: bool
@@ -106,7 +107,7 @@ class AccountRiskResponse(BaseModel):
     observations: list[ObservationResponse]
 
 
-class ExposureResponse(BaseModel):
+class ExposureResponse(CamelModel):
     employers: list[str]
     lives: int
     annual_premium: float
@@ -116,7 +117,7 @@ class ExposureResponse(BaseModel):
     caveat: str
 
 
-class RiskScreenResponse(BaseModel):
+class RiskScreenResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
     window_weeks: int = Field(description="Metric 10's window, in weeks, ending on `as_of`.")

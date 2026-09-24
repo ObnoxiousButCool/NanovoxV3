@@ -110,12 +110,12 @@ class TestRules:
         """Per-rule rates need a denominator nothing records."""
         await seed(session_factory, failed_rules=["P-14", "P-14", None])
 
-        body = client.get("/api/v1/insights/rules", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/rules", params={"asOf": AS_OF}).json()
 
         top = body["rules"][0]
-        assert top["rule_ref"] == "P-14"
+        assert top["ruleRef"] == "P-14"
         assert top["failures"] == 2
-        assert top["failed_call_ids"] == ["C-0001", "C-0002"]
+        assert top["failedCallIds"] == ["C-0001", "C-0002"]
         assert "rate" not in top
 
     async def test_rules_nobody_got_wrong_are_still_listed(
@@ -124,40 +124,40 @@ class TestRules:
         """A rule with no failures is not a rule that does not exist."""
         await seed(session_factory, failed_rules=["P-14"])
 
-        body = client.get("/api/v1/insights/rules", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/rules", params={"asOf": AS_OF}).json()
 
-        assert {row["rule_ref"] for row in body["rules"]} == {"P-14", "A-09"}
-        assert next(r for r in body["rules"] if r["rule_ref"] == "A-09")["failures"] == 0
+        assert {row["ruleRef"] for row in body["rules"]} == {"P-14", "A-09"}
+        assert next(r for r in body["rules"] if r["ruleRef"] == "A-09")["failures"] == 0
 
     async def test_the_confused_with_column_reaches_the_screen(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
         await seed(session_factory, failed_rules=["P-14"])
 
-        body = client.get("/api/v1/insights/rules", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/rules", params={"asOf": AS_OF}).json()
 
-        assert body["rules"][0]["commonly_confused_with"] == "not-P-14"
+        assert body["rules"][0]["commonlyConfusedWith"] == "not-P-14"
 
     async def test_the_only_rate_is_about_the_corpus(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
         await seed(session_factory, failed_rules=["P-14", None])
 
-        body = client.get("/api/v1/insights/rules", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/rules", params={"asOf": AS_OF}).json()
 
-        assert "overall_rate" in body
-        assert body["overall_rate"]["n"] == 2
+        assert "overallRate" in body
+        assert body["overallRate"]["n"] == 2
 
     async def test_the_cuts_add_up_to_the_same_failures(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
         await seed(session_factory, failed_rules=["P-14", "A-09"])
 
-        body = client.get("/api/v1/insights/rules", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/rules", params={"asOf": AS_OF}).json()
 
-        assert sum(row["failures"] for row in body["by_layer"]) == 2
-        assert sum(row["failures"] for row in body["by_provenance"]) == 2
-        assert sum(row["failures"] for row in body["by_touchpoint"]) == 2
+        assert sum(row["failures"] for row in body["byLayer"]) == 2
+        assert sum(row["failures"] for row in body["byProvenance"]) == 2
+        assert sum(row["failures"] for row in body["byTouchpoint"]) == 2
 
 
 class TestAgents:
@@ -171,19 +171,19 @@ class TestAgents:
             scores=[90, 70],
         )
 
-        body = client.get("/api/v1/insights/agents", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/agents", params={"asOf": AS_OF}).json()
 
         (agent,) = body["agents"]
-        assert agent["agent_ref"] == "AG-01"
-        assert agent["knowledge_errors"] == ["C-0001"]
-        assert agent["quality"]["median_score"] == 80
+        assert agent["agentRef"] == "AG-01"
+        assert agent["knowledgeErrors"] == ["C-0001"]
+        assert agent["quality"]["medianScore"] == 80
 
     async def test_the_score_range_says_it_cannot_rank(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
         await seed(session_factory, failed_rules=[None], scores=[90])
 
-        body = client.get("/api/v1/insights/agents", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/agents", params={"asOf": AS_OF}).json()
 
         assert "cannot separate one" in body["agents"][0]["quality"]["caveat"]
 
@@ -192,10 +192,10 @@ class TestAgents:
     ) -> None:
         await seed(session_factory, failed_rules=[None], scores=[None])
 
-        body = client.get("/api/v1/insights/agents", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/agents", params={"asOf": AS_OF}).json()
 
         quality = body["agents"][0]["quality"]
-        assert quality["median_score"] is None
+        assert quality["medianScore"] is None
         assert "No scored call" in quality["caveat"]
 
     async def test_metric_twelve_reports_no_window_rather_than_borrowing_one(
@@ -204,10 +204,10 @@ class TestAgents:
         """A score is a property of the call, not of a period."""
         await seed(session_factory, failed_rules=[None], scores=[90])
 
-        body = client.get("/api/v1/insights/agents", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/agents", params={"asOf": AS_OF}).json()
 
-        assert body["quality_window_weeks"] is None
-        assert body["window_weeks"] == 4
+        assert body["qualityWindowWeeks"] is None
+        assert body["windowWeeks"] == 4
 
     async def test_one_entry_per_agent_with_calls(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
@@ -218,7 +218,7 @@ class TestAgents:
             agent_refs=["AG-01", "AG-02", "AG-01"],
         )
 
-        body = client.get("/api/v1/insights/agents", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/agents", params={"asOf": AS_OF}).json()
 
-        assert [agent["agent_ref"] for agent in body["agents"]] == ["AG-01", "AG-02"]
+        assert [agent["agentRef"] for agent in body["agents"]] == ["AG-01", "AG-02"]
         assert len(body["agents"][0]["calls"]) == 2

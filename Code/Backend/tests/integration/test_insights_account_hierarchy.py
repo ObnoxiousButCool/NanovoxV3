@@ -29,7 +29,7 @@ class TestAccount:
         business relationship."""
         await seed(session_factory, calls_per_employer={"EMP-01": 3})
 
-        response = client.get("/api/v1/insights/accounts/EMP-NOPE", params={"as_of": AS_OF})
+        response = client.get("/api/v1/insights/accounts/EMP-NOPE", params={"asOf": AS_OF})
 
         assert response.status_code == 404
 
@@ -38,12 +38,12 @@ class TestAccount:
     ) -> None:
         await seed(session_factory, calls_per_employer={"EMP-01": 3})
 
-        body = client.get("/api/v1/insights/accounts/EMP-01", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/accounts/EMP-01", params={"asOf": AS_OF}).json()
 
-        assert body["facts"]["employer_ref"] == "EMP-01"
+        assert body["facts"]["employerRef"] == "EMP-01"
         assert body["facts"]["enrolled"] == 120
-        assert body["facts"]["broker_ref"] == "BRK-01"
-        assert body["facts"]["renewal_month"] == "January"
+        assert body["facts"]["brokerRef"] == "BRK-01"
+        assert body["facts"]["renewalMonth"] == "January"
 
     async def test_a_peer_comparison_nobody_can_compute_is_null_not_zero(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
@@ -52,7 +52,7 @@ class TestAccount:
         conclusion a single-employer band cannot support."""
         await seed(session_factory, calls_per_employer={"EMP-01": 3})
 
-        body = client.get("/api/v1/insights/accounts/EMP-01", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/accounts/EMP-01", params={"asOf": AS_OF}).json()
 
         assert body["peers"]["difference"] is None
         assert body["peers"]["peers"] == 0
@@ -62,10 +62,10 @@ class TestAccount:
     ) -> None:
         await seed(session_factory, calls_per_employer={"EMP-01": 3})
 
-        body = client.get("/api/v1/insights/accounts/EMP-01", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/accounts/EMP-01", params={"asOf": AS_OF}).json()
 
-        assert body["contact_rate"]["window_weeks"] == 12
-        assert body["repeat_rate"]["window_weeks"] == 12
+        assert body["contactRate"]["windowWeeks"] == 12
+        assert body["repeatRate"]["windowWeeks"] == 12
 
     async def test_risk_reads_the_same_as_on_the_risk_screen(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
@@ -73,10 +73,10 @@ class TestAccount:
         """One shape, so 'ineligible' cannot mean two things."""
         await seed(session_factory, calls_per_employer={"EMP-01": 4})
 
-        account = client.get("/api/v1/insights/accounts/EMP-01", params={"as_of": AS_OF}).json()[
+        account = client.get("/api/v1/insights/accounts/EMP-01", params={"asOf": AS_OF}).json()[
             "risk"
         ]
-        screen = client.get("/api/v1/insights/risk", params={"as_of": AS_OF}).json()["assessed"][0]
+        screen = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()["assessed"][0]
 
         assert account == screen
 
@@ -86,7 +86,7 @@ class TestAccount:
         """Too few calls to assess is not too few calls to exist."""
         await seed(session_factory, calls_per_employer={"EMP-01": 1})
 
-        body = client.get("/api/v1/insights/accounts/EMP-01", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/accounts/EMP-01", params={"asOf": AS_OF}).json()
 
         assert body["risk"]["eligible"] is False
         assert "Not eligible" in body["risk"]["state"]
@@ -99,10 +99,10 @@ class TestHierarchy:
         """A quiet region must not look like a small one."""
         await seed(session_factory, calls_per_employer={"EMP-01": 3, "EMP-02": 0})
 
-        body = client.get("/api/v1/insights/hierarchy", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/hierarchy", params={"asOf": AS_OF}).json()
 
         leaves = {
-            node["employer_ref"]: node["calls"]
+            node["employerRef"]: node["calls"]
             for region in body["tree"]
             for broker in region["brokers"]
             for node in broker["employers"]
@@ -115,7 +115,7 @@ class TestHierarchy:
         """The columns have to line up for 'a dark column is book-wide'."""
         await seed(session_factory, calls_per_employer={"EMP-01": 3})
 
-        body = client.get("/api/v1/insights/hierarchy", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/hierarchy", params={"asOf": AS_OF}).json()
 
         row = body["matrix"][0]
         assert len(row["counts"]) == 7
@@ -127,10 +127,10 @@ class TestHierarchy:
     ) -> None:
         await seed(session_factory, calls_per_employer={"EMP-01": 3})
 
-        body = client.get("/api/v1/insights/hierarchy", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/hierarchy", params={"asOf": AS_OF}).json()
 
-        assert body["window_weeks"] == 12
-        assert body["as_of"] == AS_OF
+        assert body["windowWeeks"] == 12
+        assert body["asOf"] == AS_OF
 
     async def test_a_book_under_the_ranking_floor_is_not_ranked(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
@@ -138,9 +138,9 @@ class TestHierarchy:
         """120 lives is under the 150-life floor, so no league table row."""
         await seed(session_factory, calls_per_employer={"EMP-01": 3})
 
-        body = client.get("/api/v1/insights/hierarchy", params={"as_of": AS_OF}).json()
+        body = client.get("/api/v1/insights/hierarchy", params={"asOf": AS_OF}).json()
 
-        assert body["ranked_brokers"] == []
+        assert body["rankedBrokers"] == []
 
     async def test_a_filter_narrows_the_hierarchy_and_says_so(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
@@ -148,13 +148,13 @@ class TestHierarchy:
         await seed(session_factory, calls_per_employer={"EMP-01": 3, "EMP-02": 2})
 
         body = client.get(
-            "/api/v1/insights/hierarchy", params={"as_of": AS_OF, "employer": "EMP-01"}
+            "/api/v1/insights/hierarchy", params={"asOf": AS_OF, "employer": "EMP-01"}
         ).json()
 
         assert body["scope"]["matched"] == 3
         assert body["scope"]["considered"] == 5
         leaves = {
-            node["employer_ref"]: node["calls"]
+            node["employerRef"]: node["calls"]
             for region in body["tree"]
             for broker in region["brokers"]
             for node in broker["employers"]

@@ -31,8 +31,9 @@ a per-region denominator the matrix does not carry.
 from __future__ import annotations
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel, Field
+from pydantic import Field
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import DashboardConfigDep, GetHierarchyDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
@@ -40,26 +41,26 @@ from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 router = APIRouter(prefix="/insights", tags=["insights"])
 
 
-class EmployerNodeResponse(BaseModel):
+class EmployerNodeResponse(CamelModel):
     employer_ref: str
     name: str
     calls: int
     call_ids: list[str]
 
 
-class BrokerNodeResponse(BaseModel):
+class BrokerNodeResponse(CamelModel):
     broker_ref: str
     calls: int
     employers: list[EmployerNodeResponse]
 
 
-class RegionNodeResponse(BaseModel):
+class RegionNodeResponse(CamelModel):
     region: str
     calls: int
     brokers: list[BrokerNodeResponse]
 
 
-class MatrixRowResponse(BaseModel):
+class MatrixRowResponse(CamelModel):
     region: str
     counts: dict[str, int] = Field(
         description=(
@@ -70,7 +71,7 @@ class MatrixRowResponse(BaseModel):
     )
 
 
-class PatternTestResponse(BaseModel):
+class PatternTestResponse(CamelModel):
     """Trigger rule 2, reported whether or not it fired."""
 
     fires: bool
@@ -82,7 +83,7 @@ class PatternTestResponse(BaseModel):
     call_ids: list[str]
 
 
-class BrokerFrictionResponse(BaseModel):
+class BrokerFrictionResponse(CamelModel):
     broker_ref: str
     adverse_calls: list[str]
     by_touchpoint: list[tuple[str, int]] = Field(
@@ -95,7 +96,7 @@ class BrokerFrictionResponse(BaseModel):
     )
 
 
-class HierarchyResponse(BaseModel):
+class HierarchyResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
     window_weeks: int = Field(

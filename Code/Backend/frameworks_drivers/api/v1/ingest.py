@@ -7,14 +7,14 @@ than duplicating them.
 from __future__ import annotations
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import IngestTranscriptsDep
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
 
-class IngestCountsResponse(BaseModel):
+class IngestCountsResponse(CamelModel):
     total: int
     resolved: int
     caller_unresolved: int

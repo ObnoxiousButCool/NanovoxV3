@@ -288,20 +288,20 @@ export interface components {
          *     extraction agreement.
          */
         AccountFactsResponse: {
-            /** Annual Fee */
-            annual_fee: number;
+            /** Annualfee */
+            annualFee: number;
             /**
-             * Annual Premium
+             * Annualpremium
              * @description Null when not recorded — never zero.
              */
-            annual_premium?: number | null;
+            annualPremium?: number | null;
             /**
-             * Broker Ref
+             * Brokerref
              * @description Broker of record.
              */
-            broker_ref: string;
-            /** Employer Ref */
-            employer_ref: string;
+            brokerRef: string;
+            /** Employerref */
+            employerRef: string;
             /**
              * Enrolled
              * @description Lives, the peer-band denominator.
@@ -313,21 +313,21 @@ export interface components {
             name: string;
             /** Region */
             region: string;
-            /** Renewal Month */
-            renewal_month: string;
+            /** Renewalmonth */
+            renewalMonth: string;
         };
         /** AccountResponse */
         AccountResponse: {
-            /** As Of */
-            as_of: string;
-            contact_rate: components["schemas"]["WindowedFigureResponse"];
+            /** Asof */
+            asOf: string;
+            contactRate: components["schemas"]["WindowedFigureResponse"];
             facts: components["schemas"]["AccountFactsResponse"];
             peers: components["schemas"]["PeerComparisonResponse"];
-            repeat_rate: components["schemas"]["WindowedFigureResponse"];
+            repeatRate: components["schemas"]["WindowedFigureResponse"];
             /** @description This account's risk standing, the same shape as on the risk screen. */
             risk: components["schemas"]["AccountRiskResponse"];
-            /** Risk Window Weeks */
-            risk_window_weeks: number;
+            /** Riskwindowweeks */
+            riskWindowWeeks: number;
             scope: components["schemas"]["ScopeResponse"];
         };
         /** AccountRiskResponse */
@@ -339,12 +339,12 @@ export interface components {
             calls: number;
             /** Conditions */
             conditions: components["schemas"]["ConditionResponse"][];
-            /** Conditions Met */
-            conditions_met: number;
+            /** Conditionsmet */
+            conditionsMet: number;
             /** Eligible */
             eligible: boolean;
-            /** Employer Ref */
-            employer_ref: string;
+            /** Employerref */
+            employerRef: string;
             /**
              * Evidence
              * @description Every call behind every condition that fired.
@@ -370,33 +370,31 @@ export interface components {
          * @description One finding. No status — see this module's docstring.
          */
         ActionItemResponse: {
-            /** Call Ids */
-            call_ids: string[];
+            /** Callids */
+            callIds: string[];
             /** Calls */
             calls: number;
             /**
-             * Owner Team
+             * Ownerteam
              * @description From the Signal Taxonomy's Owner column, which the sheet calls mandatory.
              */
-            owner_team: string;
-            /** Severity */
-            severity: string;
-            /** Signal */
-            signal: string;
+            ownerTeam: string;
+            severity: components["schemas"]["CodedValue"];
+            signal: components["schemas"]["CodedValue"];
         };
         /** ActionsResponse */
         ActionsResponse: {
-            /** As Of */
-            as_of: string;
-            /** Control Denominator Caveat */
-            control_denominator_caveat: string;
+            /** Asof */
+            asOf: string;
+            /** Controldenominatorcaveat */
+            controlDenominatorCaveat: string;
             /**
-             * Control Exceptions
+             * Controlexceptions
              * @description Metric 7 by type. Never blended into one compliance rate.
              */
-            control_exceptions: components["schemas"]["ControlExceptionResponse"][];
+            controlExceptions: components["schemas"]["ControlExceptionResponse"][];
             /** @description Insight 22, withheld until a comparable before and after exist. */
-            did_it_work: components["schemas"]["WithheldPanelResponse"];
+            didItWork: components["schemas"]["WithheldPanelResponse"];
             /**
              * Items
              * @description Every signal raised, worst severity first and heaviest within a severity. A signal nobody raised is absent, not present at zero.
@@ -408,8 +406,8 @@ export interface components {
              */
             owners: components["schemas"]["OwnerWorkloadResponse"][];
             scope: components["schemas"]["ScopeResponse"];
-            /** Window Weeks */
-            window_weeks: number;
+            /** Windowweeks */
+            windowWeeks: number;
         };
         /**
          * AgentQualityResponse
@@ -426,32 +424,32 @@ export interface components {
             /** Lowest */
             lowest?: number | null;
             /**
-             * Median Score
+             * Medianscore
              * @description Median, not mean. Null when no call was scored.
              */
-            median_score?: number | null;
-            /** Scored Calls */
-            scored_calls: string[];
+            medianScore?: number | null;
+            /** Scoredcalls */
+            scoredCalls: string[];
         };
         /** AgentResponse */
         AgentResponse: {
-            /** Agent Ref */
-            agent_ref: string;
+            /** Agentref */
+            agentRef: string;
             /** Calls */
             calls: string[];
-            /** Control Exceptions */
-            control_exceptions: components["schemas"]["ControlExceptionCountResponse"][];
+            /** Controlexceptions */
+            controlExceptions: components["schemas"]["ControlExceptionCountResponse"][];
             /**
-             * Escalations Missed
+             * Escalationsmissed
              * @description Calls where an explicit escalation request went nowhere.
              */
-            escalations_missed: string[];
-            knowledge_error_rate: components["schemas"]["FigureResponse"];
+            escalationsMissed: string[];
+            knowledgeErrorRate: components["schemas"]["FigureResponse"];
             /**
-             * Knowledge Errors
+             * Knowledgeerrors
              * @description Calls where this agent stated a published rule incorrectly.
              */
-            knowledge_errors: string[];
+            knowledgeErrors: string[];
             quality: components["schemas"]["AgentQualityResponse"];
         };
         /** AgentsResponse */
@@ -461,19 +459,19 @@ export interface components {
              * @description Agents with calls in the window, by reference.
              */
             agents: components["schemas"]["AgentResponse"][];
-            /** As Of */
-            as_of: string;
+            /** Asof */
+            asOf: string;
             /**
-             * Quality Window Weeks
+             * Qualitywindowweeks
              * @description Null: a quality score is a property of the call, not of a period, so the Metrics sheet gives metric 12 no window.
              */
-            quality_window_weeks?: number | null;
+            qualityWindowWeeks?: number | null;
             scope: components["schemas"]["ScopeResponse"];
             /**
-             * Window Weeks
+             * Windowweeks
              * @description The period the events are counted over.
              */
-            window_weeks: number;
+            windowWeeks: number;
         };
         /**
          * AppliedFilterResponse
@@ -487,33 +485,32 @@ export interface components {
         };
         /** AttributionCountResponse */
         AttributionCountResponse: {
-            /** Attributed To */
-            attributed_to: string;
+            attributedTo: components["schemas"]["CodedValue"];
             /** Calls */
             calls: number;
         };
         /** BrokerFrictionResponse */
         BrokerFrictionResponse: {
-            /** Adverse Calls */
-            adverse_calls: string[];
-            /** Broker Ref */
-            broker_ref: string;
+            /** Adversecalls */
+            adverseCalls: string[];
+            /** Brokerref */
+            brokerRef: string;
             /**
-             * By Touchpoint
+             * Bytouchpoint
              * @description Adverse mentions by where the failure originated, worst first.
              */
-            by_touchpoint: [
+            byTouchpoint: [
                 string,
                 number
             ][];
             pattern: components["schemas"]["PatternTestResponse"];
             /** @description Secondary sort only, never a headline. Null for a book under the floor. */
-            rate_per_hundred_lives?: components["schemas"]["FigureResponse"] | null;
+            ratePerHundredLives?: components["schemas"]["FigureResponse"] | null;
         };
         /** BrokerNodeResponse */
         BrokerNodeResponse: {
-            /** Broker Ref */
-            broker_ref: string;
+            /** Brokerref */
+            brokerRef: string;
             /** Calls */
             calls: number;
             /** Employers */
@@ -529,6 +526,25 @@ export interface components {
          * @enum {string}
          */
         Category: "Coverage & Benefits" | "Claims & EOB" | "Provider Network" | "Billing & Premium" | "Enrollment & ID Cards" | "Life & Beneficiary" | "Broker Conduct";
+        /**
+         * CodedValue
+         * @description One coded value and the words for it.
+         *
+         *     `code` is what a filter accepts and what a client branches on; `label`
+         *     is what a person reads. They are never the same field.
+         */
+        CodedValue: {
+            /**
+             * Code
+             * @description The stable identifier. Filters take this value.
+             */
+            code: string;
+            /**
+             * Label
+             * @description Display wording. Never branch on it — it may be reworded.
+             */
+            label: string;
+        };
         /**
          * ComplaintAttribution
          * @enum {string}
@@ -554,10 +570,10 @@ export interface components {
          */
         ConditionResponse: {
             /**
-             * Call Ids
+             * Callids
              * @description The calls that fired it. Empty when it did not.
              */
-            call_ids?: string[];
+            callIds?: string[];
             /** Code */
             code: string;
             /** Label */
@@ -569,35 +585,36 @@ export interface components {
         ControlExceptionCountResponse: {
             /** Calls */
             calls: number;
-            /** Exception Type */
-            exception_type: string;
+            exceptionType: components["schemas"]["CodedValue"];
         };
         /** ControlExceptionResponse */
         ControlExceptionResponse: {
-            /** Exception Type */
-            exception_type: string;
+            exceptionType: components["schemas"]["CodedValue"];
             figure: components["schemas"]["FigureResponse"];
         };
-        /** CountResponse */
+        /**
+         * CountResponse
+         * @description One cut of the failures. `value` carries its own label where the
+         *     thing being counted is a coded value rather than free text.
+         */
         CountResponse: {
             /** Failures */
             failures: number;
-            /** Label */
-            label: string;
+            value: components["schemas"]["CodedValue"];
         };
         /** DemandResponse */
         DemandResponse: {
-            /** As Of */
-            as_of: string;
+            /** Asof */
+            asOf: string;
             /** @description Complaints attributed to Choice. A different measure from self-inflicted demand, deliberately kept apart. */
-            complaints_about_us: components["schemas"]["FigureResponse"];
+            complaintsAboutUs: components["schemas"]["FigureResponse"];
             /**
-             * Promise Gaps
+             * Promisegaps
              * @description Proposed changes at the enrolment touchpoints, most-proposed first.
              */
-            promise_gaps: components["schemas"]["PromiseGapResponse"][];
+            promiseGaps: components["schemas"]["PromiseGapResponse"][];
             scope: components["schemas"]["ScopeResponse"];
-            self_inflicted: components["schemas"]["SelfInflictedResponse"];
+            selfInflicted: components["schemas"]["SelfInflictedResponse"];
             /**
              * Touchpoints
              * @description Busiest first. Counts, not rates.
@@ -608,32 +625,27 @@ export interface components {
              * @description Calls with no touchpoint tagged — insight 18's residual bucket.
              */
             unattributed: string[];
-            /** Window Weeks */
-            window_weeks: number;
+            /** Windowweeks */
+            windowWeeks: number;
         };
         /** EmployerNodeResponse */
         EmployerNodeResponse: {
-            /** Call Ids */
-            call_ids: string[];
+            /** Callids */
+            callIds: string[];
             /** Calls */
             calls: number;
-            /** Employer Ref */
-            employer_ref: string;
+            /** Employerref */
+            employerRef: string;
             /** Name */
             name: string;
         };
-        /**
-         * EpistemicClass
-         * @enum {string}
-         */
-        EpistemicClass: "MEASURED" | "DERIVED" | "WITHHELD";
         /** ExecScorecardResponse */
         ExecScorecardResponse: {
             /**
-             * As Of
+             * Asof
              * @description The date every window on this screen ends on.
              */
-            as_of: string;
+            asOf: string;
             /**
              * Calls
              * @description Calls in the longest window on the screen, which contains every other. Never the sample behind any one figure — read that figure's own `n`.
@@ -645,15 +657,15 @@ export interface components {
              */
             escalation: components["schemas"]["LabelledFigureResponse"][];
             /** @description Always withheld on v9 data: whether commercial intent reached anyone who could act on it is not a field. Zero would claim we checked. */
-            intent_routed: components["schemas"]["FigureResponse"];
+            intentRouted: components["schemas"]["FigureResponse"];
             /** Metrics */
             metrics: components["schemas"]["MetricFigureResponse"][];
             scope: components["schemas"]["ScopeResponse"];
         };
         /** ExposureResponse */
         ExposureResponse: {
-            /** Annual Premium */
-            annual_premium: number;
+            /** Annualpremium */
+            annualPremium: number;
             /** Caveat */
             caveat: string;
             /** Employers */
@@ -661,10 +673,10 @@ export interface components {
             /** Lives */
             lives: number;
             /**
-             * Premium Incomplete
+             * Premiumincomplete
              * @description True when a flagged account has no premium recorded, so this is a floor.
              */
-            premium_incomplete: boolean;
+            premiumIncomplete: boolean;
         };
         /**
          * FigureResponse
@@ -672,17 +684,17 @@ export interface components {
          */
         FigureResponse: {
             /**
-             * Call Ids
+             * Callids
              * @description The calls behind the figure, so it can be argued with. Present on withheld figures too: a reader told four calls is too few should still be able to open those four.
              */
-            call_ids?: string[];
+            callIds?: string[];
             /**
              * Caveats
              * @description Generated from the numbers, never hand-written.
              */
             caveats?: string[];
             /** @description MEASURED: computed from the Call Tag Schema's own fields. DERIVED: our composite rather than a workbook field, and labelled as such wherever it surfaces. WITHHELD: suppressed, with a reason. */
-            epistemic: components["schemas"]["EpistemicClass"];
+            epistemic: components["schemas"]["CodedValue"];
             /**
              * N
              * @description The sample behind the figure. Equals the number of call ids.
@@ -699,7 +711,7 @@ export interface components {
              */
             value?: number | null;
             /** @description Non-null exactly when `published` is false. */
-            withheld_reason?: components["schemas"]["WithheldReason"] | null;
+            withheldReason?: components["schemas"]["CodedValue"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -711,10 +723,10 @@ export interface components {
             /** Application */
             application: string;
             /**
-             * Checked At
+             * Checkedat
              * Format: date-time
              */
-            checked_at: string;
+            checkedAt: string;
             /** Components */
             components?: components["schemas"]["ComponentHealthResponse"][];
             /** Environment */
@@ -725,15 +737,15 @@ export interface components {
         };
         /** HierarchyResponse */
         HierarchyResponse: {
-            /** As Of */
-            as_of: string;
+            /** Asof */
+            asOf: string;
             /** Matrix */
             matrix: components["schemas"]["MatrixRowResponse"][];
             /**
-             * Ranked Brokers
+             * Rankedbrokers
              * @description Only books clearing the ranking floor in lives, worst count first.
              */
-            ranked_brokers: components["schemas"]["BrokerFrictionResponse"][];
+            rankedBrokers: components["schemas"]["BrokerFrictionResponse"][];
             scope: components["schemas"]["ScopeResponse"];
             /**
              * Systemic
@@ -743,10 +755,10 @@ export interface components {
             /** Tree */
             tree: components["schemas"]["RegionNodeResponse"][];
             /**
-             * Window Weeks
+             * Windowweeks
              * @description One window across the whole screen, so every cell counts the same period.
              */
-            window_weeks: number;
+            windowWeeks: number;
         };
         /** ImportCountsResponse */
         ImportCountsResponse: {
@@ -754,8 +766,8 @@ export interface components {
             agents: number;
             /** Brokers */
             brokers: number;
-            /** Employer Contacts */
-            employer_contacts: number;
+            /** Employercontacts */
+            employerContacts: number;
             /** Employers */
             employers: number;
             /** Members */
@@ -773,14 +785,14 @@ export interface components {
         };
         /** IngestCountsResponse */
         IngestCountsResponse: {
-            /** Agent Unknown */
-            agent_unknown: number;
-            /** Caller Unresolved */
-            caller_unresolved: number;
+            /** Agentunknown */
+            agentUnknown: number;
+            /** Callerunresolved */
+            callerUnresolved: number;
             /** Resolved */
             resolved: number;
-            /** Speaker Unresolved */
-            speaker_unresolved: number;
+            /** Speakerunresolved */
+            speakerUnresolved: number;
             /** Total */
             total: number;
         };
@@ -831,10 +843,10 @@ export interface components {
              */
             name: string;
             /**
-             * Window Weeks
+             * Windowweeks
              * @description How far back this metric looks from `as_of`. Metrics on one screen differ; null means the metric is not windowed at all.
              */
-            window_weeks?: number | null;
+            windowWeeks?: number | null;
         };
         /**
          * ObservationResponse
@@ -848,8 +860,8 @@ export interface components {
             available: boolean;
             /** Code */
             code: string;
-            /** Employer Calls */
-            employer_calls: number;
+            /** Employercalls */
+            employerCalls: number;
             /** Hits */
             hits: number;
             /** Label */
@@ -862,10 +874,10 @@ export interface components {
              */
             rate?: number | null;
             /**
-             * Unavailable Because
+             * Unavailablebecause
              * @default
              */
-            unavailable_because: string;
+            unavailableBecause: string;
         };
         /**
          * Outcome
@@ -883,20 +895,20 @@ export interface components {
             critical: number;
             /** Items */
             items: components["schemas"]["ActionItemResponse"][];
-            /** Owner Team */
-            owner_team: string;
+            /** Ownerteam */
+            ownerTeam: string;
         };
         /**
          * PatternTestResponse
          * @description Trigger rule 2, reported whether or not it fired.
          */
         PatternTestResponse: {
-            /** Adverse Mentions */
-            adverse_mentions: number;
-            /** Call Ids */
-            call_ids: string[];
-            /** Distinct Employers */
-            distinct_employers: number;
+            /** Adversementions */
+            adverseMentions: number;
+            /** Callids */
+            callIds: string[];
+            /** Distinctemployers */
+            distinctEmployers: number;
             /** Fires */
             fires: boolean;
             /**
@@ -918,10 +930,10 @@ export interface components {
              */
             difference?: number | null;
             /**
-             * Peer Median
+             * Peermedian
              * @description Median contact rate of publishable peers. Null when the band has none.
              */
-            peer_median?: number | null;
+            peerMedian?: number | null;
             /**
              * Peers
              * @description Employers behind the median. A median of two is not forty.
@@ -935,8 +947,8 @@ export interface components {
         ProductLine: "dental" | "vision" | "life" | "chiro" | "program";
         /** PromiseGapResponse */
         PromiseGapResponse: {
-            /** Call Ids */
-            call_ids: string[];
+            /** Callids */
+            callIds: string[];
             /** Calls */
             calls: number;
             /**
@@ -944,8 +956,8 @@ export interface components {
              * @description Talk time across those calls — a floor, since AHT excludes hold and after-call work.
              */
             minutes: number;
-            /** Proposed Change */
-            proposed_change: string;
+            /** Proposedchange */
+            proposedChange: string;
             /** Touchpoint */
             touchpoint: string;
         };
@@ -959,8 +971,8 @@ export interface components {
             detail?: string | null;
             /** Implemented */
             implemented: boolean;
-            /** Is Default */
-            is_default: boolean;
+            /** Isdefault */
+            isDefault: boolean;
             /** Local */
             local: boolean;
             /** Model */
@@ -988,8 +1000,8 @@ export interface components {
         };
         /** RiskScreenResponse */
         RiskScreenResponse: {
-            /** As Of */
-            as_of: string;
+            /** Asof */
+            asOf: string;
             /**
              * Assessed
              * @description Only employers the window could speak about.
@@ -997,20 +1009,20 @@ export interface components {
             assessed: components["schemas"]["AccountRiskResponse"][];
             exposure: components["schemas"]["ExposureResponse"];
             /** @description Flagged as a share of the *eligible* employers, never of all of them. */
-            flagged_share: components["schemas"]["FigureResponse"];
+            flaggedShare: components["schemas"]["FigureResponse"];
             /**
              * Ineligible
              * @description Employers below the eligibility floor, by reference. Kept apart from `assessed` on purpose: too few calls to assess is not a finding of low risk, and at current volume most of the book is here.
              */
             ineligible: string[];
-            /** Ineligible Count */
-            ineligible_count: number;
+            /** Ineligiblecount */
+            ineligibleCount: number;
             scope: components["schemas"]["ScopeResponse"];
             /**
-             * Window Weeks
+             * Windowweeks
              * @description Metric 10's window, in weeks, ending on `as_of`.
              */
-            window_weeks: number;
+            windowWeeks: number;
         };
         /**
          * RuleRowResponse
@@ -1020,59 +1032,53 @@ export interface components {
             /** Area */
             area: string;
             /**
-             * Commonly Confused With
+             * Commonlyconfusedwith
              * @description The Rules sheets' own column — what people mistake this rule for.
              * @default
              */
-            commonly_confused_with: string;
-            /**
-             * Confidence
-             * @description The rule's own provenance grade from the Rules sheets. Provenance of the rule, not of any figure about it, and not an epistemic class.
-             */
-            confidence: string;
-            /** Failed Call Ids */
-            failed_call_ids: string[];
+            commonlyConfusedWith: string;
+            /** @description The rule's own provenance grade from the Rules sheets. Provenance of the rule, not of any figure about it, and not an epistemic class. */
+            confidence: components["schemas"]["CodedValue"];
+            /** Failedcallids */
+            failedCallIds: string[];
             /** Failures */
             failures: number;
-            /**
-             * Layer
-             * @description Program, Administration or Carrier — whose rulebook it is.
-             */
-            layer: string;
-            /** Rule Ref */
-            rule_ref: string;
+            /** @description Program, Administration or Carrier — whose rulebook it is. */
+            layer: components["schemas"]["CodedValue"];
+            /** Ruleref */
+            ruleRef: string;
         };
         /** RulesResponse */
         RulesResponse: {
-            /** As Of */
-            as_of: string;
-            /** By Area */
-            by_area: components["schemas"]["CountResponse"][];
+            /** Asof */
+            asOf: string;
+            /** Byarea */
+            byArea: components["schemas"]["CountResponse"][];
             /**
-             * By Layer
+             * Bylayer
              * @description Whose rulebook is the problem.
              */
-            by_layer: components["schemas"]["CountResponse"][];
+            byLayer: components["schemas"]["CountResponse"][];
             /**
-             * By Provenance
+             * Byprovenance
              * @description A misstated UNVERIFIED rule says our source is weak; a misstated VERIFIED one says our training is.
              */
-            by_provenance: components["schemas"]["CountResponse"][];
+            byProvenance: components["schemas"]["CountResponse"][];
             /**
-             * By Touchpoint
+             * Bytouchpoint
              * @description Where the failure originated — the same rule in two documents is two fixes.
              */
-            by_touchpoint: components["schemas"]["CountResponse"][];
+            byTouchpoint: components["schemas"]["CountResponse"][];
             /** @description Metric 8: calls carrying a knowledge failure, over all calls. About the corpus, never about one rule. */
-            overall_rate: components["schemas"]["FigureResponse"];
+            overallRate: components["schemas"]["FigureResponse"];
             /**
              * Rules
              * @description The rewrite list, worst first. Every rule, including those with no failures.
              */
             rules: components["schemas"]["RuleRowResponse"][];
             scope: components["schemas"]["ScopeResponse"];
-            /** Window Weeks */
-            window_weeks: number;
+            /** Windowweeks */
+            windowWeeks: number;
         };
         /** RunProgressResponse */
         RunProgressResponse: {
@@ -1084,8 +1090,8 @@ export interface components {
             failed: number;
             /** Pending */
             pending: number;
-            /** Percent Complete */
-            percent_complete: number;
+            /** Percentcomplete */
+            percentComplete: number;
             /** Running */
             running: number;
             /** Skipped */
@@ -1115,8 +1121,8 @@ export interface components {
          *     when it is really a field extraction never filled.
          */
         ScopeResponse: {
-            /** Applied Filters */
-            applied_filters?: components["schemas"]["AppliedFilterResponse"][];
+            /** Appliedfilters */
+            appliedFilters?: components["schemas"]["AppliedFilterResponse"][];
             /**
              * Caveats
              * @description Whole-corpus caveats: undated calls, unanalysed calls, and schema fields the pipeline cannot produce.
@@ -1128,11 +1134,11 @@ export interface components {
              */
             considered: number;
             /**
-             * Excluded Calls
+             * Excludedcalls
              * @description Stored calls that reached no figure at all — no date, or never analysed. Counted before filtering.
              * @default 0
              */
-            excluded_calls: number;
+            excludedCalls: number;
             /**
              * Matched
              * @description Calls the filters kept.
@@ -1151,9 +1157,9 @@ export interface components {
         };
         /** SelfInflictedResponse */
         SelfInflictedResponse: {
-            chasing_submitted_action: components["schemas"]["FigureResponse"];
-            failure_driven_repeats: components["schemas"]["FigureResponse"];
-            logged_process_defect: components["schemas"]["FigureResponse"];
+            chasingSubmittedAction: components["schemas"]["FigureResponse"];
+            failureDrivenRepeats: components["schemas"]["FigureResponse"];
+            loggedProcessDefect: components["schemas"]["FigureResponse"];
             /** @description Calls meeting ANY component, over distinct calls. Not the sum of the three — a call can be both a repeat and a process defect. */
             total: components["schemas"]["FigureResponse"];
         };
@@ -1181,17 +1187,17 @@ export interface components {
              * @description Complaints here by party, published as a split and never reduced.
              */
             attribution: components["schemas"]["AttributionCountResponse"][];
-            /** Call Ids */
-            call_ids: string[];
+            /** Callids */
+            callIds: string[];
             /** Calls */
             calls: number;
             /** Touchpoint */
             touchpoint: string;
             /**
-             * Without Complaint
+             * Withoutcomplaint
              * @description Calls here with no complaint tagged. Not the same as a complaint with no attribution, which the schema does not allow.
              */
-            without_complaint: number;
+            withoutComplaint: number;
         };
         /**
          * UnmeasurableResponse
@@ -1222,8 +1228,8 @@ export interface components {
          */
         WindowedFigureResponse: {
             figure: components["schemas"]["FigureResponse"];
-            /** Window Weeks */
-            window_weeks: number;
+            /** Windowweeks */
+            windowWeeks: number;
         };
         /** WithheldPanelResponse */
         WithheldPanelResponse: {
@@ -1231,16 +1237,11 @@ export interface components {
             insight: number;
             /** Question */
             question: string;
-            /** Unlocked By */
-            unlocked_by: string;
+            /** Unlockedby */
+            unlockedBy: string;
             /** Why */
             why: string;
         };
-        /**
-         * WithheldReason
-         * @enum {string}
-         */
-        WithheldReason: "BELOW_MIN_N" | "NO_FIELD" | "NOT_ELIGIBLE" | "MONEY_UNKNOWN" | "NO_DENOMINATOR";
     };
     responses: never;
     parameters: never;
@@ -1310,22 +1311,22 @@ export interface operations {
                 agent?: string[] | null;
                 category?: components["schemas"]["Category"][] | null;
                 /** @description Calls touching this line. A call may touch several. */
-                product_line?: components["schemas"]["ProductLine"][] | null;
+                productLine?: components["schemas"]["ProductLine"][] | null;
                 /** @description Where the failure originated, not where it surfaced. */
                 touchpoint?: string[] | null;
                 outcome?: components["schemas"]["Outcome"][] | null;
                 signal?: components["schemas"]["SignalType"][] | null;
                 intent?: components["schemas"]["IntentType"][] | null;
-                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
-                quality_band?: components["schemas"]["QualityBand"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
                 escalated?: boolean | null;
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
-                compliance_exception?: boolean | null;
+                complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
-                as_of?: string | null;
+                asOf?: string | null;
             };
             header?: never;
             path: {
@@ -1368,22 +1369,22 @@ export interface operations {
                 agent?: string[] | null;
                 category?: components["schemas"]["Category"][] | null;
                 /** @description Calls touching this line. A call may touch several. */
-                product_line?: components["schemas"]["ProductLine"][] | null;
+                productLine?: components["schemas"]["ProductLine"][] | null;
                 /** @description Where the failure originated, not where it surfaced. */
                 touchpoint?: string[] | null;
                 outcome?: components["schemas"]["Outcome"][] | null;
                 signal?: components["schemas"]["SignalType"][] | null;
                 intent?: components["schemas"]["IntentType"][] | null;
-                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
-                quality_band?: components["schemas"]["QualityBand"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
                 escalated?: boolean | null;
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
-                compliance_exception?: boolean | null;
+                complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
-                as_of?: string | null;
+                asOf?: string | null;
             };
             header?: never;
             path?: never;
@@ -1424,22 +1425,22 @@ export interface operations {
                 agent?: string[] | null;
                 category?: components["schemas"]["Category"][] | null;
                 /** @description Calls touching this line. A call may touch several. */
-                product_line?: components["schemas"]["ProductLine"][] | null;
+                productLine?: components["schemas"]["ProductLine"][] | null;
                 /** @description Where the failure originated, not where it surfaced. */
                 touchpoint?: string[] | null;
                 outcome?: components["schemas"]["Outcome"][] | null;
                 signal?: components["schemas"]["SignalType"][] | null;
                 intent?: components["schemas"]["IntentType"][] | null;
-                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
-                quality_band?: components["schemas"]["QualityBand"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
                 escalated?: boolean | null;
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
-                compliance_exception?: boolean | null;
+                complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
-                as_of?: string | null;
+                asOf?: string | null;
             };
             header?: never;
             path?: never;
@@ -1480,22 +1481,22 @@ export interface operations {
                 agent?: string[] | null;
                 category?: components["schemas"]["Category"][] | null;
                 /** @description Calls touching this line. A call may touch several. */
-                product_line?: components["schemas"]["ProductLine"][] | null;
+                productLine?: components["schemas"]["ProductLine"][] | null;
                 /** @description Where the failure originated, not where it surfaced. */
                 touchpoint?: string[] | null;
                 outcome?: components["schemas"]["Outcome"][] | null;
                 signal?: components["schemas"]["SignalType"][] | null;
                 intent?: components["schemas"]["IntentType"][] | null;
-                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
-                quality_band?: components["schemas"]["QualityBand"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
                 escalated?: boolean | null;
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
-                compliance_exception?: boolean | null;
+                complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
-                as_of?: string | null;
+                asOf?: string | null;
             };
             header?: never;
             path?: never;
@@ -1536,22 +1537,22 @@ export interface operations {
                 agent?: string[] | null;
                 category?: components["schemas"]["Category"][] | null;
                 /** @description Calls touching this line. A call may touch several. */
-                product_line?: components["schemas"]["ProductLine"][] | null;
+                productLine?: components["schemas"]["ProductLine"][] | null;
                 /** @description Where the failure originated, not where it surfaced. */
                 touchpoint?: string[] | null;
                 outcome?: components["schemas"]["Outcome"][] | null;
                 signal?: components["schemas"]["SignalType"][] | null;
                 intent?: components["schemas"]["IntentType"][] | null;
-                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
-                quality_band?: components["schemas"]["QualityBand"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
                 escalated?: boolean | null;
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
-                compliance_exception?: boolean | null;
+                complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
-                as_of?: string | null;
+                asOf?: string | null;
             };
             header?: never;
             path?: never;
@@ -1592,22 +1593,22 @@ export interface operations {
                 agent?: string[] | null;
                 category?: components["schemas"]["Category"][] | null;
                 /** @description Calls touching this line. A call may touch several. */
-                product_line?: components["schemas"]["ProductLine"][] | null;
+                productLine?: components["schemas"]["ProductLine"][] | null;
                 /** @description Where the failure originated, not where it surfaced. */
                 touchpoint?: string[] | null;
                 outcome?: components["schemas"]["Outcome"][] | null;
                 signal?: components["schemas"]["SignalType"][] | null;
                 intent?: components["schemas"]["IntentType"][] | null;
-                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
-                quality_band?: components["schemas"]["QualityBand"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
                 escalated?: boolean | null;
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
-                compliance_exception?: boolean | null;
+                complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
-                as_of?: string | null;
+                asOf?: string | null;
             };
             header?: never;
             path?: never;
@@ -1648,22 +1649,22 @@ export interface operations {
                 agent?: string[] | null;
                 category?: components["schemas"]["Category"][] | null;
                 /** @description Calls touching this line. A call may touch several. */
-                product_line?: components["schemas"]["ProductLine"][] | null;
+                productLine?: components["schemas"]["ProductLine"][] | null;
                 /** @description Where the failure originated, not where it surfaced. */
                 touchpoint?: string[] | null;
                 outcome?: components["schemas"]["Outcome"][] | null;
                 signal?: components["schemas"]["SignalType"][] | null;
                 intent?: components["schemas"]["IntentType"][] | null;
-                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
-                quality_band?: components["schemas"]["QualityBand"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
                 escalated?: boolean | null;
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
-                compliance_exception?: boolean | null;
+                complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
-                as_of?: string | null;
+                asOf?: string | null;
             };
             header?: never;
             path?: never;
@@ -1704,22 +1705,22 @@ export interface operations {
                 agent?: string[] | null;
                 category?: components["schemas"]["Category"][] | null;
                 /** @description Calls touching this line. A call may touch several. */
-                product_line?: components["schemas"]["ProductLine"][] | null;
+                productLine?: components["schemas"]["ProductLine"][] | null;
                 /** @description Where the failure originated, not where it surfaced. */
                 touchpoint?: string[] | null;
                 outcome?: components["schemas"]["Outcome"][] | null;
                 signal?: components["schemas"]["SignalType"][] | null;
                 intent?: components["schemas"]["IntentType"][] | null;
-                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
-                quality_band?: components["schemas"]["QualityBand"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
                 escalated?: boolean | null;
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
-                compliance_exception?: boolean | null;
+                complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
-                as_of?: string | null;
+                asOf?: string | null;
             };
             header?: never;
             path?: never;

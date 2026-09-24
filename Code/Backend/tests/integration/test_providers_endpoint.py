@@ -70,7 +70,7 @@ def test_a_usable_provider_is_selectable(providers_client: TestClient) -> None:
 
     openai = body["providers"][0]
     assert openai["selectable"] is True
-    assert openai["is_default"] is True
+    assert openai["isDefault"] is True
 
 
 def test_an_unconfigured_provider_is_shown_with_the_reason(providers_client: TestClient) -> None:

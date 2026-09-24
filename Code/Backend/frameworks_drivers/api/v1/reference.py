@@ -8,14 +8,14 @@ workbook is re-issued.
 from __future__ import annotations
 
 from fastapi import APIRouter, status
-from pydantic import BaseModel
 
+from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import ImportReferenceDataDep
 
 router = APIRouter(prefix="/reference", tags=["reference"])
 
 
-class ImportCountsResponse(BaseModel):
+class ImportCountsResponse(CamelModel):
     brokers: int
     employers: int
     members: int
@@ -25,7 +25,7 @@ class ImportCountsResponse(BaseModel):
     touchpoints: int
 
 
-class ImportReferenceResponse(BaseModel):
+class ImportReferenceResponse(CamelModel):
     counts: ImportCountsResponse
     warnings: list[str]
 

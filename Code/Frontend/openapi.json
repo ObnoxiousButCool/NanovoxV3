@@ -4,11 +4,11 @@
       "AccountFactsResponse": {
         "description": "\u00a79 insight 8 \u2014 the facts that raise the stakes on everything else.\n\nFrom reference data, not from the pipeline, so nothing here depends on\nextraction agreement.",
         "properties": {
-          "annual_fee": {
-            "title": "Annual Fee",
+          "annualFee": {
+            "title": "Annualfee",
             "type": "integer"
           },
-          "annual_premium": {
+          "annualPremium": {
             "anyOf": [
               {
                 "type": "number"
@@ -18,15 +18,15 @@
               }
             ],
             "description": "Null when not recorded \u2014 never zero.",
-            "title": "Annual Premium"
+            "title": "Annualpremium"
           },
-          "broker_ref": {
+          "brokerRef": {
             "description": "Broker of record.",
-            "title": "Broker Ref",
+            "title": "Brokerref",
             "type": "string"
           },
-          "employer_ref": {
-            "title": "Employer Ref",
+          "employerRef": {
+            "title": "Employerref",
             "type": "string"
           },
           "enrolled": {
@@ -46,31 +46,31 @@
             "title": "Region",
             "type": "string"
           },
-          "renewal_month": {
-            "title": "Renewal Month",
+          "renewalMonth": {
+            "title": "Renewalmonth",
             "type": "string"
           }
         },
         "required": [
-          "employer_ref",
+          "employerRef",
           "name",
           "region",
           "industry",
           "enrolled",
-          "renewal_month",
-          "broker_ref",
-          "annual_fee"
+          "renewalMonth",
+          "brokerRef",
+          "annualFee"
         ],
         "title": "AccountFactsResponse",
         "type": "object"
       },
       "AccountResponse": {
         "properties": {
-          "as_of": {
-            "title": "As Of",
+          "asOf": {
+            "title": "Asof",
             "type": "string"
           },
-          "contact_rate": {
+          "contactRate": {
             "$ref": "#/components/schemas/WindowedFigureResponse"
           },
           "facts": {
@@ -79,15 +79,15 @@
           "peers": {
             "$ref": "#/components/schemas/PeerComparisonResponse"
           },
-          "repeat_rate": {
+          "repeatRate": {
             "$ref": "#/components/schemas/WindowedFigureResponse"
           },
           "risk": {
             "$ref": "#/components/schemas/AccountRiskResponse",
             "description": "This account's risk standing, the same shape as on the risk screen."
           },
-          "risk_window_weeks": {
-            "title": "Risk Window Weeks",
+          "riskWindowWeeks": {
+            "title": "Riskwindowweeks",
             "type": "integer"
           },
           "scope": {
@@ -96,13 +96,13 @@
         },
         "required": [
           "scope",
-          "as_of",
+          "asOf",
           "facts",
-          "contact_rate",
+          "contactRate",
           "peers",
-          "repeat_rate",
+          "repeatRate",
           "risk",
-          "risk_window_weeks"
+          "riskWindowWeeks"
         ],
         "title": "AccountResponse",
         "type": "object"
@@ -121,16 +121,16 @@
             "title": "Conditions",
             "type": "array"
           },
-          "conditions_met": {
-            "title": "Conditions Met",
+          "conditionsMet": {
+            "title": "Conditionsmet",
             "type": "integer"
           },
           "eligible": {
             "title": "Eligible",
             "type": "boolean"
           },
-          "employer_ref": {
-            "title": "Employer Ref",
+          "employerRef": {
+            "title": "Employerref",
             "type": "string"
           },
           "evidence": {
@@ -164,14 +164,14 @@
           }
         },
         "required": [
-          "employer_ref",
+          "employerRef",
           "calls",
           "eligible",
           "flagged",
           "quotable",
           "state",
           "conditions",
-          "conditions_met",
+          "conditionsMet",
           "observations"
         ],
         "title": "AccountRiskResponse",
@@ -180,60 +180,58 @@
       "ActionItemResponse": {
         "description": "One finding. No status \u2014 see this module's docstring.",
         "properties": {
-          "call_ids": {
+          "callIds": {
             "items": {
               "type": "string"
             },
-            "title": "Call Ids",
+            "title": "Callids",
             "type": "array"
           },
           "calls": {
             "title": "Calls",
             "type": "integer"
           },
-          "owner_team": {
+          "ownerTeam": {
             "description": "From the Signal Taxonomy's Owner column, which the sheet calls mandatory.",
-            "title": "Owner Team",
+            "title": "Ownerteam",
             "type": "string"
           },
           "severity": {
-            "title": "Severity",
-            "type": "string"
+            "$ref": "#/components/schemas/CodedValue"
           },
           "signal": {
-            "title": "Signal",
-            "type": "string"
+            "$ref": "#/components/schemas/CodedValue"
           }
         },
         "required": [
           "signal",
           "severity",
-          "owner_team",
+          "ownerTeam",
           "calls",
-          "call_ids"
+          "callIds"
         ],
         "title": "ActionItemResponse",
         "type": "object"
       },
       "ActionsResponse": {
         "properties": {
-          "as_of": {
-            "title": "As Of",
+          "asOf": {
+            "title": "Asof",
             "type": "string"
           },
-          "control_denominator_caveat": {
-            "title": "Control Denominator Caveat",
+          "controlDenominatorCaveat": {
+            "title": "Controldenominatorcaveat",
             "type": "string"
           },
-          "control_exceptions": {
+          "controlExceptions": {
             "description": "Metric 7 by type. Never blended into one compliance rate.",
             "items": {
               "$ref": "#/components/schemas/ControlExceptionResponse"
             },
-            "title": "Control Exceptions",
+            "title": "Controlexceptions",
             "type": "array"
           },
-          "did_it_work": {
+          "didItWork": {
             "$ref": "#/components/schemas/WithheldPanelResponse",
             "description": "Insight 22, withheld until a comparable before and after exist."
           },
@@ -256,20 +254,20 @@
           "scope": {
             "$ref": "#/components/schemas/ScopeResponse"
           },
-          "window_weeks": {
-            "title": "Window Weeks",
+          "windowWeeks": {
+            "title": "Windowweeks",
             "type": "integer"
           }
         },
         "required": [
           "scope",
-          "as_of",
-          "window_weeks",
+          "asOf",
+          "windowWeeks",
           "items",
           "owners",
-          "control_exceptions",
-          "control_denominator_caveat",
-          "did_it_work"
+          "controlExceptions",
+          "controlDenominatorCaveat",
+          "didItWork"
         ],
         "title": "ActionsResponse",
         "type": "object"
@@ -304,7 +302,7 @@
             ],
             "title": "Lowest"
           },
-          "median_score": {
+          "medianScore": {
             "anyOf": [
               {
                 "type": "number"
@@ -314,18 +312,18 @@
               }
             ],
             "description": "Median, not mean. Null when no call was scored.",
-            "title": "Median Score"
+            "title": "Medianscore"
           },
-          "scored_calls": {
+          "scoredCalls": {
             "items": {
               "type": "string"
             },
-            "title": "Scored Calls",
+            "title": "Scoredcalls",
             "type": "array"
           }
         },
         "required": [
-          "scored_calls",
+          "scoredCalls",
           "caveat"
         ],
         "title": "AgentQualityResponse",
@@ -333,8 +331,8 @@
       },
       "AgentResponse": {
         "properties": {
-          "agent_ref": {
-            "title": "Agent Ref",
+          "agentRef": {
+            "title": "Agentref",
             "type": "string"
           },
           "calls": {
@@ -344,30 +342,30 @@
             "title": "Calls",
             "type": "array"
           },
-          "control_exceptions": {
+          "controlExceptions": {
             "items": {
               "$ref": "#/components/schemas/ControlExceptionCountResponse"
             },
-            "title": "Control Exceptions",
+            "title": "Controlexceptions",
             "type": "array"
           },
-          "escalations_missed": {
+          "escalationsMissed": {
             "description": "Calls where an explicit escalation request went nowhere.",
             "items": {
               "type": "string"
             },
-            "title": "Escalations Missed",
+            "title": "Escalationsmissed",
             "type": "array"
           },
-          "knowledge_error_rate": {
+          "knowledgeErrorRate": {
             "$ref": "#/components/schemas/FigureResponse"
           },
-          "knowledge_errors": {
+          "knowledgeErrors": {
             "description": "Calls where this agent stated a published rule incorrectly.",
             "items": {
               "type": "string"
             },
-            "title": "Knowledge Errors",
+            "title": "Knowledgeerrors",
             "type": "array"
           },
           "quality": {
@@ -375,12 +373,12 @@
           }
         },
         "required": [
-          "agent_ref",
+          "agentRef",
           "calls",
-          "knowledge_errors",
-          "escalations_missed",
-          "control_exceptions",
-          "knowledge_error_rate",
+          "knowledgeErrors",
+          "escalationsMissed",
+          "controlExceptions",
+          "knowledgeErrorRate",
           "quality"
         ],
         "title": "AgentResponse",
@@ -396,11 +394,11 @@
             "title": "Agents",
             "type": "array"
           },
-          "as_of": {
-            "title": "As Of",
+          "asOf": {
+            "title": "Asof",
             "type": "string"
           },
-          "quality_window_weeks": {
+          "qualityWindowWeeks": {
             "anyOf": [
               {
                 "type": "integer"
@@ -410,21 +408,21 @@
               }
             ],
             "description": "Null: a quality score is a property of the call, not of a period, so the Metrics sheet gives metric 12 no window.",
-            "title": "Quality Window Weeks"
+            "title": "Qualitywindowweeks"
           },
           "scope": {
             "$ref": "#/components/schemas/ScopeResponse"
           },
-          "window_weeks": {
+          "windowWeeks": {
             "description": "The period the events are counted over.",
-            "title": "Window Weeks",
+            "title": "Windowweeks",
             "type": "integer"
           }
         },
         "required": [
           "scope",
-          "as_of",
-          "window_weeks",
+          "asOf",
+          "windowWeeks",
           "agents"
         ],
         "title": "AgentsResponse",
@@ -454,9 +452,8 @@
       },
       "AttributionCountResponse": {
         "properties": {
-          "attributed_to": {
-            "title": "Attributed To",
-            "type": "string"
+          "attributedTo": {
+            "$ref": "#/components/schemas/CodedValue"
           },
           "calls": {
             "title": "Calls",
@@ -464,7 +461,7 @@
           }
         },
         "required": [
-          "attributed_to",
+          "attributedTo",
           "calls"
         ],
         "title": "AttributionCountResponse",
@@ -472,18 +469,18 @@
       },
       "BrokerFrictionResponse": {
         "properties": {
-          "adverse_calls": {
+          "adverseCalls": {
             "items": {
               "type": "string"
             },
-            "title": "Adverse Calls",
+            "title": "Adversecalls",
             "type": "array"
           },
-          "broker_ref": {
-            "title": "Broker Ref",
+          "brokerRef": {
+            "title": "Brokerref",
             "type": "string"
           },
-          "by_touchpoint": {
+          "byTouchpoint": {
             "description": "Adverse mentions by where the failure originated, worst first.",
             "items": {
               "maxItems": 2,
@@ -498,13 +495,13 @@
               ],
               "type": "array"
             },
-            "title": "By Touchpoint",
+            "title": "Bytouchpoint",
             "type": "array"
           },
           "pattern": {
             "$ref": "#/components/schemas/PatternTestResponse"
           },
-          "rate_per_hundred_lives": {
+          "ratePerHundredLives": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/FigureResponse"
@@ -517,9 +514,9 @@
           }
         },
         "required": [
-          "broker_ref",
-          "adverse_calls",
-          "by_touchpoint",
+          "brokerRef",
+          "adverseCalls",
+          "byTouchpoint",
           "pattern"
         ],
         "title": "BrokerFrictionResponse",
@@ -527,8 +524,8 @@
       },
       "BrokerNodeResponse": {
         "properties": {
-          "broker_ref": {
-            "title": "Broker Ref",
+          "brokerRef": {
+            "title": "Brokerref",
             "type": "string"
           },
           "calls": {
@@ -544,7 +541,7 @@
           }
         },
         "required": [
-          "broker_ref",
+          "brokerRef",
           "calls",
           "employers"
         ],
@@ -572,6 +569,27 @@
         ],
         "title": "Category",
         "type": "string"
+      },
+      "CodedValue": {
+        "description": "One coded value and the words for it.\n\n`code` is what a filter accepts and what a client branches on; `label`\nis what a person reads. They are never the same field.",
+        "properties": {
+          "code": {
+            "description": "The stable identifier. Filters take this value.",
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display wording. Never branch on it \u2014 it may be reworded.",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "CodedValue",
+        "type": "object"
       },
       "ComplaintAttribution": {
         "enum": [
@@ -623,12 +641,12 @@
       "ConditionResponse": {
         "description": "One of metric 10's four conditions, met or not.",
         "properties": {
-          "call_ids": {
+          "callIds": {
             "description": "The calls that fired it. Empty when it did not.",
             "items": {
               "type": "string"
             },
-            "title": "Call Ids",
+            "title": "Callids",
             "type": "array"
           },
           "code": {
@@ -658,13 +676,12 @@
             "title": "Calls",
             "type": "integer"
           },
-          "exception_type": {
-            "title": "Exception Type",
-            "type": "string"
+          "exceptionType": {
+            "$ref": "#/components/schemas/CodedValue"
           }
         },
         "required": [
-          "exception_type",
+          "exceptionType",
           "calls"
         ],
         "title": "ControlExceptionCountResponse",
@@ -672,34 +689,33 @@
       },
       "ControlExceptionResponse": {
         "properties": {
-          "exception_type": {
-            "title": "Exception Type",
-            "type": "string"
+          "exceptionType": {
+            "$ref": "#/components/schemas/CodedValue"
           },
           "figure": {
             "$ref": "#/components/schemas/FigureResponse"
           }
         },
         "required": [
-          "exception_type",
+          "exceptionType",
           "figure"
         ],
         "title": "ControlExceptionResponse",
         "type": "object"
       },
       "CountResponse": {
+        "description": "One cut of the failures. `value` carries its own label where the\nthing being counted is a coded value rather than free text.",
         "properties": {
           "failures": {
             "title": "Failures",
             "type": "integer"
           },
-          "label": {
-            "title": "Label",
-            "type": "string"
+          "value": {
+            "$ref": "#/components/schemas/CodedValue"
           }
         },
         "required": [
-          "label",
+          "value",
           "failures"
         ],
         "title": "CountResponse",
@@ -707,26 +723,26 @@
       },
       "DemandResponse": {
         "properties": {
-          "as_of": {
-            "title": "As Of",
+          "asOf": {
+            "title": "Asof",
             "type": "string"
           },
-          "complaints_about_us": {
+          "complaintsAboutUs": {
             "$ref": "#/components/schemas/FigureResponse",
             "description": "Complaints attributed to Choice. A different measure from self-inflicted demand, deliberately kept apart."
           },
-          "promise_gaps": {
+          "promiseGaps": {
             "description": "Proposed changes at the enrolment touchpoints, most-proposed first.",
             "items": {
               "$ref": "#/components/schemas/PromiseGapResponse"
             },
-            "title": "Promise Gaps",
+            "title": "Promisegaps",
             "type": "array"
           },
           "scope": {
             "$ref": "#/components/schemas/ScopeResponse"
           },
-          "self_inflicted": {
+          "selfInflicted": {
             "$ref": "#/components/schemas/SelfInflictedResponse"
           },
           "touchpoints": {
@@ -745,39 +761,39 @@
             "title": "Unattributed",
             "type": "array"
           },
-          "window_weeks": {
-            "title": "Window Weeks",
+          "windowWeeks": {
+            "title": "Windowweeks",
             "type": "integer"
           }
         },
         "required": [
           "scope",
-          "as_of",
-          "window_weeks",
-          "self_inflicted",
-          "complaints_about_us",
+          "asOf",
+          "windowWeeks",
+          "selfInflicted",
+          "complaintsAboutUs",
           "touchpoints",
           "unattributed",
-          "promise_gaps"
+          "promiseGaps"
         ],
         "title": "DemandResponse",
         "type": "object"
       },
       "EmployerNodeResponse": {
         "properties": {
-          "call_ids": {
+          "callIds": {
             "items": {
               "type": "string"
             },
-            "title": "Call Ids",
+            "title": "Callids",
             "type": "array"
           },
           "calls": {
             "title": "Calls",
             "type": "integer"
           },
-          "employer_ref": {
-            "title": "Employer Ref",
+          "employerRef": {
+            "title": "Employerref",
             "type": "string"
           },
           "name": {
@@ -786,28 +802,19 @@
           }
         },
         "required": [
-          "employer_ref",
+          "employerRef",
           "name",
           "calls",
-          "call_ids"
+          "callIds"
         ],
         "title": "EmployerNodeResponse",
         "type": "object"
       },
-      "EpistemicClass": {
-        "enum": [
-          "MEASURED",
-          "DERIVED",
-          "WITHHELD"
-        ],
-        "title": "EpistemicClass",
-        "type": "string"
-      },
       "ExecScorecardResponse": {
         "properties": {
-          "as_of": {
+          "asOf": {
             "description": "The date every window on this screen ends on.",
-            "title": "As Of",
+            "title": "Asof",
             "type": "string"
           },
           "calls": {
@@ -823,7 +830,7 @@
             "title": "Escalation",
             "type": "array"
           },
-          "intent_routed": {
+          "intentRouted": {
             "$ref": "#/components/schemas/FigureResponse",
             "description": "Always withheld on v9 data: whether commercial intent reached anyone who could act on it is not a field. Zero would claim we checked."
           },
@@ -840,19 +847,19 @@
         },
         "required": [
           "scope",
-          "as_of",
+          "asOf",
           "calls",
           "metrics",
           "escalation",
-          "intent_routed"
+          "intentRouted"
         ],
         "title": "ExecScorecardResponse",
         "type": "object"
       },
       "ExposureResponse": {
         "properties": {
-          "annual_premium": {
-            "title": "Annual Premium",
+          "annualPremium": {
+            "title": "Annualpremium",
             "type": "number"
           },
           "caveat": {
@@ -870,17 +877,17 @@
             "title": "Lives",
             "type": "integer"
           },
-          "premium_incomplete": {
+          "premiumIncomplete": {
             "description": "True when a flagged account has no premium recorded, so this is a floor.",
-            "title": "Premium Incomplete",
+            "title": "Premiumincomplete",
             "type": "boolean"
           }
         },
         "required": [
           "employers",
           "lives",
-          "annual_premium",
-          "premium_incomplete",
+          "annualPremium",
+          "premiumIncomplete",
           "caveat"
         ],
         "title": "ExposureResponse",
@@ -889,12 +896,12 @@
       "FigureResponse": {
         "description": "One number and everything needed to judge it.",
         "properties": {
-          "call_ids": {
+          "callIds": {
             "description": "The calls behind the figure, so it can be argued with. Present on withheld figures too: a reader told four calls is too few should still be able to open those four.",
             "items": {
               "type": "string"
             },
-            "title": "Call Ids",
+            "title": "Callids",
             "type": "array"
           },
           "caveats": {
@@ -906,7 +913,7 @@
             "type": "array"
           },
           "epistemic": {
-            "$ref": "#/components/schemas/EpistemicClass",
+            "$ref": "#/components/schemas/CodedValue",
             "description": "MEASURED: computed from the Call Tag Schema's own fields. DERIVED: our composite rather than a workbook field, and labelled as such wherever it surfaces. WITHHELD: suppressed, with a reason."
           },
           "n": {
@@ -931,10 +938,10 @@
             "description": "The figure, or null when it is withheld. Null is never zero: see `published`, which is the field to branch on.",
             "title": "Value"
           },
-          "withheld_reason": {
+          "withheldReason": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/WithheldReason"
+                "$ref": "#/components/schemas/CodedValue"
               },
               {
                 "type": "null"
@@ -970,9 +977,9 @@
             "title": "Application",
             "type": "string"
           },
-          "checked_at": {
+          "checkedAt": {
             "format": "date-time",
-            "title": "Checked At",
+            "title": "Checkedat",
             "type": "string"
           },
           "components": {
@@ -999,15 +1006,15 @@
           "application",
           "version",
           "environment",
-          "checked_at"
+          "checkedAt"
         ],
         "title": "HealthResponse",
         "type": "object"
       },
       "HierarchyResponse": {
         "properties": {
-          "as_of": {
-            "title": "As Of",
+          "asOf": {
+            "title": "Asof",
             "type": "string"
           },
           "matrix": {
@@ -1017,12 +1024,12 @@
             "title": "Matrix",
             "type": "array"
           },
-          "ranked_brokers": {
+          "rankedBrokers": {
             "description": "Only books clearing the ranking floor in lives, worst count first.",
             "items": {
               "$ref": "#/components/schemas/BrokerFrictionResponse"
             },
-            "title": "Ranked Brokers",
+            "title": "Rankedbrokers",
             "type": "array"
           },
           "scope": {
@@ -1043,20 +1050,20 @@
             "title": "Tree",
             "type": "array"
           },
-          "window_weeks": {
+          "windowWeeks": {
             "description": "One window across the whole screen, so every cell counts the same period.",
-            "title": "Window Weeks",
+            "title": "Windowweeks",
             "type": "integer"
           }
         },
         "required": [
           "scope",
-          "as_of",
-          "window_weeks",
+          "asOf",
+          "windowWeeks",
           "tree",
           "matrix",
           "systemic",
-          "ranked_brokers"
+          "rankedBrokers"
         ],
         "title": "HierarchyResponse",
         "type": "object"
@@ -1071,8 +1078,8 @@
             "title": "Brokers",
             "type": "integer"
           },
-          "employer_contacts": {
-            "title": "Employer Contacts",
+          "employerContacts": {
+            "title": "Employercontacts",
             "type": "integer"
           },
           "employers": {
@@ -1096,7 +1103,7 @@
           "brokers",
           "employers",
           "members",
-          "employer_contacts",
+          "employerContacts",
           "agents",
           "rules",
           "touchpoints"
@@ -1126,20 +1133,20 @@
       },
       "IngestCountsResponse": {
         "properties": {
-          "agent_unknown": {
-            "title": "Agent Unknown",
+          "agentUnknown": {
+            "title": "Agentunknown",
             "type": "integer"
           },
-          "caller_unresolved": {
-            "title": "Caller Unresolved",
+          "callerUnresolved": {
+            "title": "Callerunresolved",
             "type": "integer"
           },
           "resolved": {
             "title": "Resolved",
             "type": "integer"
           },
-          "speaker_unresolved": {
-            "title": "Speaker Unresolved",
+          "speakerUnresolved": {
+            "title": "Speakerunresolved",
             "type": "integer"
           },
           "total": {
@@ -1150,9 +1157,9 @@
         "required": [
           "total",
           "resolved",
-          "caller_unresolved",
-          "agent_unknown",
-          "speaker_unresolved"
+          "callerUnresolved",
+          "agentUnknown",
+          "speakerUnresolved"
         ],
         "title": "IngestCountsResponse",
         "type": "object"
@@ -1243,7 +1250,7 @@
             "title": "Name",
             "type": "string"
           },
-          "window_weeks": {
+          "windowWeeks": {
             "anyOf": [
               {
                 "type": "integer"
@@ -1253,7 +1260,7 @@
               }
             ],
             "description": "How far back this metric looks from `as_of`. Metrics on one screen differ; null means the metric is not windowed at all.",
-            "title": "Window Weeks"
+            "title": "Windowweeks"
           }
         },
         "required": [
@@ -1276,8 +1283,8 @@
             "title": "Code",
             "type": "string"
           },
-          "employer_calls": {
-            "title": "Employer Calls",
+          "employerCalls": {
+            "title": "Employercalls",
             "type": "integer"
           },
           "hits": {
@@ -1304,9 +1311,9 @@
             "description": "Null when the family cannot be computed, never zero.",
             "title": "Rate"
           },
-          "unavailable_because": {
+          "unavailableBecause": {
             "default": "",
-            "title": "Unavailable Because",
+            "title": "Unavailablebecause",
             "type": "string"
           }
         },
@@ -1315,7 +1322,7 @@
           "label",
           "observed",
           "hits",
-          "employer_calls",
+          "employerCalls",
           "available"
         ],
         "title": "ObservationResponse",
@@ -1349,13 +1356,13 @@
             "title": "Items",
             "type": "array"
           },
-          "owner_team": {
-            "title": "Owner Team",
+          "ownerTeam": {
+            "title": "Ownerteam",
             "type": "string"
           }
         },
         "required": [
-          "owner_team",
+          "ownerTeam",
           "critical",
           "calls",
           "items"
@@ -1366,19 +1373,19 @@
       "PatternTestResponse": {
         "description": "Trigger rule 2, reported whether or not it fired.",
         "properties": {
-          "adverse_mentions": {
-            "title": "Adverse Mentions",
+          "adverseMentions": {
+            "title": "Adversementions",
             "type": "integer"
           },
-          "call_ids": {
+          "callIds": {
             "items": {
               "type": "string"
             },
-            "title": "Call Ids",
+            "title": "Callids",
             "type": "array"
           },
-          "distinct_employers": {
-            "title": "Distinct Employers",
+          "distinctEmployers": {
+            "title": "Distinctemployers",
             "type": "integer"
           },
           "fires": {
@@ -1393,10 +1400,10 @@
         },
         "required": [
           "fires",
-          "adverse_mentions",
-          "distinct_employers",
+          "adverseMentions",
+          "distinctEmployers",
           "reached",
-          "call_ids"
+          "callIds"
         ],
         "title": "PatternTestResponse",
         "type": "object"
@@ -1427,7 +1434,7 @@
             "description": "The employer against its peers, as a proportion: 0.25 is '+25% vs peers'. Null when either side is missing \u2014 render that as 'no comparison available', never as 0%.",
             "title": "Difference"
           },
-          "peer_median": {
+          "peerMedian": {
             "anyOf": [
               {
                 "type": "number"
@@ -1437,7 +1444,7 @@
               }
             ],
             "description": "Median contact rate of publishable peers. Null when the band has none.",
-            "title": "Peer Median"
+            "title": "Peermedian"
           },
           "peers": {
             "description": "Employers behind the median. A median of two is not forty.",
@@ -1464,11 +1471,11 @@
       },
       "PromiseGapResponse": {
         "properties": {
-          "call_ids": {
+          "callIds": {
             "items": {
               "type": "string"
             },
-            "title": "Call Ids",
+            "title": "Callids",
             "type": "array"
           },
           "calls": {
@@ -1480,8 +1487,8 @@
             "title": "Minutes",
             "type": "number"
           },
-          "proposed_change": {
-            "title": "Proposed Change",
+          "proposedChange": {
+            "title": "Proposedchange",
             "type": "string"
           },
           "touchpoint": {
@@ -1491,9 +1498,9 @@
         },
         "required": [
           "touchpoint",
-          "proposed_change",
+          "proposedChange",
           "calls",
-          "call_ids",
+          "callIds",
           "minutes"
         ],
         "title": "PromiseGapResponse",
@@ -1524,8 +1531,8 @@
             "title": "Implemented",
             "type": "boolean"
           },
-          "is_default": {
-            "title": "Is Default",
+          "isDefault": {
+            "title": "Isdefault",
             "type": "boolean"
           },
           "local": {
@@ -1555,7 +1562,7 @@
           "configured",
           "reachable",
           "implemented",
-          "is_default",
+          "isDefault",
           "selectable",
           "billable",
           "local"
@@ -1600,8 +1607,8 @@
       },
       "RiskScreenResponse": {
         "properties": {
-          "as_of": {
-            "title": "As Of",
+          "asOf": {
+            "title": "Asof",
             "type": "string"
           },
           "assessed": {
@@ -1615,7 +1622,7 @@
           "exposure": {
             "$ref": "#/components/schemas/ExposureResponse"
           },
-          "flagged_share": {
+          "flaggedShare": {
             "$ref": "#/components/schemas/FigureResponse",
             "description": "Flagged as a share of the *eligible* employers, never of all of them."
           },
@@ -1627,27 +1634,27 @@
             "title": "Ineligible",
             "type": "array"
           },
-          "ineligible_count": {
-            "title": "Ineligible Count",
+          "ineligibleCount": {
+            "title": "Ineligiblecount",
             "type": "integer"
           },
           "scope": {
             "$ref": "#/components/schemas/ScopeResponse"
           },
-          "window_weeks": {
+          "windowWeeks": {
             "description": "Metric 10's window, in weeks, ending on `as_of`.",
-            "title": "Window Weeks",
+            "title": "Windowweeks",
             "type": "integer"
           }
         },
         "required": [
           "scope",
-          "as_of",
-          "window_weeks",
+          "asOf",
+          "windowWeeks",
           "assessed",
           "ineligible",
-          "ineligible_count",
-          "flagged_share",
+          "ineligibleCount",
+          "flaggedShare",
           "exposure"
         ],
         "title": "RiskScreenResponse",
@@ -1660,22 +1667,21 @@
             "title": "Area",
             "type": "string"
           },
-          "commonly_confused_with": {
+          "commonlyConfusedWith": {
             "default": "",
             "description": "The Rules sheets' own column \u2014 what people mistake this rule for.",
-            "title": "Commonly Confused With",
+            "title": "Commonlyconfusedwith",
             "type": "string"
           },
           "confidence": {
-            "description": "The rule's own provenance grade from the Rules sheets. Provenance of the rule, not of any figure about it, and not an epistemic class.",
-            "title": "Confidence",
-            "type": "string"
+            "$ref": "#/components/schemas/CodedValue",
+            "description": "The rule's own provenance grade from the Rules sheets. Provenance of the rule, not of any figure about it, and not an epistemic class."
           },
-          "failed_call_ids": {
+          "failedCallIds": {
             "items": {
               "type": "string"
             },
-            "title": "Failed Call Ids",
+            "title": "Failedcallids",
             "type": "array"
           },
           "failures": {
@@ -1683,64 +1689,63 @@
             "type": "integer"
           },
           "layer": {
-            "description": "Program, Administration or Carrier \u2014 whose rulebook it is.",
-            "title": "Layer",
-            "type": "string"
+            "$ref": "#/components/schemas/CodedValue",
+            "description": "Program, Administration or Carrier \u2014 whose rulebook it is."
           },
-          "rule_ref": {
-            "title": "Rule Ref",
+          "ruleRef": {
+            "title": "Ruleref",
             "type": "string"
           }
         },
         "required": [
-          "rule_ref",
+          "ruleRef",
           "layer",
           "area",
           "confidence",
           "failures",
-          "failed_call_ids"
+          "failedCallIds"
         ],
         "title": "RuleRowResponse",
         "type": "object"
       },
       "RulesResponse": {
         "properties": {
-          "as_of": {
-            "title": "As Of",
+          "asOf": {
+            "title": "Asof",
             "type": "string"
           },
-          "by_area": {
+          "byArea": {
             "items": {
               "$ref": "#/components/schemas/CountResponse"
             },
-            "title": "By Area",
+            "title": "Byarea",
             "type": "array"
           },
-          "by_layer": {
+          "byLayer": {
             "description": "Whose rulebook is the problem.",
             "items": {
               "$ref": "#/components/schemas/CountResponse"
             },
-            "title": "By Layer",
+            "title": "Bylayer",
             "type": "array"
           },
-          "by_provenance": {
+          "byProvenance": {
             "description": "A misstated UNVERIFIED rule says our source is weak; a misstated VERIFIED one says our training is.",
             "items": {
               "$ref": "#/components/schemas/CountResponse"
             },
-            "title": "By Provenance",
+            "title": "Byprovenance",
             "type": "array"
           },
-          "by_touchpoint": {
+          "byTouchpoint": {
             "description": "Where the failure originated \u2014 the same rule in two documents is two fixes.",
             "items": {
               "$ref": "#/components/schemas/CountResponse"
             },
-            "title": "By Touchpoint",
+            "title": "Bytouchpoint",
             "type": "array"
           },
-          "overall_rate": {
+          "overallRate": {
             "$ref": "#/components/schemas/FigureResponse",
             "description": "Metric 8: calls carrying a knowledge failure, over all calls. About the corpus, never about one rule."
           },
@@ -1755,21 +1760,21 @@
           "scope": {
             "$ref": "#/components/schemas/ScopeResponse"
           },
-          "window_weeks": {
-            "title": "Window Weeks",
+          "windowWeeks": {
+            "title": "Windowweeks",
             "type": "integer"
           }
         },
         "required": [
           "scope",
-          "as_of",
-          "window_weeks",
-          "overall_rate",
+          "asOf",
+          "windowWeeks",
+          "overallRate",
           "rules",
-          "by_layer",
-          "by_area",
-          "by_provenance",
-          "by_touchpoint"
+          "byLayer",
+          "byArea",
+          "byProvenance",
+          "byTouchpoint"
         ],
         "title": "RulesResponse",
         "type": "object"
@@ -1792,8 +1797,8 @@
             "title": "Pending",
             "type": "integer"
           },
-          "percent_complete": {
-            "title": "Percent Complete",
+          "percentComplete": {
+            "title": "Percentcomplete",
             "type": "number"
           },
           "running": {
@@ -1817,7 +1822,7 @@
           "cancelled",
           "running",
           "pending",
-          "percent_complete"
+          "percentComplete"
         ],
         "title": "RunProgressResponse",
         "type": "object"
@@ -1857,11 +1862,11 @@
       "ScopeResponse": {
         "description": "The population a response's figures were computed over.\n\nBoth counts are here because either alone misleads. `matched` without\n`considered` hides how much of the corpus was set aside; `considered`\nwithout `unmeasurable` makes a shortfall look like a narrower question\nwhen it is really a field extraction never filled.",
         "properties": {
-          "applied_filters": {
+          "appliedFilters": {
             "items": {
               "$ref": "#/components/schemas/AppliedFilterResponse"
             },
-            "title": "Applied Filters",
+            "title": "Appliedfilters",
             "type": "array"
           },
           "caveats": {
@@ -1877,10 +1882,10 @@
             "title": "Considered",
             "type": "integer"
           },
-          "excluded_calls": {
+          "excludedCalls": {
             "default": 0,
             "description": "Stored calls that reached no figure at all \u2014 no date, or never analysed. Counted before filtering.",
-            "title": "Excluded Calls",
+            "title": "Excludedcalls",
             "type": "integer"
           },
           "matched": {
@@ -1914,13 +1919,13 @@
       },
       "SelfInflictedResponse": {
         "properties": {
-          "chasing_submitted_action": {
+          "chasingSubmittedAction": {
             "$ref": "#/components/schemas/FigureResponse"
           },
-          "failure_driven_repeats": {
+          "failureDrivenRepeats": {
             "$ref": "#/components/schemas/FigureResponse"
           },
-          "logged_process_defect": {
+          "loggedProcessDefect": {
             "$ref": "#/components/schemas/FigureResponse"
           },
           "total": {
@@ -1929,9 +1934,9 @@
           }
         },
         "required": [
-          "failure_driven_repeats",
-          "chasing_submitted_action",
-          "logged_process_defect",
+          "failureDrivenRepeats",
+          "chasingSubmittedAction",
+          "loggedProcessDefect",
           "total"
         ],
         "title": "SelfInflictedResponse",
@@ -2007,11 +2012,11 @@
             "title": "Attribution",
             "type": "array"
           },
-          "call_ids": {
+          "callIds": {
             "items": {
               "type": "string"
             },
-            "title": "Call Ids",
+            "title": "Callids",
             "type": "array"
           },
           "calls": {
@@ -2022,18 +2027,18 @@
             "title": "Touchpoint",
             "type": "string"
           },
-          "without_complaint": {
+          "withoutComplaint": {
             "description": "Calls here with no complaint tagged. Not the same as a complaint with no attribution, which the schema does not allow.",
-            "title": "Without Complaint",
+            "title": "Withoutcomplaint",
             "type": "integer"
           }
         },
         "required": [
           "touchpoint",
           "calls",
-          "call_ids",
+          "callIds",
           "attribution",
-          "without_complaint"
+          "withoutComplaint"
         ],
         "title": "TouchpointRowResponse",
         "type": "object"
@@ -2103,13 +2108,13 @@
           "figure": {
             "$ref": "#/components/schemas/FigureResponse"
           },
-          "window_weeks": {
-            "title": "Window Weeks",
+          "windowWeeks": {
+            "title": "Windowweeks",
             "type": "integer"
           }
         },
         "required": [
-          "window_weeks",
+          "windowWeeks",
           "figure"
         ],
         "title": "WindowedFigureResponse",
@@ -2125,8 +2130,8 @@
             "title": "Question",
             "type": "string"
           },
-          "unlocked_by": {
-            "title": "Unlocked By",
+          "unlockedBy": {
+            "title": "Unlockedby",
             "type": "string"
           },
           "why": {
@@ -2138,21 +2143,10 @@
           "insight",
           "question",
           "why",
-          "unlocked_by"
+          "unlockedBy"
         ],
         "title": "WithheldPanelResponse",
         "type": "object"
-      },
-      "WithheldReason": {
-        "enum": [
-          "BELOW_MIN_N",
-          "NO_FIELD",
-          "NOT_ELIGIBLE",
-          "MONEY_UNKNOWN",
-          "NO_DENOMINATOR"
-        ],
-        "title": "WithheldReason",
-        "type": "string"
       }
     }
   },
@@ -2327,7 +2321,7 @@
           {
             "description": "Calls touching this line. A call may touch several.",
             "in": "query",
-            "name": "product_line",
+            "name": "productLine",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2342,7 +2336,7 @@
                 }
               ],
               "description": "Calls touching this line. A call may touch several.",
-              "title": "Product Line"
+              "title": "Productline"
             }
           },
           {
@@ -2425,7 +2419,7 @@
           },
           {
             "in": "query",
-            "name": "complaint_target",
+            "name": "complaintTarget",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2439,12 +2433,12 @@
                   "type": "null"
                 }
               ],
-              "title": "Complaint Target"
+              "title": "Complainttarget"
             }
           },
           {
             "in": "query",
-            "name": "quality_band",
+            "name": "qualityBand",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2458,7 +2452,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Quality Band"
+              "title": "Qualityband"
             }
           },
           {
@@ -2497,7 +2491,7 @@
           },
           {
             "in": "query",
-            "name": "compliance_exception",
+            "name": "complianceException",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2508,7 +2502,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Compliance Exception"
+              "title": "Complianceexception"
             }
           },
           {
@@ -2535,7 +2529,7 @@
           {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
-            "name": "as_of",
+            "name": "asOf",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2548,7 +2542,7 @@
                 }
               ],
               "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
-              "title": "As Of"
+              "title": "Asof"
             }
           }
         ],
@@ -2690,7 +2684,7 @@
           {
             "description": "Calls touching this line. A call may touch several.",
             "in": "query",
-            "name": "product_line",
+            "name": "productLine",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2705,7 +2699,7 @@
                 }
               ],
               "description": "Calls touching this line. A call may touch several.",
-              "title": "Product Line"
+              "title": "Productline"
             }
           },
           {
@@ -2788,7 +2782,7 @@
           },
           {
             "in": "query",
-            "name": "complaint_target",
+            "name": "complaintTarget",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2802,12 +2796,12 @@
                   "type": "null"
                 }
               ],
-              "title": "Complaint Target"
+              "title": "Complainttarget"
             }
           },
           {
             "in": "query",
-            "name": "quality_band",
+            "name": "qualityBand",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2821,7 +2815,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Quality Band"
+              "title": "Qualityband"
             }
           },
           {
@@ -2860,7 +2854,7 @@
           },
           {
             "in": "query",
-            "name": "compliance_exception",
+            "name": "complianceException",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2871,7 +2865,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Compliance Exception"
+              "title": "Complianceexception"
             }
           },
           {
@@ -2898,7 +2892,7 @@
           {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
-            "name": "as_of",
+            "name": "asOf",
             "required": false,
             "schema": {
               "anyOf": [
@@ -2911,7 +2905,7 @@
                 }
               ],
               "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
-              "title": "As Of"
+              "title": "Asof"
             }
           }
         ],
@@ -3053,7 +3047,7 @@
           {
             "description": "Calls touching this line. A call may touch several.",
             "in": "query",
-            "name": "product_line",
+            "name": "productLine",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3068,7 +3062,7 @@
                 }
               ],
               "description": "Calls touching this line. A call may touch several.",
-              "title": "Product Line"
+              "title": "Productline"
             }
           },
           {
@@ -3151,7 +3145,7 @@
           },
           {
             "in": "query",
-            "name": "complaint_target",
+            "name": "complaintTarget",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3165,12 +3159,12 @@
                   "type": "null"
                 }
               ],
-              "title": "Complaint Target"
+              "title": "Complainttarget"
             }
           },
           {
             "in": "query",
-            "name": "quality_band",
+            "name": "qualityBand",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3184,7 +3178,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Quality Band"
+              "title": "Qualityband"
             }
           },
           {
@@ -3223,7 +3217,7 @@
           },
           {
             "in": "query",
-            "name": "compliance_exception",
+            "name": "complianceException",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3234,7 +3228,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Compliance Exception"
+              "title": "Complianceexception"
             }
           },
           {
@@ -3261,7 +3255,7 @@
           {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
-            "name": "as_of",
+            "name": "asOf",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3274,7 +3268,7 @@
                 }
               ],
               "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
-              "title": "As Of"
+              "title": "Asof"
             }
           }
         ],
@@ -3416,7 +3410,7 @@
           {
             "description": "Calls touching this line. A call may touch several.",
             "in": "query",
-            "name": "product_line",
+            "name": "productLine",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3431,7 +3425,7 @@
                 }
               ],
               "description": "Calls touching this line. A call may touch several.",
-              "title": "Product Line"
+              "title": "Productline"
             }
           },
           {
@@ -3514,7 +3508,7 @@
           },
           {
             "in": "query",
-            "name": "complaint_target",
+            "name": "complaintTarget",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3528,12 +3522,12 @@
                   "type": "null"
                 }
               ],
-              "title": "Complaint Target"
+              "title": "Complainttarget"
             }
           },
           {
             "in": "query",
-            "name": "quality_band",
+            "name": "qualityBand",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3547,7 +3541,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Quality Band"
+              "title": "Qualityband"
             }
           },
           {
@@ -3586,7 +3580,7 @@
           },
           {
             "in": "query",
-            "name": "compliance_exception",
+            "name": "complianceException",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3597,7 +3591,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Compliance Exception"
+              "title": "Complianceexception"
             }
           },
           {
@@ -3624,7 +3618,7 @@
           {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
-            "name": "as_of",
+            "name": "asOf",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3637,7 +3631,7 @@
                 }
               ],
               "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
-              "title": "As Of"
+              "title": "Asof"
             }
           }
         ],
@@ -3779,7 +3773,7 @@
           {
             "description": "Calls touching this line. A call may touch several.",
             "in": "query",
-            "name": "product_line",
+            "name": "productLine",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3794,7 +3788,7 @@
                 }
               ],
               "description": "Calls touching this line. A call may touch several.",
-              "title": "Product Line"
+              "title": "Productline"
             }
           },
           {
@@ -3877,7 +3871,7 @@
           },
           {
             "in": "query",
-            "name": "complaint_target",
+            "name": "complaintTarget",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3891,12 +3885,12 @@
                   "type": "null"
                 }
               ],
-              "title": "Complaint Target"
+              "title": "Complainttarget"
             }
           },
           {
             "in": "query",
-            "name": "quality_band",
+            "name": "qualityBand",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3910,7 +3904,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Quality Band"
+              "title": "Qualityband"
             }
           },
           {
@@ -3949,7 +3943,7 @@
           },
           {
             "in": "query",
-            "name": "compliance_exception",
+            "name": "complianceException",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3960,7 +3954,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Compliance Exception"
+              "title": "Complianceexception"
             }
           },
           {
@@ -3987,7 +3981,7 @@
           {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
-            "name": "as_of",
+            "name": "asOf",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4000,7 +3994,7 @@
                 }
               ],
               "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
-              "title": "As Of"
+              "title": "Asof"
             }
           }
         ],
@@ -4142,7 +4136,7 @@
           {
             "description": "Calls touching this line. A call may touch several.",
             "in": "query",
-            "name": "product_line",
+            "name": "productLine",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4157,7 +4151,7 @@
                 }
               ],
               "description": "Calls touching this line. A call may touch several.",
-              "title": "Product Line"
+              "title": "Productline"
             }
           },
           {
@@ -4240,7 +4234,7 @@
           },
           {
             "in": "query",
-            "name": "complaint_target",
+            "name": "complaintTarget",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4254,12 +4248,12 @@
                   "type": "null"
                 }
               ],
-              "title": "Complaint Target"
+              "title": "Complainttarget"
             }
           },
           {
             "in": "query",
-            "name": "quality_band",
+            "name": "qualityBand",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4273,7 +4267,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Quality Band"
+              "title": "Qualityband"
             }
           },
           {
@@ -4312,7 +4306,7 @@
           },
           {
             "in": "query",
-            "name": "compliance_exception",
+            "name": "complianceException",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4323,7 +4317,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Compliance Exception"
+              "title": "Complianceexception"
             }
           },
           {
@@ -4350,7 +4344,7 @@
           {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
-            "name": "as_of",
+            "name": "asOf",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4363,7 +4357,7 @@
                 }
               ],
               "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
-              "title": "As Of"
+              "title": "Asof"
             }
           }
         ],
@@ -4505,7 +4499,7 @@
           {
             "description": "Calls touching this line. A call may touch several.",
             "in": "query",
-            "name": "product_line",
+            "name": "productLine",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4520,7 +4514,7 @@
                 }
               ],
               "description": "Calls touching this line. A call may touch several.",
-              "title": "Product Line"
+              "title": "Productline"
             }
           },
           {
@@ -4603,7 +4597,7 @@
           },
           {
             "in": "query",
-            "name": "complaint_target",
+            "name": "complaintTarget",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4617,12 +4611,12 @@
                   "type": "null"
                 }
               ],
-              "title": "Complaint Target"
+              "title": "Complainttarget"
             }
           },
           {
             "in": "query",
-            "name": "quality_band",
+            "name": "qualityBand",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4636,7 +4630,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Quality Band"
+              "title": "Qualityband"
             }
           },
           {
@@ -4675,7 +4669,7 @@
           },
           {
             "in": "query",
-            "name": "compliance_exception",
+            "name": "complianceException",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4686,7 +4680,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Compliance Exception"
+              "title": "Complianceexception"
             }
           },
           {
@@ -4713,7 +4707,7 @@
           {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
-            "name": "as_of",
+            "name": "asOf",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4726,7 +4720,7 @@
                 }
               ],
               "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
-              "title": "As Of"
+              "title": "Asof"
             }
           }
         ],
@@ -4868,7 +4862,7 @@
           {
             "description": "Calls touching this line. A call may touch several.",
             "in": "query",
-            "name": "product_line",
+            "name": "productLine",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4883,7 +4877,7 @@
                 }
               ],
               "description": "Calls touching this line. A call may touch several.",
-              "title": "Product Line"
+              "title": "Productline"
             }
           },
           {
@@ -4966,7 +4960,7 @@
           },
           {
             "in": "query",
-            "name": "complaint_target",
+            "name": "complaintTarget",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4980,12 +4974,12 @@
                   "type": "null"
                 }
               ],
-              "title": "Complaint Target"
+              "title": "Complainttarget"
             }
           },
           {
             "in": "query",
-            "name": "quality_band",
+            "name": "qualityBand",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4999,7 +4993,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Quality Band"
+              "title": "Qualityband"
             }
           },
           {
@@ -5038,7 +5032,7 @@
           },
           {
             "in": "query",
-            "name": "compliance_exception",
+            "name": "complianceException",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5049,7 +5043,7 @@
                   "type": "null"
                 }
               ],
-              "title": "Compliance Exception"
+              "title": "Complianceexception"
             }
           },
           {
@@ -5076,7 +5070,7 @@
           {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
-            "name": "as_of",
+            "name": "asOf",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5089,7 +5083,7 @@
                 }
               ],
               "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
-              "title": "As Of"
+              "title": "Asof"
             }
           }
         ],
