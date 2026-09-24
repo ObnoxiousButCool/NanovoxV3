@@ -320,3 +320,60 @@ async def test_a_single_day_period_is_allowed(
     body = client.get(EXEC, params={"asOf": AS_OF, "from": "2026-09-20", "to": "2026-09-20"}).json()
 
     assert body["scope"]["considered"] == 1
+
+
+# --------------------------------------------------------------------------
+# The corpus extent: what a period control has to offer
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_the_corpus_extent_is_reported(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed(session_factory, days=[2, 11, 25])
+
+    body = client.get(EXEC, params={"asOf": AS_OF}).json()
+
+    assert body["scope"]["corpusPeriod"] == {"from": "2026-09-02", "to": "2026-09-25"}
+
+
+@pytest.mark.asyncio
+async def test_narrowing_the_period_does_not_shrink_the_corpus_extent(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Otherwise a control could narrow once and never widen again.
+
+    Deriving the extent from the slice just loaded is the obvious shortcut
+    and it is a one-way door: ask for one week, and the only week the
+    picker can now offer is that week.
+    """
+    await seed(session_factory, days=[2, 11, 25])
+
+    body = client.get(EXEC, params={"asOf": AS_OF, "from": "2026-09-10", "to": "2026-09-12"}).json()
+
+    assert body["scope"]["period"] == {"from": "2026-09-10", "to": "2026-09-12"}
+    assert body["scope"]["corpusPeriod"] == {"from": "2026-09-02", "to": "2026-09-25"}
+
+
+@pytest.mark.asyncio
+async def test_undated_calls_do_not_define_the_extent(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed(session_factory, days=[11], undated=3)
+
+    body = client.get(EXEC, params={"asOf": AS_OF}).json()
+
+    assert body["scope"]["corpusPeriod"] == {"from": "2026-09-11", "to": "2026-09-11"}
+
+
+@pytest.mark.asyncio
+async def test_no_dated_call_means_no_extent_claimed(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Null, not today's date. An invented range would be a claim."""
+    await seed(session_factory, days=[], undated=2)
+
+    body = client.get(EXEC, params={"asOf": AS_OF}).json()
+
+    assert body["scope"]["corpusPeriod"] is None

@@ -99,6 +99,13 @@ class CorpusSlice:
     undated: tuple[str, ...] = ()
     #: Calls left out because nothing has analysed them, by reference.
     unanalysed: tuple[str, ...] = ()
+    #: The full extent of dated calls in the corpus, **ignoring** this
+    #: request's period bounds. A client cannot work this out for itself —
+    #: it only ever sees the slice it asked for — and without it a period
+    #: control has nothing to offer: no first week, no last month, no way
+    #: to say "all of it". Both `None` when no call carries a date.
+    available_from: date | None = None
+    available_until: date | None = None
     #: Call Tag Schema fields at least one included call has no value for.
     #: Named so a figure resting on one is withheld rather than computed
     #: over an absence that looks like a zero.

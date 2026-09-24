@@ -183,6 +183,15 @@ class ScopeResponse(CamelModel):
             "does not narrow any metric's own window — see `caveats`."
         ),
     )
+    corpus_period: PeriodResponse | None = Field(
+        default=None,
+        description=(
+            "The full extent of dated calls available, ignoring the requested "
+            "period. This is what a period control offers: without it a client "
+            "that has narrowed once has no way to know what it narrowed from. "
+            "Null when no call carries a date."
+        ),
+    )
     excluded_calls: int = Field(
         default=0,
         description=(
@@ -220,6 +229,11 @@ class ScopeResponse(CamelModel):
             period=(
                 PeriodResponse(**{"from": query.since, "to": query.until})
                 if query.since is not None or query.until is not None
+                else None
+            ),
+            corpus_period=(
+                PeriodResponse(**{"from": corpus.available_from, "to": corpus.available_until})
+                if corpus.available_from is not None or corpus.available_until is not None
                 else None
             ),
             applied_filters=[

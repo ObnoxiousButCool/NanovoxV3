@@ -1153,6 +1153,8 @@ export interface components {
              * @description Calls offered to the filters.
              */
             considered: number;
+            /** @description The full extent of dated calls available, ignoring the requested period. This is what a period control offers: without it a client that has narrowed once has no way to know what it narrowed from. Null when no call carries a date. */
+            corpusPeriod?: components["schemas"]["PeriodResponse"] | null;
             /**
              * Excludedcalls
              * @description Stored calls that reached no figure at all — no date, or never analysed. Counted before filtering.

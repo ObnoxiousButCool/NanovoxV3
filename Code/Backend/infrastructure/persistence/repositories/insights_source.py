@@ -38,11 +38,11 @@ for why each is fatal to a figure rather than merely untidy.
 
 from __future__ import annotations
 
-from datetime import datetime, time, timezone
+from datetime import date, datetime, time, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, TypeVar
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from application.ports.insights_source import CorpusQuery, CorpusSlice, InsightsSource
@@ -104,6 +104,7 @@ class SqlInsightsSource(InsightsSource):
             employers, brokers = await self._reference_data(session)
             rules = await self._rules(session)
             calls, undated, unanalysed, unavailable = await self._calls(session, query)
+            available_from, available_until = await self._extent(session, query)
 
         return CorpusSlice(
             calls=calls,
@@ -112,7 +113,33 @@ class SqlInsightsSource(InsightsSource):
             rules=rules,
             undated=undated,
             unanalysed=unanalysed,
+            available_from=available_from,
+            available_until=available_until,
             unavailable_fields=unavailable,
+        )
+
+    async def _extent(
+        self, session: AsyncSession, query: CorpusQuery
+    ) -> tuple[date | None, date | None]:
+        """The first and last dated call, **before** the period bounds.
+
+        Deliberately not derived from the slice that was just loaded. That
+        slice is what the caller asked for, so deriving the extent from it
+        would make the period control offer only the period already chosen —
+        narrow once and you could never widen again.
+
+        The source filter still applies: a transcript someone pasted to try
+        the pipeline out should not stretch the published date range.
+        """
+        statement = select(func.min(CallRow.occurred_at), func.max(CallRow.occurred_at))
+        if query.sources:
+            statement = statement.where(
+                CallRow.source.in_(sorted(source.value for source in query.sources))
+            )
+        first, last = (await session.execute(statement)).one()
+        return (
+            first.date() if first is not None else None,
+            last.date() if last is not None else None,
         )
 
     async def _reference_data(

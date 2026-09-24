@@ -1915,6 +1915,17 @@
             "title": "Considered",
             "type": "integer"
           },
+          "corpusPeriod": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The full extent of dated calls available, ignoring the requested period. This is what a period control offers: without it a client that has narrowed once has no way to know what it narrowed from. Null when no call carries a date."
+          },
           "excludedCalls": {
             "default": 0,
             "description": "Stored calls that reached no figure at all \u2014 no date, or never analysed. Counted before filtering.",
