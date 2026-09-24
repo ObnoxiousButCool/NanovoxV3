@@ -1,0 +1,104 @@
+/* Design tokens, ported verbatim from the prototype's `app.css` :root.
+ *
+ * Verbatim is the point. These are not values chosen here — they are the
+ * prototype's own, and the prototype wins on presentation (plan §3.0). A
+ * token nudged "slightly" during a port is a difference nobody catches in
+ * review and everybody sees on screen beside the original.
+ *
+ * Three blocks, and the order matters:
+ *
+ *   :root                     light, the default
+ *   @media prefers-color-scheme: dark, guarded by :not([data-theme="light"])
+ *                             the Auto setting, following the OS
+ *   :root[data-theme="dark"]  an explicit choice, which must beat the OS
+ *
+ * Light is the default rather than Auto, deliberately: these pages are read
+ * in meetings and printed, where a dark ground is the wrong starting point
+ * however the laptop is set.
+ *
+ * Components read tokens and never raw values. A hex code in a component is
+ * a token that was not added.
+ */
+
+:root {
+  --ground: #f9f9f7;
+  --surface: #fcfcfb;
+  --surface-2: #f2f1ec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #898781;
+  --rule: #e1e0d9;
+  --rule-strong: #c3c2b7;
+  --brand: #184f95;
+  --brand-soft: #e7eef8;
+  --brand-ink: #123c72;
+
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --seq-1: #86b6ef;
+  --seq-2: #3987e5;
+  --seq-3: #184f95;
+
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --good-text: #006300;
+
+  --shadow: 0 1px 2px rgba(11, 11, 11, .05), 0 1px 1px rgba(11, 11, 11, .04);
+  --r: 6px;
+  --r-lg: 10px;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #232322;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #898781;
+    --rule: #2c2c2a;
+    --rule-strong: #383835;
+    --brand: #3987e5;
+    --brand-soft: #16263a;
+    --brand-ink: #9ec5f4;
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --seq-1: #1c5cab;
+    --seq-2: #3987e5;
+    --seq-3: #86b6ef;
+    --good-text: #0ca30c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #232322;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --ink-3: #898781;
+  --rule: #2c2c2a;
+  --rule-strong: #383835;
+  --brand: #3987e5;
+  --brand-soft: #16263a;
+  --brand-ink: #9ec5f4;
+  --s1: #3987e5;
+  --s2: #d95926;
+  --s3: #199e70;
+  --s4: #c98500;
+  --seq-1: #1c5cab;
+  --seq-2: #3987e5;
+  --seq-3: #86b6ef;
+  --good-text: #0ca30c;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .5);
+}

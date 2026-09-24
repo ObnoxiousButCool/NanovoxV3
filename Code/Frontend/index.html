@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NanoVox Insights</title>
+    <!--
+      Stamp the theme before first paint.
+
+      Inline and synchronous on purpose. Run from the bundle instead, and the
+      ground colour is already painted by the time the module loads, so a
+      reader on dark sees a white flash on every navigation. Kept byte-for-byte
+      in step with THEME_BOOTSTRAP_SCRIPT in src/shared/design/theme.ts, which
+      a test asserts.
+    -->
+    <script>try{var t=localStorage.getItem('nvx-theme');if(t!=='system')document.documentElement.setAttribute('data-theme',t==='dark'?'dark':'light')}catch(e){}</script>
   </head>
   <body>
     <div id="root"></div>

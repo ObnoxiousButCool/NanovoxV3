@@ -1,0 +1,446 @@
+/* Primitive styles, ported from the prototype's `app.css` with `v2.css`'s
+ * overrides folded in. Colours are tokens; a raw hex here is a missing token.
+ */
+
+.nv-panel {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  padding: 18px 20px 20px;
+  min-width: 0;
+  font-family: var(--body);
+  color: var(--ink);
+}
+
+.nv-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.nv-panel h2 {
+  font:
+    600 18px/1.25 var(--display);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+}
+
+.nv-panel-aside {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nv-sub {
+  font-size: 13.5px;
+  color: var(--ink-2);
+  margin: 4px 0 14px;
+  max-width: 68ch;
+}
+
+/* --- epistemic chips. Border style carries meaning too, for greyscale. --- */
+.nv-cls {
+  font:
+    600 9.5px/1 var(--body);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 4px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.nv-cls-observed {
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+}
+
+.nv-cls-reference {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border-color: var(--rule);
+}
+
+.nv-cls-derived {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border-style: dashed;
+  border-color: var(--rule-strong);
+}
+
+.nv-cls-pattern {
+  background: transparent;
+  color: var(--ink-2);
+  border-color: var(--ink-3);
+}
+
+.nv-cls-inference {
+  background: transparent;
+  color: var(--serious);
+  border-color: var(--serious);
+  border-style: dashed;
+}
+
+.nv-cls-recommendation {
+  background: transparent;
+  color: var(--good-text);
+  border-color: var(--good-text);
+}
+
+/* --- status pills. Shape, not only colour. --- */
+.nv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.nv-pill::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: currentcolor;
+  flex: 0 0 8px;
+}
+
+.nv-pill-flagged {
+  color: var(--critical);
+}
+
+.nv-pill-flagged::before {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  border-radius: 0;
+}
+
+.nv-pill-notFlagged {
+  color: var(--good-text);
+}
+
+.nv-pill-notFlagged::before {
+  border-radius: 999px;
+}
+
+.nv-pill-ineligible {
+  color: var(--ink-3);
+}
+
+.nv-pill-ineligible::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentcolor;
+  border-radius: 999px;
+}
+
+/* --- withheld. Never a zero, never an empty cell. --- */
+.nv-withheld {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  color: var(--ink-3);
+}
+
+.nv-withheld-mark {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.nv-withheld-why {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.nv-withheld-why small {
+  display: block;
+  color: var(--ink-3);
+  opacity: 0.85;
+}
+
+.nv-figure {
+  font-variant-numeric: tabular-nums;
+}
+
+.nv-basis {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- tiles --- */
+.nv-bigrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+}
+
+.nv-big {
+  flex: 1 1 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: var(--surface);
+  padding: 16px 17px;
+  min-width: 0;
+  font-family: var(--body);
+}
+
+.nv-bigrow > .nv-big:first-child {
+  border-top-left-radius: var(--r-lg);
+  border-bottom-left-radius: var(--r-lg);
+}
+
+.nv-bigrow > .nv-big:last-child {
+  border-top-right-radius: var(--r-lg);
+  border-bottom-right-radius: var(--r-lg);
+}
+
+.nv-big .nv-k {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nv-big .nv-v {
+  font:
+    600 34px/1 var(--display);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.nv-big .nv-m {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.35;
+}
+
+.nv-big.nv-hot {
+  box-shadow: inset 3px 0 0 var(--critical);
+}
+
+.nv-big.nv-warm {
+  box-shadow: inset 3px 0 0 var(--serious);
+}
+
+.nv-big.nv-withheld {
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
+.nv-big.nv-withheld .nv-v {
+  color: var(--ink-3);
+}
+
+/* --- small text --- */
+.nv-delta {
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.nv-delta.nv-up {
+  color: var(--critical);
+}
+
+.nv-delta.nv-down {
+  color: var(--good-text);
+}
+
+.nv-delta.nv-flat {
+  color: var(--ink-3);
+}
+
+.nv-empty {
+  padding: 22px 14px;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 12.5px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--r);
+}
+
+.nv-empty b {
+  display: block;
+  font-family: var(--display);
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+.nv-note {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border-radius: var(--r);
+  padding: 8px 10px;
+}
+
+.nv-note.nv-suppressed {
+  border-left: 3px solid var(--warning);
+}
+
+.nv-quote {
+  font-size: 12.5px;
+  line-height: 1.55;
+  border-left: 2px solid var(--brand);
+  padding-left: 11px;
+  color: var(--ink);
+  margin: 0;
+}
+
+.nv-quote cite {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-style: normal;
+  margin-top: 4px;
+}
+
+.nv-claim {
+  border-left: 2px solid var(--rule-strong);
+  padding-left: 11px;
+}
+
+.nv-claim + .nv-claim {
+  margin-top: 9px;
+}
+
+.nv-sev {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.nv-sev-CRITICAL {
+  color: var(--critical);
+}
+
+.nv-sev-HIGH {
+  color: var(--serious);
+}
+
+.nv-sev-MEDIUM {
+  color: var(--ink-2);
+}
+
+.nv-sev-LOW {
+  color: var(--ink-3);
+}
+
+/* --- tables --- */
+.nv-tblwrap {
+  overflow-x: auto;
+  margin: 0 -20px;
+  padding: 0 20px;
+}
+
+.nv-tblwrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.nv-tblwrap th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--rule-strong);
+  padding: 8px 10px 6px;
+  position: sticky;
+  top: var(--nv-head-h, 0);
+  z-index: 5;
+  background: var(--surface);
+}
+
+.nv-tblwrap td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+  color: var(--ink);
+}
+
+.nv-tblwrap .nv-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.nv-tblwrap tr.nv-clickable {
+  cursor: pointer;
+}
+
+.nv-tblwrap tr.nv-clickable:hover td {
+  background: var(--surface-2);
+}
+
+.nv-tblwrap tr.nv-clickable:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+/* --- tooltip. Fixed to the viewport so a scrolling panel cannot clip it. --- */
+.nv-info {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.nv-info > button {
+  appearance: none;
+  cursor: help;
+  border: 1px solid var(--rule-strong);
+  background: var(--surface);
+  width: 19px;
+  height: 19px;
+  border-radius: 999px;
+  padding: 0;
+  font:
+    600 11.5px/1 var(--display);
+  color: var(--ink-3);
+  display: grid;
+  place-items: center;
+}
+
+.nv-info > button:hover,
+.nv-info > button:focus-visible {
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+.nv-tip {
+  position: fixed;
+  z-index: 40;
+  width: min(400px, 78vw);
+  padding: 12px 14px;
+  border-radius: var(--r);
+  background: var(--ink);
+  color: var(--ground);
+  font:
+    400 13px/1.5 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: 0 10px 30px rgb(11 11 11 / 25%);
+  white-space: normal;
+}
+
+.nv-tip[hidden] {
+  display: none;
+}
+
+.nv-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

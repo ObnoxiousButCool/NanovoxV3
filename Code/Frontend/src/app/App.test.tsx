@@ -5,33 +5,79 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from '@/app/App'
 import { createQueryClient } from '@/app/queryClient'
+import { UNPLACED_SCREENS } from '@/shared/design/navigation'
+import { DrawerProvider } from '@/shared/design/drawer'
+import { ThemeProvider } from '@/shared/design/ThemeProvider'
 
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  localStorage.clear()
+  document.documentElement.removeAttribute('data-theme')
 })
 
 function renderApp(initialPath: string): void {
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network down')))
   render(
     <QueryClientProvider client={createQueryClient()}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <App />
-      </MemoryRouter>
+      <ThemeProvider>
+        <DrawerProvider>
+          <MemoryRouter initialEntries={[initialPath]}>
+            <App />
+          </MemoryRouter>
+        </DrawerProvider>
+      </ThemeProvider>
     </QueryClientProvider>,
   )
 }
 
 describe('App', () => {
-  it('renders the status page at the root route', () => {
+  it('sends the root to the executive overview', () => {
     renderApp('/')
+
+    expect(screen.getByRole('heading', { name: 'Executive overview' })).toBeInTheDocument()
+  })
+
+  it('redirects an unknown route rather than showing nothing', () => {
+    renderApp('/does-not-exist-yet')
+
+    expect(screen.getByRole('heading', { name: 'Executive overview' })).toBeInTheDocument()
+  })
+
+  it('says a screen is unbuilt rather than rendering an empty one', () => {
+    // An empty screen reads as "no data", which is the one thing this
+    // application must never accidentally claim.
+    renderApp('/risk')
+
+    expect(screen.getByText(/not built yet/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'What are the risks?' })).toBeInTheDocument()
+  })
+
+  it('keeps the status page reachable at its own route', () => {
+    renderApp('/status')
 
     expect(screen.getByRole('heading', { name: 'NanoVox Insights' })).toBeInTheDocument()
   })
 
-  it('redirects an unknown route to the root', () => {
-    renderApp('/does-not-exist-yet')
+  it('renders the rail on every screen', () => {
+    renderApp('/agents')
 
-    expect(screen.getByRole('heading', { name: 'NanoVox Insights' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Screens' })).toBeInTheDocument()
+  })
+
+  it('does not route to a screen whose place is still undecided', () => {
+    // C5 and C6. Both endpoints are built; neither screen has been agreed.
+    // An unknown path redirects, so reaching the overview is the assertion
+    // that no placeholder was silently mounted for them.
+    for (const unplaced of UNPLACED_SCREENS) {
+      renderApp(unplaced.to)
+
+      expect(screen.getAllByRole('heading', { name: 'Executive overview' }).length).toBeGreaterThan(
+        0,
+      )
+      screen.getAllByRole('navigation').forEach((nav) => {
+        expect(nav.textContent).not.toContain(unplaced.label)
+      })
+    }
   })
 })
