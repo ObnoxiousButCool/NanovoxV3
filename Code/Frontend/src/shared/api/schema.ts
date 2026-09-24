@@ -123,6 +123,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/insights/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every value the filter bar can offer */
+        get: operations["read_filter_options_api_v1_insights_filters_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/insights/hierarchy": {
         parameters: {
             query?: never;
@@ -516,6 +533,23 @@ export interface components {
             /** Employers */
             employers: components["schemas"]["EmployerNodeResponse"][];
         };
+        /** BrokerOptionResponse */
+        BrokerOptionResponse: {
+            /**
+             * Agency
+             * @description What a reader calls this broker.
+             */
+            agency: string;
+            /**
+             * Name
+             * @description The individual contact, not the agency.
+             */
+            name: string;
+            /** Ref */
+            ref: string;
+            /** Region */
+            region: string;
+        };
         /** BucketResponse */
         BucketResponse: {
             /**
@@ -684,6 +718,20 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** EmployerOptionResponse */
+        EmployerOptionResponse: {
+            /**
+             * Brokerref
+             * @description Broker of record, for a dependent filter.
+             */
+            brokerRef: string;
+            /** Name */
+            name: string;
+            /** Ref */
+            ref: string;
+            /** Region */
+            region: string;
+        };
         /** ExecScorecardResponse */
         ExecScorecardResponse: {
             /**
@@ -759,6 +807,54 @@ export interface components {
             value?: number | null;
             /** @description Non-null exactly when `published` is false. */
             withheldReason?: components["schemas"]["CodedValue"] | null;
+        };
+        /**
+         * FilterOptionsResponse
+         * @description Every value the filter bar can offer, by where it came from.
+         */
+        FilterOptionsResponse: {
+            /**
+             * Agentrefs
+             * @description Observed on calls, not reference data, so this grows as more calls are analysed. References only — agent names are not available to this layer.
+             */
+            agentRefs: string[];
+            /**
+             * Brokers
+             * @description From reference data. Every broker, including those with no calls.
+             */
+            brokers: components["schemas"]["BrokerOptionResponse"][];
+            /** Complainttargets */
+            complaintTargets: components["schemas"]["CodedValue"][];
+            /** Controlexceptiontypes */
+            controlExceptionTypes: components["schemas"]["CodedValue"][];
+            /**
+             * Employers
+             * @description From reference data. Every employer, including those with no calls.
+             */
+            employers: components["schemas"]["EmployerOptionResponse"][];
+            /**
+             * Regions
+             * @description From reference data. Complete.
+             */
+            regions: string[];
+            /** Ruleconfidences */
+            ruleConfidences: components["schemas"]["CodedValue"][];
+            /** Rulelayers */
+            ruleLayers: components["schemas"]["CodedValue"][];
+            /** Signalseverities */
+            signalSeverities: components["schemas"]["CodedValue"][];
+            /** Signals */
+            signals: components["schemas"]["CodedValue"][];
+            /**
+             * Touchpoints
+             * @description Observed on calls, not reference data. Grows with the corpus.
+             */
+            touchpoints: string[];
+            /**
+             * Unlabelledfilters
+             * @description Filters whose values have no display wording anywhere — not here, not in the workbook. A client must render the code. Named rather than silently omitted, so the gap is visible instead of being filled by invented text.
+             */
+            unlabelledFilters: string[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1743,6 +1839,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExecScorecardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_filter_options_api_v1_insights_filters_get: {
+        parameters: {
+            query?: {
+                /** @description Employer region. */
+                region?: string[] | null;
+                /** @description Broker of record, from reference data — not who was named aloud. */
+                broker?: string[] | null;
+                /** @description Employer reference. */
+                employer?: string[] | null;
+                /** @description Agent reference. */
+                agent?: string[] | null;
+                category?: components["schemas"]["Category"][] | null;
+                /** @description Calls touching this line. A call may touch several. */
+                productLine?: components["schemas"]["ProductLine"][] | null;
+                /** @description Where the failure originated, not where it surfaced. */
+                touchpoint?: string[] | null;
+                outcome?: components["schemas"]["Outcome"][] | null;
+                signal?: components["schemas"]["SignalType"][] | null;
+                intent?: components["schemas"]["IntentType"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
+                escalated?: boolean | null;
+                /** @description Whether a complaint was made. */
+                complaint?: boolean | null;
+                complianceException?: boolean | null;
+                /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
+                source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
+                /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
+                asOf?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilterOptionsResponse"];
                 };
             };
             /** @description Validation Error */

@@ -11,6 +11,7 @@ from frameworks_drivers.api.v1.insights import (
     agents,
     demand,
     exec_scorecard,
+    filters,
     hierarchy,
     risk,
     rules,
@@ -22,6 +23,7 @@ router.include_router(reference.router)
 router.include_router(ingest.router)
 router.include_router(providers.router)
 router.include_router(runs.router)
+router.include_router(filters.router)
 router.include_router(exec_scorecard.router)
 router.include_router(risk.router)
 router.include_router(accounts.router)

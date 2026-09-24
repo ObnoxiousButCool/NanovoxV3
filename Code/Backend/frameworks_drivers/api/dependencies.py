@@ -23,6 +23,7 @@ from application.use_cases.read_insights import (
     GetAgents,
     GetDemand,
     GetExecScorecard,
+    GetFilterOptions,
     GetHierarchy,
     GetRules,
 )
@@ -66,6 +67,10 @@ def get_list_providers_use_case(container: ContainerDep) -> ListProviders:
 
 def get_run_extraction_over_corpus_use_case(container: ContainerDep) -> RunExtractionOverCorpus:
     return container.run_extraction_over_corpus()
+
+
+def get_filter_options_use_case(container: ContainerDep) -> GetFilterOptions:
+    return container.get_filter_options()
 
 
 def get_exec_scorecard_use_case(container: ContainerDep) -> GetExecScorecard:
@@ -116,6 +121,7 @@ RunExtractionOverCorpusDep = Annotated[
     RunExtractionOverCorpus, Depends(get_run_extraction_over_corpus_use_case)
 ]
 GetExecScorecardDep = Annotated[GetExecScorecard, Depends(get_exec_scorecard_use_case)]
+GetFilterOptionsDep = Annotated[GetFilterOptions, Depends(get_filter_options_use_case)]
 GetAccountRiskDep = Annotated[GetAccountRisk, Depends(get_account_risk_use_case)]
 DashboardConfigDep = Annotated[DashboardConfig, Depends(get_dashboard_config)]
 GetAccountDetailDep = Annotated[GetAccountDetail, Depends(get_account_detail_use_case)]

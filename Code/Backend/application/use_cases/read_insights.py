@@ -41,7 +41,7 @@ from domain.aggregation.agent_events import (
     control_exception_rates,
 )
 from domain.aggregation.broker_friction import BrokerFriction, ranked_book_friction
-from domain.aggregation.call_tags import CallContext, Window
+from domain.aggregation.call_tags import BrokerFacts, CallContext, EmployerFacts, Window
 from domain.aggregation.contact_rate import PeerComparison, employer_contact_rate, peer_comparison
 from domain.aggregation.demand import (
     SelfInflictedDemand,
@@ -762,3 +762,73 @@ def _events_window(config: DashboardConfig, as_of: date) -> Window:
     if window is None:  # pragma: no cover - the config would have to drop the window
         raise ValueError("Agent events need a period and the config gives none.")
     return window
+
+
+@dataclass(frozen=True)
+class FilterOptions:
+    """What a reader may filter by, and where each list came from.
+
+    ## Why this exists
+
+    Not because the values are undiscoverable. `GetHierarchy` already
+    returns `scope.corpus.employers` and `scope.corpus.brokers` — reference
+    data, unfiltered — so those two lists can be scraped from a screen
+    endpoint today.
+
+    It exists for the three lists that cannot: `regions` (only by a client
+    re-deriving it), and `agent_refs` and `touchpoints`, which no endpoint
+    returns. And so that a filter bar does not have to compute an entire
+    screen — drill tree, matrix, broker friction — to fill four dropdowns,
+    or break when that screen's payload changes shape.
+
+    ## Reference lists are the whole book; observed lists are the corpus
+
+    `regions`, `brokers` and `employers` come from reference data, so they
+    are complete regardless of who called. A broker with no calls this
+    period is still a broker you may filter by, and its absence from the
+    list would read as "this broker does not exist".
+
+    `agents` and `touchpoints` have no reference sheet — they are only ever
+    observed on calls — so those lists are what the corpus contains. The
+    response says which is which rather than presenting five lists as if
+    they were the same kind of thing.
+    """
+
+    regions: tuple[str, ...]
+    brokers: tuple[BrokerFacts, ...]
+    employers: tuple[EmployerFacts, ...]
+    #: References only. Agent *names* live on the transcript entity, which
+    #: the aggregation layer deliberately cannot reach, so inventing a
+    #: display name here would mean inventing it.
+    agent_refs: tuple[str, ...]
+    touchpoints: tuple[str, ...]
+
+
+class GetFilterOptions:
+    """Every value the filter bar can offer.
+
+    Takes the request only for its corpus scope — the sources and the
+    period. It deliberately does **not** apply `request.filters`: applying
+    them is exactly the bug this endpoint exists to prevent.
+    """
+
+    def __init__(self, source: InsightsSource) -> None:
+        self._source = source
+
+    async def execute(self, request: InsightsRequest) -> FilterOptions:
+        corpus = await self._source.load(
+            CorpusQuery(sources=request.sources, since=request.since, until=request.until)
+        )
+
+        regions = {employer.region for employer in corpus.employers if employer.region}
+        regions |= {broker.region for broker in corpus.brokers if broker.region}
+
+        return FilterOptions(
+            regions=tuple(sorted(regions)),
+            brokers=tuple(sorted(corpus.brokers, key=lambda broker: broker.agency)),
+            employers=tuple(sorted(corpus.employers, key=lambda employer: employer.name)),
+            agent_refs=tuple(sorted({call.agent_ref for call in corpus.calls if call.agent_ref})),
+            touchpoints=tuple(
+                sorted({call.tags.touchpoint for call in corpus.calls if call.tags.touchpoint})
+            ),
+        )

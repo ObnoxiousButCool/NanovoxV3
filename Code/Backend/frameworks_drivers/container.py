@@ -55,6 +55,7 @@ from application.use_cases.read_insights import (
     GetAgents,
     GetDemand,
     GetExecScorecard,
+    GetFilterOptions,
     GetHierarchy,
     GetRules,
     InsightsReader,
@@ -139,6 +140,12 @@ class Container:
 
     def get_exec_scorecard(self) -> GetExecScorecard:
         return GetExecScorecard(self.insights_reader(), self.dashboard_config)
+
+    def get_filter_options(self) -> GetFilterOptions:
+        # Takes the source directly, not the reader: the reader applies
+        # filters, and applying them here is the bug this endpoint exists
+        # to prevent.
+        return GetFilterOptions(self.insights_source)
 
     def get_account_risk(self) -> GetAccountRisk:
         return GetAccountRisk(self.insights_reader(), self.dashboard_config)

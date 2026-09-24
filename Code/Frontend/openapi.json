@@ -548,6 +548,36 @@
         "title": "BrokerNodeResponse",
         "type": "object"
       },
+      "BrokerOptionResponse": {
+        "properties": {
+          "agency": {
+            "description": "What a reader calls this broker.",
+            "title": "Agency",
+            "type": "string"
+          },
+          "name": {
+            "description": "The individual contact, not the agency.",
+            "title": "Name",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "agency",
+          "name",
+          "region"
+        ],
+        "title": "BrokerOptionResponse",
+        "type": "object"
+      },
       "BucketResponse": {
         "properties": {
           "calls": {
@@ -878,6 +908,35 @@
         "title": "EmployerNodeResponse",
         "type": "object"
       },
+      "EmployerOptionResponse": {
+        "properties": {
+          "brokerRef": {
+            "description": "Broker of record, for a dependent filter.",
+            "title": "Brokerref",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "name",
+          "region",
+          "brokerRef"
+        ],
+        "title": "EmployerOptionResponse",
+        "type": "object"
+      },
       "ExecScorecardResponse": {
         "properties": {
           "asOf": {
@@ -1029,6 +1088,117 @@
           "epistemic"
         ],
         "title": "FigureResponse",
+        "type": "object"
+      },
+      "FilterOptionsResponse": {
+        "description": "Every value the filter bar can offer, by where it came from.",
+        "properties": {
+          "agentRefs": {
+            "description": "Observed on calls, not reference data, so this grows as more calls are analysed. References only \u2014 agent names are not available to this layer.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Agentrefs",
+            "type": "array"
+          },
+          "brokers": {
+            "description": "From reference data. Every broker, including those with no calls.",
+            "items": {
+              "$ref": "#/components/schemas/BrokerOptionResponse"
+            },
+            "title": "Brokers",
+            "type": "array"
+          },
+          "complaintTargets": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Complainttargets",
+            "type": "array"
+          },
+          "controlExceptionTypes": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Controlexceptiontypes",
+            "type": "array"
+          },
+          "employers": {
+            "description": "From reference data. Every employer, including those with no calls.",
+            "items": {
+              "$ref": "#/components/schemas/EmployerOptionResponse"
+            },
+            "title": "Employers",
+            "type": "array"
+          },
+          "regions": {
+            "description": "From reference data. Complete.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Regions",
+            "type": "array"
+          },
+          "ruleConfidences": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Ruleconfidences",
+            "type": "array"
+          },
+          "ruleLayers": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Rulelayers",
+            "type": "array"
+          },
+          "signalSeverities": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Signalseverities",
+            "type": "array"
+          },
+          "signals": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "touchpoints": {
+            "description": "Observed on calls, not reference data. Grows with the corpus.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Touchpoints",
+            "type": "array"
+          },
+          "unlabelledFilters": {
+            "description": "Filters whose values have no display wording anywhere \u2014 not here, not in the workbook. A client must render the code. Named rather than silently omitted, so the gap is visible instead of being filled by invented text.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unlabelledfilters",
+            "type": "array"
+          }
+        },
+        "required": [
+          "regions",
+          "brokers",
+          "employers",
+          "agentRefs",
+          "touchpoints",
+          "signals",
+          "signalSeverities",
+          "complaintTargets",
+          "controlExceptionTypes",
+          "ruleLayers",
+          "ruleConfidences",
+          "unlabelledFilters"
+        ],
+        "title": "FilterOptionsResponse",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -4488,6 +4658,407 @@
           }
         },
         "summary": "The executive scorecard",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/filters": {
+      "get": {
+        "operationId": "read_filter_options_api_v1_insights_filters_get",
+        "parameters": [
+          {
+            "description": "Employer region.",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer region.",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+            "in": "query",
+            "name": "broker",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+              "title": "Broker"
+            }
+          },
+          {
+            "description": "Employer reference.",
+            "in": "query",
+            "name": "employer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer reference.",
+              "title": "Employer"
+            }
+          },
+          {
+            "description": "Agent reference.",
+            "in": "query",
+            "name": "agent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Agent reference.",
+              "title": "Agent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "description": "Calls touching this line. A call may touch several.",
+            "in": "query",
+            "name": "productLine",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductLine"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Calls touching this line. A call may touch several.",
+              "title": "Productline"
+            }
+          },
+          {
+            "description": "Where the failure originated, not where it surfaced.",
+            "in": "query",
+            "name": "touchpoint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the failure originated, not where it surfaced.",
+              "title": "Touchpoint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Outcome"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SignalType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/IntentType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complaintTarget",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintAttribution"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complainttarget"
+            }
+          },
+          {
+            "in": "query",
+            "name": "qualityBand",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/QualityBand"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Qualityband"
+            }
+          },
+          {
+            "in": "query",
+            "name": "escalated",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Escalated"
+            }
+          },
+          {
+            "description": "Whether a complaint was made.",
+            "in": "query",
+            "name": "complaint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Whether a complaint was made.",
+              "title": "Complaint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complianceException",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/CallSource"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
+            }
+          },
+          {
+            "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+            "in": "query",
+            "name": "asOf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+              "title": "Asof"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilterOptionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Every value the filter bar can offer",
         "tags": [
           "insights"
         ]
