@@ -1,0 +1,224 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>What Are The Risks</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="v2.css">
+<script>
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+} catch (e) {}
+</script>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead"><div id="head"></div><div id="filters"></div></div>
+    <div class="wrap" id="body"></div>
+    <p class="srcline">95 employers, 30 brokers and 20 agents from the v9 workbook; 100 written calls, 6 Jul – 25 Sep 2026.
+      A risk indicator is a condition observed in calls, not a churn prediction.</p>
+  </main>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="nv2.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("index.html");
+  document.getElementById("head").innerHTML = NV.pageHead("What are the risks?",
+    "This page shows every risk indicator across accounts, what is driving it and how calls are going. " +
+    "Use it to decide which accounts need attention first. Use the filters to narrow by period, region, broker or account.",
+    "<p>A risk indicator is one of ten conditions seen in calls, such as an unresolved call, a complaint " +
+    "against us or a missed escalation. An account with two or more unrelated indicators is <b>flagged</b>.</p>" +
+    "<p>Tags on each panel say what kind of figure it is: <b>observed</b> is counted from calls, " +
+    "<b>reference</b> is an account fact, <b>pattern</b> is a shape across calls with no cause claimed.</p>");
+
+  let showAll = false;
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+  function panel(cls, title, tip, chip, sub, body) {
+    return '<section class="panel ' + cls + '"><header><div><h2>' + title + (tip ? NV.info(tip) : "") +
+      "</h2></div>" + (chip ? NV.clsChip(chip) : "") + "</header>" +
+      (sub ? '<p class="sub">' + sub + "</p>" : "") + body + "</section>";
+  }
+
+  function render() {
+    const calls = NV.calls(), prior = NV.callsPrior();
+    const emps = NV.employersInScope();
+    const flagged = emps.filter(NV.isFlagged);
+    const high = emps.filter((e) => e.scoped_band === "High");
+    const renewSoon = flagged.filter((e) => NV.monthsTo(e.renewal_m) <= NV.RENEW_SOON);
+    const unres = calls.filter((c) => c.outcome === "UNRESOLVED").length;
+    const unresPrior = prior.filter((c) => c.outcome === "UNRESOLVED").length;
+    const trig = calls.filter((c) => c.esc_triggered).length;
+    const handled = calls.filter((c) => c.esc_handled).length;
+    const missed = trig - handled;
+    const exitN = NV.pbCount("exit_language");
+
+    const drv = D.drivers.map((d) => {
+      const ids = d.calls.filter((id) => calls.some((c) => c.id === id));
+      return Object.assign({}, d, { scoped: ids.length, ids: ids });
+    }).filter((d) => d.scoped > 0).sort((a, b) => b.scoped - a.scoped);
+    const em = D.emerging.filter((e) => e.delta >= 1);
+    const arch = NV.archetypeSplit(calls);
+    const bad = arch.filter((a) => a.adverse);
+    const badN = bad.reduce((t, a) => t + a.n, 0);
+
+    /* AI insights. PRODUCTION: model call over these computed facts. */
+    const ins = [];
+    ins.push({ sev: "high", focus: "renew_soon",
+      html: "<b>" + flagged.length + " of " + emps.length + " accounts are flagged</b>, " + high.length +
+        " of them High. <b>" + renewSoon.length + "</b> renew between October and January, so they come first.",
+      meta: "Account risk" });
+    if (drv[0]) ins.push({ sev: "med", focus: drv[0].code,
+      html: "<b>" + NV.esc(drv[0].label) + "</b> is the most common indicator: " + drv[0].scoped + " calls across " +
+        drv[0].employers + " accounts, mostly " + NV.esc(drv[0].top_category) + ".",
+      meta: "Top driver" });
+    if (trig) ins.push({ sev: missed ? "high" : "good", focus: missed ? "escalation_missed" : null,
+      html: missed ? "<b>" + missed + " of " + trig + " warranted escalations were not given.</b> Measured against all calls " +
+        "this would read as " + Math.round(handled / Math.max(calls.length, 1) * 100) + "% and look fine."
+        : "Every warranted escalation in this scope was handled.",
+      meta: "Control" });
+    if (em[0]) ins.push({ sev: "info",
+      html: "<b>" + NV.esc(NV.titleCase(em[0].key)) + "</b> is rising across the quarter (" + em[0].buckets.join(" → ") +
+        "). Worth watching; too few calls yet to call it a trend.",
+      meta: "Emerging" });
+
+    /* Accounts table. */
+    const ranked = emps.filter((e) => e.scoped_written > 0).sort((a, b) =>
+      b.scoped_families - a.scoped_families || NV.monthsTo(a.renewal_m) - NV.monthsTo(b.renewal_m) ||
+      b.enrolled - a.enrolled);
+    const shown = showAll ? ranked.filter((e) => e.scoped_families > 0) : ranked.slice(0, 10);
+    const moreN = ranked.filter((e) => e.scoped_families > 0).length - 10;
+    const accounts = panel("c12", "Accounts at risk",
+      "<p>Ranked by how many <b>unrelated</b> indicators the account's calls raise, then by how soon it renews.</p>" +
+      "<p>Risk movement per account (improving or worsening) is withheld: most accounts have one call in batch 1, so " +
+      "there is no earlier period to compare against.</p>", "observed",
+      "Select an account for its calls and evidence. Select a tag for what to do about it.",
+      NV.tbl([["Account"], ["Risk"], ["What is firing"], ["Calls", "num"], ["Lives", "num"], ["Renews"]],
+        shown.map((e) => [
+          '<span class="nm">' + NV.esc(e.name) + '</span><span class="sm">' + NV.esc(NV.brk(e.broker).agency) +
+            " · " + NV.esc(e.region) + "</span>",
+          NV.bandPill(e.scoped_band) + '<span class="sm">' + e.scoped_families + " indicator" + (e.scoped_families === 1 ? "" : "s") + "</span>",
+          e.scoped_families ? NV.fireChips(e) : '<span class="nd">none</span>',
+          e.scoped_written, e.enrolled.toLocaleString(), NV.renewCell(e),
+        ]), (i) => ' data-href="' + NV.esc(NV.empHref(shown[i].id)) + '"') +
+      (moreN > 0 ? '<p class="cta"><button type="button" class="btn" id="more">' +
+        (showAll ? "Show top 10" : "Show all " + (moreN + 10) + " accounts with an indicator") + "</button></p>" : ""));
+
+    /* Drivers as a ranked list, each linked to its playbook. */
+    const dMax = drv.length ? drv[0].scoped : 1;
+    const drivers = panel("c12", "Which problems drive the risk",
+      "<p>Each driver is one of the ten indicators, counted in calls. The change compares the latest four weeks " +
+      "with the first four across the whole quarter.</p>", "pattern",
+      "Most common first. Select a driver for the steps.",
+      '<ul class="ranked">' + drv.map((d, i) => '<li><span class="rk">#' + (i + 1) + '</span><span class="lbl">' +
+        '<a href="' + NV.actHref(d.code) + '" style="color:inherit;text-decoration:none;font-weight:600">' + NV.esc(d.label) +
+        "</a><small>" + NV.esc(d.top_category || "") + (d.top_touchpoint ? " · " + NV.esc(NV.titleCase(d.top_touchpoint)) : "") +
+        '</small></span><span class="bar"><i style="width:' + Math.round(d.scoped / dMax * 100) + '%"></i></span>' +
+        '<span class="n">' + d.scoped + '</span><span class="d">' + NV.deltaChip(d.buckets[2], d.buckets[0], true) +
+        "</span></li>").join("") + "</ul>");
+
+    /* How the calls ended. */
+    const OUT = [["RESOLVED", "var(--s3)", "Resolved"], ["PARTIALLY RESOLVED", "var(--s4)", "Partly resolved"],
+      ["ESCALATED", "var(--seq-2)", "Escalated"], ["UNRESOLVED", "var(--critical)", "Unresolved"]];
+    const ARCH_COL = { "Brush-off": "var(--critical)", "Circular": "var(--serious)",
+      "Competent but constrained": "var(--s4)", "Escalated or handed off correctly": "var(--seq-1)",
+      "Competent and resolved": "var(--s3)" };
+    const ARCH_FOCUS = { "Brush-off": "brush_off", "Circular": "circular" };
+    const bar = (parts) => '<div class="split">' + parts.map((p) => {
+      const st = 'style="flex:' + p.n + ";background:" + p.col + '" title="' + NV.esc(p.label + ": " + p.n) + '"';
+      const inner = calls.length && p.n / calls.length >= .05 ? p.n : "";
+      return p.href ? '<a href="' + p.href + '" ' + st + ">" + inner + "</a>" : "<div " + st + ">" + inner + "</div>";
+    }).join("") + "</div>" + '<div class="splitkey">' + parts.map((p) =>
+      '<span><i style="background:' + p.col + '"></i>' + p.label + " <b>" + p.n + "</b></span>").join("") + "</div>";
+    const outcome = panel("c12", "How calls ended",
+      "<p><b>Outcome</b> is where the call ended. <b>Handling</b> splits the calls that ended badly into two " +
+      "different problems: a brush-off is a behaviour, a circular call is a process.</p>", "observed",
+      "<b>" + NV.act("unresolved", unres, "hot") + " unresolved</b> calls" +
+      (prior.length ? ", against " + unresPrior + " in the previous period" : "") + ". " +
+      "<b>" + badN + "</b> ended badly on our side.",
+      '<h3 class="sec" style="margin-top:6px">Outcome</h3>' +
+      bar(OUT.map(([k, col, label]) => ({ label: label, col: col, n: calls.filter((c) => c.outcome === k).length,
+        href: k === "UNRESOLVED" ? NV.actHref("unresolved") : null }))) +
+      '<h3 class="sec">Handling</h3>' +
+      bar(arch.map((a) => ({ label: a.name, col: ARCH_COL[a.name] || "var(--ink-3)", n: a.n,
+        href: ARCH_FOCUS[a.name] ? NV.actHref(ARCH_FOCUS[a.name]) : null }))));
+
+    const trend = '<div class="charts2">' +
+      panel("", "Calls each week",
+        "<p>Calls written each week, and how many of them ended unresolved. About eight calls a week, so read the " +
+        "shape, not the level.</p>", "observed", null, '<div id="trend"></div>') +
+      panel("", "Resolved and good-quality calls",
+        "<p>Share of calls resolved on the call, and share scoring <b>good</b> (86+) on the quality framework. " +
+        "Weeks with fewer than five calls are left blank rather than shown as a swing.</p>", "observed", null,
+        '<div id="trend2"></div>') + "</div>";
+
+    const rising = panel("c6", "New or rising",
+      "<p>Topics, touchpoints and signals with more calls in the latest four weeks than the first four. Counts only.</p>",
+      "pattern", "Growing across the quarter. Early signals to watch, not proven trends.",
+      em.length ? '<ul class="ranked">' + em.map((e) => '<li style="grid-template-columns:minmax(0,1fr) 110px 60px">' +
+        '<span class="lbl"><b>' + NV.esc(NV.titleCase(e.key)) + "</b><small>" + NV.esc(e.kind) + "</small></span>" +
+        '<span class="nd" style="text-align:right">' + e.buckets.join(" → ") + '</span><span class="d">' +
+        NV.deltaChip(e.buckets[2], e.buckets[0], true) + "</span></li>").join("") + "</ul>"
+        : '<div class="empty"><b>Nothing rising in this scope</b></div>');
+
+    const body = document.getElementById("body");
+    body.innerHTML = NV.insightStrip(ins) +
+      NV.tiles([
+        { k: "Accounts flagged", v: flagged.length, m: NV.pctOf(flagged.length, emps.length) + " of " + emps.length + " · " + high.length + " high",
+          tone: "warm", focus: "flagged" },
+        { k: "Flagged & renewing soon", v: renewSoon.length, m: "renewal Oct – Jan", tone: renewSoon.length ? "hot" : "",
+          focus: renewSoon.length ? "renew_soon" : null },
+        { k: "Unresolved calls", v: unres, m: prior.length ? "was " + unresPrior + " last period" : "of " + calls.length + " calls",
+          tone: unres ? "warm" : "", focus: unres ? "unresolved" : null },
+        { k: "Escalations missed", v: missed, m: handled + " of " + trig + " handled", tone: missed ? "hot" : "",
+          focus: missed ? "escalation_missed" : null,
+          tip: "<p>Escalation integrity is handled ÷ warranted, never ÷ all calls.</p>" },
+        { k: "Exit language", v: exitN, m: "said on a call, verbatim", tone: exitN ? "hot" : "", focus: exitN ? "exit_language" : null },
+        { k: "Newly flagged", v: D.kpis.employers_newly_flagged, m: "first indicator in Wk 9–12",
+          tip: "<p>Counted across the whole book; it does not follow the filters.</p>" },
+      ]) +
+      accounts + drivers + trend + outcome;
+
+    const weeks = D.weeks;
+    const wk = weeks.map((w) => calls.filter((c) => c.w === w));
+    const pctIf = (cs, f) => (cs.length >= 5 ? Math.round(cs.filter(f).length / cs.length * 100) : null);
+    const tipT = (i) => "Week " + weeks[i] + " · " + NV.weekDates(weeks[i]);
+    NV.vbars(document.getElementById("trend"), {
+      labels: weeks.map((w) => "W" + w), height: 250, yTitle: "Calls", xTitle: "Week", tipTitle: tipT,
+      series: [
+        { name: "Calls", color: "var(--seq-1)", values: wk.map((cs) => cs.length) },
+        { name: "Unresolved", color: "var(--seq-3)", values: wk.map((cs) => cs.filter((c) => c.outcome === "UNRESOLVED").length) },
+      ],
+      empty: (i) => !wk[i].length, aria: "Calls and unresolved calls by week",
+    });
+    NV.vline(document.getElementById("trend2"), {
+      labels: weeks.map((w) => "W" + w), height: 250, yTitle: "Share of calls (%)", xTitle: "Week", tipTitle: tipT,
+      yMin: 0, yMax: 100, suffix: "%",
+      series: [
+        { name: "Resolved", color: "var(--s3)", values: wk.map((cs) => pctIf(cs, (c) => c.outcome === "RESOLVED")) },
+        { name: "Good quality", color: "var(--s4)", values: wk.map((cs) => pctIf(cs, (c) => c.score >= 86)) },
+      ],
+      note: (i) => wk[i].length < 5 ? (wk[i].length ? "Only " + wk[i].length + " calls: not shown" : "No calls written") : "",
+      aria: "Resolution rate and good-quality share by week",
+    });
+
+    const more = body.querySelector("#more");
+    if (more) more.addEventListener("click", () => { showAll = !showAll; render(); });
+    NV.wireRows(body);
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

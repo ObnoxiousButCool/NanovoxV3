@@ -1,0 +1,479 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Executive Overview</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="v2.css">
+<script>
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+} catch (e) {}
+</script>
+<style>
+  .sec { grid-column: span 12; scroll-margin-top: 20px; }
+  .sec > header { margin-bottom: 2px; }
+  .gtile { align-items: center; }
+  .movers { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mover { border: 1px solid var(--rule); border-radius: var(--r); padding: 14px 15px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .mover .k { font-size: 13.5px; font-weight: 600; }
+  .mover .row { justify-content: space-between; align-items: flex-end; }
+  .mover .v { font: 600 30px/1 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .mover .v small { font: 500 13px var(--body); color: var(--ink-3); margin-left: 6px; letter-spacing: 0; }
+  .mover .ft { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+  .verdict { font: 600 11px/1 var(--body); letter-spacing: .04em; text-transform: uppercase; padding: 4px 7px; border-radius: 3px; }
+  .verdict.real { color: #fff; background: var(--critical); }
+  .verdict.real.goodv { background: var(--good-text); }
+  .verdict.noise { color: var(--ink-3); border: 1px solid var(--rule-strong); }
+  .q2grid { display: grid; gap: 20px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .rising { border: 1px solid var(--rule); border-radius: var(--r); padding: 6px 15px; }
+  .rising ul { list-style: none; margin: 0; padding: 0; }
+  .rising li { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid var(--rule); font-size: 14px; }
+  .rising li:first-child { border-top: 0; }
+  .rising li small { display: block; color: var(--ink-3); font-size: 12px; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  /* The main column sits beside the insight feed, so these stack by default. */
+  .q2grid, .two { grid-template-columns: 1fr; gap: 8px; }
+  @media (min-width: 1680px) { .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; } }
+  .mover .ft { flex-wrap: wrap; white-space: normal; }
+  @media (max-width: 700px) { .movers { grid-template-columns: 1fr; } }
+</style>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead"><div id="head"></div><div id="filters"></div></div>
+    <div class="wrap"><div class="withai" style="grid-column:span 12">
+      <div class="feedcol" id="feed"></div>
+      <div class="maincol" id="body"></div>
+    </div></div>
+    <p class="srcline">100 written calls against 95 employer accounts, 6 Jul – 25 Sep 2026 (batch 1 of the v9 corpus).
+      Counts are observed; rates are suppressed below five calls. Nothing here is a churn prediction.</p>
+  </main>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="nv2.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("exec.html");
+  document.getElementById("head").innerHTML = NV.pageHead("Executive overview",
+    "The period in one page: the alerts that need attention now, what the calls mean for employers, retention, product and " +
+    "payers, and what is emerging. For the full list of accounts and drivers, see What are the risks?",
+    "<p>Every number is counted from the calls or taken from the account book. Nothing here is a " +
+    "forecast, and the risk band has not been validated against real churn.</p>");
+
+  const BUCKETS = [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]];
+  const BLAB = ["Wk 1–4", "Wk 5–8", "Wk 9–12"];
+  const WEEKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  const MIN_N = 5;
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar({ compact: true });
+    NV.bindFilters(el);
+  }
+  const sub = (title, lede) => '<h3 class="sec">' + title + "</h3>" + (lede ? '<p class="lede">' + lede + "</p>" : "");
+  function panel(id, title, tip, chip, body) {
+    return '<section class="panel sec" id="' + id + '"><header><div><h2>' + title +
+      (tip ? NV.info(tip) : "") + "</h2></div>" + (chip ? NV.clsChip(chip) : "") + "</header>" + body + "</section>";
+  }
+  const rate = (n, d) => (d >= MIN_N ? Math.round(n / d * 100) + "%" : "–");
+  const avg = (vals) => {
+    const v = vals.filter((x) => typeof x === "number");
+    return v.length < MIN_N ? null : Math.round(v.reduce((a, b) => a + b, 0) / v.length);
+  };
+  function noiseTest(now, prior, cNow, cPrior) {
+    const exp = cPrior ? prior * (cNow / cPrior) : prior;
+    const z = (now - exp) / Math.sqrt(Math.max(exp, 1));
+    return { exp: exp, z: z, real: Math.abs(z) >= 2 };
+  }
+
+  /* Semicircle gauge, 0-100, with the band it sits in. */
+  function gauge(v, label) {
+    const R = 60, cx = 75, cy = 72;
+    const pt = (p) => { const a = Math.PI * (1 - p / 100); return [cx + R * Math.cos(a), cy - R * Math.sin(a)]; };
+    const arc = (a, b, col) => { const s = pt(a), e = pt(b);
+      return '<path d="M' + s[0].toFixed(1) + "," + s[1].toFixed(1) + " A" + R + "," + R + " 0 0 1 " +
+        e[0].toFixed(1) + "," + e[1].toFixed(1) + '" stroke="' + col + '" stroke-width="12" fill="none"/>'; };
+    const n = pt(v === null ? 0 : v), col = v >= 90 ? "var(--good)" : v >= 75 ? "var(--warning)" : "var(--critical)";
+    return '<div class="gauge"><svg viewBox="0 0 150 84" aria-hidden="true">' +
+      arc(0, 74.5, "color-mix(in srgb, var(--critical) 75%, transparent)") +
+      arc(75.5, 89.5, "color-mix(in srgb, var(--warning) 80%, transparent)") +
+      arc(90.5, 100, "color-mix(in srgb, var(--good) 75%, transparent)") +
+      '<line x1="' + cx + '" y1="' + cy + '" x2="' + ((cx + n[0]) / 2 + (n[0] - cx) * .25).toFixed(1) +
+      '" y2="' + ((cy + n[1]) / 2 + (n[1] - cy) * .25).toFixed(1) + '" stroke="var(--ink-2)" stroke-width="4" stroke-linecap="round"/>' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="5" fill="var(--ink-2)"/></svg>' +
+      '<span class="gv" style="color:' + col + '">' + label + "</span></div>";
+  }
+
+  function render() {
+    const calls = NV.calls();
+    const emps = NV.employersInScope();
+    const acts = D.actions;
+    const bcalls = BUCKETS.map((ws) => NV.callsIn(ws));
+    const wcalls = WEEKS.map((w) => NV.callsIn([w]));
+
+    /* ---------- facts ---------- */
+    const flagged = emps.filter(NV.isFlagged);
+    const high = emps.filter((e) => e.scoped_band === "High");
+    const renewSoon = flagged.filter((e) => NV.monthsTo(e.renewal_m) <= NV.RENEW_SOON)
+      .sort((a, b) => NV.monthsTo(a.renewal_m) - NV.monthsTo(b.renewal_m) || b.scoped_families - a.scoped_families);
+    const lives = (l) => l.reduce((a, e) => a + e.enrolled, 0);
+    const prem = (l) => l.reduce((a, e) => a + (e.annual_premium || 0), 0);
+    const unres = calls.filter((c) => c.outcome === "UNRESOLVED");
+    const trig = calls.filter((c) => c.esc_triggered);
+    const handled = calls.filter((c) => c.esc_handled);
+    const missed = calls.filter((c) => c.esc_triggered && !c.esc_handled);
+    const integ = trig.length >= MIN_N ? Math.round(handled.length / trig.length * 100) : null;
+    const OPEN = ["needs_action", "assigned", "in_progress", "overdue"];
+    const open = acts.filter((a) => OPEN.indexOf(a.status) !== -1);
+    const overdue = acts.filter((a) => a.status === "overdue");
+    const top = flagged.slice().sort((a, b) => b.scoped_families - a.scoped_families ||
+      NV.monthsTo(a.renewal_m) - NV.monthsTo(b.renewal_m) || b.enrolled - a.enrolled).slice(0, 8);
+    const urgent = flagged.filter((e) => NV.monthsTo(e.renewal_m) <= NV.RENEW_SOON &&
+        e.scoped_indicators.some((i) => NV.IND_SHORT[i.code][1]))
+      .sort((a, b) => NV.monthsTo(a.renewal_m) - NV.monthsTo(b.renewal_m) || b.scoped_families - a.scoped_families)[0];
+
+    const MEASURES = [
+      ["Unresolved calls", (cs) => cs.filter((c) => c.outcome === "UNRESOLVED").length, true, "unresolved"],
+      ["Escalations missed", (cs) => cs.filter((c) => c.esc_triggered && !c.esc_handled).length, true, "escalation_missed"],
+      ["Repeat contacts", (cs) => cs.filter((c) => c.repeat_of).length, true, "repeat_contact"],
+      ["Calls raising a signal", (cs) => cs.filter((c) => c.signals.length).length, true, null],
+      ["Complaints against us", (cs) => cs.filter((c) => c.complaint && c.complaint_to === "CHOICE").length, true, "complaint_choice"],
+      ["High member effort", (cs) => cs.filter((c) => c.effort_band === "High").length, true, "high_effort"],
+      ["Resolved calls", (cs) => cs.filter((c) => c.outcome === "RESOLVED").length, false, null],
+    ];
+    const cNow = bcalls[2].length, cPrior = bcalls[1].length;
+    const moves = MEASURES.map((m) => {
+      const b = bcalls.map(m[1]);
+      const t = noiseTest(b[2], b[1], cNow, cPrior);
+      return { name: m[0], badUp: m[2], focus: m[3], b: b, t: t, weekly: wcalls.map(m[1]),
+        better: m[2] ? b[2] < b[1] : b[2] > b[1] };
+    }).sort((a, b) => Math.abs(b.t.z) - Math.abs(a.t.z));
+    const realMoves = moves.filter((m) => m.t.real);
+    const em = D.emerging.filter((e) => e.delta >= 1);
+    const improving = moves.filter((m) => m.better && m.b[1] !== m.b[2])
+      .sort((a, b) => Math.abs(b.b[1] - b.b[2]) / Math.max(b.b[1], 1) - Math.abs(a.b[1] - a.b[2]) / Math.max(a.b[1], 1));
+
+    const inScope = {};
+    calls.forEach((c) => { inScope[c.id] = true; });
+    const drv = D.drivers.map((d) => ({ d: d, n: d.calls.filter((id) => inScope[id]).length }))
+      .filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
+    const arch = NV.archetypeSplit(calls);
+    const bad = arch.filter((a) => a.adverse);
+    const badN = bad.reduce((t, a) => t + a.n, 0);
+    const fr = D.friction.map((f) => {
+      const cs = calls.filter((c) => c.category === f.topic);
+      return { topic: f.topic, calls: cs, w: cs.filter((c) => c.esc_triggered).length,
+        h: cs.filter((c) => c.esc_handled).length, u: cs.filter((c) => c.outcome === "UNRESOLVED").length };
+    }).filter((x) => x.calls.length).sort((a, b) => b.calls.length - a.calls.length);
+    const worstTopic = fr.slice().sort((a, b) => b.u - a.u || (b.w - b.h) - (a.w - a.h))[0];
+    const cleanEsc = fr.filter((x) => x.w > 0 && x.h === x.w);
+
+    const byTeam = {};
+    acts.forEach((a) => {
+      const t = byTeam[a.owner_team] || (byTeam[a.owner_team] = { n: 0, open: 0, overdue: 0 });
+      t.n += 1;
+      if (OPEN.indexOf(a.status) !== -1) t.open += 1;
+      if (a.status === "overdue") t.overdue += 1;
+    });
+    const teams = Object.keys(byTeam).sort((a, b) => byTeam[b].open - byTeam[a].open || byTeam[b].n - byTeam[a].n);
+
+    /* ---------- AI insight feed ----------
+       PRODUCTION: send the computed facts above to the model and ask for
+       ranked, one-sentence insights; keep evidence and links built in code. */
+    const empLink = (e, right) => '<li><a href="' + NV.esc(NV.empHref(e.id)) + '">' + NV.esc(e.name) +
+      "</a><span>" + right + "</span></li>";
+    const feed = [];
+    feed.push({ sev: "high", anchor: "lenses", focus: "renew_soon",
+      html: "<b>" + flagged.length + " of " + emps.length + " accounts</b> are flagged for risk, and <b>" +
+        renewSoon.length + " of them renew between October and January</b>.",
+      meta: "Account risk", moreLabel: renewSoon.length + " accounts",
+      evidence: "<ul>" + renewSoon.slice(0, 6).map((e) => empLink(e, e.scoped_families + " indicators · " +
+        e.renewal_month)).join("") + "</ul>" });
+    if (urgent) feed.push({ sev: "high", anchor: "lenses", focus: "exit_language", extra: { employer: urgent.id },
+      html: "Most urgent: <b>" + NV.esc(urgent.name) + "</b> — " + urgent.scoped_indicators
+        .filter((i) => NV.IND_SHORT[i.code][1]).map((i) => NV.IND_SHORT[i.code][0].toLowerCase()).join(" and ") +
+        ", and it renews in <b>" + NV.esc(urgent.renewal_month) + "</b>.",
+      meta: NV.esc(NV.brk(urgent.broker).agency) + " · " + NV.esc(urgent.region), moreLabel: "What fired",
+      evidence: "<ul>" + urgent.scoped_indicators.map((i) => "<li><span>" + NV.esc(i.label) + "</span><span>" +
+        i.calls.map((c) => '<a href="#" data-call="' + c + '">' + c + "</a>").join(", ") + "</span></li>").join("") + "</ul>" });
+    if (trig.length) feed.push({ sev: "high", anchor: "doing", focus: "escalation_missed",
+      html: "<b>" + missed.length + " caller" + (missed.length === 1 ? "" : "s") + " who needed a supervisor did not get one.</b> " +
+        "Escalation integrity is " + (integ === null ? "below the reporting floor" : integ + "%") + ".",
+      meta: handled.length + " of " + trig.length + " escalations handled", moreLabel: missed.length + " calls",
+      evidence: "<ul>" + missed.map((c) => '<li><a href="#" data-call="' + c.id + '">' + c.id + "</a><span>" +
+        NV.esc(NV.emp(c.employer).name) + "</span></li>").join("") + "</ul>" });
+    if (badN) feed.push({ sev: "high", anchor: "lenses", focus: "brush_off",
+      html: "<b>" + badN + " calls ended badly on our side</b>: " + bad.map((a) => a.n + " " +
+        a.name.toLowerCase()).join(" and ") + ". One is a behaviour, one is a process, so they need different fixes.",
+      meta: "Call handling", moreLabel: "The split",
+      evidence: "<ul>" + bad.map((a) => "<li><span>" + NV.esc(a.name) + " — " + NV.esc(a.gloss.toLowerCase()) +
+        "</span><span>" + a.n + " calls</span></li>").join("") + "</ul>" });
+    if (drv[0]) feed.push({ sev: "med", anchor: "lenses", focus: drv[0].d.code,
+      html: "<b>" + NV.esc(drv[0].d.label) + "</b> is the leading driver: " + drv[0].n + " calls across " +
+        drv[0].d.employers + " accounts, mostly in " + NV.esc(drv[0].d.top_category) + ".",
+      meta: "Drivers", moreLabel: "Top 3 drivers",
+      evidence: "<ul>" + drv.slice(0, 3).map((x) => "<li><span>" + NV.esc(x.d.label) + "</span><span>" + x.n +
+        " calls</span></li>").join("") + "</ul>" });
+    if (overdue.length) feed.push({ sev: "med", anchor: "doing", focus: "overdue",
+      html: "<b>" + overdue.length + " actions are overdue.</b> " + open.length + " of " + acts.length +
+        " are still open, and " + NV.esc(teams[0]) + " holds the most (" + byTeam[teams[0]].open + ").",
+      meta: "Actions", moreLabel: "Overdue items",
+      evidence: "<ul>" + overdue.map((a) => "<li><span>" + NV.esc(a.title) + "</span><span>" +
+        NV.esc(a.owner_team) + "</span></li>").join("") + "</ul>" });
+    feed.push({ sev: realMoves.length ? "med" : "info", anchor: "emerging",
+      html: realMoves.length
+        ? "<b>" + realMoves.map((m) => m.name.toLowerCase()).join(", ") + "</b> moved beyond what call volume explains."
+        : "<b>Nothing moved beyond normal noise</b> in the last four weeks." +
+          (em.length ? " Watch <b>" + NV.esc(NV.titleCase(em[0].key)) + "</b>, which has risen all quarter." : ""),
+      meta: "Last 4 weeks vs the 4 before", moreLabel: "Largest moves",
+      evidence: "<ul>" + moves.slice(0, 3).map((m) => "<li><span>" + m.name + "</span><span>" + m.b[1] +
+        " → " + m.b[2] + "</span></li>").join("") + "</ul>" });
+    if (improving[0]) feed.push({ sev: "good", anchor: "emerging",
+      html: "<b>" + improving[0].name + "</b> fell from " + improving[0].b[1] + " to " + improving[0].b[2] +
+        " in the last four weeks." + (cleanEsc.length ? " Escalations were handled every time on " +
+        cleanEsc.map((x) => NV.esc(x.topic)).join(" and ") + "." : ""),
+      meta: "What went well" });
+
+    document.getElementById("feed").innerHTML = NV.insightFeed(feed, "Needs attention now");
+
+    /* ---------- headline tiles ---------- */
+    const tiles = '<div class="bigrow">' +
+      NV.tile({ k: "Accounts flagged", v: flagged.length, m: NV.pctOf(flagged.length, emps.length) + " of " +
+        emps.length + " · " + high.length + " high · " + lives(flagged).toLocaleString() + " lives", tone: "warm", focus: "flagged",
+        tip: "<p>An account is <b>flagged</b> when its calls raise two or more <b>unrelated</b> risk indicators, " +
+          "such as an unresolved call and a complaint against us. Three or more is <b>High</b>.</p>" +
+          "<p>A condition worth a conversation, not a prediction that anyone will leave.</p>" +
+          "<p>The flagged accounts carry " + NV.money(prem(flagged)) + " of annual premium. Premium is headcount in " +
+          "different units: one flat figure per enrolled life.</p>" }) +
+      NV.tile({ k: "Flagged & renewing soon", v: renewSoon.length, m: "renewal Oct – Jan", tone: renewSoon.length ? "hot" : "",
+        focus: renewSoon.length ? "renew_soon" : null }) +
+      '<div class="big gtile' + (integ !== null && integ < 90 ? " hot" : "") + '"><span class="k">Escalation integrity' +
+        NV.info("<p><b>Escalations handled ÷ escalations warranted.</b> Never ÷ all calls: on that " +
+          "denominator the same evidence reads as " + rate(handled.length, calls.length) + " and looks fine.</p>" +
+          "<p>Green is 90% and above.</p>") + "</span>" +
+        gauge(integ, integ === null ? "–" : integ + "%") +
+        '<span class="m" style="text-align:center">' + handled.length + " of " + trig.length + " handled</span>" +
+        (missed.length ? '<a class="todo" style="text-align:center" href="' + NV.actHref("escalation_missed") + '">What to do →</a>' : "") +
+      "</div>" +
+      NV.tile({ k: "Overdue actions", v: overdue.length, m: open.length + " of " + acts.length + " still open",
+        tone: overdue.length ? "hot" : "", focus: overdue.length ? "overdue" : null }) +
+      "</div>";
+
+    /* ---------- went well / concern ---------- */
+    const well = [], concern = [];
+    if (improving[0]) well.push(improving[0].name + " fell from " + improving[0].b[1] + " to " + improving[0].b[2] + " in the last four weeks.");
+    if (cleanEsc.length) well.push("Every warranted escalation was handled on " + cleanEsc.map((x) => x.topic).join(" and ") + ".");
+    if (!well.length) well.push("No measure improved beyond noise this period.");
+    if (worstTopic && worstTopic.u) concern.push(NV.esc(worstTopic.topic) + " carries the most unresolved calls (" +
+      NV.act("unresolved", worstTopic.u, "hot") + ")" + (worstTopic.w > worstTopic.h ? ", and only " +
+      worstTopic.h + " of " + worstTopic.w + " escalations there were handled." : "."));
+    if (em[0]) concern.push(NV.esc(NV.titleCase(em[0].key)) + " has risen all quarter (" + em[0].buckets.join(" → ") + ").");
+    const wellbad = '<div class="wellbad"><div><h3><span class="ic" style="background:var(--good)">✓</span>What went well</h3>' +
+      well.map((t) => "<p>" + t + "</p>").join("") + '</div><div><h3><span class="ic" style="background:var(--critical)">!</span>Area of concern</h3>' +
+      concern.map((t) => "<p>" + t + "</p>").join("") + "</div></div>";
+
+    /* =====================================================================
+       AI INSIGHTS BY LENS
+       The Risks page lists accounts and drivers. This page does not repeat
+       them: it reads the same calls through four lenses and says what each one
+       means and what to do. Every sentence is templated over figures computed
+       here. PRODUCTION: pass these facts to the model per lens and ask for the
+       three most useful insights, never for new numbers.
+       ===================================================================== */
+    const rateOf = (list, pred) => (list.length ? pred(list) / list.length : 0);
+    const pctS = (x) => Math.round(x * 100) + "%";
+    const flagRate = (list) => rateOf(list, (l) => l.filter(NV.isFlagged).length);
+    const bookRate = flagRate(emps);
+    const groupBy = (list, key) => {
+      const o = {};
+      list.forEach((x) => { const k = key(x); (o[k] = o[k] || []).push(x); });
+      return o;
+    };
+
+    /* Employers */
+    const byInd = groupBy(emps, (e) => e.industry);
+    const indRank = Object.keys(byInd).filter((k) => byInd[k].length >= 5)
+      .map((k) => ({ k: k, n: byInd[k].length, f: byInd[k].filter(NV.isFlagged).length }))
+      .sort((a, b) => b.f / b.n - a.f / a.n);
+    const bySp = groupBy(emps, (e) => e.sponsorship);
+    const vol = bySp.VOL || [], er = bySp.ER || [];
+    const empCalls = calls.filter((c) => c.caller_type === "EMPLOYER");
+    const memCalls = calls.filter((c) => c.caller_type === "MEMBER");
+    const unresRate = (cs) => rateOf(cs, (l) => l.filter((c) => c.outcome === "UNRESOLVED").length);
+    const lensEmp = [];
+    if (indRank[0]) lensEmp.push({ sev: indRank[0].f / indRank[0].n > bookRate * 1.3 ? "high" : "med", focus: "flagged",
+      html: "<b>" + NV.esc(indRank[0].k) + "</b> accounts are flagged most often: " + indRank[0].f + " of " + indRank[0].n +
+        " (" + pctS(indRank[0].f / indRank[0].n) + ") against " + pctS(bookRate) + " across the book.",
+      so: "Brief the account team on this sector before its renewals come round." });
+    if (vol.length >= 5 && er.length >= 5) {
+      const vr = flagRate(vol), err = flagRate(er), hiV = vr >= err;
+      lensEmp.push({ sev: "med", focus: "flagged",
+        html: "<b>" + (hiV ? "Voluntary" : "Employer-paid") + " dental</b> accounts flag at " + pctS(hiV ? vr : err) + ", against " +
+          pctS(hiV ? err : vr) + " for " + (hiV ? "employer-paid" : "voluntary") + " plans.",
+        so: hiV ? "Members paying for their own cover call with less patience; their questions need answering first time."
+          : "Employer-paid plans carry the HR relationship, so problems reach the decision maker faster." });
+    }
+    if (empCalls.length >= 5) lensEmp.push({ sev: unresRate(empCalls) > unresRate(memCalls) ? "high" : "med", focus: "unresolved",
+      html: "<b>" + empCalls.length + " calls came from employer HR contacts</b>; " + pctS(unresRate(empCalls)) +
+        " ended unresolved, against " + pctS(unresRate(memCalls)) + " of member calls.",
+      so: unresRate(empCalls) > unresRate(memCalls)
+        ? "HR contacts are the people who decide renewal. Their unresolved calls deserve a named owner and a call-back."
+        : "HR calls resolve better than member calls. The member experience is where calls fail, and members complain to HR." });
+
+    /* Churn & retention */
+    const exitCalls = calls.filter(NV.PLAYBOOK.exit_language.calls);
+    const exitEmps = Array.from(new Set(exitCalls.map((c) => c.employer))).map((id) => emps.find((e) => e.id === id)).filter(Boolean);
+    const exitSoon = exitEmps.filter((e) => NV.monthsTo(e.renewal_m) <= NV.RENEW_SOON);
+    const unowned = NV.PLAYBOOK.unowned.accounts();
+    const lensChurn = [
+      { sev: "high", focus: "renew_soon",
+        html: "<b>" + renewSoon.length + " flagged accounts renew between October and January</b>, covering " +
+          lives(renewSoon).toLocaleString() + " lives and " + NV.money(prem(renewSoon)) + " of premium.",
+        so: "Book a service review with each before the renewal meeting, starting with " +
+          (renewSoon[0] ? NV.esc(renewSoon[0].name) : "the soonest") + "." },
+      { sev: exitEmps.length ? "high" : "good", focus: exitEmps.length ? "exit_language" : null,
+        html: exitEmps.length ? "<b>" + exitEmps.length + " accounts used exit or market-test language</b> on a call" +
+          (exitSoon.length ? ", and " + exitSoon.length + " of them renew within four months" : "") + "."
+          : "No caller used exit or market-test language this period.",
+        so: exitEmps.length ? "The account manager should call each employer contact this week: " +
+          exitEmps.slice(0, 3).map((e) => NV.esc(e.name)).join(", ") + "." : "" },
+      { sev: unowned.length ? "med" : "good", focus: unowned.length ? "unowned" : null,
+        html: "<b>" + unowned.length + " of " + flagged.length + " flagged accounts have no action raised</b> against them yet.",
+        so: "A flag nobody owns is a flag nobody is working. Assign the top five this week." },
+    ];
+
+    /* Product & service */
+    const tpStats = Object.keys(D.touchpoints).map((k) => {
+      const cs = calls.filter((c) => c.touchpoint === k && k !== "agent_conversation");
+      return { k: k, n: cs.length, pg: calls.filter((c) => c.pg_present && c.pg_touchpoint === k).length,
+        bad: cs.filter((c) => c.outcome === "UNRESOLVED" || (c.complaint && c.complaint_to === "CHOICE")).length,
+        owner: D.touchpoints[k].owner };
+    }).filter((x) => x.n).sort((a, b) => b.n - a.n || b.pg - a.pg);
+    const byLine = groupBy(calls, (c) => c.product_line);
+    const lineRank = Object.keys(byLine).filter((k) => byLine[k].length >= 5)
+      .map((k) => ({ k: k, n: byLine[k].length, u: unresRate(byLine[k]) })).sort((a, b) => b.u - a.u);
+    const kfN = NV.pbCount("knowledge_failure");
+    const kfCats = groupBy(calls.filter((c) => c.kf_present), (c) => c.category);
+    const kfTop = Object.keys(kfCats).sort((a, b) => kfCats[b].length - kfCats[a].length)[0];
+    const lensProd = [];
+    if (tpStats[0]) lensProd.push({ sev: "med", focus: "tp_" + tpStats[0].k,
+      html: "The <b>" + NV.esc(NV.titleCase(tpStats[0].k).toLowerCase()) + "</b> generates the most calls of any document or form (" +
+        tpStats[0].n + ")" + (tpStats[0].pg ? ", and agents proposed a change to it " + tpStats[0].pg + " time" + (tpStats[0].pg === 1 ? "" : "s") : "") + ".",
+      so: "Every call it prevents is saved handling time. " + NV.esc(tpStats[0].owner) + " owns the rewrite." });
+    if (lineRank[0]) lensProd.push({ sev: lineRank[0].u > unresRate(calls) ? "med" : "info", focus: "pl_" + lineRank[0].k,
+      html: "<b>" + NV.esc(NV.titleCase(lineRank[0].k)) + "</b> calls end unresolved most often: " + pctS(lineRank[0].u) +
+        " of " + lineRank[0].n + ", against " + pctS(unresRate(calls)) + " overall.",
+      so: "Check whether agents have what they need for this line: rules, plan documents, a route to the carrier." });
+    if (kfN) lensProd.push({ sev: "med", focus: "knowledge_failure",
+      html: "<b>" + kfN + " calls had a published rule explained wrongly</b>" + (kfTop ? ", most in " + NV.esc(kfTop) : "") + ".",
+      so: "Where several agents get the same rule wrong, the wording is the problem. Rewrite before retraining." });
+
+    /* Payer & carrier: the employer who pays, and the carriers we sit between. */
+    const bill = calls.filter((c) => c.category === "Billing & Premium");
+    const billDef = calls.filter((c) => c.signals.some((x) => x.code === "billing_defect"));
+    const carrierTp = calls.filter((c) => (D.touchpoints[c.touchpoint] || {}).owner === "Carrier");
+    const complTotal = calls.filter((c) => c.complaint).length;
+    const complUs = calls.filter((c) => c.complaint && c.complaint_to === "CHOICE").length;
+    const lensPayer = [
+      { sev: billDef.length ? "med" : "info", focus: "cat_Billing & Premium",
+        html: "<b>" + bill.length + " calls were about billing and premium</b>" + (billDef.length ? ", " + billDef.length +
+          " with a billing error flagged" : "") + ". These come mostly from the employer, the party paying.",
+        so: "A wrong invoice is the fastest way to lose a payer's trust. Route billing defects to Finance with a same-week fix." },
+      { sev: "info", focus: carrierTp.length ? "tp_denial_letter_eob" : null,
+        html: "<b>" + carrierTp.length + " calls</b> were about documents the <b>carrier</b> controls, such as denial letters and EOBs.",
+        so: "We take the call, but the fix sits with the carrier. Raise the pattern at the next carrier review." },
+      { sev: complTotal && complUs / complTotal > .6 ? "high" : "med", focus: "complaint_choice",
+        html: "<b>" + complUs + " of " + complTotal + " complaints are about us</b>, not the carrier, broker or provider.",
+        so: "The payer experience problem is mostly ours to fix, which also means it is within our control." },
+    ];
+
+    const LENSES = [
+      ["Employers", "Which kinds of account are struggling", "▦", lensEmp],
+      ["Churn & retention", "Who might leave, and when", "↺", lensChurn],
+      ["Product & service", "Which documents, lines and rules cause calls", "◧", lensProd],
+      ["Payer & carrier", "Billing, premium and carrier-owned issues", "$", lensPayer],
+    ];
+    const lensHtml = '<section class="sec lenses" id="lenses"><header class="lh"><div><h2>' +
+      NV.aiBadge("AI insights") + " What this period means" +
+      NV.info("<p>The same calls read through four lenses. Each insight names what the numbers mean and what to do next.</p>" +
+        "<p>Written from the figures on this page; the insight never adds a number of its own.</p>") +
+      '</h2><p class="lede">Three insights per lens. Select <b>What to do</b> for the steps and the calls behind them.</p></div></header>' +
+      '<div class="lgrid">' + LENSES.map(([t, sub2, ic, items]) => '<article class="lens"><header><span class="lic">' + ic +
+        "</span><div><h3>" + t + "</h3><p>" + sub2 + "</p></div></header><ol>" +
+        items.slice(0, 3).map((it) => '<li class="lvl-' + it.sev + '"><p>' + it.html + "</p>" +
+          (it.so ? '<p class="so">' + it.so + "</p>" : "") +
+          (it.focus ? '<a href="' + NV.actHref(it.focus) + '">What to do →</a>' : "") + "</li>").join("") +
+        "</ol></article>").join("") + "</div></section>";
+
+    /* =====================================================================
+       EMERGING ISSUES - what is growing, why it matters, what to do.
+       ===================================================================== */
+    const KIND = { touchpoint: ["tp_", "Touchpoint"], category: ["cat_", "Call topic"], signal: ["sig_", "Signal"],
+      product_line: ["pl_", "Product line"] };
+    const why = (e) => {
+      if (e.kind === "touchpoint") { const t = D.touchpoints[e.key] || {};
+        return "Owned by " + NV.esc(t.owner || "an unnamed team") + " and controlled by " + NV.esc((t.controls || "us").replace(/^The /, "the ")) +
+          ". A document or form generating more calls usually means it has changed or confuses people."; }
+      if (e.key === "retention_risk") return "Callers are signalling they might leave. Small numbers, but the most direct churn signal the calls carry.";
+      if (e.key === "Broker Conduct" || e.key === "broker_conduct_adverse") return "More callers are raising their broker. If it concentrates on one agency it becomes a channel conversation.";
+      return "Growing across the quarter. Too few calls yet to call it a trend, so watch it before committing to a fix.";
+    };
+    const rising = D.emerging.filter((e) => e.delta >= 1).sort((a, b) => b.delta - a.delta);
+    const easing = D.emerging.filter((e) => e.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 4);
+    const emergingHtml = panel("emerging", "Emerging issues",
+      "<p>Topics, touchpoints, signals and product lines with more calls in the latest four weeks than the first four. " +
+      "Counts only: at about eight calls a week a share would be two or three calls.</p>", "pattern",
+      '<p class="sub">What is growing across the quarter, why it matters and who should look at it.</p>' +
+      '<div class="emgrid"><div>' + (rising.length ? rising.map((e) => {
+        const k = KIND[e.kind] || ["", e.kind];
+        return '<div class="emrow"><div class="emchart">' + NV.minibars(e.buckets, "var(--critical)") +
+          '<span class="emx">' + BLAB.map((l) => l.replace("Wk ", "")).join(" · ") + "</span></div>" +
+          '<div class="emtext"><div class="emtop"><b>' + NV.esc(e.kind === "category" ? e.key : NV.titleCase(e.key)) + '</b><span class="kind">' +
+          k[1] + "</span>" + NV.deltaChip(e.buckets[2], e.buckets[0], true) + "</div>" +
+          '<p>' + why(e) + "</p>" + (k[0] ? '<a href="' + NV.actHref(k[0] + e.key) + '">What to do →</a>' : "") + "</div></div>";
+      }).join("") : '<div class="empty"><b>Nothing rising this quarter</b></div>') + "</div>" +
+      '<aside class="easing"><h3>Easing</h3><p class="lede">Fewer calls now than at the start of the quarter.</p><ul>' +
+      easing.map((e) => "<li><span><b>" + NV.esc(e.kind === "category" ? e.key : NV.titleCase(e.key)) + "</b><small>" +
+        (KIND[e.kind] || ["", e.kind])[1] + " · " + e.buckets.join(" → ") + "</small></span>" +
+        NV.deltaChip(e.buckets[2], e.buckets[0], true) + "</li>").join("") + "</ul></aside></div>");
+
+    /* =====================================================================
+       ACTION PROGRESS - one strip, the detail lives on What should we do next?
+       ===================================================================== */
+    const STAGES = [["needs_action", "Needs action", "var(--serious)"], ["assigned", "Assigned", "var(--seq-1)"],
+      ["in_progress", "In progress", "var(--seq-2)"], ["overdue", "Overdue", "var(--critical)"],
+      ["action_taken", "Action taken", "var(--seq-3)"], ["monitoring", "Monitoring", "var(--s4)"],
+      ["completed", "Completed", "var(--good)"]];
+    const progress = panel("doing", "What is being done",
+      "<p>Every action traces to a call and has an owner. Owners, dates and outcomes are prototype workflow data.</p>",
+      "recommendation",
+      '<p class="sub"><b>' + open.length + " of " + acts.length + "</b> actions open, <b>" +
+        NV.act("overdue", overdue.length, "hot") + " overdue</b>, <b>" + acts.filter((a) => a.outcome).length +
+        "</b> with a measured outcome. " + NV.esc(teams[0]) + " holds the most open items.</p>" +
+      '<div class="stages">' + STAGES.map(([k, l, c]) => {
+        const n = acts.filter((a) => a.status === k).length;
+        return n ? '<a href="' + NV.href("actions.html") + '" style="flex:' + n + ";background:" + c +
+          ';display:grid;place-items:center;color:#fff;font:600 13px/1 var(--body);text-decoration:none" title="' + l + ": " + n + '">' + n + "</a>" : "";
+      }).join("") + "</div>" +
+      '<div class="splitkey">' + STAGES.map(([k, l, c]) => '<span><i style="background:' + c + '"></i>' + l + " <b>" +
+        acts.filter((a) => a.status === k).length + "</b></span>").join("") + "</div>" +
+      '<p class="cta"><a href="' + NV.href("actions.html") + '">Open the action board →</a>' +
+      '<a href="' + NV.href("index.html") + '">See every risk and driver →</a></p>');
+
+    const body = document.getElementById("body");
+    body.innerHTML = tiles + wellbad + lensHtml + emergingHtml + progress;
+    NV.wireRows(body);
+    NV.wireRows(document.getElementById("feed"));
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

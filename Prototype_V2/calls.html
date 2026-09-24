@@ -1,0 +1,182 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>All Calls</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="v2.css">
+<script>
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+} catch (e) {}
+</script>
+<style>
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .toolbar .row { gap: 8px; flex-wrap: wrap; }
+  .toolbar input[type="search"] { min-width: 280px; }
+  .count { font-size: 13.5px; color: var(--ink-2); }
+  .ctable th.sortable { cursor: pointer; user-select: none; }
+  .ctable th.sortable:hover { color: var(--ink); }
+  .ctable th .ar { font-size: 10px; margin-left: 4px; }
+  .ctable td.ck, .ctable th.ck { width: 36px; }
+  .ctable input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--brand); }
+  .ctable tr[data-call] { cursor: pointer; }
+  .ctable tr[data-call]:hover { background: var(--surface-2); }
+  .ctable tr.sel { background: var(--brand-soft); }
+  .oc { font-weight: 600; }
+  .ctable td:nth-child(2) { white-space: nowrap; }
+  .sigs { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+  .pager { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 14px; flex-wrap: wrap; }
+  .pager .row { gap: 6px; }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; }
+</style>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead"><div id="head"></div><div id="filters"></div></div>
+    <div class="wrap" id="body"></div>
+    <p class="srcline">100 written calls from the batch 1 transcripts, joined to the v9 workbook. The download includes every
+      field shown here plus the tags behind them: week, broker, agent, product line, handling, escalation, effort and the
+      risk indicators the call raised.</p>
+  </main>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="nv2.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("calls.html");
+  document.getElementById("head").innerHTML = NV.pageHead("All calls",
+    "Every written call in one table. Filter, search and sort to find the calls you need, then open one to read it, " +
+    "or download what you see as a spreadsheet for reporting or your own analysis.");
+
+  let q = "", sortK = "id", sortDir = 1, page = 0, per = 25;
+  const sel = new Set();
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+
+  const OUTC = { UNRESOLVED: "var(--critical)", RESOLVED: "var(--good-text)", ESCALATED: "var(--seq-3)", "PARTIALLY RESOLVED": "var(--serious)" };
+  const SORTS = {
+    id: (c) => c.id, account: (c) => NV.emp(c.employer).name, topic: (c) => c.category,
+    outcome: (c) => c.outcome, score: (c) => c.score, caller: (c) => c.caller_name,
+  };
+  function rows() {
+    const ql = q.toLowerCase();
+    return NV.calls().filter((c) => !ql || [c.id, NV.emp(c.employer).name, c.caller_name, c.agent_name, c.category,
+      NV.brk(c.broker).agency, c.touchpoint || ""].join(" ").toLowerCase().indexOf(ql) !== -1)
+      .sort((a, b) => { const x = SORTS[sortK](a), y = SORTS[sortK](b); return (x > y ? 1 : x < y ? -1 : 0) * sortDir; });
+  }
+
+  /* ---- CSV: every useful field, one row per call ---- */
+  const COLS = [
+    ["Call ID", (c) => c.id], ["Date", (c) => c.date], ["Week", (c) => c.w],
+    ["Employer ID", (c) => c.employer], ["Employer", (c) => NV.emp(c.employer).name],
+    ["Broker", (c) => NV.brk(c.broker).agency], ["Region", (c) => c.region],
+    ["Caller type", (c) => c.caller_type], ["Caller", (c) => c.caller_name], ["Agent", (c) => c.agent_name],
+    ["Topic", (c) => c.category], ["Product line", (c) => c.product_line], ["Touchpoint", (c) => c.touchpoint || ""],
+    ["Outcome", (c) => c.outcome], ["Quality score", (c) => c.score], ["Handling time (sec)", (c) => c.aht],
+    ["Handling", (c) => c.archetype], ["Complaint", (c) => (c.complaint ? "Yes" : "No")], ["Complaint against", (c) => c.complaint_to || ""],
+    ["Signals", (c) => c.signals.map((s) => s.code + " (" + s.severity + ")").join("; ")],
+    ["Escalation warranted", (c) => (c.esc_triggered ? "Yes" : "No")], ["Escalation handled", (c) => (c.esc_handled ? "Yes" : "No")],
+    ["Repeat of", (c) => c.repeat_of || ""], ["Member effort", (c) => c.effort_band], ["Complexity", (c) => c.complexity_band],
+    ["Risk indicators", (c) => NV.INDICATORS.filter((x) => x[2](c)).map((x) => x[1]).join("; ")],
+  ];
+  function download(list, label) {
+    const cell = (v) => { const s = String(v == null ? "" : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const csv = "﻿" + [COLS.map((c) => cell(c[0])).join(",")].concat(list.map((c) => COLS.map((k) => cell(k[1](c))).join(","))).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = "nanovox-calls-" + label + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    NV.toast("Downloaded " + list.length + " call" + (list.length === 1 ? "" : "s"));
+  }
+
+  function render() {
+    const all = rows();
+    const pages = Math.max(1, Math.ceil(all.length / per));
+    page = Math.min(page, pages - 1);
+    const shown = all.slice(page * per, page * per + per);
+    const scope = NV.calls();
+    const unres = scope.filter((c) => c.outcome === "UNRESOLVED").length;
+    const missed = scope.filter((c) => c.esc_triggered && !c.esc_handled).length;
+    const avgQ = scope.length ? Math.round(scope.reduce((a, c) => a + c.score, 0) / scope.length) : null;
+    const th = (k, l) => '<th class="sortable" data-sort="' + k + '">' + l +
+      (sortK === k ? '<span class="ar">' + (sortDir > 0 ? "▲" : "▼") + "</span>" : "") + "</th>";
+    const allChecked = shown.length && shown.every((c) => sel.has(c.id));
+
+    document.getElementById("body").innerHTML =
+      NV.tiles([
+        { k: "Calls in view", v: all.length, m: "of " + D.calls.length + " written" },
+        { k: "Unresolved", v: unres, m: NV.pctOf(unres, scope.length) + " of calls in scope", tone: unres ? "warm" : "", focus: unres ? "unresolved" : null },
+        { k: "Escalations missed", v: missed, m: "warranted, not given", tone: missed ? "hot" : "", focus: missed ? "escalation_missed" : null },
+        { k: "Average quality", v: avgQ === null ? "–" : avgQ, m: "0–100 on the call quality framework" },
+      ]) +
+      '<section class="panel c12"><div class="toolbar"><div class="row">' +
+        '<input type="search" id="q" placeholder="Search call, account, caller, agent, broker" value="' + NV.esc(q) + '" aria-label="Search calls">' +
+        '<span class="count">' + (all.length ? "Showing " + (page * per + 1) + "–" + (page * per + shown.length) + " of " + all.length : "No calls match") + "</span></div>" +
+        '<div class="row"><button type="button" class="btn" id="dlsel"' + (sel.size ? "" : " disabled") + ">Download selected (" + sel.size + ")</button>" +
+        '<button type="button" class="btn primary" id="dlall"' + (all.length ? "" : " disabled") + ">⤓ Download " + all.length + " calls (CSV)</button>" +
+        NV.info("<p>Downloads a <b>CSV file</b>, which opens in Excel or Google Sheets.</p><p>It includes every call matching " +
+          "your filters and search, with " + COLS.length + " columns: the ones shown here plus week, broker, agent, product line, " +
+          "handling, escalation, effort, complexity and the risk indicators each call raised.</p>", "right") + "</div></div>" +
+      (shown.length ? '<div class="tblwrap"><table class="ctable"><thead><tr><th class="ck"><input type="checkbox" id="ckall" aria-label="Select all on this page"' +
+        (allChecked ? " checked" : "") + "></th>" + th("id", "Call") + th("account", "Account") + th("caller", "Caller") +
+        th("topic", "Topic") + th("outcome", "Outcome") + "<th>Signals</th></tr></thead><tbody>" +
+        shown.map((c) => '<tr data-call="' + c.id + '" tabindex="0"' + (sel.has(c.id) ? ' class="sel"' : "") + '><td class="ck"><input type="checkbox" data-ck="' + c.id + '"' +
+          (sel.has(c.id) ? " checked" : "") + ' aria-label="Select ' + c.id + '"></td>' +
+          '<td><span class="nm mono">' + c.id + '</span><span class="sm">' + c.date + "</span></td>" +
+          '<td><span class="nm">' + NV.esc(NV.emp(c.employer).name) + '</span><span class="sm">' + NV.esc(NV.brk(c.broker).agency) + " · " + NV.esc(c.region) + "</span></td>" +
+          "<td>" + NV.esc(c.caller_name) + '<span class="sm">' + c.caller_type.toLowerCase() + " · agent " + NV.esc(c.agent_name) + "</span></td>" +
+          "<td>" + NV.esc(c.category) + '<span class="sm">' + NV.esc(c.product_line) + (c.touchpoint ? " · " + NV.esc(NV.titleCase(c.touchpoint)) : "") + "</span></td>" +
+          '<td><span class="oc" style="color:' + (OUTC[c.outcome] || "var(--ink-2)") + '">' + NV.titleCase(c.outcome.toLowerCase()) +
+            '</span><span class="sm">quality ' + c.score + " · " + NV.mmss(c.aht) + "</span></td>" +
+          "<td>" + (c.signals.length ? '<div class="sigs">' + c.signals.map((x) => '<span class="sev sev-' + x.severity + '" style="font-size:12.5px">' +
+            NV.titleCase(x.code) + "</span>").join("") + "</div>" : '<span class="nd">–</span>') + "</td></tr>").join("") +
+        "</tbody></table></div>"
+        : '<div class="empty"><b>No calls match</b>Clear the search or a filter.</div>') +
+      '<div class="pager"><div class="row"><span class="count">Rows per page</span>' +
+        [25, 50, 100].map((n) => '<button type="button" class="btn' + (n === per ? " primary" : "") + '" data-per="' + n + '">' + n + "</button>").join("") +
+        '</div><div class="row"><button type="button" class="btn" data-pg="-1"' + (page ? "" : " disabled") + ">← Previous</button>" +
+        '<span class="count">Page ' + (page + 1) + " of " + pages + "</span>" +
+        '<button type="button" class="btn" data-pg="1"' + (page < pages - 1 ? "" : " disabled") + ">Next →</button></div></div></section>";
+
+    const body = document.getElementById("body");
+    const qi = body.querySelector("#q");
+    qi.addEventListener("input", () => {
+      q = qi.value; page = 0; const pos = qi.selectionStart; render();
+      const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos, pos);
+    });
+    body.querySelectorAll("[data-sort]").forEach((h) => h.addEventListener("click", () => {
+      if (sortK === h.dataset.sort) sortDir = -sortDir; else { sortK = h.dataset.sort; sortDir = 1; }
+      render();
+    }));
+    body.querySelectorAll("tr[data-call]").forEach((tr) => {
+      tr.addEventListener("click", (e) => { if (!e.target.closest("input")) NV.openCall(tr.dataset.call); });
+      tr.addEventListener("keydown", (e) => { if (e.key === "Enter") NV.openCall(tr.dataset.call); });
+    });
+    body.querySelectorAll("[data-ck]").forEach((cb) => cb.addEventListener("change", () => {
+      if (cb.checked) sel.add(cb.dataset.ck); else sel.delete(cb.dataset.ck);
+      render();
+    }));
+    const ca = body.querySelector("#ckall");
+    if (ca) ca.addEventListener("change", () => { shown.forEach((c) => (ca.checked ? sel.add(c.id) : sel.delete(c.id))); render(); });
+    body.querySelectorAll("[data-per]").forEach((b) => b.addEventListener("click", () => { per = +b.dataset.per; page = 0; render(); }));
+    body.querySelectorAll("[data-pg]").forEach((b) => b.addEventListener("click", () => { page += +b.dataset.pg; render(); window.scrollTo({ top: 0 }); }));
+    body.querySelector("#dlall").addEventListener("click", () => download(all, "filtered"));
+    body.querySelector("#dlsel").addEventListener("click", () => download(D.calls.filter((c) => sel.has(c.id)), "selected"));
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

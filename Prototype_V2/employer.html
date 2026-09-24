@@ -1,0 +1,228 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Employer Insights</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="v2.css">
+<script>
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+} catch (e) {}
+</script>
+<style>
+  tr[data-call] { cursor: pointer; }
+  tr[data-call]:hover { background: var(--surface-2); }
+  .sigs { display: flex; flex-direction: column; gap: 2px; }
+</style>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead"><div id="head"></div><div id="filters"></div></div>
+    <div class="wrap"><div class="md">
+      <aside class="picker" id="picker" aria-label="Accounts"></aside>
+      <div class="detail" id="body"></div>
+    </div></div>
+    <p class="srcline">Account facts from the v9 workbook's Employer, Broker and Contact sheets; call evidence from the
+      batch 1 transcripts. Participation, fee band and COBRA regime are derived from eligible headcount.</p>
+  </main>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="nv2.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("employer.html");
+  document.getElementById("head").innerHTML = NV.pageHead("Insights &amp; patterns around employers",
+    "Pick an account to see what its members call about, which risk indicators fired, and the exact call " +
+    "behind each one. Use it to prepare for an account conversation or a renewal.");
+  let q = "";
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+
+  /* The picker lists every account in scope except for the employer filter
+     itself, so choosing one never empties the list. */
+  function pool() {
+    const keep = NV.S.employer;
+    NV.S.employer = "";
+    const list = NV.employersInScope();
+    NV.S.employer = keep;
+    return list.sort((a, b) => b.scoped_families - a.scoped_families ||
+      NV.monthsTo(a.renewal_m) - NV.monthsTo(b.renewal_m) || a.name.localeCompare(b.name));
+  }
+
+  function renderPicker(list, current) {
+    const f = list.filter((e) => !q || e.name.toLowerCase().indexOf(q) !== -1);
+    const el = document.getElementById("picker");
+    el.innerHTML = '<span class="ph">Accounts · ' + list.length + "</span>" +
+      '<input type="search" id="pq" placeholder="Search accounts" value="' + NV.esc(q) + '" aria-label="Search accounts">' +
+      "<ul>" + f.map((e) => '<li><button type="button" data-e="' + e.id + '"' + (e.id === current ? ' aria-current="true"' : "") +
+        "><span><b>" + NV.esc(e.name) + "</b><small>" + NV.esc(e.region) + " · renews " + NV.esc(e.renewal_month) +
+        "</small></span>" + NV.bandPill(e.scoped_band) + "</button></li>").join("") +
+      (f.length ? "" : '<li class="nd" style="padding:8px">No match</li>') + "</ul>";
+    const inp = el.querySelector("#pq");
+    inp.addEventListener("input", () => {
+      q = inp.value.trim().toLowerCase();
+      const pos = inp.selectionStart;
+      renderPicker(list, current);
+      const n = document.getElementById("pq"); n.focus(); n.setSelectionRange(pos, pos);
+    });
+    el.querySelectorAll("[data-e]").forEach((b) => b.addEventListener("click", () => {
+      NV.set("employer", b.dataset.e);
+      window.scrollTo({ top: 0 });
+    }));
+  }
+
+  function render() {
+    const list = pool();
+    const id = NV.S.employer && NV.emp(NV.S.employer).id ? NV.S.employer : (list[0] || {}).id;
+    renderPicker(list, id);
+    const body = document.getElementById("body");
+    if (!id) {
+      body.innerHTML = '<div class="panel c12"><div class="empty"><b>No account matches these filters</b>Clear a filter to bring accounts back.</div></div>';
+      return;
+    }
+    const e = Object.assign({}, NV.emp(id), list.find((x) => x.id === id) || {});
+    const b = NV.brk(e.broker);
+    const allCalls = D.calls.filter((c) => c.employer === id);
+    const cs = NV.calls().filter((c) => c.employer === id);
+    const hidden = allCalls.length - cs.length;
+    const inds = NV.indicatorsFor(cs);
+    const band = NV.bandFor(inds.length);
+    const ex = { employer: id };
+    const unres = cs.filter((c) => c.outcome === "UNRESOLVED").length;
+    const rep = cs.filter((c) => c.repeat_of).length;
+    const missed = cs.filter((c) => c.esc_triggered && !c.esc_handled).length;
+    const avgQ = cs.length ? Math.round(cs.reduce((a, c) => a + c.score, 0) / cs.length) : null;
+    const tps = {};
+    cs.forEach((c) => { if (c.touchpoint) tps[c.touchpoint] = (tps[c.touchpoint] || 0) + 1; });
+    const topTp = Object.keys(tps).sort((a, b2) => tps[b2] - tps[a])[0];
+    const months = NV.monthsTo(e.renewal_m);
+
+    /* ---- header ---- */
+    const head = '<section class="panel acct"><header><div><h2>' + NV.esc(e.name) + "</h2>" +
+      '<p class="sub" style="margin:4px 0 0">' + NV.esc(e.industry) + " · " + NV.esc(b.agency) + " · " +
+      NV.esc(e.region) + "</p></div>" + '<div class="row" style="gap:10px">' + NV.bandPill(band) +
+      NV.info("<p><b>More account facts</b></p><p>COBRA: " + NV.esc(e.cobra) + "<br>Dental: " +
+        (e.sponsorship === "ER" ? "employer-sponsored" : "voluntary") + "<br>Broker contact: " + NV.esc(b.name) +
+        "<br>Planned calls at full corpus: " + e.planned_calls + "</p><p>The workbook also carries a " +
+        "<b>" + NV.esc(e.design_churn_profile) + "</b> churn profile. It is the label the data was built from, " +
+        "so it is kept out of the risk band on purpose.</p>", "right") + "</div></header>" +
+      '<div class="facts">' +
+      [["Lives enrolled", e.enrolled + " of " + e.eligible],
+       ["Participation", e.participation !== null ? Math.round(e.participation * 100) + "%" : "–"],
+       ["Lines held", e.lines],
+       ["Admin fee", "$" + e.fee_band + " / month"],
+       ["Renews", NV.renewCell(e)]].map((f) => "<div>" + f[0] + "<b>" + (f[0] === "Renews" ? f[1] : NV.esc(String(f[1]))) + "</b></div>").join("") +
+      "</div>" + (hidden ? '<p class="lede" style="margin:12px 0 0">' + hidden + " of this account's " + allCalls.length +
+        " calls fall outside the selected period and are not counted below.</p>" : "") + "</section>";
+
+    /* ---- AI insights for the account. PRODUCTION: model call over these facts. ---- */
+    const ins = [];
+    const severe = inds.filter((i) => NV.IND_SHORT[i.code][1]);
+    if (inds.length >= 2) ins.push({ sev: band === "High" ? "high" : "med", focus: (severe[0] || inds[0]).code, extra: ex,
+      html: "<b>" + inds.length + " unrelated risk indicators</b> on this account" +
+        (severe.length ? ", including <b>" + severe.map((i) => NV.IND_SHORT[i.code][0].toLowerCase()).join(" and ") + "</b>" : "") + ".",
+      meta: "Risk" });
+    else if (inds.length === 1) ins.push({ sev: "info", focus: inds[0].code, extra: ex,
+      html: "One risk indicator so far: <b>" + NV.esc(inds[0].label.toLowerCase()) + "</b>. Not yet flagged.", meta: "Risk" });
+    else ins.push({ sev: "good", html: cs.length ? "<b>No risk indicators</b> in this account's calls for the period." :
+      "No calls for this account in the selected period.", meta: "Risk" });
+    if (NV.isFlagged(Object.assign({}, e, { scoped_band: band })) && months <= NV.RENEW_SOON)
+      ins.push({ sev: "high", focus: "renew_soon", extra: ex,
+        html: "<b>Renews in " + months + " month" + (months === 1 ? "" : "s") + "</b> (" + NV.esc(e.renewal_month) +
+          "). Close the open issues before the renewal conversation.", meta: "Renewal" });
+    if (topTp) ins.push({ sev: "info",
+      html: "Calls concentrate on <b>" + NV.esc(NV.titleCase(topTp)) + "</b>, owned by " +
+        NV.esc((D.touchpoints[topTp] || {}).owner || "an unnamed team") + ". A fix lands there, not with the call centre.",
+      meta: "Where it lands" });
+
+    /* ---- indicators ---- */
+    const indPanel = '<section class="panel c7"><header><div><h2>What went wrong on this account' +
+      NV.info("<p>Each row is a distinct indicator raised by this account's own calls. The risk band counts " +
+        "indicators, not incidents.</p>") + "</h2></div>" + NV.clsChip("observed") + "</header>" +
+      (inds.length ? '<ul class="indlist">' + inds.sort((a, c) =>
+        (NV.IND_SHORT[c.code][1] ? 1 : 0) - (NV.IND_SHORT[a.code][1] ? 1 : 0) || c.n - a.n).map((i) =>
+        '<li><span class="t' + (NV.IND_SHORT[i.code][1] ? " crit" : "") + '">' + NV.esc(i.label) +
+        '<span class="sm">' + i.n + " call" + (i.n === 1 ? "" : "s") + "</span></span>" +
+        '<a class="go" href="' + NV.actHref(i.code, ex) + '">What to do →</a>' +
+        '<div class="c callchips" style="margin:0">' + i.calls.map((c) => '<a href="#" data-call="' + c + '">' + c + "</a>").join("") +
+        "</div></li>").join("") + "</ul>"
+        : '<div class="empty"><b>No indicators raised</b>' + (cs.length ? "None of the ten indicators appears in this period." :
+          "No calls in the selected period.") + "</div>") +
+      (e.structural && e.structural.length ? '<h3 class="sec">Account facts that raise the stakes</h3>' +
+        e.structural.map((s) => '<p class="lede" style="margin:0 0 4px"><b>' + NV.esc(s.label) + "</b> · " +
+          NV.esc(s.detail) + "</p>").join("") : "") + "</section>";
+
+    const topics = '<section class="panel c5"><header><div><h2>What they call about</h2></div>' +
+      NV.clsChip("observed") + '</header><div id="topics"></div></section>';
+
+    /* ---- calls ---- */
+    const OUTC = { UNRESOLVED: "var(--critical)", RESOLVED: "var(--good-text)" };
+    const callsPanel = '<section class="panel c12"><header><div><h2>Calls</h2></div>' + NV.clsChip("observed") + "</header>" +
+      '<p class="sub">Select a call for the transcript, tags and quoted evidence.</p>' +
+      (cs.length ? NV.tbl([["Call"], ["Caller"], ["Topic"], ["Outcome"], ["Signals"]],
+        cs.map((c) => ['<span class="nm mono">' + c.id + '</span><span class="sm">' + c.date + "</span>",
+          NV.esc(c.caller_name) + '<span class="sm">' + c.caller_type.toLowerCase() + "</span>",
+          NV.esc(c.category) + '<span class="sm">' + (c.touchpoint ? NV.esc(NV.titleCase(c.touchpoint)) : "no touchpoint") + "</span>",
+          '<span style="font-weight:600;color:' + (OUTC[c.outcome] || "var(--ink-2)") + '">' + NV.titleCase(c.outcome.toLowerCase()) +
+            '</span><span class="sm">quality ' + c.score + "</span>",
+          c.signals.length ? '<div class="sigs">' + c.signals.map((s) => '<span class="sev sev-' + s.severity + '" style="font-size:12.5px">' +
+            NV.titleCase(s.code) + "</span>").join("") + "</div>" : '<span class="nd">–</span>']),
+        (i) => ' data-call="' + cs[i].id + '" tabindex="0"')
+        : '<div class="empty"><b>No calls in this period</b>Widen the period to see this account\'s calls.</div>') + "</section>";
+
+    /* ---- actions ---- */
+    const ids = new Set(cs.map((c) => c.id));
+    const acts = D.actions.filter((a) => a.employer === id || (a.calls || []).some((c) => ids.has(c)));
+    const PILL = { overdue: "pill-high", needs_action: "pill-elevated", assigned: "pill-watch", in_progress: "pill-watch" };
+    const actPanel = '<section class="panel c12"><header><div><h2>Actions for this account</h2></div>' +
+      NV.clsChip("recommendation") + "</header>" + (acts.length
+        ? NV.tbl([["Action"], ["Owner"], ["Status"], ["Outcome"]], acts.map((a) => [
+          '<span class="nm">' + NV.esc(a.title) + '</span><span class="sm">' + NV.esc(a.evidence) + "</span>",
+          NV.esc(a.owner_team) + '<span class="sm">' + NV.esc(a.owner || "unassigned") + "</span>",
+          '<span class="pill ' + (PILL[a.status] || "pill-none") + '">' + NV.titleCase(a.status) + "</span>" +
+            (a.due ? '<span class="sm">due ' + a.due + "</span>" : ""),
+          a.outcome ? NV.esc(a.outcome) : '<span class="nd">not yet measured</span>']))
+        : '<div class="empty"><b>No action raised for this account yet</b>' +
+          (inds.length ? '<a href="' + NV.actHref(inds[0].code, ex) + '">Start with what to do →</a>' : "Nothing in its calls needs one.") + "</div>") +
+      "</section>";
+
+    body.innerHTML = head + NV.insightStrip(ins) +
+      NV.tiles([
+        { k: "Calls in period", v: cs.length, m: allCalls.length + " written in total" },
+        { k: "Unresolved", v: unres, m: "of " + cs.length + " calls", tone: unres ? "warm" : "", focus: unres ? "unresolved" : null },
+        { k: "Repeat contacts", v: rep, m: "same issue, called again", tone: rep ? "warm" : "", focus: rep ? "repeat_contact" : null },
+        { k: "Escalations missed", v: missed, m: "warranted, not given", tone: missed ? "hot" : "", focus: missed ? "escalation_missed" : null },
+        { k: "Average call quality", v: avgQ === null ? "–" : avgQ, m: "0–100, agent handling" },
+      ].map((t) => Object.assign(t, { extra: ex }))) +
+      indPanel + topics + callsPanel + actPanel;
+
+    const cat = {};
+    cs.forEach((c) => { cat[c.category] = (cat[c.category] || 0) + 1; });
+    const rows = Object.keys(cat).sort((a, c) => cat[c] - cat[a]).map((k) => ({ label: k, value: cat[k] }));
+    document.getElementById("topics").innerHTML = rows.length
+      ? '<ul class="ranked">' + rows.map((r) => '<li style="grid-template-columns:minmax(0,1.3fr) minmax(60px,1fr) 30px">' +
+          '<span class="lbl">' + NV.esc(r.label) + '</span><span class="bar"><i style="width:' +
+          Math.round(r.value / rows[0].value * 100) + '%"></i></span><span class="n">' + r.value + "</span></li>").join("") + "</ul>"
+      : '<div class="empty"><b>No calls in this period</b></div>';
+
+    body.querySelectorAll("tr[data-call]").forEach((tr) => tr.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") NV.openCall(tr.dataset.call);
+    }));
+    NV.wireRows(body);
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

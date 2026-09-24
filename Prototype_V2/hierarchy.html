@@ -1,0 +1,213 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Isolated Or Systemic</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="v2.css">
+<script>
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+} catch (e) {}
+</script>
+<style>
+  .tree { font-size: 14px; }
+  .tree summary { padding: 11px 4px; }
+  .tree .sm { font-size: 12.5px; color: var(--ink-3); }
+  .tree a { text-decoration: none; }
+</style>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead"><div id="head"></div><div id="filters"></div></div>
+    <div class="wrap" id="body"></div>
+    <p class="srcline">Broker book sizes and regions from the v9 workbook's Broker and Employer sheets. A broker is only
+      counted as named adversely when a caller says the broker's name aloud.</p>
+  </main>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="nv2.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("hierarchy.html");
+  document.getElementById("head").innerHTML = NV.pageHead("Is it isolated or systemic?",
+    "Checks whether a problem sits with one account, one broker, or runs across a region or the whole book. " +
+    "The answer decides the fix: a conversation with one account, one broker, or a change to a process.");
+  let allBrokers = false;
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+  function panel(cls, title, tip, chip, sub, body) {
+    return '<section class="panel ' + cls + '"><header><div><h2>' + title + (tip ? NV.info(tip) : "") +
+      "</h2></div>" + (chip ? NV.clsChip(chip) : "") + "</header>" +
+      (sub ? '<p class="sub">' + sub + "</p>" : "") + body + "</section>";
+  }
+
+  function render() {
+    const calls = NV.calls();
+    const emps = NV.employersInScope();
+    const regions = Array.from(new Set(emps.map((e) => e.region))).sort();
+    const isAdv = (c) => c.signals.some((s) => s.code === "broker_conduct_adverse");
+    const adverse = calls.filter(isAdv);
+    const advBrokers = new Set(adverse.map((c) => c.broker));
+    const compl = {};
+    calls.forEach((c) => { if (c.complaint) compl[c.complaint_to] = (compl[c.complaint_to] || 0) + 1; });
+    const complTotal = Object.values(compl).reduce((a, n) => a + n, 0);
+
+    const regRows = regions.map((rg) => {
+      const re = emps.filter((e) => e.region === rg);
+      const rc = calls.filter((c) => c.region === rg);
+      return { rg: rg, emps: re, calls: rc, flagged: re.filter(NV.isFlagged).length,
+        unres: rc.filter((c) => c.outcome === "UNRESOLVED").length };
+    }).sort((a, b) => b.flagged - a.flagged || b.calls.length - a.calls.length);
+
+    const cats = Array.from(new Set(D.calls.map((c) => c.category))).sort();
+    const catRegions = cats.map((ct) => ({ ct: ct, n: regions.filter((rg) => calls.some((c) => c.region === rg && c.category === ct)).length,
+      calls: calls.filter((c) => c.category === ct).length })).sort((a, b) => b.n - a.n || b.calls - a.calls);
+
+    const brows = D.brokers.filter((b) => emps.some((e) => e.broker === b.id)).map((b) => Object.assign({}, b, {
+      sFlag: emps.filter((e) => e.broker === b.id && NV.isFlagged(e)).length,
+      sCalls: calls.filter((c) => c.broker === b.id).length,
+      sAdv: calls.filter((c) => c.broker === b.id && isAdv(c)).length,
+      sAdvEmp: new Set(calls.filter((c) => c.broker === b.id && isAdv(c)).map((c) => c.employer)).size,
+    })).sort((a, b) => b.sAdv - a.sAdv || b.sFlag - a.sFlag || b.sCalls - a.sCalls);
+    const firing = brows.filter((b) => b.sAdv >= 3 && b.sAdvEmp >= 2).length;
+    const topBroker = brows[0];
+
+    /* AI insights. PRODUCTION: model call over these computed facts. */
+    const ins = [];
+    if (complTotal) {
+      const us = compl.CHOICE || 0;
+      ins.push({ sev: us / complTotal > .5 ? "high" : "med", focus: "complaint_choice",
+        html: "<b>" + us + " of " + complTotal + " complaints are about us</b>, not the broker or carrier. " +
+          "That makes most of the complaint load ours to fix.", meta: "Who is it about" });
+    }
+    ins.push({ sev: firing ? "high" : "info", focus: adverse.length ? "broker_adverse" : null,
+      html: adverse.length ? "<b>" + adverse.length + " calls named a broker adversely</b>, spread across " + advBrokers.size +
+        " agenc" + (advBrokers.size === 1 ? "y" : "ies") + ". " + (firing ? firing + " broker" + (firing === 1 ? " meets" : "s meet") +
+        " the pattern test, so this is a channel issue." : "None meets the pattern test, so these read as separate incidents.")
+        : "No caller named a broker adversely in this scope.", meta: "By broker" });
+    if (catRegions[0]) ins.push({ sev: "info",
+      html: "<b>" + NV.esc(catRegions[0].ct) + "</b> shows up in " + catRegions[0].n + " of " + regions.length +
+        " regions (" + catRegions[0].calls + " calls). A topic this widespread is a process issue, not a local one.",
+      meta: "Book-wide topic" });
+    if (regRows[0] && regRows[0].flagged) ins.push({ sev: "med",
+      html: "<b>" + NV.esc(regRows[0].rg) + "</b> has the most flagged accounts (" + regRows[0].flagged + " of " +
+        regRows[0].emps.length + "). Check whether they share a broker before treating it as regional.",
+      meta: "By region" });
+
+    /* Regions table. */
+    const regionPanel = panel("c5", "By region",
+      "<p>Six regions of about sixteen employers each. Counts, not rates: a region holds about sixteen calls in batch 1.</p>",
+      "observed", "Select a region to filter every page.",
+      NV.tbl([["Region"], ["Accounts", "num"], ["Flagged", "num"], ["Calls", "num"], ["Unresolved", "num"]],
+        regRows.map((r) => ['<span class="nm">' + NV.esc(r.rg) + "</span>", r.emps.length,
+          r.flagged ? NV.act("flagged", r.flagged, "warm") : '<span class="nd">0</span>', r.calls.length,
+          r.unres ? NV.act("unresolved", r.unres, "warm") : '<span class="nd">0</span>']),
+        (i) => ' class="clickable" data-region="' + NV.esc(regRows[i].rg) + '"'));
+
+    /* Heatmap: region x topic. */
+    const cell = {}; let maxCell = 0;
+    calls.forEach((c) => { const k = c.region + "|" + c.category; cell[k] = (cell[k] || 0) + 1; if (cell[k] > maxCell) maxCell = cell[k]; });
+    const CW = 84, RH = 32, LW = 130;
+    const W = LW + cats.length * CW + 8, H = regions.length * RH + 44;
+    let svg = '<svg class="chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Calls by region and topic">';
+    cats.forEach((c, i) => {
+      const w = c.split(" ");
+      svg += '<text class="tick" x="' + (LW + i * CW + CW / 2) + '" y="13" text-anchor="middle" style="font-size:12px">' + NV.esc(w[0]) +
+        '</text><text class="tick" x="' + (LW + i * CW + CW / 2) + '" y="27" text-anchor="middle" style="font-size:12px">' + NV.esc(w.slice(1).join(" ")) + "</text>";
+    });
+    regions.forEach((rg, ri) => {
+      svg += '<text x="0" y="' + (36 + ri * RH + RH / 2 + 4) + '" style="font-size:13px" fill="var(--ink-2)">' + NV.esc(rg) + "</text>";
+      cats.forEach((c, ci) => {
+        const v = cell[rg + "|" + c] || 0, t = maxCell ? v / maxCell : 0;
+        const step = v === 0 ? null : t > .66 ? "--seq-3" : t > .33 ? "--seq-2" : "--seq-1";
+        svg += '<rect x="' + (LW + ci * CW + 1) + '" y="' + (36 + ri * RH + 1) + '" width="' + (CW - 3) + '" height="' + (RH - 3) +
+          '" rx="3" fill="' + (step ? "var(" + step + ")" : "var(--surface-2)") + '"/><text class="dlabel" x="' +
+          (LW + ci * CW + CW / 2) + '" y="' + (36 + ri * RH + RH / 2 + 4) + '" text-anchor="middle" style="font-size:13px;fill:' +
+          (step ? NV.inkOn(step) : "var(--ink-3)") + '">' + (v || "·") + "</text>";
+      });
+    });
+    svg += "</svg>";
+    const heat = panel("c7", "Which topics show up where",
+      "<p>Darker means more calls. A column dark across every row is a book-wide topic, which points at a process. " +
+      "One dark cell is local, which points at an account or broker.</p>", "pattern",
+      "A dark column means book-wide; a single dark cell means local.",
+      svg + '<div class="legend"><span><i style="background:var(--seq-1)"></i>fewer</span>' +
+      '<span><i style="background:var(--seq-3)"></i>more calls</span><span><i style="background:var(--surface-2)"></i>none</span></div>');
+
+    /* Brokers. */
+    const bShown = allBrokers ? brows : brows.slice(0, 10);
+    const brokers = panel("c12", "By broker",
+      "<p><b>Groups in book</b> comes from the broker sheet, never from call counts, so the denominator is not built from the numerator.</p>" +
+      "<p>The pattern test fires when one broker is named adversely three times across two of its employers. No per-broker rate " +
+      "is shown: a three-group broker has about ten calls, too few for a rate.</p>", "observed",
+      "Most adverse mentions first. Select a broker to filter every page.",
+      NV.tbl([["Broker"], ["Region"], ["Groups", "num"], ["Calls", "num"], ["Named adversely", "num"], ["Flagged accounts", "num"]],
+        bShown.map((b) => ['<span class="nm">' + NV.esc(b.agency) + '</span><span class="sm">' + NV.esc(b.name) + "</span>",
+          NV.esc(b.region), b.groups_in_book, b.sCalls,
+          b.sAdv ? NV.act("broker_adverse", b.sAdv, b.sAdv >= 3 && b.sAdvEmp >= 2 ? "hot" : "warm", { broker: b.id }) +
+            '<span class="sm">' + b.sAdvEmp + " employer" + (b.sAdvEmp === 1 ? "" : "s") + "</span>" : '<span class="nd">–</span>',
+          b.sFlag ? NV.act("flagged", b.sFlag, "warm", { broker: b.id }) : '<span class="nd">–</span>']),
+        (i) => ' class="clickable" data-broker="' + bShown[i].id + '"') +
+      (brows.length > 10 ? '<p class="cta"><button type="button" class="btn" id="allb">' +
+        (allBrokers ? "Show top 10" : "Show all " + brows.length + " brokers") + "</button></p>" : ""));
+
+    /* Drill-down tree, folded. */
+    const tree = regions.map((rg) => {
+      const rE = emps.filter((e) => e.region === rg);
+      const rC = calls.filter((c) => c.region === rg);
+      const bks = Array.from(new Set(rE.map((e) => e.broker))).sort();
+      return '<details><summary><span class="nm"><b>' + NV.esc(rg) + '</b></span><span class="sm">' + rE.length +
+        " accounts · " + bks.length + " brokers · " + rC.length + " calls</span></summary>" +
+        bks.map((bid) => {
+          const bE = rE.filter((e) => e.broker === bid);
+          return '<details class="lv2"><summary><span class="nm">' + NV.esc(NV.brk(bid).agency) + '</span><span class="sm">' +
+            bE.length + " account" + (bE.length === 1 ? "" : "s") + "</span></summary>" +
+            bE.map((e) => '<div class="lv3" style="display:flex;justify-content:space-between;gap:10px;padding:8px 4px 8px 44px;border-bottom:1px solid var(--rule)">' +
+              '<a href="' + NV.esc(NV.empHref(e.id)) + '">' + NV.esc(e.name) + "</a><span>" + NV.bandPill(e.scoped_band) +
+              ' <span class="sm">' + e.scoped_written + " calls</span></span></div>").join("") + "</details>";
+        }).join("") + "</details>";
+    }).join("");
+    const drill = '<section class="panel c12"><details class="more" style="margin:0;border:0;padding:0"><summary>' +
+      "Drill down: region → broker → account</summary>" + '<div class="tree" style="margin-top:10px">' + tree + "</div></details></section>";
+
+    const body = document.getElementById("body");
+    body.innerHTML = NV.insightStrip(ins) +
+      NV.tiles([
+        { k: "Complaints about us", v: compl.CHOICE || 0, m: "of " + complTotal + " complaints", tone: compl.CHOICE ? "warm" : "",
+          focus: compl.CHOICE ? "complaint_choice" : null },
+        { k: "Brokers named adversely", v: advBrokers.size, m: adverse.length + " calls", tone: adverse.length ? "warm" : "",
+          focus: adverse.length ? "broker_adverse" : null },
+        { k: "Broker pattern alerts", v: firing + " of " + brows.length, m: "needs 3 mentions from 2 employers",
+          tip: "<p>At batch-1 volume the test is unlikely to fire; it is sized for the full 600 calls.</p>" },
+        { k: "Regions with flagged accounts", v: regRows.filter((r) => r.flagged).length + " of " + regions.length, m: "flagged in every region = book-wide" },
+      ]) +
+      heat + regionPanel + brokers + drill;
+
+    body.querySelectorAll("tr[data-region]").forEach((tr) => tr.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      NV.set("region", NV.S.region === tr.dataset.region ? "" : tr.dataset.region);
+    }));
+    body.querySelectorAll("tr[data-broker]").forEach((tr) => tr.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      NV.set("broker", NV.S.broker === tr.dataset.broker ? "" : tr.dataset.broker);
+    }));
+    const ab = body.querySelector("#allb");
+    if (ab) ab.addEventListener("click", () => { allBrokers = !allBrokers; render(); });
+    NV.wireRows(body);
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

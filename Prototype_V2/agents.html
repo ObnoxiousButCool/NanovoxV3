@@ -1,0 +1,224 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Agent Conduct</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="v2.css">
+<script>
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+} catch (e) {}
+</script>
+<style>
+  .cov { display: flex; align-items: center; gap: 8px; min-width: 110px; }
+  .cov .track { flex: 1 1 auto; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+  .cov .fill { display: block; height: 100%; background: var(--seq-2); }
+  .cov .n { font: 500 12px/1 var(--mono); color: var(--ink-3); white-space: nowrap; }
+  .tag { font: 600 12px/1 var(--body); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.doc { color: var(--critical); background: color-mix(in srgb, var(--critical) 10%, var(--surface)); }
+  .tag.trn { color: var(--ink-2); background: var(--surface-2); }
+</style>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead"><div id="head"></div><div id="filters"></div></div>
+    <div class="wrap" id="body"></div>
+    <p class="srcline">20 agents from the v9 workbook's Agent Roster, joined to the agent on each written call.
+      Band and expected score are the workbook's; events are counted from call tags.</p>
+  </main>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="nv2.js"></script>
+<script>
+(function () {
+  const D = NV.D, AG = D.agents;
+  const MIN_CALLS = 30; // the roster's own minimum for an agent-level rate
+  document.getElementById("rail").innerHTML = NV.rail("agents.html");
+  document.getElementById("head").innerHTML = NV.pageHead("How are agents handling calls?",
+    "Tracks conduct events by agent: disclosures missed, rules explained wrongly and escalations not given. " +
+    "Per-agent scores are held back until each agent has " + MIN_CALLS + " calls, so nobody is judged on a handful.",
+    "<p><b>Events, not scores.</b> A missed disclosure happened on a specific call; it needs no sample. A quality average " +
+    "on four calls is an estimate too wide to attach to a named person.</p><p>The roster sets the " + MIN_CALLS +
+    "-call bar, not us. The busiest agent is well short of it in batch 1.</p>");
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar({ compact: true });
+    NV.bindFilters(el);
+  }
+  function panel(cls, title, tip, chip, sub, body) {
+    return '<section class="panel ' + cls + '"><header><div><h2>' + title + (tip ? NV.info(tip) : "") +
+      "</h2></div>" + (chip ? NV.clsChip(chip) : "") + "</header>" +
+      (sub ? '<p class="sub">' + sub + "</p>" : "") + body + "</section>";
+  }
+  const ev = (n, key, agent) => (n ? NV.act(key, n, "warm", agent ? { agent: agent } : null) : '<span class="nd">–</span>');
+
+  function openAgent(id, s) {
+    const a = AG[id] || {};
+    NV.drawer(NV.esc(a.name || id),
+      "<div><h4>Roster</h4><p style='margin:0;font-size:14px'>" + NV.esc(a.band) + " · expected score " +
+        (a.expected_score || "–") + " · " + s.calls.length + " of " + MIN_CALLS + " calls written</p></div>" +
+      "<div><h4>Events</h4><p style='margin:0;font-size:14px'>" +
+        [["compliance exception", s.ctrl], ["rule stated wrongly", s.kf], ["escalation missed", s.esc]]
+          .filter((r) => r[1]).map((r) => "<b>" + r[1] + "</b> " + r[0] + (r[1] === 1 ? "" : "s")).join(" · ") +
+        (s.events ? "" : "None recorded") + "</p></div>" +
+      "<div><h4>Calls</h4>" + s.calls.map((c) => {
+        const f = [];
+        if (c.control_exceptions.length) f.push("compliance");
+        if (c.kf_present) f.push("rule misstated");
+        if (c.esc_triggered && !c.esc_handled) f.push("escalation missed");
+        return '<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--rule)">' +
+          '<a href="#" data-c="' + c.id + '" class="mono">' + c.id + '</a><span class="sm">' + NV.esc(c.category) +
+          (f.length ? " · <b style='color:var(--critical)'>" + f.join(", ") + "</b>" : "") + "</span></div>";
+      }).join("") + "</div>", "observed",
+      (root) => root.querySelectorAll("a[data-c]").forEach((x) =>
+        x.addEventListener("click", (e) => { e.preventDefault(); NV.openCall(x.dataset.c); })));
+  }
+
+  function render() {
+    const calls = NV.calls();
+    const ids = Object.keys(AG);
+    const st = {};
+    ids.forEach((id) => {
+      const cs = calls.filter((c) => c.agent === id);
+      const ctrl = cs.filter((c) => c.control_exceptions && c.control_exceptions.length).length;
+      const kf = cs.filter((c) => c.kf_present).length;
+      const esc = cs.filter((c) => c.esc_triggered && !c.esc_handled).length;
+      st[id] = { calls: cs, ctrl: ctrl, kf: kf, esc: esc, events: ctrl + kf + esc };
+    });
+    const withEv = ids.filter((id) => st[id].events).sort((a, b) => st[b].events - st[a].events || st[b].ctrl - st[a].ctrl);
+    const tot = (k) => ids.reduce((a, id) => a + st[id][k], 0);
+    const ready = ids.filter((id) => st[id].calls.length >= MIN_CALLS).length;
+    const maxCalls = Math.max.apply(null, ids.map((id) => st[id].calls.length).concat([0]));
+
+    /* Exception types - concentrated on one agent, or spread? */
+    const byType = {};
+    calls.forEach((c) => (c.control_exceptions || []).forEach((x) => {
+      const t = byType[x] || (byType[x] = { n: 0, agents: new Set() });
+      t.n += 1; t.agents.add(c.agent);
+    }));
+    const concentrated = Object.keys(byType).filter((k) => byType[k].agents.size === 1 && byType[k].n > 1);
+
+    /* Misstated rules - one agent (training) or several (documentation)? */
+    const kfr = {};
+    calls.forEach((c) => {
+      if (!c.kf_present || !c.kf_rule) return;
+      const r = kfr[c.kf_rule] || (kfr[c.kf_rule] = { n: 0, agents: new Set(), bands: new Set() });
+      r.n += 1; r.agents.add(c.agent); if (AG[c.agent]) r.bands.add(AG[c.agent].band);
+    });
+    const rules = Object.keys(kfr).sort((a, b) => kfr[b].agents.size - kfr[a].agents.size || kfr[b].n - kfr[a].n);
+    const shared = rules.filter((r) => kfr[r].agents.size > 1);
+
+    /* Band comparison, and whether harder calls explain it. */
+    const bands = Array.from(new Set(ids.map((id) => AG[id].band))).filter(Boolean);
+    const bandRows = bands.map((b) => {
+      const mine = ids.filter((id) => AG[id].band === b);
+      const cs = mine.reduce((a, id) => a.concat(st[id].calls), []);
+      return { b: b, agents: mine.length, cs: cs, events: mine.reduce((a, id) => a + st[id].events, 0),
+        score: cs.length >= 5 ? Math.round(cs.reduce((a, c) => a + c.score, 0) / cs.length) : null,
+        hard: cs.length ? cs.filter((c) => c.complexity_band === "High").length / cs.length : 0 };
+    }).filter((r) => r.cs.length);
+    const topB = bandRows[0], lowB = bandRows[bandRows.length - 1];
+    const comparable = topB && lowB && topB !== lowB && topB.cs.length >= 5 && lowB.cs.length >= 5;
+
+    const refused = calls.filter((c) => c.esc_requested && !c.esc_handled);
+
+    /* AI insights. PRODUCTION: model call over these computed facts. */
+    const ins = [];
+    if (concentrated.length) {
+      const k = concentrated[0], ag = AG[Array.from(byType[k].agents)[0]] || {};
+      ins.push({ sev: "high", focus: "control_exception",
+        html: "<b>" + NV.esc(NV.titleCase(k)) + "</b> happened on " + byType[k].n + " calls, <b>all by " + NV.esc(ag.name) +
+          "</b>. One agent repeating a breach is a coaching conversation, not a process fix.", meta: "Compliance" });
+    }
+    if (rules.length) ins.push({ sev: shared.length ? "med" : "info", focus: "knowledge_failure",
+      html: shared.length ? "<b>" + shared.length + " of " + rules.length + " misstated rules</b> were got wrong by more than one agent (" +
+        shared.map((r) => "<b>" + r + "</b>").join(", ") + "). That points at the rule's wording, so rewrite it rather than retrain."
+        : "Every misstated rule sits with a single agent, which points at training rather than the rule's wording.",
+      meta: "Knowledge" });
+    if (refused.length) ins.push({ sev: "high", focus: "escalation_missed",
+      html: "<b>" + refused.length + " caller" + (refused.length === 1 ? "" : "s") + " asked for a supervisor and did not get one.</b> " +
+        "It is the clearest conduct event in the set: asked, and refused.", meta: "Escalation" });
+    if (comparable && topB.score !== null && lowB.score !== null && topB.hard > lowB.hard)
+      ins.push({ sev: "info",
+        html: "The <b>" + NV.esc(lowB.b) + "</b> band scores " + (topB.score - lowB.score) + " points below <b>" + NV.esc(topB.b) +
+          "</b> while handling <b>simpler</b> calls, so call difficulty does not explain the gap.", meta: "Bands" });
+
+    const events = panel("c12", "Issues by agent",
+      "<p>A <b>compliance exception</b> is a breach on that call, whatever the sample. So are a rule stated wrongly and a " +
+      "warranted escalation not given. These can be attributed to a person at any volume; averages cannot.</p>",
+      "observed", "Agents with at least one event, most first. Select an agent for their calls; select a number for what to do.",
+      NV.tbl([["Agent"], ["Calls", "num"], ["Compliance", "num"], ["Rule stated wrongly", "num"], ["Escalation missed", "num"], ["Total", "num"]],
+        withEv.map((id) => {
+          const a = AG[id], s = st[id];
+          return ['<span class="nm">' + NV.esc(a.name) + '</span><span class="sm">' + NV.esc(a.band) + "</span>",
+            s.calls.length, ev(s.ctrl, "control_exception", id), ev(s.kf, "knowledge_failure", id), ev(s.esc, "escalation_missed", id),
+            "<b>" + s.events + "</b>" + (s.ctrl === s.calls.length && s.calls.length > 1 ? '<span class="sm" style="color:var(--critical)">every call</span>' : "")];
+        }), (i) => ' class="clickable" data-agent="' + withEv[i] + '"'));
+
+    const ruleP = panel("c6", "Coach the agent, or fix the rule?",
+      "<p>A rule one agent gets wrong is probably training. The same rule misstated by <b>more than one</b> agent, " +
+      "especially across bands, points at the rule's own wording.</p>", "inference",
+      "Rules stated wrongly on calls, and what that suggests.",
+      rules.length ? NV.tbl([["Rule"], ["Agents", "num"], ["Suggests"]],
+        rules.map((r) => { const rule = (D.rules || {})[r] || {};
+          return ['<span class="nm mono">' + NV.esc(r) + '</span><span class="sm">' + NV.esc(rule.area || "") + "</span>",
+            kfr[r].agents.size,
+            kfr[r].agents.size > 1 ? '<span class="tag doc">Rewrite the rule</span>' : '<span class="tag trn">Coach the agent</span>']; }))
+        : '<div class="empty"><b>No misstated rules in scope</b></div>');
+
+    const bandP = panel("c6", "By experience level",
+      "<p>Grouping recovers the sample one agent lacks. A band pools thirty-odd calls, enough to publish an average.</p>" +
+      "<p>Call routing is part of the corpus design, so the difficulty comparison holds within this data only.</p>",
+      "observed", comparable ? "Hard calls = share of high-complexity calls the band handled." : "Too few calls in this scope to compare bands.",
+      NV.tbl([["Band"], ["Agents", "num"], ["Calls", "num"], ["Events", "num"], ["Hard calls", "num"], ["Avg quality", "num"]],
+        bandRows.map((r) => ['<span class="nm">' + NV.esc(r.b) + "</span>", r.agents, r.cs.length,
+          r.events ? "<b>" + r.events + "</b>" : '<span class="nd">–</span>',
+          r.cs.length >= 5 ? Math.round(r.hard * 100) + "%" : '<span class="nd">–</span>',
+          r.score === null ? '<span class="nd">–</span>' : "<b>" + r.score + "</b>"])));
+
+    const cov = (n) => '<span class="cov"><span class="track"><span class="fill" style="width:' +
+      Math.min(n / MIN_CALLS * 100, 100).toFixed(0) + '%"></span></span><span class="n">' + n + "/" + MIN_CALLS + "</span></span>";
+    const roster = '<section class="panel c12"><details class="more" style="margin:0;border:0;padding:0"><summary>Full roster · ' +
+      ids.length + " agents</summary>" +
+      '<p class="lede" style="margin-top:10px">Scores are withheld per agent until the coverage bar is full. The roster was written before ' +
+      "the calls, so an agent matching their designed pattern is the data agreeing with itself, not a finding.</p>" +
+      NV.tbl([["Agent"], ["Band"], ["Expected score", "num"], ["Coverage"], ["Events", "num"]],
+        ids.slice().sort((a, b) => st[b].events - st[a].events || st[b].calls.length - st[a].calls.length).map((id) => {
+          const a = AG[id];
+          return ['<span class="nm">' + NV.esc(a.name) + "</span>", NV.esc(a.band),
+            a.expected_score ? a.expected_score + (a.score_variance ? " ± " + a.score_variance : "") : "–",
+            cov(st[id].calls.length), st[id].events ? "<b>" + st[id].events + "</b>" : '<span class="nd">–</span>'];
+        })) + "</details></section>";
+
+    const body = document.getElementById("body");
+    body.innerHTML = NV.insightStrip(ins) +
+      NV.tiles([
+        { k: "Compliance exceptions", v: tot("ctrl"), m: "breaches on a specific call", tone: tot("ctrl") ? "hot" : "",
+          focus: tot("ctrl") ? "control_exception" : null },
+        { k: "Rules stated wrongly", v: tot("kf"), m: "across " + ids.filter((id) => st[id].kf).length + " agents", tone: tot("kf") ? "warm" : "",
+          focus: tot("kf") ? "knowledge_failure" : null },
+        { k: "Escalations missed", v: tot("esc"), m: refused.length + " where the caller asked", tone: tot("esc") ? "hot" : "",
+          focus: tot("esc") ? "escalation_missed" : null },
+        { k: "Agents with a score", v: ready + " of " + ids.length, m: "busiest has " + maxCalls + " of " + MIN_CALLS + " calls", tone: "withheld",
+          tip: "<p>The roster sets " + MIN_CALLS + " calls as the minimum for an agent-level rate. At batch-1 volume no agent is there yet, " +
+            "so per-agent scores are withheld rather than shown on a handful of calls.</p>" },
+      ]) + events + ruleP + bandP + roster;
+
+    body.querySelectorAll("tr[data-agent]").forEach((tr) => tr.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      openAgent(tr.dataset.agent, st[tr.dataset.agent]);
+    }));
+    NV.wireRows(body);
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>

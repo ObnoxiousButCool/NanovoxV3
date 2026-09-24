@@ -1,0 +1,457 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>What To Do Next</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../app.css">
+<link rel="stylesheet" href="v2.css">
+<script>
+try {
+  var t = localStorage.getItem("nvx-theme");
+  if (t !== "system") document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
+} catch (e) {}
+</script>
+
+<div class="shell">
+  <div id="rail"></div>
+  <main class="main">
+    <div class="pagehead"><div id="head"></div><div id="filters"></div></div>
+    <div class="wrap" id="body"></div>
+    <p class="srcline">Issues are counted from the batch 1 calls. Owners, dates, actions taken and outcomes
+      are prototype workflow data. Recommended steps are generic good practice for review by the
+      owning teams.</p>
+  </main>
+</div>
+
+<script src="../data.js"></script>
+<script src="../app.js"></script>
+<script src="nv2.js"></script>
+<script>
+(function () {
+  const D = NV.D;
+  document.getElementById("rail").innerHTML = NV.rail("actions.html");
+  document.getElementById("head").innerHTML = NV.pageHead("What should we do next?",
+    "Every issue the platform has flagged, with the steps to fix it, who should own it, and how far " +
+    "the work has got. Start with the list below, or arrive here from any red number on another page.",
+    "<p>Each issue links to the calls and accounts behind it. The recommended steps are a starting " +
+    "playbook for the owning team, not a policy.</p>");
+
+  let focus = null;
+  try { focus = new URLSearchParams(location.search).get("focus"); } catch (e) {}
+  if (focus && !NV.pb(focus)) focus = null;
+
+  const LANES = [
+    ["needs_action", "Needs action", "var(--serious)"], ["assigned", "Assigned", "var(--seq-1)"],
+    ["in_progress", "In progress", "var(--seq-2)"], ["overdue", "Overdue", "var(--critical)"],
+    ["action_taken", "Action taken", "var(--seq-3)"], ["monitoring", "Monitoring", "var(--s4)"],
+    ["completed", "Completed", "var(--s3)"],
+  ];
+  const OPEN = ["needs_action", "assigned", "in_progress", "overdue"];
+  const PILL = { overdue: "pill-high", needs_action: "pill-elevated", assigned: "pill-watch",
+    in_progress: "pill-watch", action_taken: "pill-none", monitoring: "pill-none", completed: "pill-none" };
+  const statusPill = (s) => '<span class="pill ' + (PILL[s] || "pill-none") + '">' + NV.titleCase(s) + "</span>";
+  let view = "board";
+
+  function renderFilters() {
+    const el = document.getElementById("filters");
+    el.innerHTML = NV.filterBar();
+    NV.bindFilters(el);
+  }
+
+  function scopedActions() {
+    const ids = new Set(NV.calls().map((c) => c.id));
+    const emps = new Set(NV.employersInScope().map((e) => e.id));
+    return D.actions.filter((a) => {
+      if (a.calls && a.calls.length && a.calls.some((c) => ids.has(c))) return true;
+      if (a.employer && emps.has(a.employer)) return true;
+      return !a.calls || !a.calls.length;
+    });
+  }
+
+  /* ---------- the focused issue ---------- */
+  function focusPanel(key) {
+    const p = NV.pb(key);
+    const calls = p.calls ? NV.calls().filter(p.calls) : [];
+    const accts = p.accounts ? p.accounts() : null;
+    const acts = p.actions ? p.actions() : null;
+    const n = p.calls ? calls.length : accts ? accts.length : acts.length;
+    const empName = NV.S.employer ? NV.emp(NV.S.employer).name : null;
+
+    let where = "";
+    if (p.calls) {
+      const byEmp = {};
+      calls.forEach((c) => { (byEmp[c.employer] = byEmp[c.employer] || []).push(c); });
+      const inScope = {};
+      NV.employersInScope().forEach((e) => { inScope[e.id] = e; });
+      const rows = Object.keys(byEmp).map((id) => ({ e: inScope[id] || NV.emp(id), cs: byEmp[id] }))
+        .sort((a, b) => b.cs.length - a.cs.length || NV.monthsTo(a.e.renewal_m) - NV.monthsTo(b.e.renewal_m));
+      where = '<h3>Where it shows up</h3>' +
+        '<p class="lede">' + calls.length + " call" + (calls.length === 1 ? "" : "s") + " across " +
+        rows.length + " account" + (rows.length === 1 ? "" : "s") + ". Select an account for its full picture, or a call for the transcript.</p>" +
+        NV.tbl([["Account"], ["Risk"], ["Calls", "num"], ["Renews"]],
+          rows.slice(0, 8).map((r) => [
+            '<span class="nm">' + NV.esc(r.e.name) + '</span><span class="sm">' +
+              NV.esc(NV.brk(r.e.broker).agency) + " · " + NV.esc(r.e.region) + "</span>",
+            r.e.scoped_band ? NV.bandPill(r.e.scoped_band) : "–",
+            r.cs.length, r.e.renewal_m ? NV.renewCell(r.e) : "–",
+          ]), (i) => ' data-href="' + NV.esc(NV.empHref(rows[i].e.id)) + '"') +
+        (rows.length > 8 ? '<p class="lede" style="margin-top:8px">and ' + (rows.length - 8) + " more.</p>" : "") +
+        '<div class="callchips">' + calls.map((c) =>
+          '<a href="#" data-call="' + c.id + '" title="' + NV.esc(NV.emp(c.employer).name + " · " + c.category) + '">' +
+          c.id + "</a>").join("") + "</div>";
+    } else if (accts) {
+      const rows = accts.slice().sort((a, b) => b.scoped_families - a.scoped_families ||
+        NV.monthsTo(a.renewal_m) - NV.monthsTo(b.renewal_m));
+      where = '<h3>The accounts</h3><p class="lede">Most indicators first, then soonest renewal.</p>' +
+        NV.tbl([["Account"], ["What is firing"], ["Renews"]],
+          rows.slice(0, 10).map((e) => [
+            '<span class="nm">' + NV.esc(e.name) + '</span><span class="sm">' + NV.bandPill(e.scoped_band) +
+              " · " + NV.esc(NV.brk(e.broker).agency) + "</span>",
+            NV.fireChips(e, 2), NV.renewCell(e),
+          ]), (i) => ' data-href="' + NV.esc(NV.empHref(rows[i].id)) + '"') +
+        (rows.length > 10 ? '<p class="lede" style="margin-top:8px">and ' + (rows.length - 10) +
+          ' more on <a href="' + NV.href("index.html") + '">What are the risks?</a></p>' : "");
+    } else {
+      where = "<h3>The items</h3>" + NV.tbl([["Action"], ["Owner"], ["Due"]],
+        acts.map((a) => ['<span class="nm">' + NV.esc(a.title) + "</span>",
+          NV.esc(a.owner_team) + '<span class="sm">' + NV.esc(a.owner || "unassigned") + "</span>",
+          '<span style="color:var(--critical);font-weight:600">' + (a.due || "–") + "</span>"]));
+    }
+
+    /* What is already being done about it. */
+    const callIds = new Set(calls.map((c) => c.id));
+    const related = D.actions.filter((a) =>
+      (p.source && a.source.indexOf(p.source) === 0) ||
+      (a.calls || []).some((c) => callIds.has(c)) ||
+      (NV.S.employer && a.employer === NV.S.employer) ||
+      (acts && acts.indexOf(a) !== -1)).slice(0, 6);
+
+    return '<section class="focus lvl-' + p.sev + '" id="focus"><div class="fh"><div>' +
+      '<span class="eyebrow">What to do next' + (empName ? " · " + NV.esc(empName) : "") + "</span>" +
+      '<h2><span class="n" style="color:' + (p.sev === "high" ? "var(--critical)" : "var(--serious)") + '">' + n +
+      "</span>" + NV.esc(p.label) + "</h2>" +
+      "<p><b>" + NV.esc(p.meaning) + "</b> " + NV.esc(p.why) + "</p></div>" +
+      '<div class="row" style="gap:8px"><button type="button" class="btn primary" id="raise">Raise an action</button>' +
+      '<a class="btn" href="' + NV.href("actions.html").replace(/([?&])employer=[^&]*&?/, "$1").replace(/[?&]$/, "") + '">All issues</a></div></div>' +
+      '<div class="fb"><div><h3>Recommended steps</h3><ol class="steps">' +
+      p.steps.map((s) => "<li><span>" + NV.esc(s) + "</span></li>").join("") + "</ol>" +
+      '<p class="ownerline">Suggested owner: <b>' + NV.esc(p.owner) + "</b></p>" +
+      (related.length ? '<h3 style="margin-top:20px">Already in progress</h3>' +
+        '<ul class="indlist">' + related.map((a) => '<li><span class="t" style="font-weight:500;font-size:14px">' +
+          NV.esc(a.title) + '<span class="sm">' + NV.esc(a.owner_team) + (a.due ? " · due " + a.due : "") +
+          "</span></span>" + statusPill(a.status) + "</li>").join("") + "</ul>"
+        : '<p class="lede" style="margin-top:16px">No action has been raised for this yet.</p>') +
+      "</div><div>" + where + "</div></div></section>";
+  }
+
+  /* ---------- Raise an action: a Trello-style composer ----------
+     Prefilled from the issue's playbook and the calls behind it. Creating the
+     action adds it to the board and keeps it in this browser's storage. */
+  const TEAMS = () => Array.from(new Set(D.actions.map((a) => a.owner_team).concat(
+    Object.values(NV.PLAYBOOK).map((p) => p.owner)))).filter(Boolean).sort();
+  const PEOPLE = () => Array.from(new Set(D.actions.map((a) => a.owner).filter(Boolean))).sort();
+  function modal() {
+    let dlg = document.getElementById("tmodal");
+    if (!dlg) {
+      dlg = document.createElement("dialog");
+      dlg.id = "tmodal"; dlg.className = "tmodal";
+      dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+      document.body.appendChild(dlg);
+    }
+    return dlg;
+  }
+  function openComposer(key) {
+    const p = key ? NV.pb(key) : null;
+    const emp = NV.S.employer ? NV.emp(NV.S.employer) : null;
+    const calls = p && p.calls ? NV.calls().filter(p.calls).slice(0, 12) : [];
+    const due = new Date(Date.UTC(2026, 8, 25) + 14 * 864e5).toISOString().slice(0, 10);
+    const dlg = modal();
+    const steps = p ? p.steps.slice() : ["Confirm the issue with the calls behind it.", "Agree the fix with the owning team."];
+    dlg.innerHTML = '<form class="tm-form" method="dialog"><div class="tm-head"><div><span class="tm-list">New card</span>' +
+      '<input class="tm-title" name="title" required value="' + NV.esc(p ? (p.dynamic ? "Investigate rise: " : "") + p.label +
+        (emp ? " · " + emp.name : "") : "") + '" placeholder="What needs doing?" aria-label="Title"></div>' +
+      '<button type="button" class="btn" data-close aria-label="Close">✕</button></div>' +
+      '<div class="tm-body"><div class="tm-main">' +
+      '<div class="tm-meta">' +
+        '<div><h4>Priority</h4><div class="seg" role="radiogroup">' + ["High", "Medium", "Low"].map((pr) =>
+          '<label class="segopt"><input type="radio" name="priority" value="' + pr + '"' +
+          ((p && p.sev === "high" ? "High" : "Medium") === pr ? " checked" : "") + "><span>" + pr + "</span></label>").join("") + "</div></div>" +
+        '<div><h4>Due date</h4><input type="date" name="due" value="' + due + '"></div>' +
+      "</div>" +
+      '<section><h3>☰ Description</h3><textarea name="desc" rows="3">' + NV.esc(p ? p.meaning + " " + p.why : "") + "</textarea></section>" +
+      '<section><h3>☑ Checklist <small>from the playbook, edit freely</small></h3><ul class="tm-check edit" id="cl">' +
+        steps.map((st) => '<li><span class="bx"></span><input name="step" value="' + NV.esc(st) + '"><button type="button" class="x" aria-label="Remove step">✕</button></li>').join("") +
+        '</ul><button type="button" class="btn ghost" id="addstep">+ Add a step</button></section>' +
+      (calls.length ? '<section><h3>☏ Link calls <small>' + calls.length + " found</small></h3><div class=\"tm-pick\">" +
+        calls.map((c) => '<label><input type="checkbox" name="call" value="' + c.id + '" checked><span><b class="mono">' + c.id +
+          "</b>" + NV.esc(NV.emp(c.employer).name) + "</span></label>").join("") + "</div></section>" : "") +
+      '</div><aside class="tm-side">' +
+        '<h4>List</h4><select name="status">' + LANES.map(([k, l]) => '<option value="' + k + '"' + (k === "assigned" ? " selected" : "") + ">" + l + "</option>").join("") + "</select>" +
+        '<h4>Team</h4><select name="team">' + TEAMS().map((t) => "<option" + (p && p.owner === t ? " selected" : "") + ">" + NV.esc(t) + "</option>").join("") + "</select>" +
+        '<h4>Owner</h4><input name="owner" list="people" placeholder="Name"><datalist id="people">' +
+          PEOPLE().map((n) => '<option value="' + NV.esc(n) + '">').join("") + "</datalist>" +
+        (emp ? "<h4>Account</h4><p class=\"tm-note\" style=\"font-size:13.5px;color:var(--ink)\">" + NV.esc(emp.name) + "</p>" : "") +
+        '<button type="submit" class="btn primary" style="margin-top:18px;justify-content:center">Create action</button>' +
+        '<button type="button" class="btn" data-close style="justify-content:center">Cancel</button>' +
+      "</aside></div></form>";
+    dlg.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => dlg.close()));
+    const cl = dlg.querySelector("#cl");
+    const wireX = () => cl.querySelectorAll(".x").forEach((b) => { b.onclick = () => b.parentElement.remove(); });
+    wireX();
+    dlg.querySelector("#addstep").addEventListener("click", () => {
+      cl.insertAdjacentHTML("beforeend", '<li><span class="bx"></span><input name="step" placeholder="New step"><button type="button" class="x" aria-label="Remove step">✕</button></li>');
+      wireX(); cl.lastElementChild.querySelector("input").focus();
+    });
+    dlg.querySelector("form").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const f = new FormData(ev.target);
+      const n = D.actions.length + 1;
+      const a = {
+        id: "ACT-" + String(100 + n), title: f.get("title").trim(), source: (key || "manual") + " - raised on the board",
+        evidence: f.get("desc"), recommendation: (f.getAll("step").filter(Boolean)[0] || ""),
+        owner_team: f.get("team"), owner: f.get("owner") || null, calls: f.getAll("call"),
+        employer: emp ? emp.id : null, broker: null, status: f.get("status"), priority: f.get("priority"),
+        assigned_on: "2026-09-25", due: f.get("due") || null, action_taken: null, outcome: null,
+        steps: f.getAll("step").filter(Boolean), focus: key || null, created: true,
+      };
+      NV.actCreate(a);
+      NV.actSave(a, { log: [{ at: new Date().toISOString(), text: "Card created" }] });
+      dlg.close(); render(); NV.toast("Action created and saved");
+      openAction(a.id);
+    });
+    if (!dlg.open) dlg.showModal();
+    dlg.querySelector(".tm-title").focus();
+  }
+
+  /* ---------- everything needing attention ---------- */
+  function attention(exclude) {
+    const keys = Object.keys(NV.PLAYBOOK).filter((k) => k !== exclude && k !== "high" && !NV.PLAYBOOK[k].dynamic)
+      .map((k) => ({ k: k, p: NV.PLAYBOOK[k], n: NV.pbCount(k) })).filter((x) => x.n > 0)
+      .sort((a, b) => (a.p.sev === "high" ? 0 : 1) - (b.p.sev === "high" ? 0 : 1) || b.n - a.n);
+    return '<section class="panel c12"><header><div><h2>' + (exclude ? "Other issues to act on" : "Issues to act on") +
+      NV.info("<p>Every issue with at least one call, account or action in the current filters. " +
+        "Red is urgent, orange is important. Select one for the steps.</p>") + "</h2></div>" +
+      NV.clsChip("recommendation") + "</header>" +
+      '<p class="sub">Most urgent first. Select an issue to see the steps and the evidence.</p>' +
+      '<ul class="attn">' + keys.map((x, i) => (i === 8 ? '</ul><details class="more"><summary>' +
+        (keys.length - 8) + ' more issues</summary><ul class="attn">' : "") + '<li><a href="' + NV.actHref(x.k) + '">' +
+        '<span class="dot" style="background:' + (x.p.sev === "high" ? "var(--critical)" : "var(--serious)") + '"></span>' +
+        "<span><b>" + NV.esc(x.p.label) + "</b><small>" + NV.esc(x.p.meaning) + "</small></span>" +
+        '<span class="n">' + x.n + '</span><span class="own">' + NV.esc(x.p.owner) + "</span>" +
+        '<span class="go">→</span></a></li>').join("") + "</ul>" + (keys.length > 8 ? "</details>" : "") + "</section>";
+  }
+
+  /* ---------- Trello-style board ---------- */
+  const SRC = (a) => {
+    const k = a.source.split(" ")[0];
+    return { process_gap: ["Process fix", "unresolved", "var(--seq-2)"], knowledge_failure: ["Knowledge", "knowledge_failure", "var(--s4)"],
+      escalation_missed: ["Escalation", "escalation_missed", "var(--critical)"], retention_risk: ["Retention", "exit_language", "var(--serious)"],
+      control_exception: ["Compliance", "control_exception", "#7c4ddb"] }[k] || ["Other", null, "var(--ink-3)"];
+  };
+  const PRIO_COL = { High: "var(--critical)", Medium: "var(--warning)", Low: "var(--rule-strong)" };
+  const initials = (n) => String(n || "?").split(" ").map((x) => x[0]).join("").slice(0, 2).toUpperCase();
+  const avatar = (n) => '<span class="av" title="' + NV.esc(n || "Unassigned") + '">' + (n ? initials(n) : "–") + "</span>";
+  const fmtDate = (d) => {
+    if (!d) return "";
+    const m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const [y, mo, da] = d.split("-").map(Number);
+    return da + " " + m[mo - 1];
+  };
+  const dueBadge = (a) => a.due ? '<span class="due ' + (a.status === "overdue" ? "late" : a.status === "completed" ? "done" : "") +
+    '">◷ ' + fmtDate(a.due) + "</span>" : "";
+
+  function board(acts) {
+    return '<div class="kanban2">' + LANES.map(([k, label, col]) => {
+      const items = acts.filter((a) => a.status === k);
+      return '<div class="lane2"><h3><span><i style="background:' + col + '"></i>' + label + "</span><b>" + items.length + "</b></h3>" +
+        '<div class="lane2-body">' + (items.length ? items.map((a) => {
+          const src = SRC(a);
+          return '<button type="button" class="tcard st-' + a.status + '" data-a="' + a.id + '">' +
+            '<span class="tlabels"><i style="background:' + PRIO_COL[a.priority] + '" title="' + a.priority + ' priority"></i>' +
+            '<i style="background:' + src[2] + '" title="' + src[0] + '"></i></span>' +
+            '<span class="ttitle">' + NV.esc(a.title) + "</span>" +
+            '<span class="tfoot"><span class="tbadges">' + dueBadge(a) +
+            ((a.calls || []).length ? '<span class="cnt" title="Calls behind it">☏ ' + a.calls.length + "</span>" : "") +
+            (a.outcome ? '<span class="cnt ok" title="Outcome recorded">✓</span>' : "") + "</span>" + avatar(a.owner) + "</span>" +
+            '<span class="tteam">' + NV.esc(a.owner_team) + "</span></button>";
+        }).join("") : '<p class="lane2-empty">Nothing here</p>') + "</div></div>";
+    }).join("") + "</div>";
+  }
+  function table(acts) {
+    return '<div class="worktbl">' + NV.tbl([["Action"], ["Owner"], ["Due"], ["Status"], ["Outcome"]],
+      acts.map((a) => ['<span class="nm">' + NV.esc(a.title) + '</span><span class="sm">' + NV.esc(a.evidence) + "</span>",
+        avatar(a.owner) + " " + NV.esc(a.owner_team) + '<span class="sm">' + NV.esc(a.owner || "unassigned") + "</span>",
+        dueBadge(a) || '<span class="nd">–</span>', statusPill(a.status),
+        a.outcome ? NV.esc(a.outcome) : '<span class="nd">Not yet measured</span>']),
+      (i) => ' class="clickable st-row-' + acts[i].status + '" data-a="' + acts[i].id + '"') + "</div>";
+  }
+
+  /* Card detail, Trello-style. The top of the card always says what to do
+     next. Ticks, logged updates and status changes are saved in this browser. */
+  const defaultDone = (a, n) => Math.min({ completed: 99, monitoring: 3, action_taken: 2, in_progress: 1 }[a.status] || 0, n);
+  function openAction(id) {
+    const a = D.actions.find((x) => x.id === id);
+    if (!a) return;
+    const dlg = modal();
+    const src = SRC(a), lane = LANES.find((l) => l[0] === a.status) || LANES[0];
+    const pbk = a.focus ? NV.pb(a.focus) : src[1] && NV.pb(src[1]);
+    const steps = a.steps || (pbk ? pbk.steps : []);
+    const ed = NV.actStore.edits[a.id] || {};
+    const checks = ed.checks || steps.map((_, i) => i < defaultDone(a, steps.length));
+    const log = ed.log || [];
+    const done = checks.filter(Boolean).length;
+    const next = steps.findIndex((_, i) => !checks[i]);
+    const e = a.employer ? NV.emp(a.employer) : null;
+    const calls = (a.calls || []).map((cid) => NV.call(cid)).filter(Boolean);
+    const closed = a.status === "completed";
+
+    /* The single most useful next move for this card. */
+    const nextMove = closed ? { t: "This action is complete.", b: null }
+      : next !== -1 ? { t: steps[next], b: '<button type="button" class="btn primary" data-tick="' + next + '">Mark step done</button>' }
+      : !a.action_taken ? { t: "All steps are done. Record what was done.", b: '<button type="button" class="btn primary" data-open="taken">Log action taken</button>' }
+      : !a.outcome ? { t: "Measure the effect, then record the outcome.", b: '<button type="button" class="btn primary" data-open="outcome">Record outcome</button>' }
+      : { t: "Outcome recorded. Close the card.", b: '<button type="button" class="btn primary" data-move="completed">Mark completed</button>' };
+
+    const timeline = [
+      ["Raised from " + src[0].toLowerCase() + " finding", NV.esc(NV.titleCase(a.source.split(" - ")[0]) +
+        (a.source.indexOf(" - ") > -1 ? " · " + a.source.split(" - ")[1] : ""))],
+      a.assigned_on ? ["Assigned to " + NV.esc(a.owner || a.owner_team), fmtDate(a.assigned_on)] : null,
+      a.action_taken ? ["Action taken", NV.esc(a.action_taken)] : null,
+      a.outcome ? ["Outcome measured", NV.esc(a.outcome)] : null,
+    ].filter(Boolean).concat(log.slice().reverse().map((l) => [NV.esc(l.text), new Date(l.at).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })]));
+
+    dlg.innerHTML = '<div class="tm-head"><div><span class="tm-list">in list <b style="color:' + lane[2] + '">' + lane[1] + "</b></span>" +
+      "<h2>" + NV.esc(a.title) + "</h2></div>" +
+      '<button type="button" class="btn" data-close aria-label="Close">✕</button></div>' +
+      '<div class="tm-body"><div class="tm-main">' +
+      '<div class="tm-next' + (closed ? " done" : "") + '"><span class="eyebrow">' + (closed ? "Done" : "Next step") + "</span><p>" + NV.esc(nextMove.t) + "</p>" + (nextMove.b || "") + "</div>" +
+      '<div class="tm-meta">' +
+        '<div><h4>Labels</h4><span class="tlbl" style="background:' + PRIO_COL[a.priority] + '">' + a.priority + ' priority</span>' +
+          '<span class="tlbl" style="background:' + src[2] + '">' + src[0] + "</span></div>" +
+        '<div><h4>Owner</h4><span class="who">' + avatar(a.owner) + NV.esc(a.owner || "Unassigned") + "</span></div>" +
+        (a.due ? "<div><h4>Due date</h4>" + dueBadge(a) + "</div>" : "") +
+      "</div>" +
+      '<section><h3>☰ Description</h3><p><b>Why it was raised.</b> ' + NV.esc(a.evidence) + "</p>" +
+        (a.recommendation ? "<p><b>Recommended.</b> " + NV.esc(a.recommendation) + "</p>" : "") + "</section>" +
+      (steps.length ? '<section><h3>☑ Checklist <small>' + done + "/" + steps.length + "</small></h3>" +
+        '<div class="tm-prog"><i style="width:' + Math.round(done / steps.length * 100) + '%"></i></div>' +
+        '<ul class="tm-check">' + steps.map((st, i) => '<li class="' + (checks[i] ? "done" : "") + (i === next && !closed ? " nx" : "") +
+          '"><button type="button" class="bx" data-tick="' + i + '" aria-pressed="' + !!checks[i] + '" aria-label="Toggle step">' +
+          (checks[i] ? "✓" : "") + "</button><span>" + NV.esc(st) + "</span></li>").join("") + "</ul></section>" : "") +
+      '<section class="tm-forms">' +
+        '<div class="tm-form-row" id="f-taken"' + (a.action_taken || closed ? " hidden" : "") + '><h3>✎ What was done?</h3>' +
+          '<textarea id="t-taken" rows="2" placeholder="e.g. Called the member back and closed the claim query"></textarea>' +
+          '<button type="button" class="btn primary" data-save="taken">Save and mark action taken</button></div>' +
+        '<div class="tm-form-row" id="f-outcome"' + (!a.action_taken || a.outcome || closed ? " hidden" : "") + '><h3>◎ What changed?</h3>' +
+          '<textarea id="t-outcome" rows="2" placeholder="e.g. No repeat contact on this topic in the following four weeks"></textarea>' +
+          '<button type="button" class="btn primary" data-save="outcome">Save outcome and complete</button></div>' +
+      "</section>" +
+      (calls.length ? '<section><h3>☏ Calls behind it <small>' + calls.length + "</small></h3>" + '<div class="tm-calls">' +
+        calls.map((c) => '<button type="button" data-call="' + c.id + '"><b class="mono">' + c.id + "</b><span>" +
+          NV.esc(NV.emp(c.employer).name) + "</span><small>" + NV.esc(c.category) + " · " + NV.titleCase(c.outcome.toLowerCase()) +
+          "</small></button>").join("") + "</div></section>" : "") +
+      '<section><h3>↻ Activity</h3><div class="tm-log"><textarea id="t-log" rows="2" placeholder="Log an update, e.g. Spoke to the employer, waiting on HR"></textarea>' +
+        '<button type="button" class="btn" data-save="log">Save update</button></div>' +
+        '<ol class="tm-time">' + timeline.map((t) => '<li class="on"><b>' + t[0] + "</b><span>" + t[1] + "</span></li>").join("") + "</ol></section>" +
+      '</div><aside class="tm-side"><h4>Move to</h4>' + LANES.map(([k, label, col]) =>
+        '<button type="button" class="btn mv' + (k === a.status ? " cur" : "") + '" data-move="' + k + '"><i style="background:' + col + '"></i>' + label + "</button>").join("") +
+      '<h4>Owner</h4><input id="t-owner" list="people2" value="' + NV.esc(a.owner || "") + '" placeholder="Assign someone"><datalist id="people2">' +
+        PEOPLE().map((n) => '<option value="' + NV.esc(n) + '">').join("") + '</datalist>' +
+      '<h4>Due date</h4><input type="date" id="t-due" value="' + (a.due || "") + '">' +
+      '<button type="button" class="btn" data-save="meta" style="margin-top:8px;justify-content:center">Save owner &amp; date</button>' +
+      (pbk ? '<h4>Playbook</h4><a class="btn" href="' + NV.actHref(a.focus || src[1], e ? { employer: e.id } : null) + '">Open the steps →</a>' : "") +
+      (e ? '<h4>Account</h4><a class="btn" href="' + NV.esc(NV.empHref(e.id)) + '">' + NV.esc(e.name) + " →</a>" : "") +
+      '<p class="tm-note">Changes are saved in this browser.</p>' +
+      "</aside></div>";
+
+    const addLog = (text) => (ed.log || []).concat([{ at: new Date().toISOString(), text: text }]);
+    const save = (patch, msg) => { NV.actSave(a, patch); render(); openAction(a.id); if (msg) NV.toast(msg); };
+    dlg.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => dlg.close()));
+    dlg.querySelectorAll("[data-call]").forEach((b) => b.addEventListener("click", () => { dlg.close(); NV.openCall(b.dataset.call); }));
+    dlg.querySelectorAll("[data-tick]").forEach((b) => b.addEventListener("click", () => {
+      const i = +b.dataset.tick, c = checks.slice(); c[i] = !c[i];
+      save({ checks: c, log: addLog((c[i] ? "Completed step: " : "Reopened step: ") + steps[i]) }, c[i] ? "Step marked done" : "Step reopened");
+    }));
+    dlg.querySelectorAll("[data-move]").forEach((b) => b.addEventListener("click", () => {
+      const to = b.dataset.move; if (to === a.status) return;
+      save({ status: to, log: addLog("Moved to " + (LANES.find((l) => l[0] === to) || [])[1]) }, "Moved to " + (LANES.find((l) => l[0] === to) || [])[1]);
+    }));
+    dlg.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => {
+      const f = dlg.querySelector("#f-" + b.dataset.open); f.hidden = false; f.querySelector("textarea").focus();
+    }));
+    dlg.querySelectorAll("[data-save]").forEach((b) => b.addEventListener("click", () => {
+      const k = b.dataset.save;
+      if (k === "log") { const t = dlg.querySelector("#t-log").value.trim(); if (t) save({ log: addLog(t) }, "Update saved"); }
+      if (k === "taken") { const t = dlg.querySelector("#t-taken").value.trim(); if (t) save({ action_taken: t, status: "action_taken", log: addLog("Action taken: " + t) }, "Marked as action taken"); }
+      if (k === "outcome") { const t = dlg.querySelector("#t-outcome").value.trim(); if (t) save({ outcome: t, status: "completed", log: addLog("Outcome recorded: " + t) }, "Outcome saved, card completed"); }
+      if (k === "meta") {
+        const o = dlg.querySelector("#t-owner").value.trim() || null, du = dlg.querySelector("#t-due").value || null;
+        save({ owner: o, due: du, log: addLog("Owner " + (o || "cleared") + (du ? ", due " + fmtDate(du) : "")) }, "Saved");
+      }
+    }));
+    if (!dlg.open) dlg.showModal();
+  }
+
+  function render() {
+    const all = scopedActions();
+    const acts = all.filter((a) => !NV.S.actionStatus || a.status === NV.S.actionStatus);
+    const open = all.filter((a) => OPEN.indexOf(a.status) !== -1);
+    const overdue = all.filter((a) => a.status === "overdue");
+    const measured = all.filter((a) => a.outcome);
+
+    const progress = '<section class="panel c12" id="work"><header><div><h2>Action board' +
+      NV.info("<p>Actions run from detection to a measured outcome. An item only reaches Monitoring " +
+        "or Completed once its effect is being measured.</p><p>Owners, dates and outcomes are prototype workflow data.</p>") +
+      '</h2></div><div class="seg" role="group" aria-label="View"><button type="button" data-view="board" aria-pressed="' +
+      (view === "board") + '">Board</button><button type="button" data-view="table" aria-pressed="' +
+      (view === "table") + '">Table</button></div></header>' +
+      '<div class="boardbar"><p class="sub" style="margin:0">Select a stage to filter. Select a card to work on it.</p>' +
+        '<div class="row" style="gap:8px">' + (NV.S.actionStatus ? '<button type="button" class="btn" data-st="">Show all ' + all.length + " actions</button>" : "") +
+        '<button type="button" class="btn primary" id="newcard">+ New action</button></div></div>' +
+      '<div class="stages">' + LANES.map(([k, label, col]) => {
+        const n = all.filter((a) => a.status === k).length;
+        return n ? '<button type="button" data-st="' + k + '" aria-pressed="' + (NV.S.actionStatus === k) +
+          '" style="flex:' + n + ";background:" + col + '" title="' + label + ": " + n + '">' + n + "</button>" : "";
+      }).join("") + "</div>" +
+      '<div class="stagechips" role="group" aria-label="Filter by stage"><button type="button" data-st="" aria-pressed="' + !NV.S.actionStatus +
+        '">All <b>' + all.length + "</b></button>" + LANES.map(([k, label, col]) =>
+        '<button type="button" data-st="' + k + '" aria-pressed="' + (NV.S.actionStatus === k) + '"><i style="background:' + col + '"></i>' +
+        label + " <b>" + all.filter((a) => a.status === k).length + "</b></button>").join("") + "</div>" +
+      (view === "board" ? board(acts) : table(acts)) + "</section>";
+
+    const outcomes = measured.length ? '<section class="panel c12"><header><div><h2>Did it work?' +
+      NV.info("<p>Outcomes recorded for items that reached Monitoring or Completed. Whether an " +
+        "intervention changed an account needs a before-and-after window, which batch 1 does not yet carry.</p>") +
+      "</h2></div>" + NV.clsChip("derived") + "</header>" +
+      NV.tbl([["Action"], ["What was done"], ["What was measured"]],
+        measured.map((a) => ['<span class="nm">' + NV.esc(a.title) + "</span>",
+          NV.esc(a.action_taken || "–"), NV.esc(a.outcome)])) + "</section>" : "";
+
+    const body = document.getElementById("body");
+    body.innerHTML = (focus ? focusPanel(focus) : "") +
+      NV.tiles([
+        { k: "Open actions", v: open.length, m: NV.pctOf(open.length, all.length) + " of " + all.length + " raised", tone: open.length ? "warm" : "" },
+        { k: "Overdue", v: overdue.length, m: "past the due date", tone: overdue.length ? "hot" : "", focus: overdue.length ? "overdue" : null },
+        { k: "High priority open", v: open.filter((a) => a.priority === "High").length, m: "of " + open.length + " open" },
+        { k: "Outcome measured", v: measured.length, m: "of " + all.length + " actions" },
+      ]) +
+      attention(focus) + progress + outcomes;
+
+    const raise = body.querySelector("#raise");
+    if (raise) raise.addEventListener("click", () => openComposer(focus));
+    body.querySelectorAll("[data-st]").forEach((b) => b.addEventListener("click", () =>
+      NV.set("actionStatus", !b.dataset.st || NV.S.actionStatus === b.dataset.st ? "" : b.dataset.st)));
+    const nc = body.querySelector("#newcard");
+    if (nc) nc.addEventListener("click", () => openComposer(focus));
+    body.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {
+      view = b.dataset.view; render();
+    }));
+    body.querySelectorAll("[data-a]").forEach((el) => el.addEventListener("click", () => openAction(el.dataset.a)));
+    NV.wireRows(body);
+  }
+
+  NV.onChange(() => { renderFilters(); render(); });
+  renderFilters();
+  render();
+})();
+</script>
