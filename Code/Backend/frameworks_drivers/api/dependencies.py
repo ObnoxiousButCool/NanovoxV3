@@ -19,6 +19,8 @@ from application.use_cases.list_providers import ListProviders
 from application.use_cases.read_insights import (
     GetAccountDetail,
     GetAccountRisk,
+    GetActions,
+    GetDemand,
     GetExecScorecard,
     GetHierarchy,
 )
@@ -80,6 +82,14 @@ def get_hierarchy_use_case(container: ContainerDep) -> GetHierarchy:
     return container.get_hierarchy()
 
 
+def get_demand_use_case(container: ContainerDep) -> GetDemand:
+    return container.get_demand()
+
+
+def get_actions_use_case(container: ContainerDep) -> GetActions:
+    return container.get_actions()
+
+
 def get_dashboard_config(container: ContainerDep) -> DashboardConfig:
     """The Metrics sheet's thresholds, for endpoints that label a figure
     with the window or the name its metric was defined with.
@@ -100,3 +110,5 @@ GetAccountRiskDep = Annotated[GetAccountRisk, Depends(get_account_risk_use_case)
 DashboardConfigDep = Annotated[DashboardConfig, Depends(get_dashboard_config)]
 GetAccountDetailDep = Annotated[GetAccountDetail, Depends(get_account_detail_use_case)]
 GetHierarchyDep = Annotated[GetHierarchy, Depends(get_hierarchy_use_case)]
+GetDemandDep = Annotated[GetDemand, Depends(get_demand_use_case)]
+GetActionsDep = Annotated[GetActions, Depends(get_actions_use_case)]

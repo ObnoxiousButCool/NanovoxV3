@@ -177,6 +177,103 @@
         "title": "AccountRiskResponse",
         "type": "object"
       },
+      "ActionItemResponse": {
+        "description": "One finding. No status \u2014 see this module's docstring.",
+        "properties": {
+          "call_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Call Ids",
+            "type": "array"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "owner_team": {
+            "description": "From the Signal Taxonomy's Owner column, which the sheet calls mandatory.",
+            "title": "Owner Team",
+            "type": "string"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "signal": {
+            "title": "Signal",
+            "type": "string"
+          }
+        },
+        "required": [
+          "signal",
+          "severity",
+          "owner_team",
+          "calls",
+          "call_ids"
+        ],
+        "title": "ActionItemResponse",
+        "type": "object"
+      },
+      "ActionsResponse": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "control_denominator_caveat": {
+            "title": "Control Denominator Caveat",
+            "type": "string"
+          },
+          "control_exceptions": {
+            "description": "Metric 7 by type. Never blended into one compliance rate.",
+            "items": {
+              "$ref": "#/components/schemas/ControlExceptionResponse"
+            },
+            "title": "Control Exceptions",
+            "type": "array"
+          },
+          "did_it_work": {
+            "$ref": "#/components/schemas/WithheldPanelResponse",
+            "description": "Insight 22, withheld until a comparable before and after exist."
+          },
+          "items": {
+            "description": "Every signal raised, worst severity first and heaviest within a severity. A signal nobody raised is absent, not present at zero.",
+            "items": {
+              "$ref": "#/components/schemas/ActionItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "owners": {
+            "description": "The same items routed, teams with critical work first.",
+            "items": {
+              "$ref": "#/components/schemas/OwnerWorkloadResponse"
+            },
+            "title": "Owners",
+            "type": "array"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ScopeResponse"
+          },
+          "window_weeks": {
+            "title": "Window Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "as_of",
+          "window_weeks",
+          "items",
+          "owners",
+          "control_exceptions",
+          "control_denominator_caveat",
+          "did_it_work"
+        ],
+        "title": "ActionsResponse",
+        "type": "object"
+      },
       "AppliedFilterResponse": {
         "description": "One active filter, for the applied-filters row.",
         "properties": {
@@ -197,6 +294,24 @@
           "values"
         ],
         "title": "AppliedFilterResponse",
+        "type": "object"
+      },
+      "AttributionCountResponse": {
+        "properties": {
+          "attributed_to": {
+            "title": "Attributed To",
+            "type": "string"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "attributed_to",
+          "calls"
+        ],
+        "title": "AttributionCountResponse",
         "type": "object"
       },
       "BrokerFrictionResponse": {
@@ -379,6 +494,81 @@
           "met"
         ],
         "title": "ConditionResponse",
+        "type": "object"
+      },
+      "ControlExceptionResponse": {
+        "properties": {
+          "exception_type": {
+            "title": "Exception Type",
+            "type": "string"
+          },
+          "figure": {
+            "$ref": "#/components/schemas/FigureResponse"
+          }
+        },
+        "required": [
+          "exception_type",
+          "figure"
+        ],
+        "title": "ControlExceptionResponse",
+        "type": "object"
+      },
+      "DemandResponse": {
+        "properties": {
+          "as_of": {
+            "title": "As Of",
+            "type": "string"
+          },
+          "complaints_about_us": {
+            "$ref": "#/components/schemas/FigureResponse",
+            "description": "Complaints attributed to Choice. A different measure from self-inflicted demand, deliberately kept apart."
+          },
+          "promise_gaps": {
+            "description": "Proposed changes at the enrolment touchpoints, most-proposed first.",
+            "items": {
+              "$ref": "#/components/schemas/PromiseGapResponse"
+            },
+            "title": "Promise Gaps",
+            "type": "array"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ScopeResponse"
+          },
+          "self_inflicted": {
+            "$ref": "#/components/schemas/SelfInflictedResponse"
+          },
+          "touchpoints": {
+            "description": "Busiest first. Counts, not rates.",
+            "items": {
+              "$ref": "#/components/schemas/TouchpointRowResponse"
+            },
+            "title": "Touchpoints",
+            "type": "array"
+          },
+          "unattributed": {
+            "description": "Calls with no touchpoint tagged \u2014 insight 18's residual bucket.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unattributed",
+            "type": "array"
+          },
+          "window_weeks": {
+            "title": "Window Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "as_of",
+          "window_weeks",
+          "self_inflicted",
+          "complaints_about_us",
+          "touchpoints",
+          "unattributed",
+          "promise_gaps"
+        ],
+        "title": "DemandResponse",
         "type": "object"
       },
       "EmployerNodeResponse": {
@@ -949,6 +1139,38 @@
         "title": "Outcome",
         "type": "string"
       },
+      "OwnerWorkloadResponse": {
+        "properties": {
+          "calls": {
+            "description": "Distinct calls behind this team's items. One call raising two signals for the same team counts once.",
+            "title": "Calls",
+            "type": "integer"
+          },
+          "critical": {
+            "title": "Critical",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActionItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "owner_team": {
+            "title": "Owner Team",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owner_team",
+          "critical",
+          "calls",
+          "items"
+        ],
+        "title": "OwnerWorkloadResponse",
+        "type": "object"
+      },
       "PatternTestResponse": {
         "description": "Trigger rule 2, reported whether or not it fired.",
         "properties": {
@@ -1047,6 +1269,43 @@
         ],
         "title": "ProductLine",
         "type": "string"
+      },
+      "PromiseGapResponse": {
+        "properties": {
+          "call_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Call Ids",
+            "type": "array"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "minutes": {
+            "description": "Talk time across those calls \u2014 a floor, since AHT excludes hold and after-call work.",
+            "title": "Minutes",
+            "type": "number"
+          },
+          "proposed_change": {
+            "title": "Proposed Change",
+            "type": "string"
+          },
+          "touchpoint": {
+            "title": "Touchpoint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "touchpoint",
+          "proposed_change",
+          "calls",
+          "call_ids",
+          "minutes"
+        ],
+        "title": "PromiseGapResponse",
+        "type": "object"
       },
       "ProviderResponse": {
         "properties": {
@@ -1340,6 +1599,31 @@
         "title": "ScopeResponse",
         "type": "object"
       },
+      "SelfInflictedResponse": {
+        "properties": {
+          "chasing_submitted_action": {
+            "$ref": "#/components/schemas/FigureResponse"
+          },
+          "failure_driven_repeats": {
+            "$ref": "#/components/schemas/FigureResponse"
+          },
+          "logged_process_defect": {
+            "$ref": "#/components/schemas/FigureResponse"
+          },
+          "total": {
+            "$ref": "#/components/schemas/FigureResponse",
+            "description": "Calls meeting ANY component, over distinct calls. Not the sum of the three \u2014 a call can be both a repeat and a process defect."
+          }
+        },
+        "required": [
+          "failure_driven_repeats",
+          "chasing_submitted_action",
+          "logged_process_defect",
+          "total"
+        ],
+        "title": "SelfInflictedResponse",
+        "type": "object"
+      },
       "SignalType": {
         "enum": [
           "member_communication_gap",
@@ -1398,6 +1682,47 @@
           "id"
         ],
         "title": "StartRunResponse",
+        "type": "object"
+      },
+      "TouchpointRowResponse": {
+        "properties": {
+          "attribution": {
+            "description": "Complaints here by party, published as a split and never reduced.",
+            "items": {
+              "$ref": "#/components/schemas/AttributionCountResponse"
+            },
+            "title": "Attribution",
+            "type": "array"
+          },
+          "call_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Call Ids",
+            "type": "array"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "touchpoint": {
+            "title": "Touchpoint",
+            "type": "string"
+          },
+          "without_complaint": {
+            "description": "Calls here with no complaint tagged. Not the same as a complaint with no attribution, which the schema does not allow.",
+            "title": "Without Complaint",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "touchpoint",
+          "calls",
+          "call_ids",
+          "attribution",
+          "without_complaint"
+        ],
+        "title": "TouchpointRowResponse",
         "type": "object"
       },
       "UnmeasurableResponse": {
@@ -1475,6 +1800,34 @@
           "figure"
         ],
         "title": "WindowedFigureResponse",
+        "type": "object"
+      },
+      "WithheldPanelResponse": {
+        "properties": {
+          "insight": {
+            "title": "Insight",
+            "type": "integer"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "unlocked_by": {
+            "title": "Unlocked By",
+            "type": "string"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "insight",
+          "question",
+          "why",
+          "unlocked_by"
+        ],
+        "title": "WithheldPanelResponse",
         "type": "object"
       },
       "WithheldReason": {
@@ -1909,6 +2262,732 @@
           }
         },
         "summary": "One account: contact rate against peers, repeats, and risk",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/actions": {
+      "get": {
+        "operationId": "read_actions_api_v1_insights_actions_get",
+        "parameters": [
+          {
+            "description": "Employer region.",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer region.",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+            "in": "query",
+            "name": "broker",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+              "title": "Broker"
+            }
+          },
+          {
+            "description": "Employer reference.",
+            "in": "query",
+            "name": "employer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer reference.",
+              "title": "Employer"
+            }
+          },
+          {
+            "description": "Agent reference.",
+            "in": "query",
+            "name": "agent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Agent reference.",
+              "title": "Agent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "description": "Calls touching this line. A call may touch several.",
+            "in": "query",
+            "name": "product_line",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductLine"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Calls touching this line. A call may touch several.",
+              "title": "Product Line"
+            }
+          },
+          {
+            "description": "Where the failure originated, not where it surfaced.",
+            "in": "query",
+            "name": "touchpoint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the failure originated, not where it surfaced.",
+              "title": "Touchpoint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Outcome"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SignalType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/IntentType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complaint_target",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintAttribution"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complaint Target"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quality_band",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/QualityBand"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Quality Band"
+            }
+          },
+          {
+            "in": "query",
+            "name": "escalated",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Escalated"
+            }
+          },
+          {
+            "description": "Whether a complaint was made.",
+            "in": "query",
+            "name": "complaint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Whether a complaint was made.",
+              "title": "Complaint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "compliance_exception",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Compliance Exception"
+            }
+          },
+          {
+            "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/CallSource"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Findings to act on, routed, with compliance exposure",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/demand": {
+      "get": {
+        "operationId": "read_demand_api_v1_insights_demand_get",
+        "parameters": [
+          {
+            "description": "Employer region.",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer region.",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+            "in": "query",
+            "name": "broker",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+              "title": "Broker"
+            }
+          },
+          {
+            "description": "Employer reference.",
+            "in": "query",
+            "name": "employer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer reference.",
+              "title": "Employer"
+            }
+          },
+          {
+            "description": "Agent reference.",
+            "in": "query",
+            "name": "agent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Agent reference.",
+              "title": "Agent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "description": "Calls touching this line. A call may touch several.",
+            "in": "query",
+            "name": "product_line",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductLine"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Calls touching this line. A call may touch several.",
+              "title": "Product Line"
+            }
+          },
+          {
+            "description": "Where the failure originated, not where it surfaced.",
+            "in": "query",
+            "name": "touchpoint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the failure originated, not where it surfaced.",
+              "title": "Touchpoint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Outcome"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SignalType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/IntentType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complaint_target",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintAttribution"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complaint Target"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quality_band",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/QualityBand"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Quality Band"
+            }
+          },
+          {
+            "in": "query",
+            "name": "escalated",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Escalated"
+            }
+          },
+          {
+            "description": "Whether a complaint was made.",
+            "in": "query",
+            "name": "complaint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Whether a complaint was made.",
+              "title": "Complaint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "compliance_exception",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Compliance Exception"
+            }
+          },
+          {
+            "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/CallSource"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+              "title": "As Of"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemandResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Self-inflicted demand, touchpoints and enrolment promise gaps",
         "tags": [
           "insights"
         ]

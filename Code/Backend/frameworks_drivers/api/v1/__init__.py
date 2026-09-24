@@ -5,7 +5,14 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from frameworks_drivers.api.v1 import health, ingest, providers, reference, runs
-from frameworks_drivers.api.v1.insights import accounts, exec_scorecard, hierarchy, risk
+from frameworks_drivers.api.v1.insights import (
+    accounts,
+    actions,
+    demand,
+    exec_scorecard,
+    hierarchy,
+    risk,
+)
 
 router = APIRouter()
 router.include_router(health.router)
@@ -17,5 +24,7 @@ router.include_router(exec_scorecard.router)
 router.include_router(risk.router)
 router.include_router(accounts.router)
 router.include_router(hierarchy.router)
+router.include_router(demand.router)
+router.include_router(actions.router)
 
 __all__ = ["router"]

@@ -51,6 +51,8 @@ from application.use_cases.list_providers import ListProviders, ProviderProbe
 from application.use_cases.read_insights import (
     GetAccountDetail,
     GetAccountRisk,
+    GetActions,
+    GetDemand,
     GetExecScorecard,
     GetHierarchy,
     InsightsReader,
@@ -144,6 +146,12 @@ class Container:
 
     def get_hierarchy(self) -> GetHierarchy:
         return GetHierarchy(self.insights_reader(), self.dashboard_config)
+
+    def get_demand(self) -> GetDemand:
+        return GetDemand(self.insights_reader(), self.dashboard_config)
+
+    def get_actions(self) -> GetActions:
+        return GetActions(self.insights_reader(), self.dashboard_config)
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)

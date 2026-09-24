@@ -30,9 +30,16 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from application.ports.insights_source import CorpusQuery
+from domain.aggregation.actions import ActionItem, OwnerWorkload, action_items, by_owner
+from domain.aggregation.agent_events import CONTROL_DENOMINATOR_CAVEAT, control_exception_rates
 from domain.aggregation.broker_friction import BrokerFriction, ranked_book_friction
 from domain.aggregation.call_tags import Window
 from domain.aggregation.contact_rate import PeerComparison, employer_contact_rate, peer_comparison
+from domain.aggregation.demand import (
+    SelfInflictedDemand,
+    complaint_attributed_to_choice,
+    self_inflicted_demand,
+)
 from domain.aggregation.exec_scorecard import ExecScorecard, exec_scorecard
 from domain.aggregation.indicators import observe
 from domain.aggregation.isolation import (
@@ -50,6 +57,14 @@ from domain.aggregation.risk_flag import (
     exposure,
     flagged_share,
 )
+from domain.aggregation.touchpoints import (
+    PromiseGap,
+    TouchpointRow,
+    enrolment_promise_gaps,
+    touchpoint_ranking,
+    unattributed_calls,
+)
+from domain.aggregation.withheld import DID_IT_WORK, WithheldPanel
 
 if TYPE_CHECKING:
     from datetime import date
@@ -63,6 +78,7 @@ if TYPE_CHECKING:
     from domain.dashboard_config import DashboardConfig
     from domain.value_objects.call_source import CallSource
     from domain.value_objects.category import Category
+    from domain.value_objects.control_exception_type import ControlExceptionType
 
 
 @dataclass(frozen=True)
@@ -315,3 +331,91 @@ def _require(config: DashboardConfig, key: str, as_of: date) -> Window:
             "a rate with no period is not the metric the sheet defines."
         )
     return window
+
+
+@dataclass(frozen=True)
+class DemandView:
+    """Screen 3 — where the calls come from.
+
+    `self_inflicted` keeps its four figures apart on purpose: the total is
+    the share of calls meeting *any* component, over distinct calls, and is
+    not the sum of the three. A call can be a repeat and carry a process
+    gap, and adding them would count it twice.
+    """
+
+    scope: ScopedCorpus
+    self_inflicted: SelfInflictedDemand
+    #: The complaint-based cut, "stays labelled as a different measure".
+    #: How often someone complained about us is related to, but not the
+    #: same as, how much of this volume we created.
+    complaints_about_us: Figure
+    touchpoints: tuple[TouchpointRow, ...]
+    #: Insight 18's residual, read off the ranking rather than recomputed so
+    #: the two insights cannot report different numbers for one set of calls.
+    unattributed: tuple[str, ...]
+    promise_gaps: tuple[PromiseGap, ...]
+    window: Window
+
+
+@dataclass(frozen=True)
+class ActionsView:
+    """Screen 4 — the action centre, read side only.
+
+    No lifecycle: the write path is Phase 9 and decision D6. Items carry
+    what the signal says and nothing more, because a default status would
+    be a claim no stored record supports.
+    """
+
+    scope: ScopedCorpus
+    items: tuple[ActionItem, ...]
+    owners: tuple[OwnerWorkload, ...]
+    #: Metric 7 by exception type, never blended into one compliance rate —
+    #: a single number hides which control failed, which is the only part
+    #: anyone can fix.
+    control_exceptions: tuple[tuple[ControlExceptionType, Figure], ...]
+    control_denominator_caveat: str
+    #: Insight 22, withheld until a comparable before and after exist.
+    did_it_work: WithheldPanel
+    window: Window
+
+
+class GetDemand:
+    def __init__(self, reader: InsightsReader, config: DashboardConfig) -> None:
+        self._reader = reader
+        self._config = config
+
+    async def execute(self, request: InsightsRequest) -> DemandView:
+        scope = await self._reader.scope(request)
+        window = _require(self._config, "self_inflicted_demand", scope.as_of)
+        calls = scope.filtered.calls
+        ranking = touchpoint_ranking(calls, window)
+        return DemandView(
+            scope=scope,
+            self_inflicted=self_inflicted_demand(self._config, calls, window),
+            complaints_about_us=complaint_attributed_to_choice(self._config, calls, window),
+            touchpoints=ranking,
+            unattributed=unattributed_calls(ranking),
+            promise_gaps=enrolment_promise_gaps(calls, window),
+            window=window,
+        )
+
+
+class GetActions:
+    def __init__(self, reader: InsightsReader, config: DashboardConfig) -> None:
+        self._reader = reader
+        self._config = config
+
+    async def execute(self, request: InsightsRequest) -> ActionsView:
+        scope = await self._reader.scope(request)
+        window = _require(self._config, "control_exception_rate", scope.as_of)
+        calls = scope.filtered.calls
+        items = action_items(calls, window)
+        return ActionsView(
+            scope=scope,
+            items=items,
+            owners=by_owner(items),
+            control_exceptions=control_exception_rates(self._config, calls, window),
+            control_denominator_caveat=CONTROL_DENOMINATOR_CAVEAT,
+            did_it_work=DID_IT_WORK,
+            window=window,
+        )
