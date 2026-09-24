@@ -50,11 +50,12 @@ pipeline's fault.
 ## `control_exceptions` is scored on two of its three types
 
 Schema field 7 allows three. L1 detects the two a greeting check can prove
-(`no_recording_disclosure`, `disclosure_before_verification`); nothing
-produces `missing_benefit_disclosure` yet — see
-`domain/extraction/l1_deterministic.py`. A tracker row carrying it would
-therefore count against recall, and that miss is real rather than a
-mapping artefact.
+(`no_recording_disclosure`, `disclosure_before_verification`). Nothing
+produces `missing_benefit_disclosure`, by decision: metric 7 is kept
+deterministic (see `domain/extraction/l1_deterministic.py`). It is removed
+from both sides before comparing and listed in `UNSCORED`, so it reads as
+"not measured" rather than as a recall miss the pipeline was never asked
+to avoid.
 """
 
 from __future__ import annotations
@@ -74,6 +75,7 @@ from domain.evaluation.comparison import (
     compare_presence_and_detail,
     compare_set,
 )
+from domain.value_objects.control_exception_type import ControlExceptionType
 
 
 class Layer(str, Enum):
@@ -93,6 +95,15 @@ class Unscored:
     why: str
 
 
+#: The control exception types metric 7 measures — the two L1's greeting
+#: check can prove.
+_DETECTED_CONTROL_EXCEPTIONS: frozenset[str] = frozenset(
+    {
+        ControlExceptionType.NO_RECORDING_DISCLOSURE.value,
+        ControlExceptionType.DISCLOSURE_BEFORE_VERIFICATION.value,
+    }
+)
+
 #: Every tracker column the pipeline cannot be scored on, and why.
 UNSCORED: tuple[Unscored, ...] = (
     Unscored(
@@ -108,6 +119,12 @@ UNSCORED: tuple[Unscored, ...] = (
         "aht_seconds",
         "Telephony, not extraction (schema field 12). There is nothing for the "
         "pipeline to get right.",
+    ),
+    Unscored(
+        "control_exceptions.missing_benefit_disclosure",
+        "Metric 7 is deterministic and this type needs a model's judgement, so "
+        "nothing produces it. Excluded from the control_exceptions comparison "
+        "rather than counted as missed.",
     ),
 )
 
@@ -313,12 +330,16 @@ def _signals(truth: GroundTruth, call: CallExtraction | None) -> SetComparison:
 
 def _control_exceptions(truth: GroundTruth, call: CallExtraction | None) -> SetComparison:
     """Set overlap on the exception types, so precision and recall stay apart
-    — metric 7 is reported by type, never as one blended number."""
-    expected = set(truth.control_exceptions)
+    — metric 7 is reported by type, never as one blended number.
+
+    Only the types the pipeline is built to detect are compared; the rest
+    are listed in `UNSCORED`.
+    """
+    expected = set(truth.control_exceptions) & _DETECTED_CONTROL_EXCEPTIONS
     actual = (
         None
         if call is None or call.control_exceptions is None
-        else {item.value for item in call.control_exceptions}
+        else {item.value for item in call.control_exceptions} & _DETECTED_CONTROL_EXCEPTIONS
     )
     return compare_set("control_exceptions", expected, actual)
 

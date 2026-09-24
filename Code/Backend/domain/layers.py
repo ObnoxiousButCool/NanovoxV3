@@ -52,9 +52,9 @@ REQUIRED_LAYERS_BY_METRIC: dict[str, frozenset[Layer]] = {
     # 6 Escalation integrity — escalation.triggered (L2), .handled /
     # .trigger_type (L4).
     "6": frozenset({Layer.L1, Layer.L2, Layer.L4}),
-    # 7 Control exception rate — control_exceptions (L1 detection, L3
-    # scoring).
-    "7": frozenset({Layer.L1, Layer.L3}),
+    # 7 Control exception rate — control_exceptions (L1). Deterministic by
+    # the metric's own build note ("no model judgement"), so no model layer.
+    "7": frozenset({Layer.L1}),
     # 8 Knowledge failure rate — knowledge_failure (L3).
     "8": frozenset({Layer.L1, Layer.L3}),
     # 9 Cost to serve — aht_seconds (L1, telephony); dimensioned by product

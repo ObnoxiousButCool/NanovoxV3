@@ -80,7 +80,12 @@ def test_the_unscored_columns_are_listed_with_their_reasons() -> None:
     """
     listed = {entry.field for entry in UNSCORED}
 
-    assert listed == {"rule_refs", "archetype", "aht_seconds"}
+    assert listed == {
+        "rule_refs",
+        "archetype",
+        "aht_seconds",
+        "control_exceptions.missing_benefit_disclosure",
+    }
     assert all(entry.why.strip() for entry in UNSCORED)
 
 
@@ -126,17 +131,26 @@ def test_control_exceptions_l1_never_ran_for_are_incomparable_not_empty() -> Non
     assert comparison.missing is MissingSide.PIPELINE
 
 
-def test_the_benefit_disclosure_type_nothing_produces_counts_as_missed() -> None:
-    """Nothing emits `missing_benefit_disclosure` yet, so a tracker row
-    carrying it is a real recall miss rather than something to map away.
+def test_the_benefit_disclosure_type_is_not_measured_rather_than_missed() -> None:
+    """Metric 7 is deterministic, so nothing emits `missing_benefit_disclosure`.
+    Counting it as missed would blame the pipeline for a type it was never
+    built to detect.
     """
-    truth = GroundTruth(reference="C-0001", control_exceptions=("missing_benefit_disclosure",))
-    extraction = CallExtraction(call_reference="C-0001", control_exceptions=frozenset())
+    truth = GroundTruth(
+        reference="C-0001",
+        control_exceptions=("missing_benefit_disclosure", "no_recording_disclosure"),
+    )
+    extraction = CallExtraction(
+        call_reference="C-0001",
+        control_exceptions=frozenset({ControlExceptionType.NO_RECORDING_DISCLOSURE}),
+    )
 
     comparison = _comparison(compare_call(truth, extraction), "control_exceptions")
 
     assert isinstance(comparison, SetComparison)
-    assert comparison.missed == {"missing_benefit_disclosure"}
+    assert comparison.expected == {"no_recording_disclosure"}
+    assert comparison.missed == frozenset()
+    assert "control_exceptions.missing_benefit_disclosure" in {e.field for e in UNSCORED}
 
 
 # --- Trap 2: product_line --------------------------------------------------

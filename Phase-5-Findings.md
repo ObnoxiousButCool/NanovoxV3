@@ -70,12 +70,10 @@ Stream A closed the storage gap: L1's greeting check is now saved with each
 call and scored as a set, so metric 7 can be measured at this check-in.
 
 It covers `no_recording_disclosure` and `disclosure_before_verification`.
-**Nothing produces `missing_benefit_disclosure`.** The workbook disagrees
-with itself on whether anything should: the Call Tag Schema says field 7 is
-emitted by L1/L3, while metric 7's build note says "Deterministic — no model
-judgement", and the third type cannot be detected without one. Until that is
-settled, a tracker row carrying it counts as a recall miss. The answer key
-carries it on none of the hundred calls, so this changes no number today.
+**`missing_benefit_disclosure` is not measured, by decision** (§8): metric 7
+stays deterministic, and this type needs a model's judgement. It is left out
+of the comparison and listed as unscored rather than counted as a miss. The
+answer key carries it on none of the hundred calls.
 
 ### Two scored fields no insight rests on
 
@@ -171,6 +169,20 @@ in parallel — it needs no API at all.
 
 ## 8. Decisions taken
 
-*To be filled in at the check-in. Each entry: what was decided, by whom, and
-the number it was decided on — so that a later reader can tell a judgement
-from an assumption.*
+*Each entry: what was decided, by whom, and the number it was decided on —
+so that a later reader can tell a judgement from an assumption.*
+
+Taken 2026-09-24 by Minnie, accepting the recommendations in
+`Open-Decisions.md`. None rests on an agreement number; the run had not
+happened.
+
+| # | Decision | Owner of the work | State |
+|---|---|---|---|
+| 1 | **`missing_benefit_disclosure` is not produced.** Metric 7 stays deterministic: its build note ("no model judgement") is narrower and compliance-facing, and a model detector could not be validated here — the answer key carries the type on no call. | Stream A | Done — excluded from scoring and listed as unscored; `domain/layers.py` has metric 7 on L1 alone |
+| 2 | **`EpistemicClass` is split.** `basis` (MEASURED / DERIVED) alongside the existing `published` flag and `withheld_reason`, so a withheld composite is still labelled a composite. | Stream B | To do, before B5's endpoints ship |
+| 3 | **`indicators.min_rate` is dropped** unless someone can source it; the five-call floor stays. | Stream B | To do |
+| 4 | **`score` and `escalation.requested_by_caller` are recorded, not fixed.** Both stay scored. No screen quotes a per-call score ("events, not scores"); `requested_by_caller` reaches the screens only through `escalation_missed`. | — | Recorded |
+| 5 | **Value objects tightened** — `ProcessGap` requires `gap_type` and `proposed_change`; both raise `ValidationError`. `KnowledgeFailure.correct_statement` stays optional until D7 closes. | Stream A | Done (PR 23393) |
+| 6 | **The pass mark's shape**, agreed before any number is seen: set per insight, not per field; a floor (do not build) and a band (build, labelled); coverage counts as much as agreement; a higher bar where a figure names an account or a person; an insight gates on its weakest field. | Minnie | Shape agreed; the bars themselves are set with the numbers |
+| — | **Provider for the corpus run: OpenAI**, the D1 default. | Minnie | Authorised; runs once the key is in `Code/Backend/.env` |
+

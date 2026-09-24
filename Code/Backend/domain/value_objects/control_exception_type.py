@@ -3,8 +3,9 @@
 "Deterministic checks on the opening turns. The strongest case for real-
 time assist — a greeting check needs no model" (Call Tag Schema sheet).
 Two of the three are genuinely pattern-matchable against the opening
-turns alone; the third needs to know what benefit was under discussion,
-which only L3 can judge — see ``domain/extraction/l1_deterministic.py``.
+turns alone. The third needs to know what benefit was under discussion,
+which takes a model's judgement, and metric 7 is deterministic — so nothing
+produces it (see ``domain/extraction/l1_deterministic.py``).
 """
 
 from __future__ import annotations

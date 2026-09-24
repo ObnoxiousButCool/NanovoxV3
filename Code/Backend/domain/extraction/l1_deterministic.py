@@ -18,7 +18,13 @@ control exceptions:
 
 `missing_benefit_disclosure` needs to know which benefit was under
 discussion and whether the relevant disclosure was owed — a judgement,
-not a pattern — so L1 does not attempt it; it is L3's alone.
+not a pattern — so L1 does not attempt it, and nothing else does either.
+The workbook disagrees with itself here (the Call Tag Schema says L1/L3;
+metric 7's build note says "Deterministic — no model judgement"), and the
+metric's narrower, compliance-facing instruction was taken: an unvalidated
+model detector does not go into a compliance figure. The answer key carries
+this type on none of the hundred calls, so Phase 5 could not have measured
+one anyway.
 
 **How well this heuristic actually matches the workbook's own CALL TAGS
 is exactly what Phase 5's evaluation harness measures** (plan §8 Phase 5,
