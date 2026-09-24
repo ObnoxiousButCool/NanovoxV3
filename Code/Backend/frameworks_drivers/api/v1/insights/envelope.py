@@ -49,10 +49,14 @@ the ids and leaves the figure looking the same.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from datetime import date
 from typing import TYPE_CHECKING
 
 from pydantic import Field
 
+from domain.aggregation.call_tags import Window
+from domain.aggregation.patterns import period_caveat
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 
@@ -132,6 +136,22 @@ class UnmeasurableResponse(CamelModel):
     calls: int
 
 
+class PeriodResponse(CamelModel):
+    """The requested period, echoed so a reader can see what was asked for.
+
+    Separate from each metric's `windowWeeks`, and deliberately so: the two
+    are different things (decision D11), and collapsing them into one field
+    is what would let a twelve-week rate be read as a three-week one.
+    """
+
+    from_: date | None = Field(
+        default=None, alias="from", description="Earliest call date included. Null means unbounded."
+    )
+    to: date | None = Field(
+        default=None, description="Latest call date included. Null means unbounded."
+    )
+
+
 class ScopeResponse(CamelModel):
     """The population a response's figures were computed over.
 
@@ -155,6 +175,14 @@ class ScopeResponse(CamelModel):
             "than different. These are not out of scope; they are unanswerable."
         ),
     )
+    period: PeriodResponse | None = Field(
+        default=None,
+        description=(
+            "The period the caller asked for, echoed back. Null at either end "
+            "means that end was unbounded. It bounds which calls were read and "
+            "does not narrow any metric's own window — see `caveats`."
+        ),
+    )
     excluded_calls: int = Field(
         default=0,
         description=(
@@ -171,9 +199,29 @@ class ScopeResponse(CamelModel):
     )
 
     @classmethod
-    def of(cls, corpus: CorpusSlice, filtered: FilteredCalls, query: CorpusQuery) -> ScopeResponse:
+    def of(
+        cls,
+        corpus: CorpusSlice,
+        filtered: FilteredCalls,
+        query: CorpusQuery,
+        *,
+        windows: Sequence[tuple[str, Window]] = (),
+    ) -> ScopeResponse:
+        """The scope, plus a caveat for every window that reaches outside the period.
+
+        `windows` is what this endpoint actually computed over, named as a
+        reader would name it. Passing them is how decision D11 becomes
+        visible rather than merely true: the period bounds the corpus, each
+        metric keeps its own window, and where the two disagree the response
+        says so instead of quietly publishing a narrower figure.
+        """
         return cls(
             sources=sorted(source.value for source in query.sources),
+            period=(
+                PeriodResponse(**{"from": query.since, "to": query.until})
+                if query.since is not None or query.until is not None
+                else None
+            ),
             applied_filters=[
                 AppliedFilterResponse(field=entry.field, values=list(entry.values))
                 for entry in filtered.applied
@@ -185,5 +233,13 @@ class ScopeResponse(CamelModel):
                 for entry in filtered.unmeasurable
             ],
             excluded_calls=corpus.excluded,
-            caveats=list(corpus.caveats()),
+            caveats=[
+                *corpus.caveats(),
+                *(
+                    note
+                    for subject, window in windows
+                    if (note := period_caveat(window, query.since, query.until, subject=subject))
+                    is not None
+                ),
+            ],
         )

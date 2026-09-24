@@ -37,6 +37,10 @@ ALLOWED = {
     # Seeds employers to drive the /insights endpoints. Same reason: the
     # column is NOT NULL, and the response models have no field for it.
     "tests/integration/test_insights_endpoints.py",
+    # Seeds employers to exercise the period filter. Same reason again: the
+    # column is NOT NULL, so a row cannot be built without setting it, and
+    # nothing in that file reads it back.
+    "tests/integration/test_insights_period_filter.py",
     "tests/integration/test_reference_lookup.py",
 }
 

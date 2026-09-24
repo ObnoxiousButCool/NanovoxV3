@@ -109,6 +109,11 @@ class InsightsRequest:
     #: The date every window ends on. `None` means today, resolved from the
     #: clock and reported back, never left implicit.
     as_of: date | None = None
+    #: The requested period. It bounds which calls are read; each metric's
+    #: own `window_weeks` still applies inside it, anchored on `as_of`
+    #: (decision D11). `None` at either end means that end is unbounded.
+    since: date | None = None
+    until: date | None = None
 
 
 @dataclass(frozen=True)
@@ -118,6 +123,10 @@ class ScopedCorpus:
     corpus: CorpusSlice
     filtered: FilteredCalls
     as_of: date
+    #: Echoed back so a response can state the period it was asked for, and
+    #: so a caveat can name it when a metric's window reaches outside it.
+    since: date | None = None
+    until: date | None = None
 
 
 @dataclass(frozen=True)
@@ -166,14 +175,26 @@ class InsightsReader:
         self._clock = clock
 
     async def scope(self, request: InsightsRequest) -> ScopedCorpus:
-        corpus = await self._source.load(CorpusQuery(sources=request.sources))
+        corpus = await self._source.load(
+            CorpusQuery(
+                sources=request.sources,
+                since=request.since,
+                until=request.until,
+            )
+        )
         filtered = request.filters.apply(
             corpus.calls,
             employers=corpus.employers,
             quality_bands=self._config.quality_bands,
         )
         as_of = request.as_of or self._clock.now().date()
-        return ScopedCorpus(corpus=corpus, filtered=filtered, as_of=as_of)
+        return ScopedCorpus(
+            corpus=corpus,
+            filtered=filtered,
+            as_of=as_of,
+            since=request.since,
+            until=request.until,
+        )
 
 
 class GetExecScorecard:

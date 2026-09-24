@@ -180,3 +180,38 @@ class TestScope:
 
         assert scope.caveats == []
         assert scope.excluded_calls == 0
+
+
+# --------------------------------------------------------------------------
+# The period reaches the reader and the response by two paths. Pin them.
+# --------------------------------------------------------------------------
+
+
+def test_the_echoed_period_is_the_period_that_was_applied() -> None:
+    """`corpus_query()` feeds the response; `to_request()` feeds the reader.
+
+    Nothing structural stops one being edited without the other, and the
+    failure would be silent and worse than a crash: the screen would state a
+    period it did not actually apply. A reader checking the figure against
+    the stated dates would find them consistent and be wrong.
+    """
+    from datetime import date
+
+    from frameworks_drivers.api.v1.insights.query import InsightsQuery
+
+    query = InsightsQuery(from_=date(2026, 8, 1), to=date(2026, 9, 25))
+
+    corpus = query.corpus_query()
+    request = query.to_request()
+
+    assert (corpus.since, corpus.until) == (request.since, request.until)
+    assert (corpus.since, corpus.until) == (date(2026, 8, 1), date(2026, 9, 25))
+
+
+def test_an_unbounded_period_stays_unbounded_on_both_paths() -> None:
+    from frameworks_drivers.api.v1.insights.query import InsightsQuery
+
+    query = InsightsQuery()
+
+    assert (query.corpus_query().since, query.corpus_query().until) == (None, None)
+    assert (query.to_request().since, query.to_request().until) == (None, None)

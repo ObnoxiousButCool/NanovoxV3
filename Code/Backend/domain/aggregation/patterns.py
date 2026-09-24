@@ -73,6 +73,59 @@ def normalised_rate(
     return Figure.gated(threshold, annualised / (population / per), _ids(matching))
 
 
+def window_reaches_outside(window: Window, since: date | None, until: date | None) -> bool:
+    """Whether a metric's window needs calls from outside the asked-for period.
+
+    Decision D11: a period filter bounds the corpus, it does not redefine a
+    metric's window. So a request for three weeks does not turn a twelve-week
+    rate into a three-week one — the rate is still the Metrics sheet's
+    twelve-week rate, and nine of those weeks lie outside what was asked for.
+    """
+    if since is not None and window.start < since:
+        return True
+    return until is not None and window.end > until
+
+
+def period_caveat(
+    window: Window,
+    since: date | None,
+    until: date | None,
+    *,
+    subject: str,
+) -> str | None:
+    """The sentence that makes a wider-than-asked window visible.
+
+    Returns `None` when the window sits inside the period, so the caveat
+    appears only when it is true. A caveat printed every time stops being
+    read, and the one time it matters nobody notices it.
+
+    The alternative to saying this is truncating the window to the period,
+    which would publish a number under a definition the Metrics sheet does
+    not carry, with nothing on the screen to say so. Disclosure was chosen
+    over both truncation and suppression; see D11 for why, and for when to
+    revisit it.
+    """
+    if not window_reaches_outside(window, since, until):
+        return None
+    asked = _period_text(since, until)
+    return (
+        f"{subject} is computed over {window.start.isoformat()} to "
+        f"{window.end.isoformat()}, which reaches outside the period you asked for "
+        f"({asked}). The window is the metric's own and is not narrowed to the "
+        "period; the figure is not a shorter-window figure."
+    )
+
+
+def _period_text(since: date | None, until: date | None) -> str:
+    if since is not None and until is not None:
+        return f"{since.isoformat()} to {until.isoformat()}"
+    if since is not None:
+        return f"from {since.isoformat()}"
+    if until is not None:
+        return f"up to {until.isoformat()}"
+    return "the whole corpus"
+
+
 def window_for(threshold: MetricThreshold, as_of: date) -> Window | None:
     """The window one metric is computed over, ending on `as_of`.
 

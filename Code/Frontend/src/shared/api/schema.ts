@@ -941,6 +941,26 @@ export interface components {
             peers: number;
         };
         /**
+         * PeriodResponse
+         * @description The requested period, echoed so a reader can see what was asked for.
+         *
+         *     Separate from each metric's `windowWeeks`, and deliberately so: the two
+         *     are different things (decision D11), and collapsing them into one field
+         *     is what would let a twelve-week rate be read as a three-week one.
+         */
+        PeriodResponse: {
+            /**
+             * From
+             * @description Earliest call date included. Null means unbounded.
+             */
+            from?: string | null;
+            /**
+             * To
+             * @description Latest call date included. Null means unbounded.
+             */
+            to?: string | null;
+        };
+        /**
          * ProductLine
          * @enum {string}
          */
@@ -1144,6 +1164,8 @@ export interface components {
              * @description Calls the filters kept.
              */
             matched: number;
+            /** @description The period the caller asked for, echoed back. Null at either end means that end was unbounded. It bounds which calls were read and does not narrow any metric's own window — see `caveats`. */
+            period?: components["schemas"]["PeriodResponse"] | null;
             /**
              * Sources
              * @description Transcript origins included. Empty means every source.
@@ -1325,6 +1347,10 @@ export interface operations {
                 complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
@@ -1383,6 +1409,10 @@ export interface operations {
                 complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
@@ -1439,6 +1469,10 @@ export interface operations {
                 complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
@@ -1495,6 +1529,10 @@ export interface operations {
                 complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
@@ -1551,6 +1589,10 @@ export interface operations {
                 complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
@@ -1607,6 +1649,10 @@ export interface operations {
                 complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
@@ -1663,6 +1709,10 @@ export interface operations {
                 complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
@@ -1719,6 +1769,10 @@ export interface operations {
                 complianceException?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };

@@ -150,7 +150,12 @@ async def read_account_risk(
 ) -> RiskScreenResponse:
     result = await use_case.execute(query.to_request())
     return RiskScreenResponse(
-        scope=ScopeResponse.of(result.scope.corpus, result.scope.filtered, query.corpus_query()),
+        scope=ScopeResponse.of(
+            result.scope.corpus,
+            result.scope.filtered,
+            query.corpus_query(),
+            windows=[("The account risk flag", result.window)],
+        ),
         as_of=result.scope.as_of.isoformat(),
         window_weeks=round(result.window.weeks),
         assessed=[_account(entry) for entry in result.assessed],

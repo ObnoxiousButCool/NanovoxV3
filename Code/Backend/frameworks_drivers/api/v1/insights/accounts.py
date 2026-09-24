@@ -129,7 +129,16 @@ def _response(detail: AccountDetail, query: InsightsQueryDep) -> AccountResponse
     employer = detail.employer
     band = detail.peers.band
     return AccountResponse(
-        scope=ScopeResponse.of(detail.scope.corpus, detail.scope.filtered, query.corpus_query()),
+        scope=ScopeResponse.of(
+            detail.scope.corpus,
+            detail.scope.filtered,
+            query.corpus_query(),
+            windows=[
+                ("Contact rate", detail.contact_rate_window),
+                ("Repeat rate", detail.repeat_rate_window),
+                ("The account risk flag", detail.risk_window),
+            ],
+        ),
         as_of=detail.scope.as_of.isoformat(),
         facts=AccountFactsResponse(
             employer_ref=employer.reference,

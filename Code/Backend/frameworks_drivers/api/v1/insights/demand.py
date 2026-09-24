@@ -119,7 +119,12 @@ async def read_demand(
     view = await use_case.execute(query.to_request())
     demand = view.self_inflicted
     return DemandResponse(
-        scope=ScopeResponse.of(view.scope.corpus, view.scope.filtered, query.corpus_query()),
+        scope=ScopeResponse.of(
+            view.scope.corpus,
+            view.scope.filtered,
+            query.corpus_query(),
+            windows=[("Self-inflicted demand", view.window)],
+        ),
         as_of=view.scope.as_of.isoformat(),
         window_weeks=round(view.window.weeks),
         self_inflicted=SelfInflictedResponse(

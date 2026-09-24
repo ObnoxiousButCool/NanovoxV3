@@ -117,7 +117,12 @@ async def read_actions(
 ) -> ActionsResponse:
     view = await use_case.execute(query.to_request())
     return ActionsResponse(
-        scope=ScopeResponse.of(view.scope.corpus, view.scope.filtered, query.corpus_query()),
+        scope=ScopeResponse.of(
+            view.scope.corpus,
+            view.scope.filtered,
+            query.corpus_query(),
+            windows=[("Action items", view.window)],
+        ),
         as_of=view.scope.as_of.isoformat(),
         window_weeks=round(view.window.weeks),
         items=[_item(item) for item in view.items],

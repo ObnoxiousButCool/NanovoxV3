@@ -47,6 +47,7 @@ from fastapi import Depends, Query
 from application.ports.insights_source import CorpusQuery
 from application.use_cases.read_insights import InsightsRequest
 from domain.aggregation.filters import InsightFilters
+from domain.errors import ValidationError
 from domain.value_objects.call_source import CallSource
 from domain.value_objects.category import Category
 from domain.value_objects.complaint_attribution import ComplaintAttribution
@@ -109,6 +110,31 @@ class InsightsQuery:
             )
         ),
     ] = None
+    #: The requested period. It bounds which calls enter the corpus slice and
+    #: does **not** redefine any metric's window — decision D11 in `plan.md`
+    #: §5. `dashboard.yaml` sets `window_weeks` per metric and they differ on
+    #: one screen (contact rate 12, first-contact resolution 4), so a single
+    #: period could not stand in for all of them without silently making some
+    #: figure mean something else.
+    from_: Annotated[
+        date | None,
+        Query(
+            alias="from",
+            description=(
+                "Earliest call date to include. Omitted means no lower bound. "
+                "Bounds the corpus, not a metric's window."
+            ),
+        ),
+    ] = None
+    to: Annotated[
+        date | None,
+        Query(
+            description=(
+                "Latest call date to include. Omitted means no upper bound. "
+                "Bounds the corpus, not a metric's window."
+            ),
+        ),
+    ] = None
     as_of: Annotated[
         date | None,
         Query(
@@ -119,6 +145,25 @@ class InsightsQuery:
             ),
         ),
     ] = None
+
+    def __post_init__(self) -> None:
+        """Reject an inverted range here rather than returning an empty screen.
+
+        A `from` after `to` selects no calls at all, and every figure would
+        come back withheld for want of a sample — which reads as "we have no
+        evidence" when the truth is "you asked for nothing". A 400 naming the
+        two values is the only answer that cannot be misread.
+
+        This is a `ValidationError`, so it surfaces as this application's 400
+        problem document. 422 here means the request did not match the schema,
+        which FastAPI produces on its own; an inverted range parses perfectly
+        and fails a rule, which is what a `ValidationError` is for.
+        """
+        if self.from_ is not None and self.to is not None and self.from_ > self.to:
+            raise ValidationError(
+                "The period starts after it ends.",
+                detail=f"from={self.from_.isoformat()} is later than to={self.to.isoformat()}.",
+            )
 
     def filters(self) -> InsightFilters:
         return InsightFilters(
@@ -140,14 +185,16 @@ class InsightsQuery:
         )
 
     def corpus_query(self) -> CorpusQuery:
-        """The corpus scope, echoed into the response's `scope.sources`."""
-        return CorpusQuery(sources=_set(self.source))
+        """The corpus scope, echoed into the response's `scope`."""
+        return CorpusQuery(sources=_set(self.source), since=self.from_, until=self.to)
 
     def to_request(self) -> InsightsRequest:
         return InsightsRequest(
             filters=self.filters(),
             sources=_set(self.source),
             as_of=self.as_of,
+            since=self.from_,
+            until=self.to,
         )
 
 

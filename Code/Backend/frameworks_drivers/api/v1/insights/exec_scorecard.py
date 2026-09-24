@@ -29,6 +29,7 @@ from fastapi import APIRouter, status
 from pydantic import Field
 
 from domain.aggregation.exec_scorecard import SCORECARD_METRICS, escalation_integrity_pair
+from domain.aggregation.patterns import window_for
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import DashboardConfigDep, GetExecScorecardDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
@@ -103,7 +104,20 @@ async def read_exec_scorecard(
         "commercial_intent_capture": card.commercial_intent_capture,
     }
     return ExecScorecardResponse(
-        scope=ScopeResponse.of(result.scope.corpus, result.scope.filtered, query.corpus_query()),
+        scope=ScopeResponse.of(
+            result.scope.corpus,
+            result.scope.filtered,
+            query.corpus_query(),
+            # One caveat per metric, because the windows differ on this one
+            # screen: first-contact resolution is 4 weeks and the repeat rate
+            # is 12. A single scope-level sentence would have to speak for
+            # both, and would be wrong about one of them.
+            windows=[
+                (config.metric(key).name, window)
+                for key in SCORECARD_METRICS
+                if (window := window_for(config.metric(key), card.as_of)) is not None
+            ],
+        ),
         as_of=card.as_of.isoformat(),
         calls=card.calls,
         metrics=[

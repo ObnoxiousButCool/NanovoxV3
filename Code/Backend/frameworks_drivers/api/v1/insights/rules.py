@@ -110,7 +110,12 @@ async def read_rules(
 ) -> RulesResponse:
     view = await use_case.execute(query.to_request())
     return RulesResponse(
-        scope=ScopeResponse.of(view.scope.corpus, view.scope.filtered, query.corpus_query()),
+        scope=ScopeResponse.of(
+            view.scope.corpus,
+            view.scope.filtered,
+            query.corpus_query(),
+            windows=[("Knowledge failure rate", view.window)],
+        ),
         as_of=view.scope.as_of.isoformat(),
         window_weeks=round(view.window.weeks),
         overall_rate=FigureResponse.of(view.overall_rate),

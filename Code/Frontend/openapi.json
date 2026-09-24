@@ -1458,6 +1458,39 @@
         "title": "PeerComparisonResponse",
         "type": "object"
       },
+      "PeriodResponse": {
+        "description": "The requested period, echoed so a reader can see what was asked for.\n\nSeparate from each metric's `windowWeeks`, and deliberately so: the two\nare different things (decision D11), and collapsing them into one field\nis what would let a twelve-week rate be read as a three-week one.",
+        "properties": {
+          "from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Earliest call date included. Null means unbounded.",
+            "title": "From"
+          },
+          "to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Latest call date included. Null means unbounded.",
+            "title": "To"
+          }
+        },
+        "title": "PeriodResponse",
+        "type": "object"
+      },
       "ProductLine": {
         "enum": [
           "dental",
@@ -1892,6 +1925,17 @@
             "description": "Calls the filters kept.",
             "title": "Matched",
             "type": "integer"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The period the caller asked for, echoed back. Null at either end means that end was unbounded. It bounds which calls were read and does not narrow any metric's own window \u2014 see `caveats`."
           },
           "sources": {
             "description": "Transcript origins included. Empty means every source.",
@@ -2527,6 +2571,44 @@
             }
           },
           {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
+            }
+          },
+          {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
             "name": "asOf",
@@ -2887,6 +2969,44 @@
               ],
               "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
               "title": "Source"
+            }
+          },
+          {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
             }
           },
           {
@@ -3253,6 +3373,44 @@
             }
           },
           {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
+            }
+          },
+          {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
             "name": "asOf",
@@ -3613,6 +3771,44 @@
               ],
               "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
               "title": "Source"
+            }
+          },
+          {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
             }
           },
           {
@@ -3979,6 +4175,44 @@
             }
           },
           {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
+            }
+          },
+          {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
             "name": "asOf",
@@ -4339,6 +4573,44 @@
               ],
               "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
               "title": "Source"
+            }
+          },
+          {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
             }
           },
           {
@@ -4705,6 +4977,44 @@
             }
           },
           {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
+            }
+          },
+          {
             "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
             "in": "query",
             "name": "asOf",
@@ -5065,6 +5375,44 @@
               ],
               "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
               "title": "Source"
+            }
+          },
+          {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
             }
           },
           {
