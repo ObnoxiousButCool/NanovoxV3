@@ -23,8 +23,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import replace
+from datetime import date, timedelta
 
-from domain.aggregation.call_tags import CallContext
+from domain.aggregation.call_tags import CallContext, Window
 from domain.aggregation.figure import Figure, WithheldReason
 from domain.dashboard_config import MetricThreshold
 
@@ -70,6 +71,26 @@ def normalised_rate(
         )
     annualised = len(matching) * (_WEEKS_PER_YEAR / weeks)
     return Figure.gated(threshold, annualised / (population / per), _ids(matching))
+
+
+def window_for(threshold: MetricThreshold, as_of: date) -> Window | None:
+    """The window one metric is computed over, ending on `as_of`.
+
+    The Metrics sheet sets `window_weeks` per metric, and they differ on a
+    single screen: first contact resolution and knowledge failure rate look
+    back four weeks where escalation integrity and commercial intent look
+    back twelve. Computing a screen's figures over one shared window would
+    publish at least two of them against a period their own definition does
+    not use, under a heading stating the other period.
+
+    `None` means the metric is never windowed — `agent_quality_score` and
+    `call_volume` carry `window_weeks: null`, and a score is a property of
+    the call rather than of a period. Callers pass every call in that case
+    rather than substituting a window of their own.
+    """
+    if threshold.window_weeks is None:
+        return None
+    return Window(as_of - timedelta(weeks=threshold.window_weeks), as_of)
 
 
 def share(

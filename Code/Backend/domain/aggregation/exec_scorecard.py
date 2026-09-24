@@ -19,16 +19,28 @@ The scorecard carries the count of calls stating intent; whether any was
 routed is not a v9 field, and `intent_routed` is therefore withheld with a
 NO_FIELD reason rather than reported as zero — zero would assert that we
 checked and found none, which is a stronger claim than the data supports.
+
+**The figures do not share a window, and must not be given one.** The
+Metrics sheet sets `window_weeks` per metric and they differ across this
+one screen: first contact resolution and knowledge failure rate are
+four-week metrics, escalation integrity and commercial intent twelve-week.
+So this takes an `as_of` date and resolves each metric's own window from
+the config, rather than taking a window and applying it to everything.
+Sharing one window would compute at least two figures over a period their
+definition does not use, and publish them under a heading naming the other
+period — the same class of error as rendering a withheld figure as zero,
+and harder to spot.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
 
 from domain.aggregation.call_tags import CallContext, Window
 from domain.aggregation.figure import Figure, WithheldReason, no_field_caveat
-from domain.aggregation.patterns import share
+from domain.aggregation.patterns import share, window_for
 from domain.aggregation.repeat_contact import (
     exposed_unresolved,
     failure_driven_repeats,
@@ -42,11 +54,27 @@ from domain.value_objects.intent_type import IntentType
 #: schema field 9 and means the caller stated no intent, so it is not one.
 COMMERCIAL_INTENTS = (IntentType.EXPANSION, IntentType.MARKET_TEST, IntentType.CANCELLATION)
 
+#: The metrics whose windows this screen spans. Listed so the headline
+#: count is derived from the same set the figures are, rather than from a
+#: number someone has to remember to keep in step.
+SCORECARD_METRICS = (
+    "first_contact_resolution",
+    "failure_driven_repeat_rate",
+    "escalation_integrity",
+    "knowledge_failure_rate",
+    "commercial_intent_capture",
+)
+
 
 @dataclass(frozen=True)
 class ExecScorecard:
     """What the executive screen leads with, all of it gated and evidenced."""
 
+    #: The date every window ends on. Each figure looks back its own
+    #: metric's `window_weeks` from here.
+    as_of: date
+    #: Calls in the longest window on the screen, which contains the rest.
+    #: Never the sample behind any one figure — read each figure's own `n`.
     calls: int
     first_contact_resolution: Figure
     failure_driven_repeat_rate: Figure
@@ -63,42 +91,60 @@ class ExecScorecard:
 
 
 def exec_scorecard(
-    config: DashboardConfig, calls: Sequence[CallContext], window: Window
+    config: DashboardConfig, calls: Sequence[CallContext], as_of: date
 ) -> ExecScorecard:
-    in_window = window.calls_in(tuple(calls))
+    """The scorecard as at one date, each figure over its own window."""
+    everything = tuple(calls)
+
+    def scope(key: str) -> tuple[Window | None, tuple[CallContext, ...]]:
+        window = window_for(config.metric(key), as_of)
+        return window, everything if window is None else window.calls_in(everything)
+
+    _, resolution_calls = scope("first_contact_resolution")
+    repeat_window, repeat_calls = scope("failure_driven_repeat_rate")
+    _, escalation_calls = scope("escalation_integrity")
+    _, knowledge_calls = scope("knowledge_failure_rate")
+    _, intent_calls = scope("commercial_intent_capture")
+
+    if repeat_window is None:  # pragma: no cover - the config would have to drop the window
+        raise ValueError(
+            "Failure-driven repeat contact is defined over a window and the config gives it "
+            "none; exposure to a repeat cannot be judged without a period to look forward in."
+        )
 
     triggered = [
         call
-        for call in in_window
+        for call in escalation_calls
         if call.tags.escalation is not None and call.tags.escalation.triggered
     ]
     handled = [call for call in triggered if call.tags.escalation and call.tags.escalation.handled]
 
     intent = [
         call
-        for call in in_window
+        for call in intent_calls
         if any(statement.type in COMMERCIAL_INTENTS for statement in call.tags.intent)
     ]
 
     failures = [
         call
-        for call in in_window
+        for call in knowledge_calls
         if call.tags.knowledge_failure is not None and call.tags.knowledge_failure.present
     ]
 
-    exposed = exposed_unresolved(in_window, window)
+    exposed = exposed_unresolved(repeat_calls, repeat_window)
     return ExecScorecard(
-        calls=len(in_window),
+        as_of=as_of,
+        calls=len(_widest(config, everything, as_of)),
         first_contact_resolution=share(
             config.metric("first_contact_resolution"),
-            numerator=first_contact_resolutions(in_window),
-            denominator=resolution_denominator(in_window),
+            numerator=first_contact_resolutions(resolution_calls),
+            denominator=resolution_denominator(resolution_calls),
         ),
         failure_driven_repeat_rate=share(
             config.metric("failure_driven_repeat_rate"),
             numerator=[
                 call
-                for call in failure_driven_repeats(in_window)
+                for call in failure_driven_repeats(repeat_calls)
                 if call.reference in {c.reference for c in exposed}
             ],
             denominator=exposed,
@@ -107,13 +153,19 @@ def exec_scorecard(
             config.metric("escalation_integrity"), numerator=handled, denominator=triggered
         ),
         escalation_incidence=share(
-            config.metric("escalation_integrity"), numerator=triggered, denominator=in_window
+            config.metric("escalation_integrity"),
+            numerator=triggered,
+            denominator=escalation_calls,
         ),
         knowledge_failure_rate=share(
-            config.metric("knowledge_failure_rate"), numerator=failures, denominator=in_window
+            config.metric("knowledge_failure_rate"),
+            numerator=failures,
+            denominator=knowledge_calls,
         ),
         commercial_intent_capture=share(
-            config.metric("commercial_intent_capture"), numerator=intent, denominator=in_window
+            config.metric("commercial_intent_capture"),
+            numerator=intent,
+            denominator=intent_calls,
         ),
         intent_routed=Figure.withheld(
             WithheldReason.NO_FIELD,
@@ -126,6 +178,23 @@ def exec_scorecard(
             ),
         ),
     )
+
+
+def _widest(
+    config: DashboardConfig, calls: tuple[CallContext, ...], as_of: date
+) -> tuple[CallContext, ...]:
+    """Calls in the longest window any figure on this screen uses.
+
+    The headline count cannot be "the calls behind the scorecard", because
+    there is no single such set once the windows differ. It is the widest of
+    them, which contains every other — derived from `SCORECARD_METRICS` so it
+    moves when the screen does, and never mistaken for a figure's own `n`.
+    """
+    windows = [window_for(config.metric(key), as_of) for key in SCORECARD_METRICS]
+    if any(window is None for window in windows):
+        return calls
+    widest = min(window.start for window in windows if window is not None)
+    return Window(widest, as_of).calls_in(calls)
 
 
 def escalation_integrity_pair(scorecard: ExecScorecard) -> tuple[tuple[str, Figure], ...]:

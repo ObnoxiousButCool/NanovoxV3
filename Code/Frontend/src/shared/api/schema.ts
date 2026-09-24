@@ -38,6 +38,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/insights/exec": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The executive scorecard */
+        get: operations["read_exec_scorecard_api_v1_insights_exec_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/risk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Account risk flags, with what could not be assessed */
+        get: operations["read_account_risk_api_v1_insights_risk_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/providers": {
         parameters: {
             query?: never;
@@ -144,6 +178,66 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountRiskResponse */
+        AccountRiskResponse: {
+            /**
+             * Calls
+             * @description Calls for this employer in the window.
+             */
+            calls: number;
+            /** Conditions */
+            conditions: components["schemas"]["ConditionResponse"][];
+            /** Conditions Met */
+            conditions_met: number;
+            /** Eligible */
+            eligible: boolean;
+            /** Employer Ref */
+            employer_ref: string;
+            /**
+             * Evidence
+             * @description Every call behind every condition that fired.
+             */
+            evidence?: string[];
+            /** Flagged */
+            flagged: boolean;
+            /** Observations */
+            observations: components["schemas"]["ObservationResponse"][];
+            /**
+             * Quotable
+             * @description Whether there are enough calls to quote this as a figure.
+             */
+            quotable: boolean;
+            /**
+             * State
+             * @description What the page says, computed from the numbers. Read this rather than recombining the booleans: 'not eligible' is not 'not at risk'.
+             */
+            state: string;
+        };
+        /**
+         * AppliedFilterResponse
+         * @description One active filter, for the applied-filters row.
+         */
+        AppliedFilterResponse: {
+            /** Field */
+            field: string;
+            /** Values */
+            values: string[];
+        };
+        /**
+         * CallSource
+         * @enum {string}
+         */
+        CallSource: "CORPUS_PDF" | "PASTED" | "AUDIO";
+        /**
+         * Category
+         * @enum {string}
+         */
+        Category: "Coverage & Benefits" | "Claims & EOB" | "Provider Network" | "Billing & Premium" | "Enrollment & ID Cards" | "Life & Beneficiary" | "Broker Conduct";
+        /**
+         * ComplaintAttribution
+         * @enum {string}
+         */
+        ComplaintAttribution: "CHOICE" | "BROKER" | "CARRIER" | "PROVIDER";
         /** ComponentHealthResponse */
         ComponentHealthResponse: {
             /** Detail */
@@ -158,6 +252,102 @@ export interface components {
          * @enum {string}
          */
         ComponentStatus: "up" | "down";
+        /**
+         * ConditionResponse
+         * @description One of metric 10's four conditions, met or not.
+         */
+        ConditionResponse: {
+            /**
+             * Call Ids
+             * @description The calls that fired it. Empty when it did not.
+             */
+            call_ids?: string[];
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** Met */
+            met: boolean;
+        };
+        /**
+         * EpistemicClass
+         * @enum {string}
+         */
+        EpistemicClass: "MEASURED" | "DERIVED" | "WITHHELD";
+        /** ExecScorecardResponse */
+        ExecScorecardResponse: {
+            /**
+             * As Of
+             * @description The date every window on this screen ends on.
+             */
+            as_of: string;
+            /**
+             * Calls
+             * @description Calls in the longest window on the screen, which contains every other. Never the sample behind any one figure — read that figure's own `n`.
+             */
+            calls: number;
+            /**
+             * Escalation
+             * @description Both escalation views, in reading order. Handled over warranted is the control measure; warranted over all calls is its scale. Shown together because either alone misleads.
+             */
+            escalation: components["schemas"]["LabelledFigureResponse"][];
+            /** @description Always withheld on v9 data: whether commercial intent reached anyone who could act on it is not a field. Zero would claim we checked. */
+            intent_routed: components["schemas"]["FigureResponse"];
+            /** Metrics */
+            metrics: components["schemas"]["MetricFigureResponse"][];
+            scope: components["schemas"]["ScopeResponse"];
+        };
+        /** ExposureResponse */
+        ExposureResponse: {
+            /** Annual Premium */
+            annual_premium: number;
+            /** Caveat */
+            caveat: string;
+            /** Employers */
+            employers: string[];
+            /** Lives */
+            lives: number;
+            /**
+             * Premium Incomplete
+             * @description True when a flagged account has no premium recorded, so this is a floor.
+             */
+            premium_incomplete: boolean;
+        };
+        /**
+         * FigureResponse
+         * @description One number and everything needed to judge it.
+         */
+        FigureResponse: {
+            /**
+             * Call Ids
+             * @description The calls behind the figure, so it can be argued with. Present on withheld figures too: a reader told four calls is too few should still be able to open those four.
+             */
+            call_ids?: string[];
+            /**
+             * Caveats
+             * @description Generated from the numbers, never hand-written.
+             */
+            caveats?: string[];
+            /** @description MEASURED: computed from the Call Tag Schema's own fields. DERIVED: our composite rather than a workbook field, and labelled as such wherever it surfaces. WITHHELD: suppressed, with a reason. */
+            epistemic: components["schemas"]["EpistemicClass"];
+            /**
+             * N
+             * @description The sample behind the figure. Equals the number of call ids.
+             */
+            n: number;
+            /**
+             * Published
+             * @description False when the figure is withheld. Withheld means nobody has enough evidence to state a number, which is not the same as a number of zero.
+             */
+            published: boolean;
+            /**
+             * Value
+             * @description The figure, or null when it is withheld. Null is never zero: see `published`, which is the field to branch on.
+             */
+            value?: number | null;
+            /** @description Non-null exactly when `published` is false. */
+            withheld_reason?: components["schemas"]["WithheldReason"] | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -216,6 +406,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /**
+         * IntentType
+         * @enum {string}
+         */
+        IntentType: "expansion" | "market_test" | "cancellation" | "none";
+        /** LabelledFigureResponse */
+        LabelledFigureResponse: {
+            figure: components["schemas"]["FigureResponse"];
+            /** Label */
+            label: string;
+        };
         /** ListProvidersResponse */
         ListProvidersResponse: {
             /** Default */
@@ -223,6 +424,69 @@ export interface components {
             /** Providers */
             providers: components["schemas"]["ProviderResponse"][];
         };
+        /**
+         * MetricFigureResponse
+         * @description One published metric, with the window it was computed over.
+         */
+        MetricFigureResponse: {
+            figure: components["schemas"]["FigureResponse"];
+            /**
+             * Key
+             * @description The metric's key in dashboard.yaml.
+             */
+            key: string;
+            /**
+             * Name
+             * @description The Metrics sheet's own name for it.
+             */
+            name: string;
+            /**
+             * Window Weeks
+             * @description How far back this metric looks from `as_of`. Metrics on one screen differ; null means the metric is not windowed at all.
+             */
+            window_weeks?: number | null;
+        };
+        /**
+         * ObservationResponse
+         * @description One indicator family's standing. Informational — it does not set the flag.
+         */
+        ObservationResponse: {
+            /**
+             * Available
+             * @description False when v9 has no field for this family. Not the same as no hits.
+             */
+            available: boolean;
+            /** Code */
+            code: string;
+            /** Employer Calls */
+            employer_calls: number;
+            /** Hits */
+            hits: number;
+            /** Label */
+            label: string;
+            /** Observed */
+            observed: boolean;
+            /**
+             * Rate
+             * @description Null when the family cannot be computed, never zero.
+             */
+            rate?: number | null;
+            /**
+             * Unavailable Because
+             * @default
+             */
+            unavailable_because: string;
+        };
+        /**
+         * Outcome
+         * @enum {string}
+         */
+        Outcome: "RESOLVED" | "PARTIALLY_RESOLVED" | "ESCALATED" | "UNRESOLVED";
+        /**
+         * ProductLine
+         * @enum {string}
+         */
+        ProductLine: "dental" | "vision" | "life" | "chiro" | "program";
         /** ProviderResponse */
         ProviderResponse: {
             /** Billable */
@@ -245,6 +509,37 @@ export interface components {
             reachable: boolean;
             /** Selectable */
             selectable: boolean;
+        };
+        /**
+         * QualityBand
+         * @enum {string}
+         */
+        QualityBand: "GOOD" | "AVERAGE" | "POOR";
+        /** RiskScreenResponse */
+        RiskScreenResponse: {
+            /** As Of */
+            as_of: string;
+            /**
+             * Assessed
+             * @description Only employers the window could speak about.
+             */
+            assessed: components["schemas"]["AccountRiskResponse"][];
+            exposure: components["schemas"]["ExposureResponse"];
+            /** @description Flagged as a share of the *eligible* employers, never of all of them. */
+            flagged_share: components["schemas"]["FigureResponse"];
+            /**
+             * Ineligible
+             * @description Employers below the eligibility floor, by reference. Kept apart from `assessed` on purpose: too few calls to assess is not a finding of low risk, and at current volume most of the book is here.
+             */
+            ineligible: string[];
+            /** Ineligible Count */
+            ineligible_count: number;
+            scope: components["schemas"]["ScopeResponse"];
+            /**
+             * Window Weeks
+             * @description Metric 10's window, in weeks, ending on `as_of`.
+             */
+            window_weeks: number;
         };
         /** RunProgressResponse */
         RunProgressResponse: {
@@ -277,6 +572,55 @@ export interface components {
             /** Status */
             status: string;
         };
+        /**
+         * ScopeResponse
+         * @description The population a response's figures were computed over.
+         *
+         *     Both counts are here because either alone misleads. `matched` without
+         *     `considered` hides how much of the corpus was set aside; `considered`
+         *     without `unmeasurable` makes a shortfall look like a narrower question
+         *     when it is really a field extraction never filled.
+         */
+        ScopeResponse: {
+            /** Applied Filters */
+            applied_filters?: components["schemas"]["AppliedFilterResponse"][];
+            /**
+             * Caveats
+             * @description Whole-corpus caveats: undated calls, unanalysed calls, and schema fields the pipeline cannot produce.
+             */
+            caveats?: string[];
+            /**
+             * Considered
+             * @description Calls offered to the filters.
+             */
+            considered: number;
+            /**
+             * Excluded Calls
+             * @description Stored calls that reached no figure at all — no date, or never analysed. Counted before filtering.
+             * @default 0
+             */
+            excluded_calls: number;
+            /**
+             * Matched
+             * @description Calls the filters kept.
+             */
+            matched: number;
+            /**
+             * Sources
+             * @description Transcript origins included. Empty means every source.
+             */
+            sources?: string[];
+            /**
+             * Unmeasurable
+             * @description Per field, calls excluded because the filtered field was absent rather than different. These are not out of scope; they are unanswerable.
+             */
+            unmeasurable?: components["schemas"]["UnmeasurableResponse"][];
+        };
+        /**
+         * SignalType
+         * @enum {string}
+         */
+        SignalType: "member_communication_gap" | "process_breakdown" | "compliance_disclosure_missing" | "verification_failure" | "broker_conduct_adverse" | "broker_conduct_positive" | "escalation_missed" | "retention_risk" | "revenue_opportunity" | "knowledge_error" | "network_adequacy" | "billing_defect" | "process_gap_proposed";
         /** StartRunRequest */
         StartRunRequest: {
             /** Model */
@@ -288,6 +632,16 @@ export interface components {
         StartRunResponse: {
             /** Id */
             id: number;
+        };
+        /**
+         * UnmeasurableResponse
+         * @description Calls dropped by a filter for want of a value, not for differing.
+         */
+        UnmeasurableResponse: {
+            /** Calls */
+            calls: number;
+            /** Field */
+            field: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -302,6 +656,11 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * WithheldReason
+         * @enum {string}
+         */
+        WithheldReason: "BELOW_MIN_N" | "NO_FIELD" | "NOT_ELIGIBLE" | "MONEY_UNKNOWN" | "NO_DENOMINATOR";
     };
     responses: never;
     parameters: never;
@@ -354,6 +713,118 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestCountsResponse"];
+                };
+            };
+        };
+    };
+    read_exec_scorecard_api_v1_insights_exec_get: {
+        parameters: {
+            query?: {
+                /** @description Employer region. */
+                region?: string[] | null;
+                /** @description Broker of record, from reference data — not who was named aloud. */
+                broker?: string[] | null;
+                /** @description Employer reference. */
+                employer?: string[] | null;
+                /** @description Agent reference. */
+                agent?: string[] | null;
+                category?: components["schemas"]["Category"][] | null;
+                /** @description Calls touching this line. A call may touch several. */
+                product_line?: components["schemas"]["ProductLine"][] | null;
+                /** @description Where the failure originated, not where it surfaced. */
+                touchpoint?: string[] | null;
+                outcome?: components["schemas"]["Outcome"][] | null;
+                signal?: components["schemas"]["SignalType"][] | null;
+                intent?: components["schemas"]["IntentType"][] | null;
+                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
+                quality_band?: components["schemas"]["QualityBand"][] | null;
+                escalated?: boolean | null;
+                /** @description Whether a complaint was made. */
+                complaint?: boolean | null;
+                compliance_exception?: boolean | null;
+                /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
+                source?: components["schemas"]["CallSource"][] | null;
+                /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecScorecardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_account_risk_api_v1_insights_risk_get: {
+        parameters: {
+            query?: {
+                /** @description Employer region. */
+                region?: string[] | null;
+                /** @description Broker of record, from reference data — not who was named aloud. */
+                broker?: string[] | null;
+                /** @description Employer reference. */
+                employer?: string[] | null;
+                /** @description Agent reference. */
+                agent?: string[] | null;
+                category?: components["schemas"]["Category"][] | null;
+                /** @description Calls touching this line. A call may touch several. */
+                product_line?: components["schemas"]["ProductLine"][] | null;
+                /** @description Where the failure originated, not where it surfaced. */
+                touchpoint?: string[] | null;
+                outcome?: components["schemas"]["Outcome"][] | null;
+                signal?: components["schemas"]["SignalType"][] | null;
+                intent?: components["schemas"]["IntentType"][] | null;
+                complaint_target?: components["schemas"]["ComplaintAttribution"][] | null;
+                quality_band?: components["schemas"]["QualityBand"][] | null;
+                escalated?: boolean | null;
+                /** @description Whether a complaint was made. */
+                complaint?: boolean | null;
+                compliance_exception?: boolean | null;
+                /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
+                source?: components["schemas"]["CallSource"][] | null;
+                /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
+                as_of?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskScreenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

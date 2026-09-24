@@ -20,11 +20,12 @@ confidently wrong number rather than a visible gap:
   signal set as "no signals were raised", so an unanalysed call would
   silently enlarge the clean population of every signal-based figure. It
   is left out and its reference is reported.
-- **A schema field the pipeline cannot yet produce** is named in
-  `unavailable_fields` rather than arriving as an empty value. The
-  difference matters most for `control_exceptions`, which has no column in
-  `call_extractions` at all: as an empty set it reads as "no compliance
-  exceptions occurred", which is a claim nobody has made.
+- **A schema field some included call has no value for** is named in
+  `unavailable_fields` rather than passing as an empty value. It matters
+  most for `control_exceptions`, whose column is nullable: `[]` means L1 ran
+  and found none, `NULL` means it was never recorded, and `CallTags` has one
+  empty set for both. Left unsaid, a `NULL` reads as "no compliance
+  exceptions occurred" — a claim nobody has made.
 
 None of these is an error to swallow. `CorpusSlice` carries all three out
 so an endpoint can withhold a figure, and say why, instead of publishing a
@@ -91,9 +92,9 @@ class CorpusSlice:
     undated: tuple[str, ...] = ()
     #: Calls left out because nothing has analysed them, by reference.
     unanalysed: tuple[str, ...] = ()
-    #: Call Tag Schema fields no included call can carry, because the
-    #: pipeline has nowhere to store them. Named so a figure resting on one
-    #: is withheld rather than computed over absence.
+    #: Call Tag Schema fields at least one included call has no value for.
+    #: Named so a figure resting on one is withheld rather than computed
+    #: over an absence that looks like a zero.
     unavailable_fields: tuple[str, ...] = field(default=())
 
     @property
@@ -122,8 +123,8 @@ class CorpusSlice:
         if self.unavailable_fields:
             fields = ", ".join(self.unavailable_fields)
             notes.append(
-                f"The pipeline does not produce {fields}. Figures resting on these are "
-                "withheld, not zero."
+                f"{fields} is not recorded for every call in scope. Figures resting on "
+                "it are withheld rather than counted as nothing found."
             )
         return tuple(notes)
 

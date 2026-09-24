@@ -58,6 +58,7 @@ from domain.value_objects.broker_sentiment import BrokerSentiment
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.escalation import Escalation
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
@@ -79,15 +80,15 @@ if TYPE_CHECKING:
 
 _EnumT = TypeVar("_EnumT", bound=Enum)
 
-#: Call Tag Schema fields `call_extractions` has no column for, so no stored
-#: call can carry them however it was analysed.
+#: Call Tag Schema fields no included call carries a value for.
 #:
-#: `control_exceptions` is schema field 7 and metric 7's only input. The
-#: answer key has it — the Transcript Tracker records exceptions per call —
-#: and the pipeline has nowhere to put it, which is why this is a named gap
-#: rather than a bug to fix in this file. Reported so compliance exposure is
-#: withheld rather than published as zero exceptions across the book.
-UNAVAILABLE_FIELDS: tuple[str, ...] = ("control_exceptions",)
+#: Computed per request rather than fixed, because it is a fact about the
+#: rows that were read and not about the pipeline's capabilities. Stream A
+#: now stores `control_exceptions` (schema field 7, metric 7's only input),
+#: and its column is nullable: `[]` means L1 ran and found none, `NULL`
+#: means it was never recorded. `CallTags` has one empty set for both, so a
+#: call with `NULL` would read as a clean compliance record — a claim
+#: nobody made. Such a call puts the field in this list instead.
 
 
 class SqlInsightsSource(InsightsSource):
@@ -97,7 +98,7 @@ class SqlInsightsSource(InsightsSource):
     async def load(self, query: CorpusQuery) -> CorpusSlice:
         async with self._session_factory() as session:
             employers, brokers = await self._reference_data(session)
-            calls, undated, unanalysed = await self._calls(session, query)
+            calls, undated, unanalysed, unavailable = await self._calls(session, query)
 
         return CorpusSlice(
             calls=calls,
@@ -105,7 +106,7 @@ class SqlInsightsSource(InsightsSource):
             brokers=brokers,
             undated=undated,
             unanalysed=unanalysed,
-            unavailable_fields=UNAVAILABLE_FIELDS,
+            unavailable_fields=unavailable,
         )
 
     async def _reference_data(
@@ -141,7 +142,7 @@ class SqlInsightsSource(InsightsSource):
 
     async def _calls(
         self, session: AsyncSession, query: CorpusQuery
-    ) -> tuple[tuple[CallContext, ...], tuple[str, ...], tuple[str, ...]]:
+    ) -> tuple[tuple[CallContext, ...], tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
         statement = (
             select(CallRow, CallExtractionRow)
             .outerjoin(CallExtractionRow, CallExtractionRow.call_id == CallRow.id)
@@ -185,11 +186,13 @@ class SqlInsightsSource(InsightsSource):
 
         calls: list[CallContext] = []
         undated: list[str] = []
+        unrecorded_exceptions = False
         unanalysed = tuple(call.reference for call, extraction in rows if extraction is None)
         for call, extraction in analysed:
             if call.occurred_at is None:
                 undated.append(call.reference)
                 continue
+            unrecorded_exceptions = unrecorded_exceptions or extraction.control_exceptions is None
             calls.append(
                 CallContext(
                     tags=_tags(call, extraction, signals.get(call.id, frozenset())),
@@ -201,7 +204,8 @@ class SqlInsightsSource(InsightsSource):
                     agent_ref=call.agent_ref or None,
                 )
             )
-        return tuple(calls), tuple(undated), unanalysed
+        unavailable = ("control_exceptions",) if unrecorded_exceptions else ()
+        return tuple(calls), tuple(undated), unanalysed, unavailable
 
     async def _signals(
         self, session: AsyncSession, call_ids: list[int]
@@ -243,9 +247,9 @@ def _employer_facts(row: EmployerRow) -> EmployerFacts:
 def _tags(call: CallRow, extraction: CallExtractionRow, signals: frozenset[SignalType]) -> CallTags:
     """One stored call as the schema's sixteen fields.
 
-    `control_exceptions` is left empty because there is nowhere to read it
-    from; `UNAVAILABLE_FIELDS` is what stops that emptiness being mistaken
-    for a finding.
+    A `NULL` `control_exceptions` column becomes an empty set here, because
+    `CallTags` has no third state — `CorpusSlice.unavailable_fields` is what
+    stops that emptiness being read as a clean compliance record.
     """
     return CallTags(
         reference=call.reference,
@@ -255,7 +259,9 @@ def _tags(call: CallRow, extraction: CallExtractionRow, signals: frozenset[Signa
         complaint=_complaint(extraction),
         signals=signals,
         escalation=_escalation(extraction),
-        control_exceptions=frozenset(),
+        control_exceptions=frozenset(
+            ControlExceptionType(code) for code in (extraction.control_exceptions or ())
+        ),
         knowledge_failure=_knowledge_failure(extraction),
         intent=_intent(extraction),
         quality_score=extraction.quality_score,

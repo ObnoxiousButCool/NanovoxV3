@@ -31,6 +31,7 @@ from application.ports.diagnostics_source import DiagnosticsSource
 from application.ports.ground_truth_repository import GroundTruthRepository
 from application.ports.ground_truth_source import GroundTruthSource
 from application.ports.health_probe import HealthProbe
+from application.ports.insights_source import InsightsSource
 from application.ports.prompts import PromptSource
 from application.ports.reference_lookup import ReferenceLookup
 from application.ports.reference_repository import ReferenceRepository
@@ -47,9 +48,16 @@ from application.use_cases.import_answer_key import ImportAnswerKey
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from application.use_cases.list_providers import ListProviders, ProviderProbe
+from application.use_cases.read_insights import (
+    GetAccountRisk,
+    GetExecScorecard,
+    InsightsReader,
+)
 from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
 from application.use_cases.run_extraction_pipeline import ExtractionPipeline
+from domain.dashboard_config import DashboardConfig
 from domain.scoring.rubric import Rubric
+from infrastructure.config.dashboard_config import load_dashboard_config
 from infrastructure.config.rubric_loader import load_rubric
 from infrastructure.config.settings import Settings
 from infrastructure.corpus.pdf_answer_key_source import PdfAnswerKeySource
@@ -69,6 +77,7 @@ from infrastructure.persistence.repositories.diagnostics_source import SqlDiagno
 from infrastructure.persistence.repositories.ground_truth_repository import (
     SqlGroundTruthRepository,
 )
+from infrastructure.persistence.repositories.insights_source import SqlInsightsSource
 from infrastructure.persistence.repositories.reference_lookup import SqlReferenceLookup
 from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
 from infrastructure.persistence.repositories.run_repository import SqlRunRepository
@@ -110,6 +119,23 @@ class Container:
     ground_truth_source: GroundTruthSource
     ground_truth_repository: GroundTruthRepository
     answer_key_source: AnswerKeySource
+    # Stream B's read side (plan §8 Phase 6). The dashboard thresholds are
+    # loaded once at startup rather than per request: they are the Metrics
+    # sheet transcribed, and a figure whose min n changed between two
+    # panels of one screen would be unexplainable.
+    insights_source: InsightsSource
+    dashboard_config: DashboardConfig
+
+    def insights_reader(self) -> InsightsReader:
+        return InsightsReader(
+            source=self.insights_source, config=self.dashboard_config, clock=self.clock
+        )
+
+    def get_exec_scorecard(self) -> GetExecScorecard:
+        return GetExecScorecard(self.insights_reader(), self.dashboard_config)
+
+    def get_account_risk(self) -> GetAccountRisk:
+        return GetAccountRisk(self.insights_reader(), self.dashboard_config)
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
@@ -235,6 +261,8 @@ def build_container(settings: Settings) -> Container:
         ground_truth_source=XlsxGroundTruthSource(settings.workbook_path),
         ground_truth_repository=SqlGroundTruthRepository(session_factory, clock),
         answer_key_source=PdfAnswerKeySource(settings.transcripts_path),
+        insights_source=SqlInsightsSource(session_factory),
+        dashboard_config=load_dashboard_config(settings.dashboard_config_path),
     )
 
 

@@ -34,6 +34,9 @@ ALLOWED = {
     # column is NOT NULL so a fixture has to set it; the assertion it
     # supports is that `EmployerFacts` does *not* carry it through.
     "tests/integration/test_insights_source.py",
+    # Seeds employers to drive the /insights endpoints. Same reason: the
+    # column is NOT NULL, and the response models have no field for it.
+    "tests/integration/test_insights_endpoints.py",
     "tests/integration/test_reference_lookup.py",
 }
 

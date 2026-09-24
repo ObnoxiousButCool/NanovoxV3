@@ -18,6 +18,7 @@ from application.ports.insights_source import CorpusQuery
 from domain.value_objects.call_source import CallSource
 from domain.value_objects.category import Category
 from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.product_line import ProductLine
 from domain.value_objects.signal_type import SignalType
@@ -280,10 +281,15 @@ class TestWhatItRefusesToInvent:
 
         assert result.undated == ("C-0002",)
 
-    async def test_control_exceptions_are_reported_as_unavailable(
+    async def test_an_unrecorded_control_exception_is_reported_not_read_as_clean(
         self, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
-        """Metric 7 has an answer key and no pipeline column."""
+        """NULL is not an empty list.
+
+        `CallTags` has one empty set for both "L1 ran and found none" and
+        "never recorded", so the slice has to say which this was. Otherwise
+        an unrecorded call reads as a clean compliance record.
+        """
         await seed(session_factory)
 
         result = await SqlInsightsSource(session_factory).load(CorpusQuery())
@@ -291,6 +297,42 @@ class TestWhatItRefusesToInvent:
         (context,) = result.calls
         assert context.tags.control_exceptions == frozenset()
         assert "control_exceptions" in result.unavailable_fields
+
+    async def test_control_exceptions_are_read_when_the_pipeline_recorded_them(
+        self, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await seed(session_factory, analyse=False)
+        async with session_factory() as session, session.begin():
+            session.add(
+                CallExtractionRow(
+                    call_id=1,
+                    outcome=Outcome.RESOLVED.value,
+                    control_exceptions=[ControlExceptionType.NO_RECORDING_DISCLOSURE.value],
+                )
+            )
+
+        result = await SqlInsightsSource(session_factory).load(CorpusQuery())
+
+        (context,) = result.calls
+        assert context.tags.control_exceptions == frozenset(
+            {ControlExceptionType.NO_RECORDING_DISCLOSURE}
+        )
+        assert result.unavailable_fields == ()
+
+    async def test_an_empty_recorded_list_is_a_finding_not_a_gap(
+        self, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        """L1 ran and found nothing. That is an answer, so no caveat."""
+        await seed(session_factory, analyse=False)
+        async with session_factory() as session, session.begin():
+            session.add(
+                CallExtractionRow(call_id=1, outcome=Outcome.RESOLVED.value, control_exceptions=[])
+            )
+
+        result = await SqlInsightsSource(session_factory).load(CorpusQuery())
+
+        assert result.calls[0].tags.control_exceptions == frozenset()
+        assert result.unavailable_fields == ()
 
     async def test_caveats_explain_every_exclusion(
         self, session_factory: async_sessionmaker[AsyncSession]
@@ -303,7 +345,7 @@ class TestWhatItRefusesToInvent:
         caveats = " ".join((await SqlInsightsSource(session_factory).load(CorpusQuery())).caveats())
 
         assert "no date" in caveats
-        assert "withheld, not zero" in caveats
+        assert "not recorded for every call" in caveats
 
     async def test_excluded_counts_both_kinds(
         self, session_factory: async_sessionmaker[AsyncSession]
@@ -462,13 +504,16 @@ class TestCaveats:
 
         assert "have not been analysed" in caveats
 
-    async def test_a_clean_corpus_says_nothing_about_calls(
+    async def test_a_corpus_with_nothing_to_report_carries_no_caveats(
         self, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
-        """Only the standing field gap remains, and it is the true one."""
-        await seed(session_factory)
+        """A caveat printed every time stops being read."""
+        await seed(session_factory, analyse=False)
+        async with session_factory() as session, session.begin():
+            session.add(
+                CallExtractionRow(call_id=1, outcome=Outcome.RESOLVED.value, control_exceptions=[])
+            )
 
         caveats = (await SqlInsightsSource(session_factory).load(CorpusQuery())).caveats()
 
-        assert len(caveats) == 1
-        assert "control_exceptions" in caveats[0]
+        assert caveats == ()

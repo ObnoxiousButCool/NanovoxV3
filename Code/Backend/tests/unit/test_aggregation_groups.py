@@ -280,7 +280,7 @@ def test_escalation_integrity_is_handled_over_triggered(config: DashboardConfig)
     )
     quiet = calls(89, prefix="Q", escalation=Escalation(triggered=False))
 
-    scorecard = exec_scorecard(config, (*triggered, *quiet), WINDOW)
+    scorecard = exec_scorecard(config, (*triggered, *quiet), WINDOW.end)
 
     assert scorecard.escalation_integrity.n == 11
     assert scorecard.escalation_incidence.n == 100
@@ -288,12 +288,60 @@ def test_escalation_integrity_is_handled_over_triggered(config: DashboardConfig)
 
 def test_both_escalation_views_travel_together(config: DashboardConfig) -> None:
     """A screen cannot take the control measure and leave the context."""
-    scorecard = exec_scorecard(config, calls(40, escalation=Escalation(triggered=False)), WINDOW)
+    scorecard = exec_scorecard(
+        config, calls(40, escalation=Escalation(triggered=False)), WINDOW.end
+    )
 
     labels = [label for label, _ in escalation_integrity_pair(scorecard)]
 
     assert len(labels) == 2
     assert "warranted" in labels[0]
+
+
+def test_each_scorecard_figure_uses_its_own_metrics_window(
+    config: DashboardConfig,
+) -> None:
+    """The reason the scorecard takes a date rather than a window.
+
+    `dashboard.yaml` gives knowledge failure rate a four-week window and
+    escalation integrity a twelve-week one. A call eight weeks old belongs
+    in the second and not the first, so the two figures must disagree about
+    how many calls there were — and a single shared window would have made
+    them agree, wrongly.
+    """
+    old = calls(10, prefix="OLD", on=day(26), escalation=Escalation(triggered=False))
+    recent = calls(10, prefix="NEW", on=day(76), escalation=Escalation(triggered=False))
+
+    scorecard = exec_scorecard(config, (*old, *recent), WINDOW.end)
+
+    assert scorecard.knowledge_failure_rate.n == 10
+    assert scorecard.escalation_incidence.n == 20
+
+
+def test_the_headline_count_is_the_longest_window_not_a_figures_sample(
+    config: DashboardConfig,
+) -> None:
+    """`calls` contains every figure's sample; it is never one of them."""
+    old = calls(10, prefix="OLD", on=day(26))
+    recent = calls(10, prefix="NEW", on=day(76))
+
+    scorecard = exec_scorecard(config, (*old, *recent), WINDOW.end)
+
+    assert scorecard.calls == 20
+    assert scorecard.as_of == WINDOW.end
+
+
+def test_a_call_older_than_every_window_reaches_no_figure(
+    config: DashboardConfig,
+) -> None:
+    """Twelve weeks is the widest window on the screen."""
+    ancient = calls(10, prefix="OLD", on=day(-40), escalation=Escalation(triggered=False))
+    recent = calls(10, prefix="NEW", on=day(76), escalation=Escalation(triggered=False))
+
+    scorecard = exec_scorecard(config, (*ancient, *recent), WINDOW.end)
+
+    assert scorecard.calls == 10
+    assert scorecard.escalation_incidence.n == 10
 
 
 def test_whether_intent_was_routed_is_withheld_not_reported_as_zero(
@@ -302,7 +350,7 @@ def test_whether_intent_was_routed_is_withheld_not_reported_as_zero(
     """Zero would assert that we checked and found none. Nothing in v9
     records routing, so the honest answer is that we cannot say.
     """
-    scorecard = exec_scorecard(config, calls(40, intent=IntentType.MARKET_TEST), WINDOW)
+    scorecard = exec_scorecard(config, calls(40, intent=IntentType.MARKET_TEST), WINDOW.end)
 
     assert scorecard.intent_routed.withheld_reason is WithheldReason.NO_FIELD
     assert scorecard.intent_routed.value is None
