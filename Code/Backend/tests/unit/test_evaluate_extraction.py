@@ -176,7 +176,6 @@ async def test_the_report_carries_the_columns_that_cannot_be_scored() -> None:
         "rule_refs",
         "archetype",
         "aht_seconds",
-        "control_exceptions",
     }
 
 

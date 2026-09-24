@@ -102,7 +102,7 @@ def test_the_columns_that_cannot_be_scored_are_printed_with_their_reasons(
     _report(_report_for((_field("outcome", 9, 1),)))
 
     output = capsys.readouterr().out
-    assert "control_exceptions" in output
+    assert "aht_seconds" in output
     assert "rule_refs" in output
 
 

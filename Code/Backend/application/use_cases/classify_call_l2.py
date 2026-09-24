@@ -129,6 +129,7 @@ class ClassifyCallL2:
         await self._extractions.save_l2(
             call_reference,
             L2Save(
+                control_exceptions=l1.control_exceptions,
                 outcome=classification.outcome,
                 category=classification.category,
                 product_lines=classification.product_lines,

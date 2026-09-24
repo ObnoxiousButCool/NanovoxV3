@@ -187,7 +187,13 @@ def _render_rules(rules: tuple[Rule, ...]) -> str:
 
 def _validate_process_gap(response: L4Response) -> ProcessGap:
     gap = response.process_gap
-    if not gap.present or gap.raised_by == "NONE" or gap.status == "NONE":
+    if (
+        not gap.present
+        or gap.raised_by == "NONE"
+        or gap.status == "NONE"
+        or not gap.gap_type.strip()
+        or not gap.proposed_change.strip()
+    ):
         # An internally inconsistent answer — present but missing one of
         # its required fields — is treated as no gap, never guessed past.
         return ProcessGap(present=False)

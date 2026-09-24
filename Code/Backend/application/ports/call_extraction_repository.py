@@ -18,6 +18,7 @@ from domain.scoring.rubric_engine import ScoreResult
 from domain.value_objects.broker_named_aloud import BrokerNamedAloud
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
+from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.knowledge_failure import KnowledgeFailure
@@ -39,8 +40,10 @@ class L2Provenance:
 
 @dataclass(frozen=True)
 class L2Save:
-    """Everything one L2 classification writes."""
+    """Everything one L2 classification writes, including the L1 result it
+    ran on — L1 has no save of its own (see `run_extraction_pipeline`)."""
 
+    control_exceptions: frozenset[ControlExceptionType]
     outcome: Outcome
     category: Category
     product_lines: tuple[ProductLine, ...]

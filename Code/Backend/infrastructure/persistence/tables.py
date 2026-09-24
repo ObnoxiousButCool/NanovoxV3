@@ -273,6 +273,11 @@ class CallExtractionRow(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), nullable=False, unique=True)
 
+    # --- L1 — deterministic, saved with L2 --------------------------------
+    control_exceptions: Mapped[list[str] | None] = mapped_column(
+        JSON, nullable=True
+    )  # ControlExceptionType.value, sorted
+
     # --- L2 — classification -------------------------------------------
     outcome: Mapped[str | None] = mapped_column(nullable=True)  # Outcome.value
     category: Mapped[str | None] = mapped_column(nullable=True)  # Category.value

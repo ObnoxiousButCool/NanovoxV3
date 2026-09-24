@@ -32,6 +32,7 @@ from domain.value_objects.caller_type import CallerType
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
@@ -86,6 +87,7 @@ _PROVENANCE = L2Provenance(
 
 
 _BASE_SAVE = L2Save(
+    control_exceptions=frozenset(),
     outcome=Outcome.RESOLVED,
     category=Category.CLAIMS_AND_EOB,
     product_lines=(ProductLine.DENTAL,),
@@ -140,6 +142,38 @@ class TestRoundTrip:
         assert found.category is Category.CLAIMS_AND_EOB
         assert found.product_lines == (ProductLine.DENTAL,)
         assert found.complaint == Complaint(present=False)
+
+    async def test_control_exceptions_round_trip(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await _seed_call(session_factory)
+        repository = SqlCallExtractionRepository(session_factory)
+        found_by_l1 = frozenset(
+            {
+                ControlExceptionType.NO_RECORDING_DISCLOSURE,
+                ControlExceptionType.DISCLOSURE_BEFORE_VERIFICATION,
+            }
+        )
+
+        await repository.save_l2("C-0001", _save(control_exceptions=found_by_l1))
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.control_exceptions == found_by_l1
+
+    async def test_l1_finding_no_control_exceptions_reads_back_empty_not_none(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        """Empty is "L1 ran and found none"; `None` is "never analysed". The
+        harness scores the first and treats the second as incomparable."""
+        await _seed_call(session_factory)
+        repository = SqlCallExtractionRepository(session_factory)
+
+        await repository.save_l2("C-0001", _save(control_exceptions=frozenset()))
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.control_exceptions == frozenset()
 
     async def test_a_complaint_round_trips_with_its_attribution(
         self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]

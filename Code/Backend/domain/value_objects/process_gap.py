@@ -16,6 +16,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from domain.errors import ValidationError
+
 
 class ProcessGapStatus(str, Enum):
     UNVALIDATED = "UNVALIDATED"
@@ -44,9 +46,12 @@ class ProcessGap:
 
     def __post_init__(self) -> None:
         if self.present and self.status is None:
-            raise ValueError(
+            raise ValidationError(
                 "A process gap must carry a status — a tag without a lifecycle is a note."
             )
+        if self.present and (not self.gap_type or not self.proposed_change):
+            # A gap nobody can route or act on is not a finding.
+            raise ValidationError("A process gap must carry a gap_type and a proposed_change.")
         if not self.present and any(
             field is not None
             for field in (
@@ -57,4 +62,4 @@ class ProcessGap:
                 self.status,
             )
         ):
-            raise ValueError("An absent process gap must not carry any of its other fields.")
+            raise ValidationError("An absent process gap must not carry any of its other fields.")

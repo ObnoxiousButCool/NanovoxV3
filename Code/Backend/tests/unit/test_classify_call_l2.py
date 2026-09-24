@@ -38,6 +38,7 @@ from domain.errors import ValidationError
 from domain.value_objects.call_resolution_status import CallResolutionStatus
 from domain.value_objects.call_source import CallSource
 from domain.value_objects.caller_type import CallerType
+from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.speaker_role import SpeakerRole
 from infrastructure.llm.prompt_source import FilePromptSource
 from infrastructure.llm.prompts import PromptLibrary
@@ -255,6 +256,23 @@ class TestBasicClassification:
         assert result.classification.outcome.value == "RESOLVED"
         assert "C-0001" in extractions.saved
         assert extractions.saved["C-0001"].outcome.value == "RESOLVED"
+
+    async def test_l1s_control_exceptions_are_saved_with_the_classification(self) -> None:
+        """L1 runs inside L2 and has no save of its own, so what it found in
+        the greeting has to travel with L2's — otherwise metric 7 has
+        nothing to score."""
+        calls = _FakeCalls((_call(),))
+        lookup = _FakeLookup(employers=(_EMPLOYER,))
+        use_case, _, extractions = _use_case(calls=calls, lookup=lookup)
+
+        await use_case.execute("C-0001", FakeProvider(_response()))
+
+        # "Choice Administrators, Sarah speaking." — no recording notice and
+        # no request to verify the caller.
+        assert extractions.saved["C-0001"].control_exceptions == {
+            ControlExceptionType.NO_RECORDING_DISCLOSURE,
+            ControlExceptionType.DISCLOSURE_BEFORE_VERIFICATION,
+        }
 
     async def test_an_unknown_call_reference_is_refused(self) -> None:
         use_case, _, _ = _use_case(calls=_FakeCalls(), lookup=_FakeLookup())

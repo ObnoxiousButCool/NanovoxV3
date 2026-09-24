@@ -42,15 +42,19 @@ it either, so it joins `rule_refs` as answer-key-only.
 
 ## What the answer key knows and the pipeline does not
 
-Four tracker columns have no pipeline counterpart. They are listed rather
+Three tracker columns have no pipeline counterpart. They are listed rather
 than dropped, because "we did not score this" and "this scored badly" look
 identical in a report that omits one of them, and only the second is the
 pipeline's fault.
 
-`control_exceptions` is the one worth raising: schema field 7 says L1/L3
-emit it and the answer key records it, but `CallExtraction` has no such
-field — so metric 7's control exception rate has an answer key and no
-pipeline output to score against.
+## `control_exceptions` is scored on two of its three types
+
+Schema field 7 allows three. L1 detects the two a greeting check can prove
+(`no_recording_disclosure`, `disclosure_before_verification`); nothing
+produces `missing_benefit_disclosure` yet — see
+`domain/extraction/l1_deterministic.py`. A tracker row carrying it would
+therefore count against recall, and that miss is real rather than a
+mapping artefact.
 """
 
 from __future__ import annotations
@@ -89,8 +93,7 @@ class Unscored:
     why: str
 
 
-#: Every tracker column the pipeline cannot be scored on, and why. The last
-#: is a gap in the pipeline rather than a category error.
+#: Every tracker column the pipeline cannot be scored on, and why.
 UNSCORED: tuple[Unscored, ...] = (
     Unscored(
         "rule_refs",
@@ -105,12 +108,6 @@ UNSCORED: tuple[Unscored, ...] = (
         "aht_seconds",
         "Telephony, not extraction (schema field 12). There is nothing for the "
         "pipeline to get right.",
-    ),
-    Unscored(
-        "control_exceptions",
-        "Schema field 7 says L1/L3 emit these and the answer key records them, but "
-        "CallExtraction has no such field. Metric 7 therefore has an answer key and "
-        "no pipeline output to score against — a gap, not a category error.",
     ),
 )
 
@@ -147,6 +144,9 @@ def compare_call(truth: GroundTruth, extraction: CallExtraction | None) -> tuple
     broker = call.broker_named_aloud if call else None
     knowledge = call.knowledge_failure if call else None
     gap = call.process_gap if call else None
+
+    # --- L1: deterministic ---
+    add("control_exceptions", Layer.L1, _control_exceptions(truth, call))
 
     # --- L1/L2: classification ---
     add(
@@ -309,6 +309,18 @@ def _signals(truth: GroundTruth, call: CallExtraction | None) -> SetComparison:
     expected = {signal.code for signal in truth.signals}
     actual = None if call is None else {signal.type.value for signal in call.signals}
     return compare_set("signals", expected, actual)
+
+
+def _control_exceptions(truth: GroundTruth, call: CallExtraction | None) -> SetComparison:
+    """Set overlap on the exception types, so precision and recall stay apart
+    — metric 7 is reported by type, never as one blended number."""
+    expected = set(truth.control_exceptions)
+    actual = (
+        None
+        if call is None or call.control_exceptions is None
+        else {item.value for item in call.control_exceptions}
+    )
+    return compare_set("control_exceptions", expected, actual)
 
 
 def _score_of(call: CallExtraction | None) -> int | None:
