@@ -608,6 +608,31 @@ reconciliation table for what's real to gate today (complaint.attributed_to,
 broker_named_aloud, process_gap, knowledge_failure, touchpoint) versus what
 depends on a schema that doesn't exist yet.
 
+**D11 — Period filter vs metric window. DECIDED 2026-09-24 by Ranjit.** The
+insights endpoints gain `from`/`to` alongside `asOf`, and the two do different
+jobs: **a period filter narrows the corpus; it does not redefine a metric's
+window.**
+
+> `from`/`to` bound which calls enter the corpus slice. Each metric's own
+> `window_weeks` then applies within that slice, anchored on `asOf`. Where a
+> metric's window is wider than the requested period, the response says so in
+> `caveats` rather than silently truncating.
+
+`config/dashboard.yaml` sets `window_weeks` per metric from the Metrics sheet,
+and they differ on one screen — contact rate 12 weeks, first-contact resolution
+4, control exceptions 4, self-inflicted demand 12 — so the period cannot be a
+single number the whole page shares. The rejected reading, "the period *is* the
+window", would resurrect the bug where `window_weeks` was parsed and read by
+nothing and the exec screen computed 4-week and 12-week metrics over one shared
+window with nothing saying so.
+
+The deliberate cost: a figure whose window is wider than the requested period is
+computed over data from outside that period, and the caveat is what makes that
+visible. Withholding it instead would be more conservative, and at batch-1
+volume would blank most of the exec screen for any short period. **Disclosure
+was chosen over suppression** — if that ever reads wrong on a real screen, this
+is the decision to revisit.
+
 ---
 
 ## 6. Architecture

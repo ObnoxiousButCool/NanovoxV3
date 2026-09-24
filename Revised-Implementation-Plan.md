@@ -33,13 +33,14 @@ Four findings drive this plan.
    are built and carry insights 15–19 and 23–27. Conversely `/value-pack` (insights 30–32) has
    no V2 page and no endpoint. This is a scope question for Minnie, not a technical one.
 
-4. **The most important conflict is the risk band.** V2 leans on a four-level
-   High / Elevated / Watch / None band throughout — tiles, chips, filters, sorting, playbooks.
-   `config/dashboard.yaml` records decision **D2**: metric 10 is a **yes/no flag, not a band**,
-   and calls this "the largest deliberate divergence from the prototype". V2 did not resolve
-   that divergence; it deepened it. This must be decided before Phase 2 starts, because it
-   changes the response shape of `/insights/risk`, `/insights/accounts/{ref}` **and** the
-   generated TypeScript client.
+4. **The most important conflict is what the word "flagged" names.** V2 calls an account
+   flagged when two or more indicator families fired; `config/dashboard.yaml` (decision **D2**)
+   says metric 10's flag is two or more of its own four named conditions, and that the families
+   are informational and never set it. **These are different populations of accounts sharing one
+   word.** V2's four-level band turns out to be a pure presentation of the family count, and what
+   V2 actually consumes — a boolean and a count — already exists in `RiskAssessment.flagged` and
+   `indicators.observe`. So this is cheaper than a rival risk model but more dangerous than a
+   styling choice: it is a vocabulary collision on the one figure that names an account.
 
 A fifth point is not a prototype issue but bounds everything: **Phase 5 run 1 reports L3 at
 38% and L4 at 19% agreement.** The fields V2 leans on hardest — signals, touchpoint, process
@@ -277,7 +278,7 @@ These are places where V2 and a governing document disagree. Each needs a ruling
 
 | # | Conflict | V2 says | The build says | Recommendation |
 |---|---|---|---|---|
-| **C1** | **Risk band** | Four levels: High / Elevated / Watch / None. Used in tiles, chips, filters, sorting and two playbooks. | `dashboard.yaml`, decision **D2**: metric 10 is a **yes/no flag**, and this is named "the largest deliberate divergence from the prototype". The workbook wins on definitions. | **Hold D2.** Render the flag as flagged / not flagged, and render the *count of indicator families observed* beside it as the informational gradient V2 is reaching for. Do **not** reintroduce a band that feeds off the informational families — `dashboard.yaml` warns that is exactly how a yes/no flag turns back into a band. |
+| **C1** | **What "flagged" names** | An account is **flagged** when **two or more indicator families** fired. `NV.bandFor(n)` is a pure function of that count — `0 None · 1 Watch · 2 Elevated · 3+ High` — and `NV.isFlagged` is simply `n >= 2`. | `dashboard.yaml`, decision **D2**: metric 10's flag is **≥2 of its own four named conditions**, and the ten indicator families are **informational and never set it**. | **Not band-versus-flag — a vocabulary collision.** Counting usage, V2 wants a boolean (~11 uses) and a count (~18), which `RiskAssessment.flagged` and `indicators.observe` already provide; the four-level pill is ~6 cosmetic uses. The real problem is that **both systems use the word "flagged" for different populations of accounts**, and a reader cannot tell which. `dashboard.yaml` predicts exactly this: *"Two scoring systems on one page, one of which quietly feeds the other, is how a yes/no flag turns back into a band."* **Hold D2 for the flag, render the family count beside it as V2 does, and give the two different words.** Response shapes barely move; the change is mostly naming. |
 | **C2** | **Applied-filters row** | Scope line removed. Only removable chips remain. | `plan.md` §9 Practices: *"Filters slice, never hide — the applied-filters row always shows scope and count."* | **Split the difference.** Adopt V2's chip row, and keep the call count in the page head. The practice is about not hiding what was excluded, not about that specific row. |
 | **C3** | **Epistemic vocabulary** | Six chips: OBSERVED, REFERENCE, DERIVED, PATTERN, INFERENCE, RECOMMENDATION. | `EpistemicClass` has three: MEASURED, DERIVED, WITHHELD. | **Resolve now, with `Open-Decisions.md` item 2.** V2's AI surfaces need INFERENCE and RECOMMENDATION to label themselves honestly, which makes the existing enum insufficient rather than merely debatable. Recommended shape: `basis` (OBSERVED / REFERENCE / DERIVED / PATTERN / INFERENCE / RECOMMENDATION) alongside the `published` flag and `withheldReason` the response already carries. **This is the last cheap moment** — it is in eight response schemas and the generated client today, and in every consumer once screens exist. |
 | **C4** | **`design_churn_profile` on screen** | `employer.html` shows it in a tooltip, correctly labelled as the label the data was generated from and explicitly kept out of the band. | `test_no_circular_scoring.py` fails if any aggregation names the field; `EmployerFacts` deliberately does not carry it. | **Decision needed.** Showing it as a disclosure is defensible; carrying it through the aggregation layer is not. If it ships, it must reach the UI on a path that bypasses `domain/aggregation` entirely and the test's allow-list must be extended deliberately, with the reason recorded. Recommend **not shipping it** for now — the disclosure it makes can be made in prose without the value. |
@@ -328,14 +329,15 @@ the single most likely source of two developers building different things: **a p
 narrows the corpus; it does not redefine a metric's window.** `dashboard.yaml` sets
 `window_weeks` per metric — 4 weeks for first-contact resolution, 12 for contact rate, on the
 same screen. The plan already fixed a bug where `window_weeks` was parsed and read by nothing.
-Adding `from`/`to` must not resurrect it. Recommended rule, to be confirmed:
+Adding `from`/`to` must not resurrect it. **Decided 2026-09-24 by Ranjit; recorded as D11 in
+`plan.md` §5:**
 
 > `from`/`to` bound which calls enter the corpus slice. Each metric's own `window_weeks`
 > then applies within that slice, anchored on `asOf`. Where a metric's window is wider than
 > the requested period, the response says so in `caveats` rather than silently truncating.
 
 **Response shape changes.** Two are breaking and should land together in one release, since
-both force a client regeneration: **C1** (risk band) and **C3** (epistemic vocabulary).
+both force a client regeneration: **C1** (what "flagged" names) and **C3** (epistemic vocabulary).
 
 ### 6.2 Architecture impact
 
@@ -397,7 +399,7 @@ gate · the whole test suite · the theme system and design tokens from `app.css
 | `application/ports/insights_source.py` + `SqlInsightsSource` | Populate `CorpusQuery.since`/`until`; echo the period into scope | S |
 | `application/use_cases/read_insights.py` | Thread the period through `scope()`; add the window-vs-period caveat | M |
 | `domain/aggregation/figure.py` | Epistemic split, if C3 is accepted | M — touches 8 schemas + client |
-| `domain/aggregation/risk_flag.py` + `risk.py` | Whatever C1 settles | M |
+| `domain/aggregation/risk_flag.py` + `risk.py` | Whatever C1 settles — mostly naming, since the boolean and the family count both exist | S |
 | `exec_scorecard.py` (domain + router) | Add movement, drivers, emerging to the exec payload | M |
 | `domain/aggregation/actions.py` | Split derived findings from persisted actions | M |
 | `plan.md` §8 screens table, §9 statuses | Reflect the decisions taken here | S |
@@ -485,8 +487,8 @@ never force-push, never commit to `main`, and all gates green before every commi
 
 #### Integration
 One joint session with Minnie on the eight conflicts, run against the decision log in §14.
-**C1 and C3 must be answered**, and G1 (period vs window) must be settled by Ranjit before
-Phase 1 starts. C5, C6, C7 and G9 (the value pack) can be deferred to Phase 6 without
+**C1 and C3 must be answered.** G1 (period vs window) is already settled — decided 2026-09-24,
+recorded as D11 in `plan.md` §5 — so Phase 1 is unblocked. C5, C6, C7 and G9 (the value pack) can be deferred to Phase 6 without
 blocking anything.
 
 #### Testing / Definition of Done
@@ -881,7 +883,7 @@ to make something pass.
 
 ## 14. Open Questions / Clarifications Required
 
-**Twenty-two open items across three tables.** All eight conflicts from §5.1 appear —
+**Twenty-two open items across three tables, one of which (G1) is now closed.** All eight conflicts from §5.1 appear —
 C8 as three rows, because its four fields need three different answers — and the rest come
 from the gaps, risks and integration checkpoints elsewhere in this document. They are
 collected here because a plan that scatters its unknowns through fourteen sections is a plan
@@ -902,10 +904,13 @@ made.
 
 ### 14.1 Blocking — an answer is needed before the phase can finish
 
+A struck row is closed; it stays visible with a pointer to where the decision lives, so this
+section's length stays a true measure of what is still unknown (§14.4).
+
 | ID | Question | Owner | Blocks | Default if unanswered |
 |---|---|---|---|---|
-| **G1** | **Period vs window.** Does a `from`/`to` filter bound the corpus slice, with each metric's own `window_weeks` still applying inside it (the rule proposed in §6.1)? | Ranjit | **Phase 1** | **Adopt the §6.1 rule as written.** It is the only reading that does not resurrect the `window_weeks`-read-by-nothing bug, and it is reversible. |
-| **C1** | **Risk band.** Does metric 10 stay a yes/no flag (D2, the workbook), or become V2's four-level High / Elevated / Watch / None band? Changes two response shapes and the client. | Minnie | **Phase 2** | **Hold D2 — yes/no flag,** with the count of indicator families rendered beside it. The workbook wins on definitions, and `dashboard.yaml` already records this as a deliberate divergence. Do not let silence overturn a written decision. |
+| ~~**G1**~~ | ~~**Period vs window.**~~ **DECIDED 2026-09-24 by Ranjit: the §6.1 rule as written.** A period filter narrows the corpus; it does not redefine a metric's window. Recorded as **D11** in `plan.md` §5, including the rejected alternative and the cost of the caveat-over-suppression choice. | Ranjit | ~~Phase 1~~ — **unblocked** | — |
+| **C1** | **What "flagged" names.** Metric 10's four conditions, or two-or-more indicator families? They select different accounts and V2 uses one word for both. | Minnie | **Phase 2** | **Hold D2 for the flag; show the family count beside it under a different name.** The workbook wins on definitions, and `dashboard.yaml` already warns where one word for two systems leads. |
 | **C3** | **Epistemic vocabulary.** Three values or six? And does `basis` split from `published`? | Minnie | **Phase 2** | **Split `basis` from `published`, six values.** This is the only default that creates work rather than deferring it, and it is chosen anyway: after Phase 2 the cost moves from one enum plus a client regeneration to every consumer. |
 | **C2** | **Applied-filters row.** V2 removes the scope line; §9 Practices requires the row to "always show scope and count". | Ranjit | **Phase 2** | **Adopt V2's chip row, keep the call count in the page head.** The practice is about not hiding what was excluded, not about that specific row. |
 | **C4** | **`design_churn_profile` on screen.** V2 shows it in a tooltip, honestly labelled. The codebase walls it out structurally. | Minnie | **Phase 2** | **Do not ship the value.** The disclosure V2 makes can be made in prose without it. Reversible later; a circular-scoring incident is not. |
@@ -965,10 +970,10 @@ section is a true measure of what is still unknown.
 
 **Start immediately, in this order:**
 
-1. **Phase 0 decision brief** — Vertical 1, one day. G1 blocks Phase 1; C1 and C3 block Phase 2.
-   Everything else in §14.1 has a default that lets work continue.
+1. **Phase 0 decision brief** — Vertical 1, one day. G1 is decided, so nothing blocks Phase 1;
+   C1 and C3 block Phase 2. Everything else in §14.1 has a default that lets work continue.
 2. **Phase 1 design system** — Vertical 2, starts the same day and needs nothing from anyone.
-3. **Phase 1 period filter** — Vertical 1, as soon as G1 is settled and the rule is written.
+3. **Phase 1 period filter** — Vertical 1, ready to start: G1 is decided (D11 in `plan.md` §5).
 
 **Do not start** Phase 2's screens before C1 is answered; `BandPill`'s contract depends on it,
 and it is referenced on four of the seven pages.
