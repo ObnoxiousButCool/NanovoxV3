@@ -48,7 +48,11 @@ from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeRes
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from application.use_cases.read_insights import AccountRisk
+    from domain.aggregation.indicators import Observation
+    from domain.aggregation.risk_flag import RiskAssessment
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -163,8 +167,18 @@ async def read_account_risk(
 
 
 def _account(entry: AccountRisk) -> AccountRiskResponse:
-    """One employer, flattened for the wire."""
-    assessment = entry.assessment
+    return account_risk_response(entry.assessment, entry.observations)
+
+
+def account_risk_response(
+    assessment: RiskAssessment, observations: Sequence[Observation]
+) -> AccountRiskResponse:
+    """One employer's risk standing, flattened for the wire.
+
+    Shared with the account page so a single account reads the same on both
+    screens. Two shapes for one assessment would be two chances for
+    "ineligible" to become "not at risk" in different ways.
+    """
     return AccountRiskResponse(
         employer_ref=assessment.employer_ref,
         calls=assessment.calls,
@@ -194,6 +208,6 @@ def _account(entry: AccountRisk) -> AccountRiskResponse:
                 available=observation.family.computable,
                 unavailable_because=observation.family.unavailable_because,
             )
-            for observation in entry.observations
+            for observation in observations
         ],
     )

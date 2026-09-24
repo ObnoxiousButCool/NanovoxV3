@@ -45,6 +45,9 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from domain.aggregation.call_tags import CallContext, Window
+from domain.aggregation.figure import Figure
+from domain.aggregation.patterns import share
+from domain.dashboard_config import DashboardConfig
 from domain.value_objects.outcome import Outcome
 
 #: The exposure period, from metric 3's numerator and metric 4's: a contact
@@ -113,6 +116,30 @@ def exposed_unresolved(
         call
         for call in calls
         if _unresolved(call) and window.contains(call.occurred_on) and call.occurred_on <= cutoff
+    )
+
+
+def failure_driven_repeat_rate(
+    config: DashboardConfig, calls: Sequence[CallContext], window: Window
+) -> Figure:
+    """Metric 4, over whichever calls are handed in.
+
+    One function so the executive scorecard and an account page cannot
+    produce different numbers for the same metric. The scorecard computed
+    this inline until the account page needed it too, which is the moment a
+    second definition usually appears — §9's own warning about a scorecard
+    that recomputes its own versions of the screens it links to.
+
+    The denominator is `exposed_unresolved`, not every unresolved call: a
+    call from yesterday has not had its fourteen days to come back, and
+    counting it as a non-repeat asserts something nobody knows yet.
+    """
+    exposed = exposed_unresolved(calls, window)
+    returned = {call.reference for call in exposed}
+    return share(
+        config.metric("failure_driven_repeat_rate"),
+        numerator=[call for call in failure_driven_repeats(calls) if call.reference in returned],
+        denominator=exposed,
     )
 
 

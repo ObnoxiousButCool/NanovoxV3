@@ -42,8 +42,9 @@ from domain.aggregation.call_tags import CallContext, Window
 from domain.aggregation.figure import Figure, WithheldReason, no_field_caveat
 from domain.aggregation.patterns import share, window_for
 from domain.aggregation.repeat_contact import (
-    exposed_unresolved,
-    failure_driven_repeats,
+    failure_driven_repeat_rate as _repeat_rate,
+)
+from domain.aggregation.repeat_contact import (
     first_contact_resolutions,
     resolution_denominator,
 )
@@ -131,7 +132,6 @@ def exec_scorecard(
         if call.tags.knowledge_failure is not None and call.tags.knowledge_failure.present
     ]
 
-    exposed = exposed_unresolved(repeat_calls, repeat_window)
     return ExecScorecard(
         as_of=as_of,
         calls=len(_widest(config, everything, as_of)),
@@ -140,15 +140,7 @@ def exec_scorecard(
             numerator=first_contact_resolutions(resolution_calls),
             denominator=resolution_denominator(resolution_calls),
         ),
-        failure_driven_repeat_rate=share(
-            config.metric("failure_driven_repeat_rate"),
-            numerator=[
-                call
-                for call in failure_driven_repeats(repeat_calls)
-                if call.reference in {c.reference for c in exposed}
-            ],
-            denominator=exposed,
-        ),
+        failure_driven_repeat_rate=_repeat_rate(config, repeat_calls, repeat_window),
         escalation_integrity=share(
             config.metric("escalation_integrity"), numerator=handled, denominator=triggered
         ),

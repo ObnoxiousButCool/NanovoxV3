@@ -16,7 +16,12 @@ from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from application.use_cases.list_providers import ListProviders
-from application.use_cases.read_insights import GetAccountRisk, GetExecScorecard
+from application.use_cases.read_insights import (
+    GetAccountDetail,
+    GetAccountRisk,
+    GetExecScorecard,
+    GetHierarchy,
+)
 from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
 from domain.dashboard_config import DashboardConfig
 from frameworks_drivers.container import Container
@@ -67,6 +72,14 @@ def get_account_risk_use_case(container: ContainerDep) -> GetAccountRisk:
     return container.get_account_risk()
 
 
+def get_account_detail_use_case(container: ContainerDep) -> GetAccountDetail:
+    return container.get_account_detail()
+
+
+def get_hierarchy_use_case(container: ContainerDep) -> GetHierarchy:
+    return container.get_hierarchy()
+
+
 def get_dashboard_config(container: ContainerDep) -> DashboardConfig:
     """The Metrics sheet's thresholds, for endpoints that label a figure
     with the window or the name its metric was defined with.
@@ -85,3 +98,5 @@ RunExtractionOverCorpusDep = Annotated[
 GetExecScorecardDep = Annotated[GetExecScorecard, Depends(get_exec_scorecard_use_case)]
 GetAccountRiskDep = Annotated[GetAccountRisk, Depends(get_account_risk_use_case)]
 DashboardConfigDep = Annotated[DashboardConfig, Depends(get_dashboard_config)]
+GetAccountDetailDep = Annotated[GetAccountDetail, Depends(get_account_detail_use_case)]
+GetHierarchyDep = Annotated[GetHierarchy, Depends(get_hierarchy_use_case)]

@@ -49,8 +49,10 @@ from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from application.use_cases.list_providers import ListProviders, ProviderProbe
 from application.use_cases.read_insights import (
+    GetAccountDetail,
     GetAccountRisk,
     GetExecScorecard,
+    GetHierarchy,
     InsightsReader,
 )
 from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
@@ -136,6 +138,12 @@ class Container:
 
     def get_account_risk(self) -> GetAccountRisk:
         return GetAccountRisk(self.insights_reader(), self.dashboard_config)
+
+    def get_account_detail(self) -> GetAccountDetail:
+        return GetAccountDetail(self.insights_reader(), self.dashboard_config)
+
+    def get_hierarchy(self) -> GetHierarchy:
+        return GetHierarchy(self.insights_reader(), self.dashboard_config)
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
