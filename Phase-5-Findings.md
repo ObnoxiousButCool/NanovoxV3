@@ -184,5 +184,6 @@ happened.
 | 4 | **`score` and `escalation.requested_by_caller` are recorded, not fixed.** Both stay scored. No screen quotes a per-call score ("events, not scores"); `requested_by_caller` reaches the screens only through `escalation_missed`. | — | Recorded |
 | 5 | **Value objects tightened** — `ProcessGap` requires `gap_type` and `proposed_change`; both raise `ValidationError`. `KnowledgeFailure.correct_statement` stays optional until D7 closes. | Stream A | Done (PR 23393) |
 | 6 | **The pass mark's shape**, agreed before any number is seen: set per insight, not per field; a floor (do not build) and a band (build, labelled); coverage counts as much as agreement; a higher bar where a figure names an account or a person; an insight gates on its weakest field. | Minnie | Shape agreed; the bars themselves are set with the numbers |
+| — | **The dashboard reads the stored control exceptions.** `insights_source.py` now reads `call_extractions.control_exceptions`, and still reports the field unavailable while any row in the slice predates the column (NULL is unknown, not zero). | Stream B | Done (PR 23398) |
 | — | **Provider for the corpus run: OpenAI**, the D1 default. | Minnie | Authorised; runs once the key is in `Code/Backend/.env` |
 
