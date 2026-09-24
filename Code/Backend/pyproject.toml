@@ -133,14 +133,21 @@ forbidden_modules = [
     "uvicorn",
 ]
 
-# --- Extraction/answer-key separation (plan §8 Phase 2) --------------------
+# --- Answer-key separation (plan §8 Phase 2) -------------------------------
 # The answer key (category, archetype, cited rules, outcome, score, the CALL
-# TAGS block) exists only to score the pipeline in Phase 5. Extraction code
-# must not be able to reach it, structurally, not just by convention — this
-# is what a leak into an LLM prompt would look like at the source. Add every
-# future extraction-stage module (Phase 4's L1-L4) to source_modules here.
+# TAGS block) exists only to score the pipeline in Phase 5. Two different
+# kinds of module must not be able to reach it, structurally rather than by
+# convention:
+#
+# - Extraction, because a leak into an LLM prompt would look exactly like an
+#   import here. Add every extraction-stage module (Phase 4's L1-L4).
+# - The aggregation layer, because a dashboard figure sourced from the answer
+#   key would be reporting the truth we wrote rather than what the pipeline
+#   found, and would read as a passing number. Stream B's whole premise is
+#   that `CallTags` is a port — whoever holds the facts maps them in — so
+#   aggregation has no legitimate reason to name either side.
 [[tool.importlinter.contracts]]
-name = "Extraction cannot read the answer key"
+name = "Extraction and the dashboard cannot read the answer key"
 type = "forbidden"
 source_modules = [
     "application.use_cases.ingest_transcripts",
@@ -151,6 +158,10 @@ source_modules = [
     "application.use_cases.classify_call_l4",
     "application.use_cases.run_extraction_pipeline",
     "application.use_cases.run_extraction_over_corpus",
+    # Stream B. Not an extraction stage, but subject to the same rule, and
+    # for a reason that bites harder: nothing downstream of a figure can tell
+    # where its number came from.
+    "domain.aggregation",
 ]
 forbidden_modules = [
     "application.ports.answer_key_source",
@@ -175,4 +186,34 @@ forbidden_modules = [
     # answers and the pipeline's output — which makes it the single object
     # an extraction module must never be able to reach.
     "application.use_cases.evaluate_extraction",
+]
+
+# --- Aggregation reads the schema, not the pipeline (Stream B) -------------
+# `domain/aggregation/call_tags.py` states the rule this contract enforces:
+# the aggregations are written against the Call Tag Schema's sixteen fields,
+# not against Stream A's entities. That is what lets the two streams run in
+# parallel, and it is why `CallTags` is "a port in data form" — the pipeline,
+# the answer key and a test fixture all map into the same shape.
+#
+# Forbidding the entity package wholesale, rather than listing entities one
+# by one, is deliberate:
+#
+# - It does not rot. A new entity is out of reach the day it is added, with
+#   no one needing to remember this file.
+# - It covers the narrow-join rule. `Employer` carries the churn-profile
+#   label the corpus was generated from, so an account scored on it would be
+#   scored on its own answer. `tests/unit/test_no_circular_scoring.py`
+#   catches that label by name; this catches the import that would make it
+#   reachable in the first place.
+#
+# An aggregation that needs a new employer or broker fact adds a field to
+# `EmployerFacts` or `BrokerFacts`, which is a visible, reviewable widening
+# of the join — not a silent one.
+[[tool.importlinter.contracts]]
+name = "Aggregation reads the schema, not the pipeline"
+type = "forbidden"
+source_modules = ["domain.aggregation"]
+forbidden_modules = [
+    "domain.entities",
+    "domain.extraction",
 ]
