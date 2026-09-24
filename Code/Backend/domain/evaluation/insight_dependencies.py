@@ -116,7 +116,7 @@ INSIGHTS: tuple[Insight, ...] = (
         partial=True,
     ),
     # --- Screen 4: action centre ---
-    Insight(19, "Compliance exception exposure", "/actions", ()),
+    Insight(19, "Compliance exception exposure", "/actions", ("control_exceptions",)),
     Insight(20, "The action centre", "/actions", ("signals", "process_gap.present")),
     Insight(21, "Where the work came from", "/actions", ("signals",)),
     # --- Screen 5: rules, carriers and product ---

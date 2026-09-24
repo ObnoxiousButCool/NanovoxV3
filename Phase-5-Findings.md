@@ -56,20 +56,26 @@ Two columns that will not be filled in by the tool, on purpose:
 
 These do not depend on the numbers and will not change when they arrive.
 
-### Four answer-key columns cannot be scored at all
+### Three answer-key columns cannot be scored at all
 
 | Column | Why |
 |---|---|
 | `rule_refs` | The rules a call *cited*. Nothing in the pipeline produces them — and this is **not** `knowledge_failure.rule_id`, which is the rule the agent got *wrong*. Comparing the two would score the pipeline against the wrong answer and read as catastrophic failure. |
 | `archetype` | The tracker's own summary label. No layer produces one. |
 | `aht_seconds` | Telephony, not extraction (schema field 12). There is nothing for the pipeline to get right. |
-| `control_exceptions` | **A gap, not a category error.** Schema field 7 says L1/L3 emit these and the answer key records them, but `CallExtraction` has no such field. |
 
-**`control_exceptions` needs a decision of its own.** Metric 7 — the control
-exception rate — has an answer key and no pipeline output to score against,
-so it cannot be measured at this check-in whatever the other numbers say.
-Either Stream A closes the gap, or metric 7 goes to Phase 8 unmeasured, and
-the second should be a choice rather than something nobody noticed.
+### `control_exceptions` is scored on two of its three types
+
+Stream A closed the storage gap: L1's greeting check is now saved with each
+call and scored as a set, so metric 7 can be measured at this check-in.
+
+It covers `no_recording_disclosure` and `disclosure_before_verification`.
+**Nothing produces `missing_benefit_disclosure`.** The workbook disagrees
+with itself on whether anything should: the Call Tag Schema says field 7 is
+emitted by L1/L3, while metric 7's build note says "Deterministic — no model
+judgement", and the third type cannot be detected without one. Until that is
+settled, a tracker row carrying it counts as a recall miss. The answer key
+carries it on none of the hundred calls, so this changes no number today.
 
 ### Two scored fields no insight rests on
 

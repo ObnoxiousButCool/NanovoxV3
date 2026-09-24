@@ -26,6 +26,7 @@ from domain.value_objects.broker_sentiment import BrokerSentiment
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
@@ -93,6 +94,7 @@ class SqlCallExtractionRepository(CallExtractionRepository):
                 row = CallExtractionRow(call_id=call_id)
                 session.add(row)
 
+            row.control_exceptions = sorted(item.value for item in result.control_exceptions)
             row.outcome = result.outcome.value
             row.category = result.category.value
             row.product_lines = [line.value for line in result.product_lines]
@@ -275,6 +277,11 @@ def _to_domain(
 
     return CallExtraction(
         call_reference=call_reference,
+        control_exceptions=(
+            frozenset(ControlExceptionType(item) for item in row.control_exceptions)
+            if row.control_exceptions is not None
+            else None
+        ),
         outcome=Outcome(row.outcome) if row.outcome is not None else None,
         category=Category(row.category) if row.category is not None else None,
         product_lines=tuple(ProductLine(line) for line in (row.product_lines or ())),

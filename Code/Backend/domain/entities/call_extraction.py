@@ -14,6 +14,7 @@ from domain.entities.score_marker import ScoreMarker
 from domain.value_objects.broker_named_aloud import BrokerNamedAloud
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
+from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.knowledge_failure import KnowledgeFailure
@@ -28,6 +29,13 @@ from domain.value_objects.tier import Tier
 @dataclass(frozen=True)
 class CallExtraction:
     call_reference: str
+
+    # --- L1 (run inside L2, saved with it) ---
+    #: The two control exceptions a greeting check can prove (schema
+    #: field 7). An empty set means L1 ran and found none; `None` means
+    #: it has not run. Never carries `missing_benefit_disclosure` — see
+    #: `domain/extraction/l1_deterministic.py`.
+    control_exceptions: frozenset[ControlExceptionType] | None = None
 
     # --- L2 ---
     outcome: Outcome | None = None

@@ -22,6 +22,7 @@ from domain.evaluation.field_map import (
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
 from domain.value_objects.knowledge_failure import KnowledgeFailure
@@ -79,18 +80,63 @@ def test_the_unscored_columns_are_listed_with_their_reasons() -> None:
     """
     listed = {entry.field for entry in UNSCORED}
 
-    assert listed == {"rule_refs", "archetype", "aht_seconds", "control_exceptions"}
+    assert listed == {"rule_refs", "archetype", "aht_seconds"}
     assert all(entry.why.strip() for entry in UNSCORED)
 
 
-def test_control_exceptions_are_named_as_a_pipeline_gap() -> None:
-    """Schema field 7 says L1/L3 emit these and the answer key records them,
-    but CallExtraction has no such field — so metric 7 has an answer key and
-    nothing to score against. A gap, not a category error.
+def test_control_exceptions_are_scored_as_a_set_of_types() -> None:
+    """Metric 7 is reported by type, never as one blended number, so the
+    types compare as a set and keep precision and recall apart.
     """
-    entry = next(e for e in UNSCORED if e.field == "control_exceptions")
+    truth = GroundTruth(reference="C-0001", control_exceptions=("no_recording_disclosure",))
+    extraction = CallExtraction(
+        call_reference="C-0001",
+        control_exceptions=frozenset(
+            {
+                ControlExceptionType.NO_RECORDING_DISCLOSURE,
+                ControlExceptionType.DISCLOSURE_BEFORE_VERIFICATION,
+            }
+        ),
+    )
 
-    assert "no pipeline output to score against" in entry.why
+    comparison = _comparison(compare_call(truth, extraction), "control_exceptions")
+
+    assert isinstance(comparison, SetComparison)
+    assert comparison.matched == {"no_recording_disclosure"}
+    assert comparison.spurious == {"disclosure_before_verification"}
+    assert comparison.missed == frozenset()
+
+
+def test_control_exceptions_belong_to_l1() -> None:
+    mapped = compare_call(GroundTruth(reference="C-0001"), None)
+
+    assert "control_exceptions" in {m.field for m in fields_for(Layer.L1, mapped)}
+
+
+def test_control_exceptions_l1_never_ran_for_are_incomparable_not_empty() -> None:
+    """A row written before L1's result was kept reads back as `None`, not
+    as "found none" — scoring it as an empty set would credit the pipeline
+    with every clean call it never looked at.
+    """
+    truth = GroundTruth(reference="C-0001")
+    extraction = CallExtraction(call_reference="C-0001", control_exceptions=None)
+
+    comparison = _comparison(compare_call(truth, extraction), "control_exceptions")
+
+    assert comparison.missing is MissingSide.PIPELINE
+
+
+def test_the_benefit_disclosure_type_nothing_produces_counts_as_missed() -> None:
+    """Nothing emits `missing_benefit_disclosure` yet, so a tracker row
+    carrying it is a real recall miss rather than something to map away.
+    """
+    truth = GroundTruth(reference="C-0001", control_exceptions=("missing_benefit_disclosure",))
+    extraction = CallExtraction(call_reference="C-0001", control_exceptions=frozenset())
+
+    comparison = _comparison(compare_call(truth, extraction), "control_exceptions")
+
+    assert isinstance(comparison, SetComparison)
+    assert comparison.missed == {"missing_benefit_disclosure"}
 
 
 # --- Trap 2: product_line --------------------------------------------------
