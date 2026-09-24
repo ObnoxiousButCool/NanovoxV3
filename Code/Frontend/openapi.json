@@ -548,6 +548,35 @@
         "title": "BrokerNodeResponse",
         "type": "object"
       },
+      "BucketResponse": {
+        "properties": {
+          "calls": {
+            "description": "Calls in the slice, which `hits` is not a share of.",
+            "title": "Calls",
+            "type": "integer"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "hits": {
+            "title": "Hits",
+            "type": "integer"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "calls",
+          "hits"
+        ],
+        "title": "BucketResponse",
+        "type": "object"
+      },
       "CallSource": {
         "enum": [
           "CORPUS_PDF",
@@ -779,6 +808,45 @@
         "title": "DemandResponse",
         "type": "object"
       },
+      "EmergingResponse": {
+        "description": "One value of some attribute, counted across equal slices.\n\nCounts, never shares. At about eight calls a week a share would be two or\nthree calls, so a percentage would imply precision the corpus cannot\nsupport.\n\nFor a multi-valued attribute \u2014 a call may raise several signals \u2014 the\nhits across keys sum to more than the calls in the slice. That is why\neach bucket reports `calls` beside `hits` instead of leaving a reader to\ntreat the two as comparable.",
+        "properties": {
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/BucketResponse"
+            },
+            "title": "Buckets",
+            "type": "array"
+          },
+          "delta": {
+            "description": "Latest slice minus earliest.",
+            "title": "Delta",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "description": "category | touchpoint | signal | product_line",
+            "title": "Kind",
+            "type": "string"
+          },
+          "rising": {
+            "title": "Rising",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "key",
+          "buckets",
+          "delta",
+          "rising"
+        ],
+        "title": "EmergingResponse",
+        "type": "object"
+      },
       "EmployerNodeResponse": {
         "properties": {
           "callIds": {
@@ -843,6 +911,10 @@
           },
           "scope": {
             "$ref": "#/components/schemas/ScopeResponse"
+          },
+          "trends": {
+            "$ref": "#/components/schemas/TrendsResponse",
+            "description": "What moved since the equal-length window before, and what is emerging. Separate from `metrics` because these are not the Metrics sheet's figures."
           }
         },
         "required": [
@@ -851,6 +923,7 @@
           "calls",
           "metrics",
           "escalation",
+          "trends",
           "intentRouted"
         ],
         "title": "ExecScorecardResponse",
@@ -1269,6 +1342,65 @@
           "figure"
         ],
         "title": "MetricFigureResponse",
+        "type": "object"
+      },
+      "MovementResponse": {
+        "description": "One measure's change, and whether the change means anything.\n\n`beyondNoise` is the only field a screen should branch on. `now` and\n`prior` alone will differ almost every period, and reporting every\ndifference is how a reader learns to ignore the screen.",
+        "properties": {
+          "beyondNoise": {
+            "description": "Whether the move exceeds what call volume explains. Branch on this.",
+            "title": "Beyondnoise",
+            "type": "boolean"
+          },
+          "callsNow": {
+            "description": "Calls in the later window, the volume `expected` scales by.",
+            "title": "Callsnow",
+            "type": "integer"
+          },
+          "callsPrior": {
+            "title": "Callsprior",
+            "type": "integer"
+          },
+          "expected": {
+            "description": "What the later window would have shown if nothing changed except how many calls came in.",
+            "title": "Expected",
+            "type": "number"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "now": {
+            "title": "Now",
+            "type": "integer"
+          },
+          "prior": {
+            "title": "Prior",
+            "type": "integer"
+          },
+          "worse": {
+            "description": "Whether the move is in the bad direction for this measure. Direction is not meaning: unresolved rising is bad, resolved rising is good.",
+            "title": "Worse",
+            "type": "boolean"
+          },
+          "z": {
+            "description": "Standard deviations from `expected`.",
+            "title": "Z",
+            "type": "number"
+          }
+        },
+        "required": [
+          "label",
+          "now",
+          "prior",
+          "callsNow",
+          "callsPrior",
+          "expected",
+          "z",
+          "beyondNoise",
+          "worse"
+        ],
+        "title": "MovementResponse",
         "type": "object"
       },
       "ObservationResponse": {
@@ -2098,6 +2230,65 @@
         "title": "TouchpointRowResponse",
         "type": "object"
       },
+      "TrendsResponse": {
+        "description": "Movement and emerging issues, over the same filtered calls as the scorecard.\n\nDeliberately separate from `metrics`. Those are the Metrics sheet's own\nfigures, each gated on its own min n. This is a reading of movement\nacross windows, which the sheet does not define \u2014 so it is ours, and the\nresponse keeps the two apart rather than presenting them as one list.",
+        "properties": {
+          "emerging": {
+            "items": {
+              "$ref": "#/components/schemas/EmergingResponse"
+            },
+            "title": "Emerging",
+            "type": "array"
+          },
+          "movements": {
+            "items": {
+              "$ref": "#/components/schemas/MovementResponse"
+            },
+            "title": "Movements",
+            "type": "array"
+          },
+          "priorEnd": {
+            "title": "Priorend",
+            "type": "string"
+          },
+          "priorStart": {
+            "title": "Priorstart",
+            "type": "string"
+          },
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/WeekResponse"
+            },
+            "title": "Weeks",
+            "type": "array"
+          },
+          "windowEnd": {
+            "title": "Windowend",
+            "type": "string"
+          },
+          "windowStart": {
+            "title": "Windowstart",
+            "type": "string"
+          },
+          "windowWeeks": {
+            "description": "Length of the movement window, and of the equal-length window before it that it is compared against. No workbook defines this; see MOVEMENT_WEEKS.",
+            "title": "Windowweeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "windowWeeks",
+          "windowStart",
+          "windowEnd",
+          "priorStart",
+          "priorEnd",
+          "weeks",
+          "movements",
+          "emerging"
+        ],
+        "title": "TrendsResponse",
+        "type": "object"
+      },
       "UnmeasurableResponse": {
         "description": "Calls dropped by a filter for want of a value, not for differing.",
         "properties": {
@@ -2155,6 +2346,37 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WeekResponse": {
+        "description": "One week of the movement window.",
+        "properties": {
+          "calls": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calls"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "calls"
+        ],
+        "title": "WeekResponse",
         "type": "object"
       },
       "WindowedFigureResponse": {

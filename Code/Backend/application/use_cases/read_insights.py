@@ -25,8 +25,9 @@ the same date, which is what makes a reported figure reproducible.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 from application.ports.insights_source import CorpusQuery
@@ -40,7 +41,7 @@ from domain.aggregation.agent_events import (
     control_exception_rates,
 )
 from domain.aggregation.broker_friction import BrokerFriction, ranked_book_friction
-from domain.aggregation.call_tags import Window
+from domain.aggregation.call_tags import CallContext, Window
 from domain.aggregation.contact_rate import PeerComparison, employer_contact_rate, peer_comparison
 from domain.aggregation.demand import (
     SelfInflictedDemand,
@@ -80,7 +81,20 @@ from domain.aggregation.touchpoints import (
     touchpoint_ranking,
     unattributed_calls,
 )
+from domain.aggregation.trends import (
+    Emerging,
+    Measure,
+    Movement,
+    as_of_window,
+    emerging,
+    movement,
+    preceding,
+    weekly_series,
+    weeks_in,
+)
 from domain.aggregation.withheld import DID_IT_WORK, WithheldPanel
+from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.outcome import Outcome
 
 if TYPE_CHECKING:
     from datetime import date
@@ -129,10 +143,49 @@ class ScopedCorpus:
     until: date | None = None
 
 
+#: How long a "recently" is on the executive screen, and what it is compared
+#: against. Four weeks against the four before it.
+#:
+#: **This number has no workbook source.** `dashboard.yaml` sets a window per
+#: metric, none of which is a movement window, and the Metrics sheet does not
+#: define one. Four weeks is the prototype's own choice (`exec.html` buckets
+#: the quarter into three), taken because it is the only stated option rather
+#: than because anything validates it. It sits here, named and commented,
+#: rather than inline in a calculation where nobody could argue with it.
+MOVEMENT_WEEKS = 4
+
+#: How many slices the emerging view cuts its window into. The prototype uses
+#: three across the quarter; same provenance as `MOVEMENT_WEEKS`.
+EMERGING_SLICES = 3
+
+
+@dataclass(frozen=True)
+class ExecTrends:
+    """What moved, what is emerging, and the volume behind both.
+
+    Separate from `ExecScorecard` on purpose. The scorecard is the Metrics
+    sheet's own figures, each gated on its own min n; this is a reading of
+    movement across windows, which the sheet does not define and which is
+    therefore ours and labelled as such.
+    """
+
+    #: The window movements are measured over, and the equal-length one
+    #: before it that they are measured against.
+    window: Window
+    prior: Window
+    #: Calls per week across `window`, with `None` for a week the corpus is
+    #: silent about. Never zero for a silent week — see `weekly_series`.
+    weekly_calls: tuple[int | None, ...]
+    weeks: tuple[Window, ...]
+    movements: tuple[Movement, ...]
+    emerging: tuple[Emerging, ...]
+
+
 @dataclass(frozen=True)
 class ExecResult:
     scope: ScopedCorpus
     scorecard: ExecScorecard
+    trends: ExecTrends
 
 
 @dataclass(frozen=True)
@@ -197,6 +250,139 @@ class InsightsReader:
         )
 
 
+# --------------------------------------------------------------------------
+# Executive trends
+# --------------------------------------------------------------------------
+
+
+def _unresolved(call: CallContext) -> bool:
+    return call.tags.outcome is Outcome.UNRESOLVED
+
+
+def _resolved(call: CallContext) -> bool:
+    return call.tags.outcome is Outcome.RESOLVED
+
+
+def _escalation_missed(call: CallContext) -> bool:
+    """Warranted and not given. Never `escalated ÷ all calls`.
+
+    The denominator is the whole point of metric 6: against all calls a 0%
+    handled rate reads as good news.
+    """
+    escalation = call.tags.escalation
+    return escalation is not None and escalation.triggered and not escalation.handled
+
+
+def _complaint_about_us(call: CallContext) -> bool:
+    complaint = call.tags.complaint
+    return (
+        complaint is not None
+        and complaint.present
+        and (complaint.attributed_to is ComplaintAttribution.CHOICE)
+    )
+
+
+def _raised_a_signal(call: CallContext) -> bool:
+    return bool(call.tags.signals)
+
+
+def _control_exception(call: CallContext) -> bool:
+    return bool(call.tags.control_exceptions)
+
+
+#: The measures the executive screen reports movement on.
+#:
+#: Every one is computable from the Call Tag Schema's own fields. Two the
+#: prototype shows are deliberately absent:
+#:
+#: - **Repeat contacts.** A repeat is a *relation* between two calls, not a
+#:   tag, so it cannot be a predicate over one call. `repeat_contact.repeats`
+#:   computes it and wants its own treatment rather than being forced into
+#:   this shape.
+#: - **High member effort.** Effort is our composite
+#:   (`domain/derivations/member_effort_complexity.py`), not a v9 field, and
+#:   §9 insight 29 requires it always be labelled as ours. It is not carried
+#:   on `CallContext` today, so including it here would mean inventing it.
+#:
+#: `bad_when_up` is per measure because direction is not meaning: unresolved
+#: rising is bad, resolved rising is good.
+_MEASURES: tuple[tuple[str, Measure, bool], ...] = (
+    ("Unresolved calls", _unresolved, True),
+    ("Escalations missed", _escalation_missed, True),
+    ("Complaints about us", _complaint_about_us, True),
+    ("Calls raising a signal", _raised_a_signal, True),
+    ("Control exceptions", _control_exception, True),
+    ("Resolved calls", _resolved, False),
+)
+
+
+def _category_keys(call: CallContext) -> list[str]:
+    return [call.tags.category.value] if call.tags.category is not None else []
+
+
+def _touchpoint_keys(call: CallContext) -> list[str]:
+    return [call.tags.touchpoint] if call.tags.touchpoint else []
+
+
+def _signal_keys(call: CallContext) -> list[str]:
+    """Several per call. Distinct types, never occurrences."""
+    return sorted(signal.value for signal in call.tags.signals)
+
+
+def _product_line_keys(call: CallContext) -> list[str]:
+    """Membership, not primary line.
+
+    A two-line call counts under both. That inflates nothing here because
+    this is a count of calls mentioning a line, not a per-line rate — the
+    place where double counting would matter is `primary_product_line`,
+    which exists for exactly that reason.
+    """
+    return sorted(line.value for line in call.tags.product_lines)
+
+
+_EMERGING: tuple[tuple[str, Callable[[CallContext], list[str]]], ...] = (
+    ("category", _category_keys),
+    ("touchpoint", _touchpoint_keys),
+    ("signal", _signal_keys),
+    ("product_line", _product_line_keys),
+)
+
+
+def _exec_trends(calls: Sequence[CallContext], as_of: date) -> ExecTrends:
+    """Movement and emerging issues over the calls already in scope.
+
+    Takes the filtered calls, not the corpus: a movement reported beside a
+    filtered scorecard has to be about the same population, or the screen
+    contradicts itself without saying so.
+    """
+    window = as_of_window(as_of, MOVEMENT_WEEKS)
+    prior = preceding(window)
+
+    now_calls = window.calls_in(tuple(calls))
+    prior_calls = prior.calls_in(tuple(calls))
+
+    movements = tuple(
+        movement(label, now=now_calls, prior=prior_calls, measure=measure, bad_when_up=bad_up)
+        for label, measure, bad_up in _MEASURES
+    )
+
+    # Emerging looks across the whole scoped period rather than the movement
+    # window: it is asking "what has been growing", which needs more than two
+    # windows to be a shape rather than a jump.
+    rows: list[Emerging] = []
+    for kind, keys_of in _EMERGING:
+        rows.extend(emerging(calls, window, kind=kind, keys_of=keys_of, parts=EMERGING_SLICES))
+
+    return ExecTrends(
+        window=window,
+        prior=prior,
+        weekly_calls=weekly_series(calls, window, lambda _: True),
+        weeks=weeks_in(window),
+        movements=movements,
+        emerging=tuple(rows),
+    )
+
+
 class GetExecScorecard:
     def __init__(self, reader: InsightsReader, config: DashboardConfig) -> None:
         self._reader = reader
@@ -207,6 +393,7 @@ class GetExecScorecard:
         return ExecResult(
             scope=scope,
             scorecard=exec_scorecard(self._config, scope.filtered.calls, scope.as_of),
+            trends=_exec_trends(scope.filtered.calls, scope.as_of),
         )
 
 

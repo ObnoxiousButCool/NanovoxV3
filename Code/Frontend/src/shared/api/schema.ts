@@ -516,6 +516,20 @@ export interface components {
             /** Employers */
             employers: components["schemas"]["EmployerNodeResponse"][];
         };
+        /** BucketResponse */
+        BucketResponse: {
+            /**
+             * Calls
+             * @description Calls in the slice, which `hits` is not a share of.
+             */
+            calls: number;
+            /** End */
+            end: string;
+            /** Hits */
+            hits: number;
+            /** Start */
+            start: string;
+        };
         /**
          * CallSource
          * @enum {string}
@@ -628,6 +642,37 @@ export interface components {
             /** Windowweeks */
             windowWeeks: number;
         };
+        /**
+         * EmergingResponse
+         * @description One value of some attribute, counted across equal slices.
+         *
+         *     Counts, never shares. At about eight calls a week a share would be two or
+         *     three calls, so a percentage would imply precision the corpus cannot
+         *     support.
+         *
+         *     For a multi-valued attribute — a call may raise several signals — the
+         *     hits across keys sum to more than the calls in the slice. That is why
+         *     each bucket reports `calls` beside `hits` instead of leaving a reader to
+         *     treat the two as comparable.
+         */
+        EmergingResponse: {
+            /** Buckets */
+            buckets: components["schemas"]["BucketResponse"][];
+            /**
+             * Delta
+             * @description Latest slice minus earliest.
+             */
+            delta: number;
+            /** Key */
+            key: string;
+            /**
+             * Kind
+             * @description category | touchpoint | signal | product_line
+             */
+            kind: string;
+            /** Rising */
+            rising: boolean;
+        };
         /** EmployerNodeResponse */
         EmployerNodeResponse: {
             /** Callids */
@@ -661,6 +706,8 @@ export interface components {
             /** Metrics */
             metrics: components["schemas"]["MetricFigureResponse"][];
             scope: components["schemas"]["ScopeResponse"];
+            /** @description What moved since the equal-length window before, and what is emerging. Separate from `metrics` because these are not the Metrics sheet's figures. */
+            trends: components["schemas"]["TrendsResponse"];
         };
         /** ExposureResponse */
         ExposureResponse: {
@@ -847,6 +894,49 @@ export interface components {
              * @description How far back this metric looks from `as_of`. Metrics on one screen differ; null means the metric is not windowed at all.
              */
             windowWeeks?: number | null;
+        };
+        /**
+         * MovementResponse
+         * @description One measure's change, and whether the change means anything.
+         *
+         *     `beyondNoise` is the only field a screen should branch on. `now` and
+         *     `prior` alone will differ almost every period, and reporting every
+         *     difference is how a reader learns to ignore the screen.
+         */
+        MovementResponse: {
+            /**
+             * Beyondnoise
+             * @description Whether the move exceeds what call volume explains. Branch on this.
+             */
+            beyondNoise: boolean;
+            /**
+             * Callsnow
+             * @description Calls in the later window, the volume `expected` scales by.
+             */
+            callsNow: number;
+            /** Callsprior */
+            callsPrior: number;
+            /**
+             * Expected
+             * @description What the later window would have shown if nothing changed except how many calls came in.
+             */
+            expected: number;
+            /** Label */
+            label: string;
+            /** Now */
+            now: number;
+            /** Prior */
+            prior: number;
+            /**
+             * Worse
+             * @description Whether the move is in the bad direction for this measure. Direction is not meaning: unresolved rising is bad, resolved rising is good.
+             */
+            worse: boolean;
+            /**
+             * Z
+             * @description Standard deviations from `expected`.
+             */
+            z: number;
         };
         /**
          * ObservationResponse
@@ -1224,6 +1314,36 @@ export interface components {
             withoutComplaint: number;
         };
         /**
+         * TrendsResponse
+         * @description Movement and emerging issues, over the same filtered calls as the scorecard.
+         *
+         *     Deliberately separate from `metrics`. Those are the Metrics sheet's own
+         *     figures, each gated on its own min n. This is a reading of movement
+         *     across windows, which the sheet does not define — so it is ours, and the
+         *     response keeps the two apart rather than presenting them as one list.
+         */
+        TrendsResponse: {
+            /** Emerging */
+            emerging: components["schemas"]["EmergingResponse"][];
+            /** Movements */
+            movements: components["schemas"]["MovementResponse"][];
+            /** Priorend */
+            priorEnd: string;
+            /** Priorstart */
+            priorStart: string;
+            /** Weeks */
+            weeks: components["schemas"]["WeekResponse"][];
+            /** Windowend */
+            windowEnd: string;
+            /** Windowstart */
+            windowStart: string;
+            /**
+             * Windowweeks
+             * @description Length of the movement window, and of the equal-length window before it that it is compared against. No workbook defines this; see MOVEMENT_WEEKS.
+             */
+            windowWeeks: number;
+        };
+        /**
          * UnmeasurableResponse
          * @description Calls dropped by a filter for want of a value, not for differing.
          */
@@ -1245,6 +1365,18 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * WeekResponse
+         * @description One week of the movement window.
+         */
+        WeekResponse: {
+            /** Calls */
+            calls: number | null;
+            /** End */
+            end: string;
+            /** Start */
+            start: string;
         };
         /**
          * WindowedFigureResponse

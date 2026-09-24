@@ -231,7 +231,7 @@ def test_emerging_counts_each_value_across_slices() -> None:
         calls,
         window,
         kind="category",
-        key_of=lambda c: c.tags.category.value if c.tags.category else None,
+        keys_of=lambda c: [c.tags.category.value] if c.tags.category else [],
     )
 
     assert len(rows) == 1
@@ -251,7 +251,12 @@ def test_a_call_the_attribute_does_not_apply_to_is_left_out() -> None:
     window = Window(date(2026, 9, 1), date(2026, 9, 30))
     calls = [call("C-1", date(2026, 9, 2)), call("C-2", date(2026, 9, 25))]
 
-    rows = emerging(calls, window, kind="touchpoint", key_of=lambda c: c.tags.touchpoint)
+    rows = emerging(
+        calls,
+        window,
+        kind="touchpoint",
+        keys_of=lambda c: [c.tags.touchpoint] if c.tags.touchpoint else [],
+    )
 
     assert rows == ()
 
@@ -264,8 +269,18 @@ def test_emerging_is_ordered_largest_rise_first_and_stably() -> None:
         call("C-2", date(2026, 9, 26)),
     ]
 
-    rows = emerging(calls, window, kind="broker", key_of=lambda c: c.broker_of_record_ref)
-    again = emerging(calls, window, kind="broker", key_of=lambda c: c.broker_of_record_ref)
+    rows = emerging(
+        calls,
+        window,
+        kind="broker",
+        keys_of=lambda c: [c.broker_of_record_ref] if c.broker_of_record_ref else [],
+    )
+    again = emerging(
+        calls,
+        window,
+        kind="broker",
+        keys_of=lambda c: [c.broker_of_record_ref] if c.broker_of_record_ref else [],
+    )
 
     assert [row.key for row in rows] == [row.key for row in again]
 
@@ -275,3 +290,21 @@ def test_as_of_window_ends_on_the_date_given() -> None:
 
     assert window.end == date(2026, 9, 28)
     assert round(window.weeks) == 4
+
+
+def test_a_call_can_contribute_to_several_keys() -> None:
+    """A call has one category but may raise several signals.
+
+    The bucket counts then sum to more than the calls in the slice, which is
+    correct — distinct types per call, never occurrences — and is why
+    `Bucket` reports `calls` alongside `hits` instead of leaving a reader to
+    assume the two are comparable.
+    """
+    window = Window(date(2026, 9, 1), date(2026, 9, 30))
+    calls = [call("C-1", date(2026, 9, 2))]
+
+    rows = emerging(calls, window, kind="signal", keys_of=lambda _: ["a", "b"])
+
+    assert [row.key for row in rows] == ["a", "b"]
+    assert all(row.buckets[0].hits == 1 for row in rows)
+    assert rows[0].buckets[0].calls == 1

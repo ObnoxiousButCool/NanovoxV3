@@ -217,15 +217,23 @@ def emerging(
     window: Window,
     *,
     kind: str,
-    key_of: Callable[[CallContext], str | None],
+    keys_of: Callable[[CallContext], Sequence[str]],
     parts: int = 3,
 ) -> tuple[Emerging, ...]:
     """Every value of some attribute, counted across equal slices.
 
-    `key_of` returns `None` for a call the attribute does not apply to, and
-    those calls are left out rather than bucketed under an empty string —
-    "no touchpoint recorded" is a real finding elsewhere and must not be
-    smuggled in here as a topic of its own.
+    `keys_of` returns **zero or more** keys per call, which covers both
+    shapes the screens need: a call has one category but may raise several
+    signals. Returning an empty sequence leaves the call out entirely rather
+    than bucketing it under an empty string — "no touchpoint recorded" is a
+    real finding on its own screen, and smuggling it in here would put a
+    phantom row at the top of a list of rising topics.
+
+    A multi-valued attribute means the bucket counts sum to more than the
+    calls in the slice. That is correct and matches the Signal Taxonomy
+    sheet's own rule of distinct types per call, never occurrences — but it
+    is why `Bucket` carries `calls` alongside `hits` rather than leaving a
+    reader to assume the two are comparable.
 
     Sorted by the largest rise first, then by key, so the order is stable
     for equal deltas and a screen does not reshuffle between requests.
@@ -234,17 +242,18 @@ def emerging(
     if not slices:
         return ()
 
-    keys = {key for call in calls if (key := key_of(call)) is not None}
+    keys = {key for call in calls for key in keys_of(call)}
     results: list[Emerging] = []
 
-    for key in keys:
+    for key in sorted(keys):
         buckets = tuple(
             Bucket(
                 window=part,
-                calls=len(part.calls_in(tuple(calls))),
-                hits=len([call for call in part.calls_in(tuple(calls)) if key_of(call) == key]),
+                calls=len(in_part),
+                hits=len([call for call in in_part if key in keys_of(call)]),
             )
             for part in slices
+            for in_part in (part.calls_in(tuple(calls)),)
         )
         results.append(Emerging(key=key, kind=kind, buckets=buckets))
 

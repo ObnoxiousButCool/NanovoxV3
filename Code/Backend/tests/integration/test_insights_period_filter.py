@@ -13,7 +13,7 @@ the Metrics sheet does not carry, with nothing on screen to say so.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING
 
 import pytest
@@ -377,3 +377,97 @@ async def test_no_dated_call_means_no_extent_claimed(
     body = client.get(EXEC, params={"asOf": AS_OF}).json()
 
     assert body["scope"]["corpusPeriod"] is None
+
+
+# --------------------------------------------------------------------------
+# Trends on the executive screen
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_exec_reports_movement_against_an_equal_window(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed(session_factory, days=[2, 11, 25])
+
+    trends = client.get(EXEC, params={"asOf": AS_OF}).json()["trends"]
+
+    assert trends["windowWeeks"] == 4
+    span = date.fromisoformat(trends["windowEnd"]) - date.fromisoformat(trends["windowStart"])
+    prior_span = date.fromisoformat(trends["priorEnd"]) - date.fromisoformat(trends["priorStart"])
+    assert span == prior_span, "windows must be the same length to be comparable"
+    assert trends["priorEnd"] < trends["windowStart"]
+
+
+@pytest.mark.asyncio
+async def test_a_silent_week_is_null_on_the_wire_not_zero(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """The distinction has to survive serialisation, or the chart cannot draw it."""
+    await seed(session_factory, days=[25])
+
+    weeks = client.get(EXEC, params={"asOf": AS_OF}).json()["trends"]["weeks"]
+
+    assert any(week["calls"] is None for week in weeks), "expected a silent week"
+    assert all(week["calls"] != 0 for week in weeks), "a silent week must not serialise as 0"
+
+
+@pytest.mark.asyncio
+async def test_every_movement_says_whether_it_beat_the_noise(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed(session_factory, days=[2, 11, 25])
+
+    movements = client.get(EXEC, params={"asOf": AS_OF}).json()["trends"]["movements"]
+
+    assert movements
+    for move in movements:
+        assert set(move) >= {"label", "now", "prior", "expected", "z", "beyondNoise", "worse"}
+
+
+@pytest.mark.asyncio
+async def test_resolved_calls_are_not_bad_when_they_rise(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Direction is not meaning, and the wire has to carry that."""
+    await seed(session_factory, days=[20, 21, 22])
+
+    movements = client.get(EXEC, params={"asOf": AS_OF}).json()["trends"]["movements"]
+    resolved = next(m for m in movements if m["label"] == "Resolved calls")
+
+    assert resolved["now"] > resolved["prior"]
+    assert not resolved["worse"]
+
+
+@pytest.mark.asyncio
+async def test_emerging_counts_are_not_shares(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed(session_factory, days=[20, 21, 22])
+
+    rows = client.get(EXEC, params={"asOf": AS_OF}).json()["trends"]["emerging"]
+
+    assert rows
+    for row in rows:
+        for bucket in row["buckets"]:
+            assert isinstance(bucket["hits"], int)
+            assert "calls" in bucket, "a bucket states its denominator rather than implying one"
+
+
+@pytest.mark.asyncio
+async def test_trends_narrow_with_the_filters(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """A movement beside a filtered scorecard must be about the same calls.
+
+    Otherwise the screen contradicts itself without saying so.
+    """
+    await seed(session_factory, days=[20, 21, 22])
+
+    unfiltered = client.get(EXEC, params={"asOf": AS_OF}).json()["trends"]
+    filtered = client.get(EXEC, params={"asOf": AS_OF, "outcome": "UNRESOLVED"}).json()["trends"]
+
+    total = next(m for m in unfiltered["movements"] if m["label"] == "Resolved calls")
+    none_left = next(m for m in filtered["movements"] if m["label"] == "Resolved calls")
+    assert total["now"] > 0
+    assert none_left["now"] == 0

@@ -28,6 +28,7 @@ from __future__ import annotations
 from fastapi import APIRouter, status
 from pydantic import Field
 
+from application.use_cases.read_insights import ExecTrends
 from domain.aggregation.exec_scorecard import SCORECARD_METRICS, escalation_integrity_pair
 from domain.aggregation.patterns import window_for
 from frameworks_drivers.api.camel import CamelModel
@@ -58,6 +59,101 @@ class LabelledFigureResponse(CamelModel):
     figure: FigureResponse
 
 
+class WeekResponse(CamelModel):
+    """One week of the movement window."""
+
+    start: str
+    end: str
+    #: Calls that week, or **null** where the corpus has none at all. Null is
+    #: not zero: a silent week is an absence of evidence, and a chart draws it
+    #: as a gap rather than a point on the baseline.
+    calls: int | None
+
+
+class MovementResponse(CamelModel):
+    """One measure's change, and whether the change means anything.
+
+    `beyondNoise` is the only field a screen should branch on. `now` and
+    `prior` alone will differ almost every period, and reporting every
+    difference is how a reader learns to ignore the screen.
+    """
+
+    label: str
+    now: int
+    prior: int
+    calls_now: int = Field(
+        description="Calls in the later window, the volume `expected` scales by."
+    )
+    calls_prior: int
+    expected: float = Field(
+        description=(
+            "What the later window would have shown if nothing changed except how "
+            "many calls came in."
+        )
+    )
+    z: float = Field(description="Standard deviations from `expected`.")
+    beyond_noise: bool = Field(
+        description="Whether the move exceeds what call volume explains. Branch on this."
+    )
+    worse: bool = Field(
+        description=(
+            "Whether the move is in the bad direction for this measure. Direction is "
+            "not meaning: unresolved rising is bad, resolved rising is good."
+        )
+    )
+
+
+class BucketResponse(CamelModel):
+    start: str
+    end: str
+    calls: int = Field(description="Calls in the slice, which `hits` is not a share of.")
+    hits: int
+
+
+class EmergingResponse(CamelModel):
+    """One value of some attribute, counted across equal slices.
+
+    Counts, never shares. At about eight calls a week a share would be two or
+    three calls, so a percentage would imply precision the corpus cannot
+    support.
+
+    For a multi-valued attribute — a call may raise several signals — the
+    hits across keys sum to more than the calls in the slice. That is why
+    each bucket reports `calls` beside `hits` instead of leaving a reader to
+    treat the two as comparable.
+    """
+
+    kind: str = Field(description="category | touchpoint | signal | product_line")
+    key: str
+    buckets: list[BucketResponse]
+    delta: int = Field(description="Latest slice minus earliest.")
+    rising: bool
+
+
+class TrendsResponse(CamelModel):
+    """Movement and emerging issues, over the same filtered calls as the scorecard.
+
+    Deliberately separate from `metrics`. Those are the Metrics sheet's own
+    figures, each gated on its own min n. This is a reading of movement
+    across windows, which the sheet does not define — so it is ours, and the
+    response keeps the two apart rather than presenting them as one list.
+    """
+
+    window_weeks: int = Field(
+        description=(
+            "Length of the movement window, and of the equal-length window before it "
+            "that it is compared against. No workbook defines this; see MOVEMENT_WEEKS."
+        )
+    )
+    window_start: str
+    window_end: str
+    prior_start: str
+    prior_end: str
+    weeks: list[WeekResponse]
+    movements: list[MovementResponse]
+    emerging: list[EmergingResponse]
+
+
 class ExecScorecardResponse(CamelModel):
     scope: ScopeResponse
     as_of: str = Field(description="The date every window on this screen ends on.")
@@ -73,6 +169,12 @@ class ExecScorecardResponse(CamelModel):
             "Both escalation views, in reading order. Handled over warranted is the "
             "control measure; warranted over all calls is its scale. Shown together "
             "because either alone misleads."
+        )
+    )
+    trends: TrendsResponse = Field(
+        description=(
+            "What moved since the equal-length window before, and what is emerging. "
+            "Separate from `metrics` because these are not the Metrics sheet's figures."
         )
     )
     intent_routed: FigureResponse = Field(
@@ -133,5 +235,61 @@ async def read_exec_scorecard(
             LabelledFigureResponse(label=label, figure=FigureResponse.of(figure))
             for label, figure in escalation_integrity_pair(card)
         ],
+        trends=_trends(result.trends),
         intent_routed=FigureResponse.of(card.intent_routed),
+    )
+
+
+def _trends(trends: ExecTrends) -> TrendsResponse:
+    """Map the domain's trends onto the wire, dates as ISO strings."""
+    return TrendsResponse(
+        window_weeks=round(trends.window.weeks),
+        window_start=trends.window.start.isoformat(),
+        window_end=trends.window.end.isoformat(),
+        prior_start=trends.prior.start.isoformat(),
+        prior_end=trends.prior.end.isoformat(),
+        weeks=[
+            WeekResponse(
+                start=week.start.isoformat(),
+                end=week.end.isoformat(),
+                calls=calls,
+            )
+            # `weeks` and `weekly_calls` are produced by the same walk over
+            # the window, so they are the same length by construction. `strict`
+            # says so rather than trusting it: a silent mismatch would shift
+            # every value onto the wrong week.
+            for week, calls in zip(trends.weeks, trends.weekly_calls, strict=True)
+        ],
+        movements=[
+            MovementResponse(
+                label=move.label,
+                now=move.now,
+                prior=move.prior,
+                calls_now=move.calls_now,
+                calls_prior=move.calls_prior,
+                expected=round(move.expected, 2),
+                z=round(move.z, 2),
+                beyond_noise=move.beyond_noise,
+                worse=move.worse,
+            )
+            for move in trends.movements
+        ],
+        emerging=[
+            EmergingResponse(
+                kind=row.kind,
+                key=row.key,
+                buckets=[
+                    BucketResponse(
+                        start=bucket.window.start.isoformat(),
+                        end=bucket.window.end.isoformat(),
+                        calls=bucket.calls,
+                        hits=bucket.hits,
+                    )
+                    for bucket in row.buckets
+                ],
+                delta=row.delta,
+                rising=row.rising,
+            )
+            for row in trends.emerging
+        ],
     )
