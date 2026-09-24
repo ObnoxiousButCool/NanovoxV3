@@ -102,6 +102,7 @@ def call(
             process_gap=(
                 ProcessGap(
                     present=True,
+                    gap_type="missing_detail",
                     touchpoint=touchpoint,
                     proposed_change=process_gap_change,
                     raised_by=RaisedBy.CALLER,

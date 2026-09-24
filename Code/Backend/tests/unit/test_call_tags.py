@@ -20,6 +20,7 @@ from domain.aggregation.call_tags import (
     Window,
     book_lives_for,
 )
+from domain.errors import ValidationError
 from domain.value_objects.escalation import Escalation
 from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.process_gap import ProcessGap, ProcessGapStatus, RaisedBy
@@ -76,12 +77,12 @@ def test_a_knowledge_failure_must_cite_a_rule() -> None:
     nothing." Metric 8's output is a ranked list of articles to rewrite, and
     a failure with no rule id cannot appear on it.
     """
-    with pytest.raises(ValueError, match="must cite a rule id"):
+    with pytest.raises(ValidationError, match="must cite a rule id"):
         KnowledgeFailure(present=True)
 
 
 def test_an_absent_knowledge_failure_carries_nothing_else() -> None:
-    with pytest.raises(ValueError, match="must not carry a rule id"):
+    with pytest.raises(ValidationError, match="must not carry a rule id"):
         KnowledgeFailure(present=False, rule_id="C-12")
 
 
@@ -103,12 +104,12 @@ def test_a_process_gap_must_carry_a_lifecycle() -> None:
     field that turns seven calls proposing the same change into a backlog
     item rather than seven notes.
     """
-    with pytest.raises(ValueError, match="a tag without a lifecycle is a note"):
+    with pytest.raises(ValidationError, match="a tag without a lifecycle is a note"):
         ProcessGap(present=True, proposed_change="name the waiting period in the denial letter")
 
 
 def test_an_absent_process_gap_carries_nothing_else() -> None:
-    with pytest.raises(ValueError, match="must not carry any of its other fields"):
+    with pytest.raises(ValidationError, match="must not carry any of its other fields"):
         ProcessGap(present=False, touchpoint="denial_letter_eob")
 
 
@@ -124,6 +125,29 @@ def test_a_present_process_gap_routes_by_touchpoint() -> None:
 
     assert gap.touchpoint == "denial_letter_eob"
     assert gap.status is ProcessGapStatus.UNVALIDATED
+
+
+@pytest.mark.parametrize("missing", ["gap_type", "proposed_change"])
+def test_a_process_gap_must_be_routable_and_actionable(missing: str) -> None:
+    """A gap nobody can route (no type) or act on (no proposed change) is
+    not a finding."""
+    fields: dict[str, object] = {
+        "gap_type": "missing_detail",
+        "proposed_change": "name the waiting period and its end date",
+        "status": ProcessGapStatus.UNVALIDATED,
+    }
+    fields[missing] = None
+
+    with pytest.raises(ValidationError, match="must carry a gap_type and a proposed_change"):
+        ProcessGap(present=True, **fields)  # type: ignore[arg-type]
+
+
+def test_a_knowledge_failure_need_not_carry_a_correction_while_d7_is_open() -> None:
+    """Requiring a correct statement would read the field as an agent error,
+    which D7 forbids until it closes."""
+    failure = KnowledgeFailure(present=True, rule_id="C-12")
+
+    assert failure.correct_statement is None
 
 
 # --- Signal taxonomy (schema field 5) --------------------------------------

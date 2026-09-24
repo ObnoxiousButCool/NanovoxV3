@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from domain.errors import ValidationError
+
 
 @dataclass(frozen=True)
 class KnowledgeFailure:
@@ -30,9 +32,13 @@ class KnowledgeFailure:
     correct_statement: str | None = None
 
     def __post_init__(self) -> None:
+        # `correct_statement` is deliberately not required while D7 is open:
+        # demanding a correction would read this field as an agent error.
         if self.present and not self.rule_id:
-            raise ValueError(
+            raise ValidationError(
                 "A knowledge failure must cite a rule id — naming the rule is the whole point."
             )
         if not self.present and (self.rule_id is not None or self.correct_statement is not None):
-            raise ValueError("An absent knowledge failure must not carry a rule id or statement.")
+            raise ValidationError(
+                "An absent knowledge failure must not carry a rule id or statement."
+            )

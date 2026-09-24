@@ -343,6 +343,29 @@ class TestProcessGap:
 
         assert not result.findings.process_gap.present
 
+    @pytest.mark.parametrize("blank", ["gap_type", "proposed_change"])
+    async def test_present_true_with_a_blank_required_field_is_treated_as_absent(
+        self, blank: str
+    ) -> None:
+        """A gap with no type or no proposed change is not a finding, so the
+        answer is dropped rather than failing the whole L4 pass."""
+        calls = _FakeCalls((_call(),))
+        use_case, _ = _use_case(calls=calls, lookup=_FakeLookup())
+        fields = {
+            "present": True,
+            "gap_type": "portal submission not applied",
+            "touchpoint": "portal_submission",
+            "proposed_change": "Alert operations when a submission sits unapplied.",
+            "raised_by": "CALLER",
+            "status": "UNVALIDATED",
+            blank: "  ",
+        }
+        response = _response(process_gap=ProcessGapResponse.model_validate(fields))
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        assert not result.findings.process_gap.present
+
 
 class TestRuleScoping:
     async def test_only_rules_for_the_calls_own_product_lines_reach_the_prompt(self) -> None:
