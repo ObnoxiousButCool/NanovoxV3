@@ -43,6 +43,9 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <div className="nv-foot">
           <ThemeControl />
+          <NavLink to="/design" className="nv-footlink">
+            Design system
+          </NavLink>
         </div>
       </aside>
 

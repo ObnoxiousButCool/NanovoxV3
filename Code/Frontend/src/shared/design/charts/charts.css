@@ -116,10 +116,16 @@
 }
 
 /* --- heatmap --- */
+/* Natural size, and scroll when the container is narrower. Stretching the
+ * SVG to 100% scales its text with it, which is the whole reason the other
+ * charts measure their container instead. */
+.nv-heatmap {
+  overflow-x: auto;
+}
+
 .nv-heatmap svg {
   display: block;
-  width: 100%;
-  height: auto;
+  max-width: none;
 }
 
 .nv-heat-1 {

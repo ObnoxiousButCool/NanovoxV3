@@ -59,7 +59,13 @@ export function Heatmap({
 
   return (
     <div className="nv-heatmap">
-      <svg viewBox={`0 0 ${String(width)} ${String(height)}`} role="img" aria-label={ariaLabel}>
+      <svg
+        viewBox={`0 0 ${String(width)} ${String(height)}`}
+        width={width}
+        height={height}
+        role="img"
+        aria-label={ariaLabel}
+      >
         {columns.map((column, i) => {
           const [first, ...rest] = column.split(' ')
           const x = LABEL_WIDTH + i * COLUMN_WIDTH + COLUMN_WIDTH / 2

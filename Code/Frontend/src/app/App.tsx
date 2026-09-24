@@ -14,6 +14,7 @@
 
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import { DesignGallery } from '@/app/DesignGallery'
 import { ScreenPlaceholder } from '@/app/ScreenPlaceholder'
 import { StatusPage } from '@/app/StatusPage'
 import { Shell } from '@/shared/design/Shell'
@@ -35,6 +36,7 @@ export function App() {
         <Route path="/agents" element={<ScreenPlaceholder phase={PHASE_2} />} />
         <Route path="/calls" element={<ScreenPlaceholder phase={PHASE_3} />} />
         <Route path="/actions" element={<ScreenPlaceholder phase={PHASE_4} />} />
+        <Route path="/design" element={<DesignGallery />} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="*" element={<Navigate to="/exec" replace />} />
       </Routes>
