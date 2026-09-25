@@ -1,0 +1,307 @@
+/* The frame shared by the four read screens: page head, scope line, and the
+ * grid the panels sit on. Panel styling itself lives with the primitives. */
+
+.nv-screen {
+  font-family: var(--body);
+  color: var(--ink);
+}
+
+.nv-pagehead h1 {
+  font:
+    600 26px/1.15 var(--display);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.nv-pagehead .nv-lede {
+  color: var(--ink-3);
+  margin: 6px 0 14px;
+  max-width: 68ch;
+  line-height: 1.55;
+}
+
+/* Loading and error share a box so the page does not resize under the
+ * reader when one replaces the other. */
+.nv-screenstate {
+  margin: 20px 0;
+  padding: 18px 20px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
+.nv-screenstate[role='alert'] {
+  border-color: var(--serious);
+}
+
+.nv-screenstate p {
+  margin: 6px 0 0;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-3);
+  /* An API message can be one long unbroken string; without this it pushes
+     the page wider than the viewport rather than wrapping. */
+  overflow-wrap: anywhere;
+}
+
+/* Twelve columns, like the prototype's `c12` / `c6` / `c4` panel widths. */
+.nv-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.nv-c12 {
+  grid-column: span 12;
+}
+.nv-c8 {
+  grid-column: span 8;
+}
+.nv-c6 {
+  grid-column: span 6;
+}
+.nv-c4 {
+  grid-column: span 4;
+}
+
+/* One column on a phone. Six half-width panels side by side at 375px is six
+ * unreadable panels. */
+@media (max-width: 900px) {
+  .nv-c8,
+  .nv-c6,
+  .nv-c4 {
+    grid-column: span 12;
+  }
+}
+
+/* A row of figures inside a panel — the KPI strip at the top of /exec and
+ * the account facts on /accounts/:ref. */
+.nv-figrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+}
+
+.nv-figrow > div {
+  min-width: 140px;
+}
+
+.nv-figlabel {
+  display: block;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 4px;
+}
+
+/* The count beside a flag. D12: a number, never a level, so it is styled as
+ * data rather than as a status colour. */
+.nv-indcount {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* --- What moved, and what is emerging -------------------------------- */
+
+.nv-movements,
+.nv-emerging {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nv-movements li,
+.nv-emerging li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+  line-height: 1.5;
+}
+
+.nv-movements li:first-child,
+.nv-emerging li:first-child {
+  border-top: 0;
+}
+
+/* A movement inside the noise is dimmed, not hidden. The reader still needs
+   to see it was tested and found unremarkable. */
+.nv-noise {
+  color: var(--ink-3);
+}
+
+.nv-noise-tag {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.nv-worse {
+  color: var(--serious);
+  font-weight: 600;
+}
+
+.nv-better {
+  color: var(--good-text);
+  font-weight: 600;
+}
+
+/* --- The risk table -------------------------------------------------- */
+
+.nv-risktable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.nv-risktable th,
+.nv-risktable td {
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 12px 10px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.nv-risktable thead th {
+  border-top: 0;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+
+.nv-risktable tbody th {
+  font-weight: 600;
+}
+
+/* Indicator names. Chips, not a colour ramp — D12 keeps these a list of
+   what fired rather than a severity scale. */
+.nv-fires {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin-top: 6px;
+}
+
+.nv-fire {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+a.nv-fire:hover {
+  border-color: var(--brand);
+  color: var(--brand-ink);
+}
+
+/* Row filters live in the panel header, beside what they narrow. */
+.nv-rowfilters {
+  display: flex;
+  gap: 12px;
+}
+
+.nv-rowfilters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.nv-rowfilters select {
+  font-family: var(--body);
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 4px 8px;
+}
+
+/* --- Conditions and indicator families ------------------------------- */
+
+.nv-subhead {
+  font:
+    600 14px/1.3 var(--body);
+  color: var(--ink);
+  margin: 18px 0 6px;
+}
+
+.nv-conditions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nv-conditions li {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--rule);
+  line-height: 1.5;
+}
+
+.nv-conditions li:first-child {
+  border-top: 0;
+}
+
+.nv-met {
+  color: var(--ink);
+}
+
+/* A condition that did not fire is dimmed but present. Removing it would
+   make "evaluated and not met" indistinguishable from "never checked". */
+.nv-unmet {
+  color: var(--ink-3);
+}
+
+/* Unavailable is neither. There is no field for it, so no amount of calls
+   changes the answer — a different sentence from "not observed". */
+.nv-unavailable {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+/* --- The book: region, broker, employer ------------------------------ */
+
+.nv-tree,
+.nv-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nv-tree ul {
+  margin-left: 14px;
+  padding-left: 10px;
+  border-left: 1px solid var(--rule);
+}
+
+.nv-tree li {
+  padding: 4px 0;
+  line-height: 1.5;
+}
+
+.nv-tree a {
+  color: var(--ink);
+}

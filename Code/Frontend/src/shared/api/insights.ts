@@ -11,7 +11,6 @@ import { getJson } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
 
 export type FilterOptions = components['schemas']['FilterOptionsResponse']
-export type ExecScorecard = components['schemas']['ExecScorecardResponse']
 
 /**
  * The values the filter bar can offer.
@@ -29,5 +28,55 @@ export function useFilterOptions(search: string) {
     queryKey: ['insights', 'filters', search],
     queryFn: () => getJson<FilterOptions>(`/insights/filters${search ? `?${search}` : ''}`),
     staleTime: 5 * 60 * 1000,
+  })
+}
+
+export type ExecScorecard = components['schemas']['ExecScorecardResponse']
+export type RiskScreen = components['schemas']['RiskScreenResponse']
+export type AccountDetail = components['schemas']['AccountResponse']
+export type Hierarchy = components['schemas']['HierarchyResponse']
+
+/**
+ * A screen's query, keyed by the filters that produced it.
+ *
+ * The search string is part of the key rather than a dependency of the
+ * function, so two filter states never share a cache entry. React Query
+ * would otherwise serve the previous scope's figures under the new scope's
+ * chips for as long as the refetch took, and a figure shown under the wrong
+ * scope is worse than a spinner.
+ */
+function useScreen<T>(name: string, path: string, search: string) {
+  return useQuery({
+    queryKey: ['insights', name, search],
+    queryFn: () => getJson<T>(`${path}${search ? `?${search}` : ''}`),
+  })
+}
+
+export function useExec(search: string) {
+  return useScreen<ExecScorecard>('exec', '/insights/exec', search)
+}
+
+export function useRisk(search: string) {
+  return useScreen<RiskScreen>('risk', '/insights/risk', search)
+}
+
+export function useHierarchy(search: string) {
+  return useScreen<Hierarchy>('hierarchy', '/insights/hierarchy', search)
+}
+
+/**
+ * One account.
+ *
+ * `employerRef` joins the key because it selects a different resource, not
+ * a different view of the same one — sharing a cache entry across accounts
+ * is how one employer's figures end up under another's name.
+ */
+export function useAccount(employerRef: string, search: string) {
+  return useQuery({
+    queryKey: ['insights', 'account', employerRef, search],
+    queryFn: () =>
+      getJson<AccountDetail>(
+        `/insights/accounts/${encodeURIComponent(employerRef)}${search ? `?${search}` : ''}`,
+      ),
   })
 }

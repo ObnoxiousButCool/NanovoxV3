@@ -1,0 +1,289 @@
+/**
+ * `/risk` — account risk flags, and what could not be assessed.
+ *
+ * This is the screen **D12** was decided for, so the decision is visible in
+ * three places rather than buried in a component:
+ *
+ * 1. **"Flagged" means metric 10 and nothing else.** The pill carries the
+ *    flag; the indicator count sits beside it as a number.
+ * 2. **The indicator count is never a level.** No colour ramp, no
+ *    High/Elevated/Watch. It is styled as data, because turning a count
+ *    into a band is how the second scoring system came back.
+ * 3. **There is no band filter.** The row filters are `flagged` and
+ *    `minIndicators`, which is what the API offers.
+ *
+ * ## Ineligible is a third state, never "not flagged"
+ *
+ * At batch-1 volume most employers have too few calls to assess. The API
+ * keeps them in their own list for exactly this reason, and so does this
+ * screen: folding ninety unassessable accounts into "not flagged" would be
+ * ninety clean bills of health nobody can support.
+ *
+ * ## The row filters do not move the share
+ *
+ * `flaggedShare` and `exposure` are computed over every eligible employer,
+ * whatever is filtered. That is enforced on the server and tested there;
+ * the panel says so in words, because a reader who filters to "flagged
+ * only" and sees a share that is not 100% deserves to know why.
+ */
+
+import { Link, useSearchParams } from 'react-router-dom'
+
+import { useFilterOptions, useRisk } from '@/shared/api/insights'
+import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
+import { useFilters } from '@/shared/filters/useFilters'
+import { Screen } from '@/shared/screens/Screen'
+import {
+  BigRow,
+  Empty,
+  EpistemicChip,
+  FigureSample,
+  FigureValue,
+  KpiTile,
+  Note,
+  Panel,
+  RiskPill,
+} from '@/shared/design/primitives'
+
+const percent = (value: number) => `${String(Math.round(value * 100))}%`
+
+export function RiskScreen() {
+  const filters = useFilters()
+  // The two row filters live in the URL beside the corpus filters, but they
+  // are not part of `useFilters`: that hook is the shared filter bar, and
+  // these mean something on this screen alone. Reading them here keeps them
+  // shareable in a link without pretending they narrow any other screen.
+  const [params, setParams] = useSearchParams()
+  const flagged = params.get('flagged')
+  const minIndicators = params.get('minIndicators')
+
+  const search = new URLSearchParams(filters.apiSearch)
+  if (flagged !== null) search.set('flagged', flagged)
+  if (minIndicators !== null) search.set('minIndicators', minIndicators)
+
+  const { data, isPending, error } = useRisk(search.toString())
+  // The same query the filter bar already made, so React Query serves it
+  // from cache rather than fetching twice. An employer reference is a code,
+  // and `FilterBar` states the rule this screen has to keep too: codes
+  // never reach a reader.
+  const options = useFilterOptions(filters.apiSearch)
+  const names = new Map(
+    (options.data?.employers ?? []).map((employer) => [employer.ref, employer.name]),
+  )
+
+  const setRow = (key: string, value: string | null) => {
+    // One write, like the period control. Two `setParams` calls in a handler
+    // both navigate from the same router state and the second discards the
+    // first — the bug the filter bar already carries a comment about.
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous)
+        if (value === null || value === '') next.delete(key)
+        else next.set(key, value)
+        return next
+      },
+      { replace: false },
+    )
+  }
+
+  return (
+    <Screen
+      // The rail's wording, which is the prototype's own. A screen whose
+      // title disagrees with the link that reached it reads as the wrong page.
+      title="What are the risks?"
+      lede="Metric 10's flag, the conditions behind it, and the accounts there was not enough evidence to assess."
+      scope={data?.scope}
+      isPending={isPending}
+      error={error}
+    >
+      {data === undefined ? null : (
+        <RiskBody
+          data={data}
+          names={names}
+          flagged={flagged}
+          minIndicators={minIndicators}
+          onChange={setRow}
+        />
+      )}
+    </Screen>
+  )
+}
+
+function RiskBody({
+  data,
+  names,
+  flagged,
+  minIndicators,
+  onChange,
+}: {
+  data: RiskScreenData
+  /** Employer reference to name. Falls back to the reference, which is
+      better than an empty cell while the options are still loading. */
+  names: Map<string, string>
+  flagged: string | null
+  minIndicators: string | null
+  onChange: (key: string, value: string | null) => void
+}) {
+  return (
+    <div className="nv-grid">
+      <div className="nv-c12">
+        <Panel
+          title="Across the eligible accounts"
+          sub={`Metric 10 over ${String(data.windowWeeks)} weeks, as at ${data.asOf}.`}
+          chip={<EpistemicChip kind="observed" />}
+        >
+          <BigRow>
+            <KpiTile
+              label="Flagged, of those assessable"
+              value={<FigureValue figure={data.flaggedShare} format={percent} />}
+              meta={<FigureSample figure={data.flaggedShare} />}
+            />
+            <KpiTile
+              label="Assessed"
+              value={String(data.assessedCount)}
+              meta={<span className="nv-indcount">had enough calls</span>}
+            />
+            <KpiTile
+              label="Could not be assessed"
+              value={String(data.ineligibleCount)}
+              meta={<span className="nv-indcount">too few calls</span>}
+            />
+            <KpiTile
+              label="Lives behind the flagged"
+              value={String(data.exposure.lives)}
+              meta={<span className="nv-indcount">exposure, not expected loss</span>}
+            />
+          </BigRow>
+          <Note>{data.exposure.caveat}</Note>
+        </Panel>
+      </div>
+
+      <div className="nv-c12">
+        <Panel
+          title="Accounts assessed"
+          sub={
+            <>
+              Most indicators first, then soonest renewal. Showing{' '}
+              {data.assessed.length} of {data.assessedCount} assessed — the share and
+              exposure above are over all {data.assessedCount}, whatever is filtered here.
+            </>
+          }
+          chip={<EpistemicChip kind="observed" />}
+          actions={
+            <div className="nv-rowfilters">
+              <label>
+                <span>Flag</span>
+                <select
+                  value={flagged ?? ''}
+                  onChange={(event) => {
+                    onChange('flagged', event.target.value || null)
+                  }}
+                >
+                  <option value="">Either</option>
+                  <option value="true">Flagged</option>
+                  <option value="false">Not flagged</option>
+                </select>
+              </label>
+              <label>
+                <span>Min indicators</span>
+                <select
+                  value={minIndicators ?? ''}
+                  onChange={(event) => {
+                    onChange('minIndicators', event.target.value || null)
+                  }}
+                >
+                  <option value="">Any</option>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={String(n)}>
+                      {n}+
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          }
+        >
+          {data.assessed.length === 0 ? (
+            <Empty>
+              {data.assessedCount === 0
+                ? 'No employer reached the eligibility floor in this window. That is not a finding of low risk — there is not enough here to assess.'
+                : 'No assessed account matches these row filters. Widen them to see the rest.'}
+            </Empty>
+          ) : (
+            <table className="nv-risktable">
+              <thead>
+                <tr>
+                  <th scope="col">Account</th>
+                  <th scope="col">Flag</th>
+                  <th scope="col">Indicators</th>
+                  <th scope="col">Conditions</th>
+                  <th scope="col">Calls</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.assessed.map((account) => {
+                  const fired = account.observations.filter((o) => o.observed)
+                  return (
+                    <tr key={account.employerRef}>
+                      <th scope="row">
+                        <Link to={`/accounts/${encodeURIComponent(account.employerRef)}`}>
+                          {names.get(account.employerRef) ?? account.employerRef}
+                        </Link>
+                      </th>
+                      <td>
+                        <RiskPill eligible={account.eligible} flagged={account.flagged} />
+                      </td>
+                      <td>
+                        {/* A count and the names behind it. Never a level:
+                            the families are informational and do not set the
+                            flag (D2, D12). */}
+                        <span className="nv-indcount">{fired.length} of 10</span>
+                        {fired.length > 0 ? (
+                          <div className="nv-fires">
+                            {fired.map((observation) => (
+                              <span key={observation.code} className="nv-fire">
+                                {observation.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="nv-indcount">
+                        {account.conditionsMet} of {account.conditions.length}
+                      </td>
+                      <td className="nv-indcount">{account.calls}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      </div>
+
+      <div className="nv-c12">
+        <Panel
+          title="Not enough calls to assess"
+          sub="Kept apart on purpose. Too few calls to assess is not a finding of low risk."
+          chip={<EpistemicChip kind="observed" />}
+        >
+          {data.ineligible.length === 0 ? (
+            <Empty>Every employer in scope had enough calls to assess.</Empty>
+          ) : (
+            <div className="nv-fires">
+              {data.ineligible.map((ref) => (
+                <Link
+                  key={ref}
+                  className="nv-fire"
+                  to={`/accounts/${encodeURIComponent(ref)}`}
+                >
+                  {names.get(ref) ?? ref}
+                </Link>
+              ))}
+            </div>
+          )}
+        </Panel>
+      </div>
+    </div>
+  )
+}

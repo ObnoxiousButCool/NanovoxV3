@@ -47,10 +47,14 @@ describe('App', () => {
   it('says a screen is unbuilt rather than rendering an empty one', () => {
     // An empty screen reads as "no data", which is the one thing this
     // application must never accidentally claim.
-    renderApp('/risk')
+    //
+    // `/calls` rather than `/risk`: risk is built now. The assertion needs a
+    // route that is genuinely still a placeholder, or it stops testing
+    // anything the day the last screen lands.
+    renderApp('/calls')
 
     expect(screen.getByText(/not built yet/i)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'What are the risks?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'All calls' })).toBeInTheDocument()
   })
 
   it('keeps the status page reachable at its own route', () => {

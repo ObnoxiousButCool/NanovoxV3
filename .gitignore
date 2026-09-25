@@ -40,3 +40,6 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 *.db
+
+# Local editor and agent scaffolding, not project configuration.
+.claude/
