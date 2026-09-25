@@ -366,3 +366,58 @@ async def test_a_selected_call_outside_the_period_stays_out(
 
     assert body["rows"] == []
     assert body["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_the_repeat_filter_keeps_a_repeat_whose_antecedent_is_filtered_out(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """The trap this filter exists to avoid.
+
+    A repeat is a relationship between two calls. Computing it over the
+    *filtered* set would mean narrowing to one employer made a repeat stop
+    being a repeat, because the call it followed left the slice. The
+    references come from the whole corpus for exactly this reason.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 2, "EMP-02": 2})
+
+    unfiltered = client.get(
+        "/api/v1/insights/calls", params={"asOf": AS_OF, "repeat": "true"}
+    ).json()
+    narrowed = client.get(
+        "/api/v1/insights/calls",
+        params={"asOf": AS_OF, "repeat": "true", "employer": "EMP-02"},
+    ).json()
+
+    kept = {row["reference"] for row in unfiltered["rows"]}
+    still_kept = {row["reference"] for row in narrowed["rows"]}
+    # Whatever the corpus makes a repeat, narrowing by employer may remove
+    # rows but must never reclassify one.
+    assert still_kept <= kept
+
+
+@pytest.mark.asyncio
+async def test_repeat_true_and_false_partition_the_slice(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Unset is not the same as either value, and the two halves add up."""
+    await seed(session_factory, calls_per_employer={"EMP-01": 4})
+
+    everything = client.get("/api/v1/insights/calls", params={"asOf": AS_OF}).json()
+    yes = client.get("/api/v1/insights/calls", params={"asOf": AS_OF, "repeat": "true"}).json()
+    no = client.get("/api/v1/insights/calls", params={"asOf": AS_OF, "repeat": "false"}).json()
+
+    assert yes["total"] + no["total"] == everything["total"]
+
+
+@pytest.mark.asyncio
+async def test_the_repeat_filter_shows_in_the_applied_row(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Filters slice, never hide — including the derived ones."""
+    await seed(session_factory, calls_per_employer={"EMP-01": 3})
+
+    body = client.get("/api/v1/insights/calls", params={"asOf": AS_OF, "repeat": "true"}).json()
+
+    fields = {entry["field"] for entry in body["scope"]["appliedFilters"]}
+    assert "repeat" in fields

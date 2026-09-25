@@ -396,6 +396,7 @@ export interface components {
             /** Asof */
             asOf: string;
             contactRate: components["schemas"]["WindowedFigureResponse"];
+            drift: components["schemas"]["DriftResponse"];
             facts: components["schemas"]["AccountFactsResponse"];
             peers: components["schemas"]["PeerComparisonResponse"];
             repeatRate: components["schemas"]["WindowedFigureResponse"];
@@ -840,6 +841,34 @@ export interface components {
             unattributed: string[];
             /** Windowweeks */
             windowWeeks: number;
+        };
+        /**
+         * DriftResponse
+         * @description §9 insight 7. A flag, never a rate.
+         */
+        DriftResponse: {
+            /**
+             * Checked
+             * @description Broker mentions where both sides resolved, so the comparison could be made. Zero checked with zero mismatches is not a clean book — it is an unexamined one, and `finding` says which.
+             */
+            checked: number;
+            /**
+             * Finding
+             * @description The sentence the panel shows, including when nothing is wrong.
+             */
+            finding: string;
+            /** Flagged */
+            flagged: boolean;
+            /**
+             * Mismatches
+             * @description Calls where the named broker is not the broker of record.
+             */
+            mismatches?: string[];
+            /**
+             * Unresolved
+             * @description Mentions where one side was unknown. Not counted as drift: an unknown is not a disagreement, and scoring it as one would manufacture a finding out of a gap.
+             */
+            unresolved?: string[];
         };
         /**
          * EmergingResponse
@@ -1765,6 +1794,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -1827,6 +1858,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -1887,6 +1920,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -1947,6 +1982,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2015,6 +2052,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2112,6 +2151,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2172,6 +2213,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2232,6 +2275,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2292,6 +2337,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2352,6 +2399,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2416,6 +2465,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */

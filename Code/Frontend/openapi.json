@@ -73,6 +73,9 @@
           "contactRate": {
             "$ref": "#/components/schemas/WindowedFigureResponse"
           },
+          "drift": {
+            "$ref": "#/components/schemas/DriftResponse"
+          },
           "facts": {
             "$ref": "#/components/schemas/AccountFactsResponse"
           },
@@ -102,7 +105,8 @@
           "peers",
           "repeatRate",
           "risk",
-          "riskWindowWeeks"
+          "riskWindowWeeks",
+          "drift"
         ],
         "title": "AccountResponse",
         "type": "object"
@@ -1160,6 +1164,48 @@
           "promiseGaps"
         ],
         "title": "DemandResponse",
+        "type": "object"
+      },
+      "DriftResponse": {
+        "description": "\u00a79 insight 7. A flag, never a rate.",
+        "properties": {
+          "checked": {
+            "description": "Broker mentions where both sides resolved, so the comparison could be made. Zero checked with zero mismatches is not a clean book \u2014 it is an unexamined one, and `finding` says which.",
+            "title": "Checked",
+            "type": "integer"
+          },
+          "finding": {
+            "description": "The sentence the panel shows, including when nothing is wrong.",
+            "title": "Finding",
+            "type": "string"
+          },
+          "flagged": {
+            "title": "Flagged",
+            "type": "boolean"
+          },
+          "mismatches": {
+            "description": "Calls where the named broker is not the broker of record.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Mismatches",
+            "type": "array"
+          },
+          "unresolved": {
+            "description": "Mentions where one side was unknown. Not counted as drift: an unknown is not a disagreement, and scoring it as one would manufacture a finding out of a gap.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Unresolved",
+            "type": "array"
+          }
+        },
+        "required": [
+          "flagged",
+          "checked",
+          "finding"
+        ],
+        "title": "DriftResponse",
         "type": "object"
       },
       "EmergingResponse": {
@@ -3336,6 +3382,24 @@
             }
           },
           {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
+            }
+          },
+          {
             "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
             "in": "query",
             "name": "source",
@@ -3734,6 +3798,24 @@
                 }
               ],
               "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
             }
           },
           {
@@ -4138,6 +4220,24 @@
             }
           },
           {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
+            }
+          },
+          {
             "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
             "in": "query",
             "name": "source",
@@ -4536,6 +4636,24 @@
                 }
               ],
               "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
             }
           },
           {
@@ -5015,6 +5133,24 @@
                 }
               ],
               "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
             }
           },
           {
@@ -5531,6 +5667,24 @@
             }
           },
           {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
+            }
+          },
+          {
             "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
             "in": "query",
             "name": "source",
@@ -5929,6 +6083,24 @@
                 }
               ],
               "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
             }
           },
           {
@@ -6333,6 +6505,24 @@
             }
           },
           {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
+            }
+          },
+          {
             "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
             "in": "query",
             "name": "source",
@@ -6734,6 +6924,24 @@
             }
           },
           {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
+            }
+          },
+          {
             "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
             "in": "query",
             "name": "source",
@@ -7132,6 +7340,24 @@
                 }
               ],
               "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
             }
           },
           {
@@ -7571,6 +7797,24 @@
                 }
               ],
               "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
             }
           },
           {

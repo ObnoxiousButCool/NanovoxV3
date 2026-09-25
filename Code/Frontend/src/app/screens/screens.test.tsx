@@ -182,6 +182,14 @@ const ACCOUNT = {
   // A band with nobody publishable in it.
   peers: { band: '200+ lives', peers: 0, peerMedian: null, difference: null },
   risk: ASSESSED,
+  // Insight 7 with nothing wrong: a clean book is a finding, not a blank.
+  drift: {
+    flagged: false,
+    checked: 2,
+    mismatches: [],
+    unresolved: [],
+    finding: 'No drift: all 2 broker mention(s) matched the broker of record.',
+  },
 }
 
 const HIERARCHY = {
@@ -636,3 +644,55 @@ describe('/calls', () => {
     expect(screen.getByRole('link', { name: /download 2 selected/i })).toBeInTheDocument()
   })
 })
+
+describe('insight 7 on /accounts/:ref', () => {
+  it('renders a clean book as a finding rather than a blank panel', async () => {
+    // The sheet's own instruction: "Zero mismatches renders as a finding."
+    // An empty panel would throw away the one case where the answer is
+    // "we checked, and it is fine".
+    renderAt('/accounts/EMP-1001')
+
+    await waitFor(() => {
+      expect(screen.getByText(/no drift: all 2 broker mention/i)).toBeInTheDocument()
+    })
+    // Nothing is wrong, so nothing asks the reader to act.
+    expect(
+      screen.queryByRole('link', { name: /what to do about the drift/i }),
+    ).not.toBeInTheDocument()
+  })
+})
+
+describe('acting on a figure', () => {
+  it('links a flagged account to what to do about it', async () => {
+    serveWithAssessed()
+    renderAt('/risk')
+
+    await waitFor(() => {
+      expect(screen.getByText('1 of 10')).toBeInTheDocument()
+    })
+    const links = screen.getAllByRole('link')
+    const acts = links.filter((link) => link.getAttribute('href')?.includes('/actions?focus='))
+    // The indicator that fired is `unresolved`, which has a playbook.
+    expect(acts.some((link) => link.getAttribute('href')?.includes('focus=unresolved'))).toBe(
+      true,
+    )
+  })
+})
+
+function serveWithAssessed(): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: string) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            input.includes('/insights/risk')
+              ? { ...RISK, assessed: [ASSESSED], assessedCount: 1 }
+              : routeFor(input),
+          ),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    ),
+  )
+}

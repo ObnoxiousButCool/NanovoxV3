@@ -22,6 +22,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { useAccount, useFilterOptions } from '@/shared/api/insights'
 import type { AccountDetail } from '@/shared/api/insights'
+import { IssueCue } from '@/shared/actions/IssueLink'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
 import {
@@ -250,6 +251,24 @@ function AccountBody({
               ))}
             </ul>
           )}
+        </Panel>
+      </div>
+
+      <div className="nv-c12">
+        <Panel
+          title="Broker of record"
+          sub="Insight 7: who the caller named, against who is on record."
+          chip={<EpistemicChip kind="observed" />}
+        >
+          {/* The server's sentence, which distinguishes a clean book from
+              an unexamined one. Zero mismatches is a finding, so this
+              panel renders in every case rather than only on drift. */}
+          <Note>{data.drift.finding}</Note>
+          {data.drift.flagged ? (
+            <IssueCue issue="broker_adverse" scope={{ employer: facts.employerRef }}>
+              What to do about the drift
+            </IssueCue>
+          ) : null}
         </Panel>
       </div>
 
