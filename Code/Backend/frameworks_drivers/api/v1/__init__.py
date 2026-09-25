@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from frameworks_drivers.api.v1 import health, ingest, providers, reference, runs
 from frameworks_drivers.api.v1.insights import (
     accounts,
+    action_board,
     actions,
     agents,
     calls,
@@ -32,6 +33,7 @@ router.include_router(accounts.router)
 router.include_router(hierarchy.router)
 router.include_router(calls.router)
 router.include_router(demand.router)
+router.include_router(action_board.router)
 router.include_router(actions.router)
 router.include_router(playbooks.router)
 router.include_router(rules.router)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -86,6 +87,7 @@ class SqlActionRepository(ActionRepository):
             row.owner = action.owner
             row.status = action.status
             row.due = action.due
+            row.assigned_on = action.assigned_on
             row.action_taken = action.action_taken
             row.outcome = action.outcome
             row.measurement_start = action.measurement.start if action.measurement else None
@@ -194,7 +196,7 @@ async def _hydrate(session: AsyncSession, rows: list[ActionRow]) -> list[Action]
         .scalars()
         .all()
     ):
-        log[entry.action_id].append(LogEntry(at=entry.at, text=entry.text))
+        log[entry.action_id].append(LogEntry(at=_utc(entry.at), text=entry.text))
 
     return [
         Action(
@@ -214,7 +216,7 @@ async def _hydrate(session: AsyncSession, rows: list[ActionRow]) -> list[Action]
             call_references=tuple(calls[row.id]),
             steps=tuple(steps[row.id]),
             log=tuple(log[row.id]),
-            created_at=row.created_at,
+            created_at=_utc(row.created_at),
             assigned_on=row.assigned_on,
             due=row.due,
             action_taken=row.action_taken,
@@ -227,3 +229,9 @@ async def _hydrate(session: AsyncSession, rows: list[ActionRow]) -> list[Action]
         )
         for row in rows
     ]
+
+
+def _utc(value: datetime) -> datetime:
+    """SQLite stores no zone, and the clock only ever writes UTC. Read back
+    as UTC so a stored timestamp serialises the same as a fresh one."""
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)

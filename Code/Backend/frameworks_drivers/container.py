@@ -23,6 +23,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from application.ports.action_repository import ActionRepository
 from application.ports.answer_key_source import AnswerKeySource
 from application.ports.call_extraction_repository import CallExtractionRepository
 from application.ports.call_repository import CallRepository
@@ -49,6 +50,7 @@ from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from application.use_cases.list_calls import ListCalls
 from application.use_cases.list_providers import ListProviders, ProviderProbe
+from application.use_cases.manage_actions import CreateAction, GetAction, ListActions, UpdateAction
 from application.use_cases.playbooks import GetPlaybook, ListPlaybooks
 from application.use_cases.read_call_evidence import ReadCallEvidence
 from application.use_cases.read_insights import (
@@ -65,9 +67,11 @@ from application.use_cases.read_insights import (
 )
 from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
 from application.use_cases.run_extraction_pipeline import ExtractionPipeline
+from domain.actions import Lifecycle
 from domain.dashboard_config import DashboardConfig
 from domain.playbooks import PlaybookCatalogue
 from domain.scoring.rubric import Rubric
+from infrastructure.config.action_lifecycle_loader import load_action_lifecycle
 from infrastructure.config.dashboard_config import load_dashboard_config
 from infrastructure.config.playbook_loader import load_playbooks
 from infrastructure.config.rubric_loader import load_rubric
@@ -81,6 +85,7 @@ from infrastructure.llm.registry import PROVIDER_NAMES, ProviderRegistry
 from infrastructure.logging.llm_audit import LlmAuditLog
 from infrastructure.persistence.engine import create_database_engine, create_session_factory
 from infrastructure.persistence.health_probe import DatabaseHealthProbe
+from infrastructure.persistence.repositories.action_repository import SqlActionRepository
 from infrastructure.persistence.repositories.call_extraction_repository import (
     SqlCallExtractionRepository,
 )
@@ -140,6 +145,9 @@ class Container:
     #: Loaded at startup so a broken catalogue stops the application
     #: rather than rendering an empty panel (Revised plan I3).
     playbook_catalogue: PlaybookCatalogue
+    #: The action centre's lanes (D14, U3: config until the client confirms).
+    action_lifecycle: Lifecycle
+    action_repository: ActionRepository
 
     def insights_reader(self) -> InsightsReader:
         return InsightsReader(
@@ -189,6 +197,28 @@ class Container:
 
     def get_playbook(self) -> GetPlaybook:
         return GetPlaybook(self.playbook_catalogue, self.reference_lookup)
+
+    def create_action(self) -> CreateAction:
+        return CreateAction(
+            actions=self.action_repository,
+            lifecycle=self.action_lifecycle,
+            catalogue=self.playbook_catalogue,
+            reference_lookup=self.reference_lookup,
+            clock=self.clock,
+        )
+
+    def update_action(self) -> UpdateAction:
+        return UpdateAction(
+            actions=self.action_repository, lifecycle=self.action_lifecycle, clock=self.clock
+        )
+
+    def get_action(self) -> GetAction:
+        return GetAction(actions=self.action_repository)
+
+    def list_actions(self) -> ListActions:
+        return ListActions(
+            actions=self.action_repository, lifecycle=self.action_lifecycle, clock=self.clock
+        )
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
@@ -317,6 +347,8 @@ def build_container(settings: Settings) -> Container:
         insights_source=SqlInsightsSource(session_factory),
         dashboard_config=load_dashboard_config(settings.dashboard_config_path),
         playbook_catalogue=load_playbooks(settings.playbooks_path),
+        action_lifecycle=load_action_lifecycle(settings.action_lifecycle_path),
+        action_repository=SqlActionRepository(session_factory),
     )
 
 
