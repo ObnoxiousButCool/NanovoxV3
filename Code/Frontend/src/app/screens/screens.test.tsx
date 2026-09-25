@@ -9,6 +9,7 @@
 
 import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -225,6 +226,48 @@ const HIERARCHY = {
   ],
 }
 
+function callRow(reference: string, over: Record<string, unknown> = {}) {
+  return {
+    reference,
+    occurredOn: '2026-09-14',
+    employerRef: 'EMP-1001',
+    employerName: 'Cedar Point Workforce Partners',
+    brokerRef: 'BRK-02',
+    brokerAgency: 'Whitfield Benefits',
+    region: 'Orange County',
+    agentRef: 'AG-03',
+    category: 'Claims & EOB',
+    productLines: ['dental'],
+    touchpoint: null,
+    outcome: 'RESOLVED',
+    // Null is not zero: a call with no score recorded did not score nothing.
+    qualityScore: null,
+    ahtSeconds: 400,
+    complaint: false,
+    complaintAgainst: null,
+    signals: [],
+    escalationTriggered: false,
+    escalationHandled: false,
+    controlExceptions: [],
+    knowledgeFailure: false,
+    intents: [],
+    ...over,
+  }
+}
+
+const CALLS = {
+  scope: SCOPE,
+  rows: [callRow('C-0001'), callRow('C-0002', { qualityScore: 78 })],
+  total: 2,
+  page: 1,
+  perPage: 25,
+  pages: 1,
+  considered: 120,
+  omittedColumns: [
+    'Handling (archetype) — not one of the sixteen schema fields (C8a).',
+  ],
+}
+
 const OPTIONS = {
   regions: ['Bay Area'],
   brokers: [{ ref: 'BRK-02', agency: 'Whitfield Benefits' }],
@@ -251,6 +294,7 @@ function routeFor(url: string): unknown {
   if (url.includes('/insights/risk')) return RISK
   if (url.includes('/insights/hierarchy')) return HIERARCHY
   if (url.includes('/insights/accounts/')) return ACCOUNT
+  if (url.includes('/insights/calls')) return CALLS
   return {}
 }
 
@@ -525,5 +569,70 @@ describe('/hierarchy', () => {
     // dark-column reading the panel tells the reader to use.
     expect(screen.getAllByText('Bay Area').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Orange County').length).toBeGreaterThan(0)
+  })
+})
+
+describe('/calls', () => {
+  it('shows a missing quality score as unrecorded, never as zero', async () => {
+    renderAt('/calls')
+
+    await waitFor(() => {
+      expect(screen.getByText('Not recorded')).toBeInTheDocument()
+    })
+    expect(screen.getByText('78')).toBeInTheDocument()
+    // The failure this guards: an unscored call reading as the worst call
+    // in the corpus.
+    expect(screen.queryByText('0')).not.toBeInTheDocument()
+  })
+
+  it('says what the export does not carry, where the export is offered', async () => {
+    renderAt('/calls')
+
+    await waitFor(() => {
+      expect(screen.getByText(/not one of the sixteen schema fields/i)).toBeInTheDocument()
+    })
+  })
+
+  it('points download at the server rather than building a file here', async () => {
+    // Checkpoint I2: the column projection is the server's. A file built in
+    // the browser would be a second column list, and the file a reader
+    // mails out would come from different code than the table on screen.
+    renderAt('/calls')
+
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /download 2 matching calls/i })).toBeInTheDocument()
+    })
+    const link = screen.getByRole('link', { name: /download 2 matching calls/i })
+    expect(link).toHaveAttribute('href', expect.stringContaining('/insights/calls.csv'))
+  })
+
+  it('offers download-selected only once something is selected', async () => {
+    const user = userEvent.setup()
+    renderAt('/calls')
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Select call C-0001')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('link', { name: /download 1 selected/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Select call C-0001'))
+
+    const selected = screen.getByRole('link', { name: /download 1 selected/i })
+    // The reference rides on the URL, so the server does the narrowing and
+    // the export stays one projection.
+    expect(selected).toHaveAttribute('href', expect.stringContaining('ref=C-0001'))
+  })
+
+  it('selects a page at a time, never rows the reader has not seen', async () => {
+    const user = userEvent.setup()
+    renderAt('/calls')
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Select every call on this page')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByLabelText('Select every call on this page'))
+
+    expect(screen.getByRole('link', { name: /download 2 selected/i })).toBeInTheDocument()
   })
 })

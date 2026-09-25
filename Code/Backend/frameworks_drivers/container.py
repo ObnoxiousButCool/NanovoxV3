@@ -47,7 +47,9 @@ from application.use_cases.get_health import GetHealth
 from application.use_cases.import_answer_key import ImportAnswerKey
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
+from application.use_cases.list_calls import ListCalls
 from application.use_cases.list_providers import ListProviders, ProviderProbe
+from application.use_cases.read_call_evidence import ReadCallEvidence
 from application.use_cases.read_insights import (
     GetAccountDetail,
     GetAccountRisk,
@@ -155,6 +157,14 @@ class Container:
 
     def get_hierarchy(self) -> GetHierarchy:
         return GetHierarchy(self.insights_reader(), self.dashboard_config)
+
+    def list_calls(self) -> ListCalls:
+        # The same reader every figure uses, so the workbench cannot select
+        # a different set of calls than the screen that linked to it.
+        return ListCalls(self.insights_reader())
+
+    def read_call_evidence(self) -> ReadCallEvidence:
+        return ReadCallEvidence(self.call_repository)
 
     def get_demand(self) -> GetDemand:
         return GetDemand(self.insights_reader(), self.dashboard_config)

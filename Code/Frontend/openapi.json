@@ -607,6 +607,275 @@
         "title": "BucketResponse",
         "type": "object"
       },
+      "CallEvidenceResponse": {
+        "properties": {
+          "agentRef": {
+            "title": "Agentref",
+            "type": "string"
+          },
+          "callerRef": {
+            "title": "Callerref",
+            "type": "string"
+          },
+          "callerType": {
+            "title": "Callertype",
+            "type": "string"
+          },
+          "employerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employerref"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "resolutionReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolutionreason"
+          },
+          "resolutionStatus": {
+            "title": "Resolutionstatus",
+            "type": "string"
+          },
+          "transcriptMissing": {
+            "description": "True when the call is stored without a transcript. Distinct from an empty conversation, which is not a thing that happens.",
+            "title": "Transcriptmissing",
+            "type": "boolean"
+          },
+          "turns": {
+            "items": {
+              "$ref": "#/components/schemas/TurnResponse"
+            },
+            "title": "Turns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "reference",
+          "callerType",
+          "callerRef",
+          "agentRef",
+          "resolutionStatus",
+          "transcriptMissing"
+        ],
+        "title": "CallEvidenceResponse",
+        "type": "object"
+      },
+      "CallRowResponse": {
+        "description": "One row of the workbench.",
+        "properties": {
+          "agentRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentref"
+          },
+          "ahtSeconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Talk time only, so every figure from it is a floor.",
+            "title": "Ahtseconds"
+          },
+          "brokerAgency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brokeragency"
+          },
+          "brokerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brokerref"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "complaint": {
+            "title": "Complaint",
+            "type": "boolean"
+          },
+          "complaintAgainst": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complaintagainst"
+          },
+          "controlExceptions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Controlexceptions",
+            "type": "array"
+          },
+          "employerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employername"
+          },
+          "employerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employerref"
+          },
+          "escalationHandled": {
+            "title": "Escalationhandled",
+            "type": "boolean"
+          },
+          "escalationTriggered": {
+            "title": "Escalationtriggered",
+            "type": "boolean"
+          },
+          "intents": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Intents",
+            "type": "array"
+          },
+          "knowledgeFailure": {
+            "title": "Knowledgefailure",
+            "type": "boolean"
+          },
+          "occurredOn": {
+            "title": "Occurredon",
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "productLines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Productlines",
+            "type": "array"
+          },
+          "qualityScore": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null means not recorded, never a score of zero.",
+            "title": "Qualityscore"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "signals": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
+          "touchpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Touchpoint"
+          }
+        },
+        "required": [
+          "reference",
+          "occurredOn",
+          "complaint",
+          "escalationTriggered",
+          "escalationHandled",
+          "knowledgeFailure"
+        ],
+        "title": "CallRowResponse",
+        "type": "object"
+      },
       "CallSource": {
         "enum": [
           "CORPUS_PDF",
@@ -615,6 +884,61 @@
         ],
         "title": "CallSource",
         "type": "string"
+      },
+      "CallsPageResponse": {
+        "properties": {
+          "considered": {
+            "description": "Calls in the corpus before filters and search. Filters slice, never hide: a reader must be able to tell a narrow result from an empty corpus.",
+            "title": "Considered",
+            "type": "integer"
+          },
+          "omittedColumns": {
+            "description": "Columns the prototype's export has that this one does not, and why. Stated rather than left as blank columns, which would read as 'no value for this call' instead of 'we do not publish this'.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Omittedcolumns",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "perPage": {
+            "title": "Perpage",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CallRowResponse"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/ScopeResponse"
+          },
+          "total": {
+            "description": "Rows matching the filters and search, before paging.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope",
+          "rows",
+          "total",
+          "page",
+          "perPage",
+          "pages",
+          "considered"
+        ],
+        "title": "CallsPageResponse",
+        "type": "object"
       },
       "Category": {
         "enum": [
@@ -2341,6 +2665,19 @@
         "title": "SignalType",
         "type": "string"
       },
+      "Sort": {
+        "description": "The six sortable columns, named on the wire rather than by index.\n\nColumn indices would silently re-point at a different column the first\ntime the table's column order changed.",
+        "enum": [
+          "date",
+          "employer",
+          "agent",
+          "category",
+          "outcome",
+          "quality"
+        ],
+        "title": "Sort",
+        "type": "string"
+      },
       "StartRunRequest": {
         "properties": {
           "model": {
@@ -2480,6 +2817,29 @@
           "emerging"
         ],
         "title": "TrendsResponse",
+        "type": "object"
+      },
+      "TurnResponse": {
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sequence",
+          "role",
+          "text"
+        ],
+        "title": "TurnResponse",
         "type": "object"
       },
       "UnmeasurableResponse": {
@@ -3879,6 +4239,998 @@
           }
         },
         "summary": "Agent events, with each agent's own score range",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/calls": {
+      "get": {
+        "operationId": "list_calls_api_v1_insights_calls_get",
+        "parameters": [
+          {
+            "description": "Employer region.",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer region.",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+            "in": "query",
+            "name": "broker",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+              "title": "Broker"
+            }
+          },
+          {
+            "description": "Employer reference.",
+            "in": "query",
+            "name": "employer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer reference.",
+              "title": "Employer"
+            }
+          },
+          {
+            "description": "Agent reference.",
+            "in": "query",
+            "name": "agent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Agent reference.",
+              "title": "Agent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "description": "Calls touching this line. A call may touch several.",
+            "in": "query",
+            "name": "productLine",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductLine"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Calls touching this line. A call may touch several.",
+              "title": "Productline"
+            }
+          },
+          {
+            "description": "Where the failure originated, not where it surfaced.",
+            "in": "query",
+            "name": "touchpoint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the failure originated, not where it surfaced.",
+              "title": "Touchpoint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Outcome"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SignalType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/IntentType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complaintTarget",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintAttribution"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complainttarget"
+            }
+          },
+          {
+            "in": "query",
+            "name": "qualityBand",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/QualityBand"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Qualityband"
+            }
+          },
+          {
+            "in": "query",
+            "name": "escalated",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Escalated"
+            }
+          },
+          {
+            "description": "Whether a complaint was made.",
+            "in": "query",
+            "name": "complaint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Whether a complaint was made.",
+              "title": "Complaint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complianceException",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/CallSource"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
+            }
+          },
+          {
+            "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+            "in": "query",
+            "name": "asOf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+              "title": "Asof"
+            }
+          },
+          {
+            "description": "Free text over references, names, topic and outcome \u2014 never over transcript text. Every term must match.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "Free text over references, names, topic and outcome \u2014 never over transcript text. Every term must match.",
+              "maxLength": 200,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Sort",
+              "default": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "pattern": "^(asc|desc)$",
+              "title": "Order",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Perpage",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Specific calls, repeated. Powers \"download selected\" without moving the column list into the browser. Applied after the corpus filters, so a selected call the period excludes stays excluded.",
+            "in": "query",
+            "name": "ref",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Specific calls, repeated. Powers \"download selected\" without moving the column list into the browser. Applied after the corpus filters, so a selected call the period excludes stays excluded.",
+              "title": "Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallsPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The filtered corpus, one row per call",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/calls.csv": {
+      "get": {
+        "description": "Every matching call, not the current page.\n\nPaging is a reading convenience; an export of \"page 2 of 7\" is a file\nwhose contents depend on a control the recipient cannot see. The search\nand the filters still apply, because those are the question asked.",
+        "operationId": "export_calls_api_v1_insights_calls_csv_get",
+        "parameters": [
+          {
+            "description": "Employer region.",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer region.",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+            "in": "query",
+            "name": "broker",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+              "title": "Broker"
+            }
+          },
+          {
+            "description": "Employer reference.",
+            "in": "query",
+            "name": "employer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer reference.",
+              "title": "Employer"
+            }
+          },
+          {
+            "description": "Agent reference.",
+            "in": "query",
+            "name": "agent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Agent reference.",
+              "title": "Agent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "description": "Calls touching this line. A call may touch several.",
+            "in": "query",
+            "name": "productLine",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductLine"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Calls touching this line. A call may touch several.",
+              "title": "Productline"
+            }
+          },
+          {
+            "description": "Where the failure originated, not where it surfaced.",
+            "in": "query",
+            "name": "touchpoint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the failure originated, not where it surfaced.",
+              "title": "Touchpoint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Outcome"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SignalType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/IntentType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complaintTarget",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintAttribution"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complainttarget"
+            }
+          },
+          {
+            "in": "query",
+            "name": "qualityBand",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/QualityBand"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Qualityband"
+            }
+          },
+          {
+            "in": "query",
+            "name": "escalated",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Escalated"
+            }
+          },
+          {
+            "description": "Whether a complaint was made.",
+            "in": "query",
+            "name": "complaint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Whether a complaint was made.",
+              "title": "Complaint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complianceException",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/CallSource"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
+            }
+          },
+          {
+            "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+            "in": "query",
+            "name": "asOf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+              "title": "Asof"
+            }
+          },
+          {
+            "description": "Free text over references, names, topic and outcome \u2014 never over transcript text. Every term must match.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "Free text over references, names, topic and outcome \u2014 never over transcript text. Every term must match.",
+              "maxLength": 200,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Sort",
+              "default": "date"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "desc",
+              "pattern": "^(asc|desc)$",
+              "title": "Order",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "perPage",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Perpage",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Specific calls, repeated. Powers \"download selected\" without moving the column list into the browser. Applied after the corpus filters, so a selected call the period excludes stays excluded.",
+            "in": "query",
+            "name": "ref",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Specific calls, repeated. Powers \"download selected\" without moving the column list into the browser. Applied after the corpus filters, so a selected call the period excludes stays excluded.",
+              "title": "Ref"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The filtered corpus as CSV",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/calls/{reference}": {
+      "get": {
+        "operationId": "read_call_api_v1_insights_calls__reference__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reference",
+            "required": true,
+            "schema": {
+              "title": "Reference",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallEvidenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One call and the turns behind it",
         "tags": [
           "insights"
         ]

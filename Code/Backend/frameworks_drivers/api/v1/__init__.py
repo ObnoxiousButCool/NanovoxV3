@@ -9,6 +9,7 @@ from frameworks_drivers.api.v1.insights import (
     accounts,
     actions,
     agents,
+    calls,
     demand,
     exec_scorecard,
     filters,
@@ -28,6 +29,7 @@ router.include_router(exec_scorecard.router)
 router.include_router(risk.router)
 router.include_router(accounts.router)
 router.include_router(hierarchy.router)
+router.include_router(calls.router)
 router.include_router(demand.router)
 router.include_router(actions.router)
 router.include_router(rules.router)
