@@ -1123,6 +1123,17 @@
             "title": "Controlexceptiontypes",
             "type": "array"
           },
+          "corpusPeriod": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PeriodResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first and last dated call available. The period control needs it to offer weeks and months: a client cannot name a week of a corpus whose extent it does not know. Null when no call carries a date."
+          },
           "employers": {
             "description": "From reference data. Every employer, including those with no calls.",
             "items": {

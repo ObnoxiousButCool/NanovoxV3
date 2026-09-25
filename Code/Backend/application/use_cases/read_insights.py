@@ -802,6 +802,11 @@ class FilterOptions:
     #: display name here would mean inventing it.
     agent_refs: tuple[str, ...]
     touchpoints: tuple[str, ...]
+    #: The first and last dated call available. The period control needs it
+    #: to offer weeks and months at all — a client cannot name a week of a
+    #: corpus whose extent it does not know.
+    available_from: date | None = None
+    available_until: date | None = None
 
 
 class GetFilterOptions:
@@ -831,4 +836,6 @@ class GetFilterOptions:
             touchpoints=tuple(
                 sorted({call.tags.touchpoint for call in corpus.calls if call.tags.touchpoint})
             ),
+            available_from=corpus.available_from,
+            available_until=corpus.available_until,
         )

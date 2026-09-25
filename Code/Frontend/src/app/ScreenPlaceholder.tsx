@@ -10,6 +10,7 @@
 import { useLocation } from 'react-router-dom'
 
 import { NAV_ITEMS } from '@/shared/design/navigation'
+import { FilterBar } from '@/shared/filters/FilterBar'
 
 export function ScreenPlaceholder({ phase }: { phase: string }) {
   const { pathname } = useLocation()
@@ -19,6 +20,7 @@ export function ScreenPlaceholder({ phase }: { phase: string }) {
     <section className="nv-placeholder">
       <h1>{item?.label ?? 'Screen'}</h1>
       <p className="nv-lede">{item?.hint}</p>
+      <FilterBar />
       <p>
         Not built yet — this screen arrives in <b>{phase}</b>. The shell, the
         tokens and the theme around it are real; nothing inside it is, and no

@@ -827,6 +827,8 @@ export interface components {
             complaintTargets: components["schemas"]["CodedValue"][];
             /** Controlexceptiontypes */
             controlExceptionTypes: components["schemas"]["CodedValue"][];
+            /** @description The first and last dated call available. The period control needs it to offer weeks and months: a client cannot name a week of a corpus whose extent it does not know. Null when no call carries a date. */
+            corpusPeriod?: components["schemas"]["PeriodResponse"] | null;
             /**
              * Employers
              * @description From reference data. Every employer, including those with no calls.

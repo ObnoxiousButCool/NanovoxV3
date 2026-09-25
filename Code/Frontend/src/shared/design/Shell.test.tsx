@@ -1,3 +1,4 @@
+import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -6,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { NAV_ITEMS, UNPLACED_SCREENS } from '@/shared/design/navigation'
 import { Shell } from '@/shared/design/Shell'
 import { THEME_STORAGE_KEY } from '@/shared/design/theme'
+import { createQueryClient } from '@/app/queryClient'
 import { DrawerProvider } from '@/shared/design/drawer'
 import { ThemeProvider } from '@/shared/design/ThemeProvider'
 
@@ -15,16 +17,20 @@ afterEach(() => {
 })
 
 function renderShell(at = '/exec') {
+  // The shell renders the filter bar, which queries the API — so a test
+  // that renders the shell needs the same providers the real app gives it.
   return render(
-    <ThemeProvider>
-      <DrawerProvider>
-        <MemoryRouter initialEntries={[at]}>
-          <Shell>
-            <p>screen content</p>
-          </Shell>
-        </MemoryRouter>
-      </DrawerProvider>
-    </ThemeProvider>,
+    <QueryClientProvider client={createQueryClient()}>
+      <ThemeProvider>
+        <DrawerProvider>
+          <MemoryRouter initialEntries={[at]}>
+            <Shell>
+              <p>screen content</p>
+            </Shell>
+          </MemoryRouter>
+        </DrawerProvider>
+      </ThemeProvider>
+    </QueryClientProvider>,
   )
 }
 

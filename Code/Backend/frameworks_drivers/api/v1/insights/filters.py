@@ -76,6 +76,7 @@ from domain.value_objects.signal_severity import SignalSeverity
 from domain.value_objects.signal_type import SignalType
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetFilterOptionsDep
+from frameworks_drivers.api.v1.insights.envelope import PeriodResponse
 from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
@@ -123,6 +124,14 @@ class FilterOptionsResponse(CamelModel):
     rule_layers: list[CodedValue]
     rule_confidences: list[CodedValue]
 
+    corpus_period: PeriodResponse | None = Field(
+        default=None,
+        description=(
+            "The first and last dated call available. The period control needs it to "
+            "offer weeks and months: a client cannot name a week of a corpus whose "
+            "extent it does not know. Null when no call carries a date."
+        ),
+    )
     unlabelled_filters: list[str] = Field(
         description=(
             "Filters whose values have no display wording anywhere — not here, not in "
@@ -178,5 +187,10 @@ async def read_filter_options(
         control_exception_types=[coded(kind) for kind in ControlExceptionType],
         rule_layers=[coded(layer) for layer in RuleLayer],
         rule_confidences=[coded(confidence) for confidence in RuleConfidence],
+        corpus_period=(
+            PeriodResponse(**{"from": options.available_from, "to": options.available_until})
+            if options.available_from is not None or options.available_until is not None
+            else None
+        ),
         unlabelled_filters=list(UNLABELLED),
     )
