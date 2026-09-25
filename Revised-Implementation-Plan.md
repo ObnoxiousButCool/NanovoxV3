@@ -278,9 +278,9 @@ These are places where V2 and a governing document disagree. Each needs a ruling
 
 | # | Conflict | V2 says | The build says | Recommendation |
 |---|---|---|---|---|
-| **C1** | **What "flagged" names** | An account is **flagged** when **two or more indicator families** fired. `NV.bandFor(n)` is a pure function of that count — `0 None · 1 Watch · 2 Elevated · 3+ High` — and `NV.isFlagged` is simply `n >= 2`. | `dashboard.yaml`, decision **D2**: metric 10's flag is **≥2 of its own four named conditions**, and the ten indicator families are **informational and never set it**. | **Not band-versus-flag — a vocabulary collision.** Counting usage, V2 wants a boolean (~11 uses) and a count (~18), which `RiskAssessment.flagged` and `indicators.observe` already provide; the four-level pill is ~6 cosmetic uses. The real problem is that **both systems use the word "flagged" for different populations of accounts**, and a reader cannot tell which. `dashboard.yaml` predicts exactly this: *"Two scoring systems on one page, one of which quietly feeds the other, is how a yes/no flag turns back into a band."* **Hold D2 for the flag, render the family count beside it as V2 does, and give the two different words.** Response shapes barely move; the change is mostly naming. |
+| ~~**C1**~~ **DECIDED** | **What "flagged" names** | An account is **flagged** when **two or more indicator families** fired. `NV.bandFor(n)` is a pure function of that count — `0 None · 1 Watch · 2 Elevated · 3+ High` — and `NV.isFlagged` is simply `n >= 2`. | `dashboard.yaml`, decision **D2**: metric 10's flag is **≥2 of its own four named conditions**, and the ten indicator families are **informational and never set it**. | **Not band-versus-flag — a vocabulary collision.** Counting usage, V2 wants a boolean (~11 uses) and a count (~18), which `RiskAssessment.flagged` and `indicators.observe` already provide; the four-level pill is ~6 cosmetic uses. The real problem is that **both systems use the word "flagged" for different populations of accounts**, and a reader cannot tell which. `dashboard.yaml` predicts exactly this: *"Two scoring systems on one page, one of which quietly feeds the other, is how a yes/no flag turns back into a band."* **DECIDED 2026-09-25 — D12 in `plan.md` §5.** "Flagged" means metric 10 and nothing else; the ten families render as a **count, never a level**; and **"band" is reserved for employer size in lives**, which the API already uses it for — a third collision this row did not name. The ruling also settles the risk list's sort (indicator count, then soonest renewal), the filter contract (`flagged`, `minIndicators`; no `band=High`) and ineligible as its own visual state. Accepted cost: the risk screen is **less scannable** without a colour ramp. Response shapes barely move; the change is naming and rendering. Brief: `Decisions-C1-C3.md`. |
 | **C2** | **Applied-filters row** | Scope line removed. Only removable chips remain. | `plan.md` §9 Practices: *"Filters slice, never hide — the applied-filters row always shows scope and count."* | **Split the difference.** Adopt V2's chip row, and keep the call count in the page head. The practice is about not hiding what was excluded, not about that specific row. |
-| **C3** | **Epistemic vocabulary** | Six chips: OBSERVED, REFERENCE, DERIVED, PATTERN, INFERENCE, RECOMMENDATION. | `EpistemicClass` has three: MEASURED, DERIVED, WITHHELD. | **Resolve now, with `Open-Decisions.md` item 2.** V2's AI surfaces need INFERENCE and RECOMMENDATION to label themselves honestly, which makes the existing enum insufficient rather than merely debatable. Recommended shape: `basis` (OBSERVED / REFERENCE / DERIVED / PATTERN / INFERENCE / RECOMMENDATION) alongside the `published` flag and `withheldReason` the response already carries. **This is the last cheap moment** — it is in eight response schemas and the generated client today, and in every consumer once screens exist. |
+| ~~**C3**~~ **DECIDED** | **Epistemic vocabulary** | Six chips: OBSERVED, REFERENCE, DERIVED, PATTERN, INFERENCE, RECOMMENDATION. | `EpistemicClass` has three: MEASURED, DERIVED, WITHHELD. | **DECIDED 2026-09-25 — D13 in `plan.md` §5, and not as this row recommended.** The framing here (three values versus six, one widened enum) is wrong: **the two vocabularies attach to different objects.** `EpistemicClass` is a property of *one figure*; the prototype's chip is a property of a *panel header*, and a panel tagged `inference` holds no figure at all. The ruling splits on that seam — figure-level **`basis`: OBSERVED · REFERENCE · DERIVED** (MEASURED renamed), suppression staying on `published` + `withheldReason`, and **PATTERN / INFERENCE / RECOMMENDATION remaining frontend copy** because no response carries narrative today. Accepted cost: **REFERENCE requires auditing every existing figure** for counted-versus-account-fact; the rest is one enum and a client regeneration. `reference` is used **zero** times in V2 — defined, explained in the legend, never applied. Open sub-question carried as **C3a**. Brief: `Decisions-C1-C3.md`. |
 | **C4** | **`design_churn_profile` on screen** | `employer.html` shows it in a tooltip, correctly labelled as the label the data was generated from and explicitly kept out of the band. | `test_no_circular_scoring.py` fails if any aggregation names the field; `EmployerFacts` deliberately does not carry it. | **Decision needed.** Showing it as a disclosure is defensible; carrying it through the aggregation layer is not. If it ships, it must reach the UI on a path that bypasses `domain/aggregation` entirely and the test's allow-list must be extended deliberately, with the reason recorded. Recommend **not shipping it** for now — the disclosure it makes can be made in prose without the value. |
 | **C5** | **Rules screen dropped** | No `rules.html`, not in the rail. | `plan.md` §8: `/rules` is **in the nav, not hidden**; insights 23, 24, 27 live there. | **Minnie's call.** Technically free either way — the endpoint stands regardless. Recommend keeping a `/rules` route reachable from `/agents` ("coach the agent, or fix the rule?" already links that way conceptually) even if it is off the main rail. |
 | **C6** | **Demand screen absent** | Content partly folded into exec lenses and index drivers. | `/insights/demand` is built; insights 15–19 live there; §9 records that the docx places insight 15 on "Screen 3 of 7". | **Minnie's call.** Recommend keeping `/demand` as a screen — insight 16's touchpoint ranking and insight 19's compliance exposure have no other home, and the exec lens only summarises them. |
@@ -398,7 +398,7 @@ gate · the whole test suite · the theme system and design tokens from `app.css
 | `frameworks_drivers/api/v1/insights/query.py` | Add `from`/`to`, `repeat`, and whatever C1/C8 settle | S |
 | `application/ports/insights_source.py` + `SqlInsightsSource` | Populate `CorpusQuery.since`/`until`; echo the period into scope | S |
 | `application/use_cases/read_insights.py` | Thread the period through `scope()`; add the window-vs-period caveat | M |
-| `domain/aggregation/figure.py` | Epistemic split, if C3 is accepted | M — touches 8 schemas + client |
+| `domain/aggregation/figure.py` | Epistemic split per **D13**: `basis` = OBSERVED · REFERENCE · DERIVED, WITHHELD out | S for the enum — `epistemic` is defined in **one** place, `FigureResponse`, plus a client regeneration. **M for REFERENCE**, which needs every existing figure audited for counted-versus-account-fact. |
 | `domain/aggregation/risk_flag.py` + `risk.py` | Whatever C1 settles — mostly naming, since the boolean and the family count both exist | S |
 | `exec_scorecard.py` (domain + router) | Add movement, drivers, emerging to the exec payload | M |
 | `domain/aggregation/actions.py` | Split derived findings from persisted actions | M |
@@ -442,7 +442,8 @@ Code/Backend
     persistence/          NEW     actions table + migration; call list query
     config/               NEW     playbooks.yaml loader
   frameworks_drivers/api/v1/insights/
-    query.py              MODIFY  from · to · repeat · (band · handling · effort · complexity · callerType, pending C1/C8)
+    query.py              MODIFY  from · to · repeat · flagged · minIndicators (D12: no band filter)
+                                  (handling · effort · complexity · callerType, pending C8)
     calls.py              NEW
     value_pack.py         NEW     (pending §14 approval)
     actions.py            MODIFY  read stays; write added
@@ -472,11 +473,14 @@ never force-push, never commit to `main`, and all gates green before every commi
 #### Vertical 1 (Backend)
 - Prepare a one-page decision brief per conflict: what V2 wants, what the workbook says, the
   cost of each option **now** vs **after the screens exist**.
-- Prototype C3 (epistemic split) as a **throwaway branch** to price the change honestly:
-  count the schemas, the client diff and the test churn. Do not merge it.
+- ~~Prototype C3 as a throwaway branch to price it~~ — **not needed.** Reading the code priced
+  it: `epistemic` is defined once, in `FigureResponse`. The cost that matters is not the enum
+  but **REFERENCE**, which requires auditing every existing figure; a throwaway branch would
+  have measured the cheap half and missed the expensive one.
 - Count stored rows affected by C4 and by the stricter value-object constructors already
   agreed in `Open-Decisions.md` §5.
-- **Deliverable:** decision brief; a costed C3 estimate; a written window-vs-period rule.
+- **Deliverable:** decision brief (`Decisions-C1-C3.md`); a costed C3 estimate; a written
+  window-vs-period rule. **All three delivered** — D11, D12, D13 in `plan.md` §5.
 
 #### Vertical 2 (Frontend)
 - Extract the V2 design contract into a written spec: token list from `app.css` `:root` and
@@ -487,8 +491,9 @@ never force-push, never commit to `main`, and all gates green before every commi
 
 #### Integration
 One joint session with Minnie on the eight conflicts, run against the decision log in §14.
-**C1 and C3 must be answered.** G1 (period vs window) is already settled — decided 2026-09-24,
-recorded as D11 in `plan.md` §5 — so Phase 1 is unblocked. C5, C6, C7 and G9 (the value pack) can be deferred to Phase 6 without
+~~**C1 and C3 must be answered.**~~ **All three are settled:** G1 as **D11** (2026-09-24), C1 as
+**D12** and C3 as **D13** (both 2026-09-25), in `plan.md` §5. Minnie owns C1 and C3 and may
+overturn either; the joint session is now a review of decisions taken, not a decision meeting. C5, C6, C7 and G9 (the value pack) can be deferred to Phase 6 without
 blocking anything.
 
 #### Testing / Definition of Done
@@ -556,7 +561,7 @@ Screens can be built. Data can be sliced by period.
   (broker-of-record drift) onto the account response.
 - **Modules:** `trends.py` (new), `figure.py`, `risk_flag.py`, `exec_scorecard.py`,
   `isolation.py`, the four routers.
-- **Dependencies:** Phase 1 period filter; Phase 0 C1 + C3 rulings.
+- **Dependencies:** Phase 1 period filter; Phase 0 C1 + C3 rulings — **both in hand** (D12, D13).
 - **Deliverables:** four endpoints serving everything their screens need; one coordinated
   breaking release; regenerated client.
 
@@ -565,7 +570,9 @@ Screens can be built. Data can be sliced by period.
   Advanced disclosure with an active count, period segmented control; the four screens;
   `NV.act` equivalent — a typed `issueHref(key, extra)` so every red or orange number links
   to the focused action view (which lands in Phase 4; until then it routes to a placeholder).
-- **Dependencies:** Phase 1 design system; the C1 ruling changes `BandPill`'s contract.
+- **Dependencies:** Phase 1 design system. **D12 removes `BandPill` rather than re-specifying
+  it** — there is no band. The component renders the flag's three states with the indicator
+  count beside it, and its name changes with its contract.
 - **Deliverables:** four screens matching their V2 page, filters narrowing them, withheld
   states rendering withheld, every figure opening its evidence, keyboard-operable rows.
 
@@ -679,7 +686,10 @@ contract that cannot invent a number.
   configured or a call fails — the screen must never be empty because a model was down;
   **guardrails:** a contract test asserting the service's only inputs are response DTOs, and a
   test asserting every number in generated text appears in the input facts.
-- **Dependencies:** Phase 2 (exec facts must exist first); C3 (INFERENCE and RECOMMENDATION).
+- **Dependencies:** Phase 2 (exec facts must exist first). **D13 puts INFERENCE and
+  RECOMMENDATION in frontend panel copy**, not on the wire — so this phase needs no enum from
+  the backend, unless **C3a** closes the other way and a recommendation must be labelled in
+  the response.
 - **Deliverables:** insight service; prompt; fallback; guardrail tests.
 
 #### Vertical 2 (Frontend)
@@ -859,7 +869,7 @@ to make something pass.
 | # | Risk | Impact | Mitigation |
 |---|---|---|---|
 | **R1** | **Extraction agreement is below the bar.** L3 38%, L4 19%. Signals, touchpoint, process gap and quality score are exactly what V2 leans on. | **High.** Screens can be built and still show poor data confidently, with a call-id drawer behind it. | Not a frontend problem and not solvable by this plan. `Phase-5-Findings.md` puts the per-field bar in front of Minnie. Build the screens; decide separately what a demo is pointed at. Withheld states must be honest, not decorative. |
-| **R2** | **C1 or C3 is deferred past Phase 2.** | **High.** Both are breaking; after the screens exist, the cost is every consumer. | Phase 0 exists for this. If C3 cannot be answered, build Phase 2 with the current three-value enum and accept a second breaking release — but record the choice. |
+| ~~**R2**~~ | ~~**C1 or C3 is deferred past Phase 2.**~~ **Closed 2026-09-25** — both decided (D12, D13) before any screen was built. | — | **Residual risk:** both were decided by Ranjit on a brief, not by Minnie in session. An overturn is still cheap *now* and stops being cheap the moment the four screens land on them. |
 | **R3** | **Evidence endpoint leaks answer-key material.** Transcript text is the one place label stripping matters. | **High.** `plan.md` §6.3 calls it the single most important safety property. | Extend the leak test to the serialised response before the endpoint ships, not after. |
 | **R4** | **The v2 prototype is not self-contained.** It reads `../data.js`, `../app.js` and `../app.css` from `Prototype/`. | Medium. Deleting or reorganising `Prototype/` breaks all seven pages silently — they render their source note and nothing else, with no console error. | **Already bitten once:** PR 23411 committed the folder as `Prototype_V2/`, beside `Prototype/` rather than inside it, so every `../` reference resolved to the repo root and nothing loaded anywhere. Relocated to `Prototype/v2/`. Do not tidy `Prototype/` away, and do not move either folder without loading a page afterwards. |
 | **R5** | **Prototype behaviour treated as specification where it is an artefact.** V2 computes over a fully-populated generated `data.js`; the real corpus has 100 calls, most employers with one. | Medium. Panels that look full in the prototype will be mostly withheld in production. | Every screen's empty and withheld states are first-class deliverables in Phase 2, not polish. |
@@ -910,8 +920,8 @@ section's length stays a true measure of what is still unknown (§14.4).
 | ID | Question | Owner | Blocks | Default if unanswered |
 |---|---|---|---|---|
 | ~~**G1**~~ | ~~**Period vs window.**~~ **DECIDED 2026-09-24 by Ranjit: the §6.1 rule as written.** A period filter narrows the corpus; it does not redefine a metric's window. Recorded as **D11** in `plan.md` §5, including the rejected alternative and the cost of the caveat-over-suppression choice. | Ranjit | ~~Phase 1~~ — **unblocked** | — |
-| **C1** | **What "flagged" names.** Metric 10's four conditions, or two-or-more indicator families? They select different accounts and V2 uses one word for both. | Minnie | **Phase 2** | **Hold D2 for the flag; show the family count beside it under a different name.** The workbook wins on definitions, and `dashboard.yaml` already warns where one word for two systems leads. |
-| **C3** | **Epistemic vocabulary.** Three values or six? And does `basis` split from `published`? | Minnie | **Phase 2** | **Split `basis` from `published`, six values.** This is the only default that creates work rather than deferring it, and it is chosen anyway: after Phase 2 the cost moves from one enum plus a client regeneration to every consumer. |
+| ~~**C1**~~ | ~~**What "flagged" names.**~~ **DECIDED 2026-09-25 by Ranjit: "flagged" means metric 10 and nothing else.** Families render as a count, never a level; "band" is reserved for employer size. Recorded as **D12** in `plan.md` §5 with the sort order, the filter contract, the ineligible state, the rejected four-level pill and the scannability cost. Minnie owns it and may overturn. | Minnie | ~~Phase 2~~ — **unblocked** | — |
+| ~~**C3**~~ | ~~**Epistemic vocabulary.**~~ **DECIDED 2026-09-25 by Ranjit: `basis` splits from `published`, with three values, not six.** The question as posed was wrong — the six are panel-level and the three are figure-level. Recorded as **D13** in `plan.md` §5 with the rejected single-enum shape and the REFERENCE audit cost. Minnie owns it, with Karim on `Open-Decisions.md` item 2, and may overturn. | Minnie | ~~Phase 2~~ — **unblocked** | — |
 | **C2** | **Applied-filters row.** V2 removes the scope line; §9 Practices requires the row to "always show scope and count". | Ranjit | **Phase 2** | **Adopt V2's chip row, keep the call count in the page head.** The practice is about not hiding what was excluded, not about that specific row. |
 | **C4** | **`design_churn_profile` on screen.** V2 shows it in a tooltip, honestly labelled. The codebase walls it out structurally. | Minnie | **Phase 2** | **Do not ship the value.** The disclosure V2 makes can be made in prose without it. Reversible later; a circular-scoring incident is not. |
 | **C8a** | **`archetype`.** Not one of the sixteen schema fields. Drives two playbooks (`brush_off`, `circular`) and a filter. | Karim, then Minnie | **Phase 2** | **Drop it** until a source exists. Shipping it means inventing a definition, which §2A.4 forbids. The two playbooks lose their predicate and are held back with it. |
@@ -925,6 +935,7 @@ section's length stays a true measure of what is still unknown (§14.4).
 
 | ID | Question | Owner | Relevant from | Default if unanswered |
 |---|---|---|---|---|
+| **C3a** | **Must a recommendation be labelled on the wire?** `/insights/actions` returns recommended actions today with nothing in the response saying they are recommendations — only the screen says so. Left open by **D13**. | Minnie | Phase 4 | **Label it.** If a suggested action can be read back as a measurement, the data should say which it is. Cheap while the write path is being built and not cheap afterwards — but it is a compliance judgement, not an engineering one, so it is not being closed by default. |
 | **C7** | **Cost-to-serve.** V2 removes it; insight 15 View 2 defines it. | Ranjit | Phase 6 | **Accept the removal from `/exec`, keep it on `/demand`.** V2 is the presentation authority; the `/exec` placement was Ranjit's own, not the docx's. |
 | **C8b** | **Member effort and complexity.** Our composites, not v9 fields. | Ranjit | Phase 2 | **Build them, always labelled as our composites** — §9 insight 29 already requires the label. |
 | **C8c** | **`caller_type`.** Used as a V2 filter and in an exec lens; not one of the sixteen fields. Already open in `Open-Decisions.md`. | Minnie | Phase 2 | **Omit the filter** until the existing open question closes. The exec lens keeps the comparison and states the field's provenance. |
@@ -970,10 +981,14 @@ section is a true measure of what is still unknown.
 
 **Start immediately, in this order:**
 
-1. **Phase 0 decision brief** — Vertical 1, one day. G1 is decided, so nothing blocks Phase 1;
-   C1 and C3 block Phase 2. Everything else in §14.1 has a default that lets work continue.
+1. ~~**Phase 0 decision brief**~~ — **done.** G1, C1 and C3 are all decided (**D11**, **D12**,
+   **D13** in `plan.md` §5; brief in `Decisions-C1-C3.md`). Nothing in §14.1 now blocks a phase.
 2. **Phase 1 design system** — Vertical 2, starts the same day and needs nothing from anyone.
 3. **Phase 1 period filter** — Vertical 1, ready to start: G1 is decided (D11 in `plan.md` §5).
 
-**Do not start** Phase 2's screens before C1 is answered; `BandPill`'s contract depends on it,
-and it is referenced on four of the seven pages.
+Phase 2's screens are **unblocked**: C1 is answered (**D12**), so `BandPill` has a contract — and
+under D12 it is not a band pill. It renders the flag's three states (flagged, not flagged, not
+eligible) with the indicator count beside it, and the name should change with the contract.
+
+**Land D12 and D13 in one backend commit**, per checkpoint I1. Both are breaking; two releases
+cost twice and the second arrives while a frontend branch is mid-screen.

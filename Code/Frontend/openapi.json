@@ -1028,6 +1028,17 @@
       "FigureResponse": {
         "description": "One number and everything needed to judge it.",
         "properties": {
+          "basis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the number came from, and only that \u2014 never whether it is shown. OBSERVED: counted from the Call Tag Schema's own fields. DERIVED: our composite rather than a workbook field, and labelled as such wherever it surfaces. REFERENCE: an account fact from the workbook, not from a call. Null only on a withheld figure with no origin to name \u2014 a question the v9 schema has no field for. Branch on `published` for suppression."
+          },
           "callIds": {
             "description": "The calls behind the figure, so it can be argued with. Present on withheld figures too: a reader told four calls is too few should still be able to open those four.",
             "items": {
@@ -1043,10 +1054,6 @@
             },
             "title": "Caveats",
             "type": "array"
-          },
-          "epistemic": {
-            "$ref": "#/components/schemas/CodedValue",
-            "description": "MEASURED: computed from the Call Tag Schema's own fields. DERIVED: our composite rather than a workbook field, and labelled as such wherever it surfaces. WITHHELD: suppressed, with a reason."
           },
           "n": {
             "description": "The sample behind the figure. Equals the number of call ids.",
@@ -1084,8 +1091,7 @@
         },
         "required": [
           "published",
-          "n",
-          "epistemic"
+          "n"
         ],
         "title": "FigureResponse",
         "type": "object"
@@ -1958,12 +1964,17 @@
             "type": "string"
           },
           "assessed": {
-            "description": "Only employers the window could speak about.",
+            "description": "Only employers the window could speak about, most indicators first and then soonest renewal (D12). Narrowed by `flagged` and `minIndicators`.",
             "items": {
               "$ref": "#/components/schemas/AccountRiskResponse"
             },
             "title": "Assessed",
             "type": "array"
+          },
+          "assessedCount": {
+            "description": "How many employers were assessed **before** `flagged` and `minIndicators` narrowed the list. Filters slice, never hide: a reader has to be able to tell a narrow screen from an empty one.",
+            "title": "Assessedcount",
+            "type": "integer"
           },
           "exposure": {
             "$ref": "#/components/schemas/ExposureResponse"
@@ -1998,6 +2009,7 @@
           "asOf",
           "windowWeeks",
           "assessed",
+          "assessedCount",
           "ineligible",
           "ineligibleCount",
           "flaggedShare",
@@ -5846,6 +5858,44 @@
               ],
               "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
               "title": "Asof"
+            }
+          },
+          {
+            "description": "Metric 10's flag. Omitted means both. Note this never selects ineligible employers \u2014 they are not in `assessed` at all, because too few calls to assess is not a finding of low risk.",
+            "in": "query",
+            "name": "flagged",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Metric 10's flag. Omitted means both. Note this never selects ineligible employers \u2014 they are not in `assessed` at all, because too few calls to assess is not a finding of low risk.",
+              "title": "Flagged"
+            }
+          },
+          {
+            "description": "Keep accounts where at least this many of the ten indicator families fired. A count, never a risk level: the families are informational and do not set the flag (D2, D12).",
+            "in": "query",
+            "name": "minIndicators",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 10,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep accounts where at least this many of the ten indicator families fired. A count, never a risk level: the families are informational and do not set the flag (D2, D12).",
+              "title": "Minindicators"
             }
           }
         ],

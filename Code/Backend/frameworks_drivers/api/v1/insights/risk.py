@@ -38,9 +38,10 @@ than a missing one.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import Field
 
 from frameworks_drivers.api.camel import CamelModel
@@ -117,12 +118,75 @@ class ExposureResponse(CamelModel):
     caveat: str
 
 
+@dataclass(frozen=True)
+class RiskQuery:
+    """The two row filters the risk screen adds, per **D12**.
+
+    Separate from `InsightsQuery` on purpose. That model is shared by every
+    insights endpoint because the filter bar is one filter bar; these two
+    mean something on this screen alone, and a parameter that is silently
+    ignored on eight endpoints is exactly the quiet disagreement the shared
+    model exists to prevent.
+
+    **There is no `band` parameter, and there will not be one.** D12 leaves
+    no band to filter by: the flag is metric 10's and the indicator families
+    are a count. `minIndicators` is that count, named as a count.
+
+    These select **rows**, not the population. `flaggedShare` and `exposure`
+    are computed over every eligible employer regardless of what is set
+    here — a share whose denominator moved with the row filter would be a
+    different statistic wearing the same label.
+    """
+
+    flagged: Annotated[
+        bool | None,
+        Query(
+            description=(
+                "Metric 10's flag. Omitted means both. Note this never selects "
+                "ineligible employers — they are not in `assessed` at all, because "
+                "too few calls to assess is not a finding of low risk."
+            )
+        ),
+    ] = None
+    min_indicators: Annotated[
+        int | None,
+        Query(
+            alias="minIndicators",
+            ge=0,
+            le=10,
+            description=(
+                "Keep accounts where at least this many of the ten indicator "
+                "families fired. A count, never a risk level: the families are "
+                "informational and do not set the flag (D2, D12)."
+            ),
+        ),
+    ] = None
+
+    def keeps(self, entry: AccountRisk) -> bool:
+        if self.flagged is not None and entry.assessment.flagged is not self.flagged:
+            return False
+        return not (self.min_indicators is not None and entry.indicator_count < self.min_indicators)
+
+
+RiskQueryDep = Annotated[RiskQuery, Depends()]
+
+
 class RiskScreenResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
     window_weeks: int = Field(description="Metric 10's window, in weeks, ending on `as_of`.")
     assessed: list[AccountRiskResponse] = Field(
-        description="Only employers the window could speak about."
+        description=(
+            "Only employers the window could speak about, most indicators first and "
+            "then soonest renewal (D12). Narrowed by `flagged` and `minIndicators`."
+        )
+    )
+    assessed_count: int = Field(
+        description=(
+            "How many employers were assessed **before** `flagged` and "
+            "`minIndicators` narrowed the list. Filters slice, never hide: a "
+            "reader has to be able to tell a narrow screen from an empty one."
+        )
     )
     ineligible: list[str] = Field(
         description=(
@@ -147,8 +211,10 @@ class RiskScreenResponse(CamelModel):
 async def read_account_risk(
     use_case: GetAccountRiskDep,
     query: InsightsQueryDep,
+    rows: RiskQueryDep,
 ) -> RiskScreenResponse:
     result = await use_case.execute(query.to_request())
+    shown = [entry for entry in result.assessed if rows.keeps(entry)]
     return RiskScreenResponse(
         scope=ScopeResponse.of(
             result.scope.corpus,
@@ -158,7 +224,8 @@ async def read_account_risk(
         ),
         as_of=result.scope.as_of.isoformat(),
         window_weeks=round(result.window.weeks),
-        assessed=[_account(entry) for entry in result.assessed],
+        assessed=[_account(entry) for entry in shown],
+        assessed_count=len(result.assessed),
         ineligible=list(result.ineligible),
         ineligible_count=len(result.ineligible),
         flagged_share=FigureResponse.of(result.flagged_share),

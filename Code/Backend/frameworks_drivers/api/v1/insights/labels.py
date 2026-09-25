@@ -47,7 +47,7 @@ from enum import Enum
 
 from pydantic import Field
 
-from domain.aggregation.figure import EpistemicClass, WithheldReason
+from domain.aggregation.figure import Basis, WithheldReason
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.rule_confidence import RuleConfidence
@@ -74,10 +74,11 @@ class CodedValue(CamelModel):
 #: derived label gets "Claims & Eob" and "Aht" wrong, in the one place
 #: everybody reads.
 LABELS: dict[Enum, str] = {
-    # --- Epistemic class (this vocabulary has no source; see figure.py) ---
-    EpistemicClass.MEASURED: "Measured",
-    EpistemicClass.DERIVED: "Derived",
-    EpistemicClass.WITHHELD: "Withheld",
+    # --- Basis: where a number came from (D13). Suppression is not a basis
+    # and is not in this enum; it is `published` plus `withheldReason`.
+    Basis.OBSERVED: "Observed",
+    Basis.DERIVED: "Derived",
+    Basis.REFERENCE: "Reference",
     # --- Why a figure is withheld. Each means something different to a
     # reader: more calls fixes the first, only a schema change fixes the
     # second, and the third is not a finding of low risk.
@@ -129,7 +130,7 @@ LABELS: dict[Enum, str] = {
 #: these, so adding one here without its members fails loudly rather than
 #: shipping blank labels to a screen.
 LABELLED_ENUMS: tuple[type[Enum], ...] = (
-    EpistemicClass,
+    Basis,
     WithheldReason,
     SignalSeverity,
     SignalType,

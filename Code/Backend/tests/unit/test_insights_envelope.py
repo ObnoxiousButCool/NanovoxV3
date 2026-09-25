@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 
 from application.ports.insights_source import CorpusQuery, CorpusSlice
-from domain.aggregation.figure import EpistemicClass, Figure, WithheldReason
+from domain.aggregation.figure import Basis, Figure, WithheldReason
 from domain.aggregation.filters import AppliedFilter, FilteredCalls, Unmeasurable
 from domain.value_objects.call_source import CallSource
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
@@ -29,7 +29,7 @@ class TestWithheldNeverBecomesZero:
     def test_published_is_the_field_to_branch_on(self) -> None:
         """A client should not have to infer suppression from a missing value."""
         withheld = FigureResponse.of(Figure.withheld(WithheldReason.NO_FIELD))
-        measured = FigureResponse.of(Figure.measured(0.0, ("C-1",)))
+        measured = FigureResponse.of(Figure.observed(0.0, ("C-1",)))
 
         assert withheld.published is False
         assert measured.published is True
@@ -40,7 +40,7 @@ class TestWithheldNeverBecomesZero:
         A measured 0.0 and a withheld figure both render as "0" if a client
         coalesces null. They differ on `published`, which does not.
         """
-        real_zero = FigureResponse.of(Figure.measured(0.0, ("C-1",)))
+        real_zero = FigureResponse.of(Figure.observed(0.0, ("C-1",)))
         withheld = FigureResponse.of(Figure.withheld(WithheldReason.BELOW_MIN_N, ("C-1",)))
 
         assert real_zero.value == 0.0
@@ -56,12 +56,12 @@ class TestWithheldNeverBecomesZero:
         assert payload.withheld_reason.label == "Cost per call not set"
 
     def test_a_published_figure_carries_no_reason(self) -> None:
-        assert FigureResponse.of(Figure.measured(1.0, ("C-1",))).withheld_reason is None
+        assert FigureResponse.of(Figure.observed(1.0, ("C-1",))).withheld_reason is None
 
 
 class TestEvidence:
     def test_every_figure_opens_its_calls(self) -> None:
-        figure = Figure.measured(0.25, ("C-1", "C-2", "C-3", "C-4"))
+        figure = Figure.observed(0.25, ("C-1", "C-2", "C-3", "C-4"))
 
         payload = FigureResponse.of(figure)
 
@@ -75,50 +75,70 @@ class TestEvidence:
         assert FigureResponse.of(figure).call_ids == ["C-1", "C-2", "C-3", "C-4"]
 
     def test_n_and_the_call_ids_cannot_disagree(self) -> None:
-        payload = FigureResponse.of(Figure.measured(0.5, ("C-1", "C-2")))
+        payload = FigureResponse.of(Figure.observed(0.5, ("C-1", "C-2")))
 
         assert payload.n == len(payload.call_ids)
 
     def test_caveats_travel_with_the_figure(self) -> None:
-        figure = Figure.measured(0.5, ("C-1",), caveats=("Talk time only.",))
+        figure = Figure.observed(0.5, ("C-1",), caveats=("Talk time only.",))
 
         assert FigureResponse.of(figure).caveats == ["Talk time only."]
 
 
-class TestEpistemicClass:
+class TestBasis:
     def test_derived_is_labelled_on_the_wire(self) -> None:
         """Composites "must be labelled as derived wherever they surface"."""
         payload = json.loads(
             FigureResponse.of(Figure.derived(3.2, ("C-1",))).model_dump_json(by_alias=True)
         )
 
-        assert payload["epistemic"] == {"code": "DERIVED", "label": "Derived"}
+        assert payload["basis"] == {"code": "DERIVED", "label": "Derived"}
 
-    def test_measured_and_withheld_serialise_as_their_names(self) -> None:
-        measured = json.loads(
-            FigureResponse.of(Figure.measured(1.0, ("C-1",))).model_dump_json(by_alias=True)
+    def test_basis_says_where_a_number_came_from_and_not_whether_it_is_shown(self) -> None:
+        """D13: the two facts are separate fields, and a withheld figure keeps both.
+
+        Before D13 a withheld figure's origin was overwritten by the word
+        WITHHELD, so a suppressed composite and a suppressed count looked
+        identical on the wire. They no longer do.
+        """
+        observed = json.loads(
+            FigureResponse.of(Figure.observed(1.0, ("C-1",))).model_dump_json(by_alias=True)
         )
         withheld = json.loads(
-            FigureResponse.of(Figure.withheld(WithheldReason.NOT_ELIGIBLE)).model_dump_json(
+            FigureResponse.of(
+                Figure.withheld(WithheldReason.NOT_ELIGIBLE, basis=Basis.DERIVED)
+            ).model_dump_json(by_alias=True)
+        )
+
+        assert observed["basis"]["code"] == "OBSERVED"
+        assert observed["published"] is True
+        assert withheld["basis"]["code"] == "DERIVED"
+        assert withheld["published"] is False
+        assert withheld["withheldReason"]["code"] == "NOT_ELIGIBLE"
+        assert withheld["withheldReason"]["label"] == "Not enough calls to assess"
+
+    def test_basis_is_null_only_when_there_is_no_origin_to_name(self) -> None:
+        """A question the v9 schema has no field for. Null, not a guess."""
+        payload = json.loads(
+            FigureResponse.of(Figure.withheld(WithheldReason.NO_FIELD)).model_dump_json(
                 by_alias=True
             )
         )
 
-        assert measured["epistemic"]["code"] == "MEASURED"
-        assert withheld["epistemic"]["code"] == "WITHHELD"
-        assert withheld["withheldReason"]["code"] == "NOT_ELIGIBLE"
-        assert withheld["withheldReason"]["label"] == "Not enough calls to assess"
+        assert payload["basis"] is None
+        assert payload["withheldReason"]["code"] == "NO_FIELD"
 
-    def test_the_three_classes_are_the_whole_vocabulary(self) -> None:
-        """Pinned deliberately: this enum has no source and needs confirming.
+    def test_the_three_bases_are_the_whole_vocabulary(self) -> None:
+        """Pinned deliberately. D13 settles these three; adding a fourth
+        breaks every exhaustive client switch, which is why REFERENCE is
+        here now rather than added later when something first produces one.
 
-        If it changes, this test is the reminder that the wire format and
-        every generated client change with it.
+        WITHHELD is deliberately absent: suppression is not an origin.
         """
-        assert [member.value for member in EpistemicClass] == [
-            "MEASURED",
+        assert [member.value for member in Basis] == [
+            "OBSERVED",
             "DERIVED",
-            "WITHHELD",
+            "REFERENCE",
         ]
 
 

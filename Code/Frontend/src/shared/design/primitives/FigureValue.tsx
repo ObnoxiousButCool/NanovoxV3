@@ -28,6 +28,14 @@ export function FigureValue({
 }
 
 /** `n` beside a figure, so a reader can judge how much it rests on. */
-export function FigureBasis({ figure }: { figure: Figure }) {
+/**
+ * How many calls stand behind a figure.
+ *
+ * Named `FigureBasis` until D13, which gave `basis` a precise and different
+ * meaning on the wire — where a number came from, not how much of it there
+ * is. A component rendering the sample size under that name would have read
+ * as the origin chip to the next person looking for one.
+ */
+export function FigureSample({ figure }: { figure: Figure }) {
   return <span className="nv-basis">{figure.n === 1 ? '1 call' : `${String(figure.n)} calls`}</span>
 }

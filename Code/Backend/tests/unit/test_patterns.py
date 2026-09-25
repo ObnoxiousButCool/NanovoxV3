@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from domain.aggregation.figure import EpistemicClass, WithheldReason
+from domain.aggregation.figure import Basis, WithheldReason
 from domain.aggregation.patterns import normalised_rate, share, time_aggregate
 from domain.dashboard_config import MetricThreshold
 from tests.fixtures.tagged_calls import call, calls
@@ -42,7 +42,7 @@ def test_a_rate_is_annualised_from_the_windows_own_length() -> None:
     )
 
     assert figure.value == pytest.approx(130.0)
-    assert figure.epistemic is EpistemicClass.MEASURED
+    assert figure.basis is Basis.OBSERVED
 
 
 def test_the_population_divides_as_per_thousand_not_as_a_headcount() -> None:

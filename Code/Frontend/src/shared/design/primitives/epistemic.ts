@@ -1,10 +1,21 @@
 /**
- * What each epistemic class means, and how the API's three map onto the six.
+ * Two vocabularies, deliberately kept apart — decision **D13**.
+ *
+ * A **panel** wears one of six chips saying what kind of claim it makes. A
+ * **figure** carries a `basis` saying where its number came from. They are
+ * not the same vocabulary at different sizes; they are about different
+ * objects. A panel tagged `inference` holds no figure at all — it holds a
+ * sentence, and there is nothing for a figure-level value to label.
+ *
+ * So the six live here as panel copy, the API sends three, and
+ * `basisFromApi` is the one seam between them.
  *
  * Separate from the component so `EpistemicChip.tsx` exports only a
  * component: React Fast Refresh works on a module whose exports are all
  * components, and a mixed module silently loses hot reloading.
  */
+
+import type { components } from '@/shared/api/schema'
 
 export type EpistemicKind =
   | 'observed'
@@ -24,18 +35,33 @@ export const EPISTEMIC_MEANING: Record<EpistemicKind, string> = {
   recommendation: 'A suggested action, for the owning team to confirm.',
 }
 
+/** The three the API can send, straight from the generated client. */
+type ApiFigure = components['schemas']['FigureResponse']
+export type BasisCode = NonNullable<NonNullable<ApiFigure['basis']>['code']>
+
 /**
- * The API's three values, mapped onto the six the screens use.
+ * A figure's `basis`, as a chip kind.
  *
- * `WITHHELD` has no chip of its own: a withheld figure is rendered by
- * `Withheld`, which states the reason. Chipping it "withheld" would put the
- * suppression in two places and the reason in neither.
+ * Typed against the generated schema rather than `string`, so that if the
+ * backend's vocabulary moves again this stops compiling instead of quietly
+ * returning null and dropping every chip off the screen — which is how the
+ * previous mapping would have failed.
  *
- * The API's set is narrower than the prototype's — conflict **C3**. When
- * that closes, this map is the only thing that changes.
+ * `null` means **say nothing**, and it has two causes that both want
+ * silence rather than a guess:
+ *
+ * - a withheld figure whose question the v9 schema has no field for, so
+ *   there is no origin to name;
+ * - a code this build does not know, which is a deployment skew rather
+ *   than a fact about the number.
+ *
+ * Suppression never arrives here. A withheld figure is rendered by
+ * `Withheld`, which states the reason; chipping it "withheld" would put
+ * the suppression in two places and the reason in neither.
  */
-export function epistemicFromApi(code: string): EpistemicKind | null {
-  if (code === 'MEASURED') return 'observed'
+export function basisFromApi(code: string | null | undefined): EpistemicKind | null {
+  if (code === 'OBSERVED') return 'observed'
   if (code === 'DERIVED') return 'derived'
+  if (code === 'REFERENCE') return 'reference'
   return null
 }

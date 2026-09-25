@@ -30,7 +30,7 @@ import {
   Delta,
   Empty,
   EpistemicChip,
-  FigureBasis,
+  FigureSample,
   FigureValue,
   KpiTile,
   Note,
@@ -51,7 +51,7 @@ function fixture(over: Partial<Figure>): Figure {
     value: 0.42,
     published: true,
     n: 64,
-    epistemic: { code: 'MEASURED', label: 'Measured' },
+    basis: { code: 'OBSERVED', label: 'Observed' },
     withheldReason: null,
     caveats: [],
     callIds: ['C-0001', 'C-0002', 'C-0003'],
@@ -59,12 +59,18 @@ function fixture(over: Partial<Figure>): Figure {
   }
 }
 
-const MEASURED = fixture({})
+const OBSERVED = fixture({})
+
+// The two withheld fixtures differ in more than their reason, and that is
+// the point of having both on the page (D13). A figure suppressed below min
+// n **keeps its basis** — it is still our count, there are just too few
+// calls to publish it. A figure the v9 schema has no field for has no
+// origin to name at all, so its basis is null and no chip is drawn.
 const BELOW_MIN_N = fixture({
   published: false,
   value: null,
   n: 4,
-  epistemic: { code: 'WITHHELD', label: 'Withheld' },
+  basis: { code: 'DERIVED', label: 'Derived' },
   withheldReason: { code: 'BELOW_MIN_N', label: 'Too few calls to publish' },
   caveats: ['4 calls, and this metric needs 30.'],
 })
@@ -72,7 +78,7 @@ const NO_FIELD = fixture({
   published: false,
   value: null,
   n: 0,
-  epistemic: { code: 'WITHHELD', label: 'Withheld' },
+  basis: null,
   withheldReason: { code: 'NO_FIELD', label: 'Not a field in the v9 schema' },
   callIds: [],
 })
@@ -118,8 +124,8 @@ export function DesignGallery() {
         <BigRow>
           <KpiTile
             label="Published"
-            value={<FigureValue figure={MEASURED} format={percent} />}
-            meta={<FigureBasis figure={MEASURED} />}
+            value={<FigureValue figure={OBSERVED} format={percent} />}
+            meta={<FigureSample figure={OBSERVED} />}
           />
           <KpiTile
             label="Withheld — too few calls"
@@ -137,7 +143,7 @@ export function DesignGallery() {
         </BigRow>
 
         <p className="nv-row">
-          <EvidenceLink callIds={MEASURED.callIds ?? []} title="Calls behind this figure" />
+          <EvidenceLink callIds={OBSERVED.callIds ?? []} title="Calls behind this figure" />
           <span className="nv-spacer" />
           <Delta now={12} prior={10} />
           <Delta now={8} prior={10} />

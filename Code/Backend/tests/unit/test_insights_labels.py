@@ -11,7 +11,7 @@ from enum import Enum
 
 import pytest
 
-from domain.aggregation.figure import EpistemicClass, WithheldReason
+from domain.aggregation.figure import Basis, WithheldReason
 from domain.value_objects.rule_layer import RuleLayer
 from domain.value_objects.signal_type import SignalType
 from frameworks_drivers.api.v1.insights.labels import LABELLED_ENUMS, LABELS, coded
@@ -59,4 +59,4 @@ def test_withheld_reasons_read_differently_from_each_other() -> None:
 def test_labels_are_not_naive_title_case() -> None:
     """The derivation this module refuses would produce 'Billing Defect'."""
     assert coded(SignalType.BILLING_DEFECT).label != "Billing Defect"
-    assert coded(EpistemicClass.MEASURED).label == "Measured"
+    assert coded(Basis.OBSERVED).label == "Observed"

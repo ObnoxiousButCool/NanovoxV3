@@ -20,7 +20,7 @@ from domain.aggregation.demand import (
     self_inflicted_demand,
 )
 from domain.aggregation.exec_scorecard import escalation_integrity_pair, exec_scorecard
-from domain.aggregation.figure import EpistemicClass, WithheldReason
+from domain.aggregation.figure import WithheldReason
 from domain.aggregation.isolation import (
     broker_pattern,
     drill_tree,
@@ -608,7 +608,7 @@ def test_every_withheld_panel_says_what_would_unlock_it() -> None:
         assert panel.question and panel.why and panel.unlocked_by
         assert panel.figure.withheld_reason is WithheldReason.NO_FIELD
         assert panel.figure.value is None
-        assert panel.figure.epistemic is EpistemicClass.WITHHELD
+        assert panel.figure.published is False
 
 
 def test_the_withheld_panels_cover_the_insights_section_9_marks_withheld() -> None:

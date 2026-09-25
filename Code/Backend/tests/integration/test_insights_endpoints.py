@@ -134,7 +134,7 @@ async def test_a_withheld_figure_is_never_a_zero_on_the_wire(
     for metric in withheld:
         assert metric["figure"]["value"] is None
         assert metric["figure"]["withheldReason"] is not None
-        assert metric["figure"]["epistemic"]["code"] == "WITHHELD"
+        assert metric["figure"]["published"] is False
 
 
 @pytest.mark.asyncio
@@ -249,6 +249,80 @@ async def test_unavailable_indicator_families_are_not_reported_as_zero(
     for observation in unavailable:
         assert observation["rate"] is None
         assert observation["unavailableBecause"]
+
+
+@pytest.mark.asyncio
+async def test_the_risk_row_filters_do_not_move_the_denominator(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """D12's filters select rows, not the population.
+
+    `flaggedShare` is flagged over *eligible*, and `exposure` sums the
+    flagged accounts. If narrowing the visible list narrowed those too, a
+    reader who filtered to "flagged only" would see a share of 100% and an
+    exposure that grew as they filtered — a different statistic wearing the
+    same label. The filter is applied after both are computed, and this is
+    the test that says so.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 4, "EMP-02": 4})
+
+    unfiltered = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
+    filtered = client.get("/api/v1/insights/risk", params={"asOf": AS_OF, "flagged": "true"}).json()
+
+    assert filtered["flaggedShare"] == unfiltered["flaggedShare"]
+    assert filtered["exposure"] == unfiltered["exposure"]
+    assert all(account["flagged"] is True for account in filtered["assessed"])
+
+
+@pytest.mark.asyncio
+async def test_a_narrowed_risk_list_still_says_how_many_were_assessed(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Filters slice, never hide (§9).
+
+    Without `assessedCount` a reader cannot tell "two accounts fired three
+    indicators" from "only two accounts were assessable at all", and those
+    are very different screens.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 4, "EMP-02": 4})
+
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF, "minIndicators": 10}).json()
+
+    assert body["assessedCount"] == 2
+    assert len(body["assessed"]) <= body["assessedCount"]
+
+
+@pytest.mark.asyncio
+async def test_there_is_no_band_parameter(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """D12 leaves no band to filter by, and the API must not invent one.
+
+    The prototype filtered on `band=High`. Accepting it here — even
+    ignoring it — would let a client believe it had narrowed the screen
+    when it had not. FastAPI ignores unknown parameters, so the guard is
+    that `band` appears nowhere in the schema for this path.
+    """
+    schema = client.get("/openapi.json").json()
+    names = {
+        parameter["name"]
+        for parameter in schema["paths"]["/api/v1/insights/risk"]["get"]["parameters"]
+    }
+
+    assert "band" not in names
+    assert {"flagged", "minIndicators"} <= names
+
+
+@pytest.mark.asyncio
+async def test_an_out_of_range_indicator_count_is_refused(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """There are ten families, so eleven is a question with no answer."""
+    await seed(session_factory, calls_per_employer={"EMP-01": 4})
+
+    response = client.get("/api/v1/insights/risk", params={"asOf": AS_OF, "minIndicators": 11})
+
+    assert response.status_code == 422
 
 
 @pytest.mark.asyncio

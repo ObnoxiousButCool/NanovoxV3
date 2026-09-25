@@ -778,6 +778,8 @@ export interface components {
          * @description One number and everything needed to judge it.
          */
         FigureResponse: {
+            /** @description Where the number came from, and only that — never whether it is shown. OBSERVED: counted from the Call Tag Schema's own fields. DERIVED: our composite rather than a workbook field, and labelled as such wherever it surfaces. REFERENCE: an account fact from the workbook, not from a call. Null only on a withheld figure with no origin to name — a question the v9 schema has no field for. Branch on `published` for suppression. */
+            basis?: components["schemas"]["CodedValue"] | null;
             /**
              * Callids
              * @description The calls behind the figure, so it can be argued with. Present on withheld figures too: a reader told four calls is too few should still be able to open those four.
@@ -788,8 +790,6 @@ export interface components {
              * @description Generated from the numbers, never hand-written.
              */
             caveats?: string[];
-            /** @description MEASURED: computed from the Call Tag Schema's own fields. DERIVED: our composite rather than a workbook field, and labelled as such wherever it surfaces. WITHHELD: suppressed, with a reason. */
-            epistemic: components["schemas"]["CodedValue"];
             /**
              * N
              * @description The sample behind the figure. Equals the number of call ids.
@@ -1212,9 +1212,14 @@ export interface components {
             asOf: string;
             /**
              * Assessed
-             * @description Only employers the window could speak about.
+             * @description Only employers the window could speak about, most indicators first and then soonest renewal (D12). Narrowed by `flagged` and `minIndicators`.
              */
             assessed: components["schemas"]["AccountRiskResponse"][];
+            /**
+             * Assessedcount
+             * @description How many employers were assessed **before** `flagged` and `minIndicators` narrowed the list. Filters slice, never hide: a reader has to be able to tell a narrow screen from an empty one.
+             */
+            assessedCount: number;
             exposure: components["schemas"]["ExposureResponse"];
             /** @description Flagged as a share of the *eligible* employers, never of all of them. */
             flaggedShare: components["schemas"]["FigureResponse"];
@@ -2007,6 +2012,10 @@ export interface operations {
                 to?: string | null;
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
+                /** @description Metric 10's flag. Omitted means both. Note this never selects ineligible employers — they are not in `assessed` at all, because too few calls to assess is not a finding of low risk. */
+                flagged?: boolean | null;
+                /** @description Keep accounts where at least this many of the ten indicator families fired. A count, never a risk level: the families are informational and do not set the flag (D2, D12). */
+                minIndicators?: number | null;
             };
             header?: never;
             path?: never;

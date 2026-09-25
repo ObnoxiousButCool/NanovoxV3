@@ -17,7 +17,7 @@ import {
   Delta,
   Empty,
   EpistemicChip,
-  epistemicFromApi,
+  basisFromApi,
   FigureValue,
   KpiTile,
   MAX_COLUMNS,
@@ -33,7 +33,7 @@ function figure(over: Partial<Figure> = {}): Figure {
     value: 42,
     published: true,
     n: 30,
-    epistemic: { code: 'MEASURED', label: 'Measured' },
+    basis: { code: 'OBSERVED', label: 'Observed' },
     withheldReason: null,
     caveats: [],
     callIds: [],
@@ -95,15 +95,28 @@ describe('FigureValue', () => {
 })
 
 describe('EpistemicChip', () => {
-  it('maps the API classes onto the vocabulary the screens use', () => {
-    expect(epistemicFromApi('MEASURED')).toBe('observed')
-    expect(epistemicFromApi('DERIVED')).toBe('derived')
+  it("maps a figure's basis onto the vocabulary the screens use", () => {
+    expect(basisFromApi('OBSERVED')).toBe('observed')
+    expect(basisFromApi('DERIVED')).toBe('derived')
+    expect(basisFromApi('REFERENCE')).toBe('reference')
   })
 
-  it('gives WITHHELD no chip, because Withheld states the reason instead', () => {
-    // Two places claiming the suppression and neither carrying the reason
+  it('says nothing when the figure names no origin', () => {
+    // D13: `basis` is null on a withheld figure the v9 schema has no field
+    // for. There is nothing to name, so the chip is absent rather than
+    // guessed. Suppression itself is rendered by `Withheld`, which carries
+    // the reason — two places claiming it and neither holding the reason
     // is how a reader ends up unable to tell why a figure is missing.
-    expect(epistemicFromApi('WITHHELD')).toBeNull()
+    expect(basisFromApi(null)).toBeNull()
+    expect(basisFromApi(undefined)).toBeNull()
+  })
+
+  it('drops an unknown code rather than rendering it', () => {
+    // A code this build does not know is deployment skew, not a fact about
+    // the number. WITHHELD is the concrete case: it was a class before D13
+    // and is not one now.
+    expect(basisFromApi('WITHHELD')).toBeNull()
+    expect(basisFromApi('MEASURED')).toBeNull()
   })
 
   it('explains itself rather than relying on the word alone', () => {

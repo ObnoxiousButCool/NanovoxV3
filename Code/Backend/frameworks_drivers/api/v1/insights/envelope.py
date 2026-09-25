@@ -83,12 +83,16 @@ class FigureResponse(CamelModel):
         )
     )
     n: int = Field(description="The sample behind the figure. Equals the number of call ids.")
-    epistemic: CodedValue = Field(
+    basis: CodedValue | None = Field(
+        default=None,
         description=(
-            "MEASURED: computed from the Call Tag Schema's own fields. DERIVED: our "
+            "Where the number came from, and only that — never whether it is shown. "
+            "OBSERVED: counted from the Call Tag Schema's own fields. DERIVED: our "
             "composite rather than a workbook field, and labelled as such wherever it "
-            "surfaces. WITHHELD: suppressed, with a reason."
-        )
+            "surfaces. REFERENCE: an account fact from the workbook, not from a call. "
+            "Null only on a withheld figure with no origin to name — a question the "
+            "v9 schema has no field for. Branch on `published` for suppression."
+        ),
     )
     withheld_reason: CodedValue | None = Field(
         default=None,
@@ -113,7 +117,7 @@ class FigureResponse(CamelModel):
             value=figure.value,
             published=figure.published,
             n=figure.n,
-            epistemic=coded(figure.epistemic),
+            basis=coded(figure.basis) if figure.basis is not None else None,
             withheld_reason=(
                 coded(figure.withheld_reason) if figure.withheld_reason is not None else None
             ),

@@ -219,7 +219,7 @@ def flagged_share(config: DashboardConfig, assessments: Sequence[RiskAssessment]
             ),
         )
     flagged = [a for a in eligible if a.flagged]
-    return Figure.measured(
+    return Figure.observed(
         len(flagged) / len(eligible),
         tuple(sorted(ref for a in flagged for ref in a.evidence)),
     )
@@ -325,6 +325,25 @@ def _complaint_share(calls: Sequence[CallContext]) -> float:
 
 def _complained(call: CallContext) -> bool:
     return call.tags.complaint is not None and call.tags.complaint.present
+
+
+def months_until(renewal_month: str, on_or_after: date) -> int | None:
+    """Whole months from `on_or_after` to the next renewal, or `None`.
+
+    D12 sorts the risk list by indicator count and then by soonest renewal,
+    so the number has to come from somewhere every client agrees on. It
+    comes from here, beside the condition that already reads the same field,
+    rather than being re-derived from a month name in each screen.
+
+    `None` for a month reference data does not carry — the same refusal
+    `_next_renewal` already makes. A caller that sorts on this must decide
+    where unknown goes; it must not become zero, which would read as
+    "renewing now" for the accounts we know least about.
+    """
+    renewal = _next_renewal(renewal_month, on_or_after)
+    if renewal is None:
+        return None
+    return (renewal.year - on_or_after.year) * 12 + (renewal.month - on_or_after.month)
 
 
 def _next_renewal(renewal_month: str, on_or_after: date) -> date | None:

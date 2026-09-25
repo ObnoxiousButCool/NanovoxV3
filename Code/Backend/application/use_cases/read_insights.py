@@ -64,6 +64,7 @@ from domain.aggregation.risk_flag import (
     assess,
     exposure,
     flagged_share,
+    months_until,
 )
 from domain.aggregation.rules import (
     RuleRow,
@@ -200,6 +201,24 @@ class AccountRisk:
 
     assessment: RiskAssessment
     observations: tuple[Observation, ...]
+    #: The employer's renewal month, and how many months until it from
+    #: `as_of`. Carried so the list can sort by it (D12) without every
+    #: client re-deriving a date, and `None` when reference data gives a
+    #: month name that cannot be read — which sorts last rather than
+    #: pretending the renewal is imminent.
+    renewal_month: str
+    months_to_renewal: int | None
+
+    @property
+    def indicator_count(self) -> int:
+        """How many indicator families fired. **Not** a risk level (D12).
+
+        A count, deliberately. The prototype turned this number into a
+        four-level band and called accounts "flagged" off it, which selects
+        a different population from metric 10's flag. Here it stays a
+        number and the flag stays the flag.
+        """
+        return sum(1 for observation in self.observations if observation.observed)
 
 
 @dataclass(frozen=True)
@@ -424,13 +443,31 @@ class GetAccountRisk:
                     calls,
                     window,
                 ),
+                renewal_month=employer.renewal_month,
+                months_to_renewal=months_until(employer.renewal_month, scope.as_of),
             )
             for assessment, employer in zip(assessments, scope.corpus.employers, strict=True)
             if assessment.eligible
         )
         return RiskResult(
             scope=scope,
-            assessed=assessed,
+            # D12's order: most indicators first, then soonest renewal. Sorted
+            # here rather than on each screen so every client agrees, and the
+            # order is a ruling rather than a component's taste.
+            #
+            # An unreadable renewal month sorts last instead of first: `None`
+            # would otherwise read as "renewing now" and put the accounts we
+            # know least about at the top of a page about risk.
+            assessed=tuple(
+                sorted(
+                    assessed,
+                    key=lambda entry: (
+                        -entry.indicator_count,
+                        entry.months_to_renewal if entry.months_to_renewal is not None else 99,
+                        entry.assessment.employer_ref,
+                    ),
+                )
+            ),
             ineligible=tuple(sorted(a.employer_ref for a in assessments if not a.eligible)),
             exposure=exposure(assessments, scope.corpus.employers),
             flagged_share=flagged_share(self._config, assessments),

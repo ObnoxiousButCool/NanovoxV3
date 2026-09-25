@@ -1,7 +1,7 @@
 """What every aggregation returns: a number that carries its own standing.
 
-§9's practices say this four times over, in four different ways — epistemic
-class on every panel, withheld is not zero, every figure opens its evidence,
+§9's practices say this four times over, in four different ways — a stated
+basis on every figure, withheld is not zero, every figure opens its evidence,
 caveats computed from the numbers rather than written by hand. All four are
 properties of a *figure*, so they live on one object that every aggregation
 returns, instead of being re-honoured nine times in nine slightly different
@@ -21,26 +21,42 @@ because each one is a mistake that produces a plausible-looking number:
   abstract — §9 requires every figure to open its evidence, and a figure that
   cannot produce its calls cannot be argued with.
 
-## A note on `EpistemicClass`, which is not from the workbook
+## `Basis` — where a number came from, and only that (D13)
 
-The plan requires "epistemic class" on every response and never says what
-its values are; neither does the workbook, nor the prototype. (The
-prototype's `confidence` chip is the *rule's* grade — VERIFIED / SECONDARY /
-UNVERIFIED, already modelled as `RuleConfidence` — which is a different
-thing about a different object.)
+`Basis` answers one question: **where did this number come from?** It does
+not say whether the number is published. Those are different facts about a
+figure, and holding them in one enum put the reason for suppression in two
+places and the full reason in neither.
 
-The three values here are inferred from what the sources do say, not
-invented freely:
+So suppression lives on `withheld_reason` alone, and `published` is derived
+from it. `WITHHELD` is no longer a basis, because "we are not showing this"
+is not an origin.
 
-- `WITHHELD` is used throughout §9 and has its own panel type.
-- `DERIVED` is required by name: member effort and complexity are "our
-  composites, not v9 fields" and "must be labelled as derived wherever they
-  surface".
-- `MEASURED` is what is left — computed straight from tagged fields.
+The three values, and why these three:
 
-**This needs Minnie's confirmation before the screens are built on it.** It
-is the one piece of vocabulary in this layer with no source behind it, and
-if it is wrong the fix is this enum and its call sites, not the figures.
+- `OBSERVED` — counted from the Call Tag Schema's own fields. Renamed from
+  `MEASURED`, which is a word no reader uses and the prototype never used.
+- `DERIVED` — our composite, not a v9 field. Required by name: member effort
+  and complexity "must be labelled as derived wherever they surface".
+- `REFERENCE` — an account fact from the workbook rather than from a call.
+
+**`REFERENCE` has no producer in this codebase yet, and that is deliberate.**
+Every `Figure` today is computed from calls, sometimes over a reference
+denominator such as enrolled lives; the pure account facts (`enrolled`,
+`annual_premium`, `renewal_month`) reach the wire as plain fields that carry
+no basis at all. The value is defined now because D13 is *the* breaking
+release for this vocabulary, and adding a case to an enum later breaks every
+exhaustive client switch a second time. It is here to be used when an account
+fact is first published as a figure — not as decoration.
+
+## What is deliberately *not* here
+
+`PATTERN`, `INFERENCE` and `RECOMMENDATION`. The prototype wears those on a
+**panel header**, above a block of prose, and a panel tagged `inference`
+holds no figure at all — it holds a sentence. They describe what a claim
+asserts, not where a number came from, and no response carries narrative
+today. D13 keeps them in frontend panel copy. (`RuleConfidence` is a third
+thing again: the *rule's* provenance grade, about a different object.)
 """
 
 from __future__ import annotations
@@ -51,13 +67,16 @@ from enum import Enum
 from domain.dashboard_config import MetricThreshold
 
 
-class EpistemicClass(str, Enum):
-    #: Computed from the Call Tag Schema's own fields, at or above min n.
-    MEASURED = "MEASURED"
+class Basis(str, Enum):
+    """Where a number came from. Never whether it is shown."""
+
+    #: Counted from the Call Tag Schema's own fields.
+    OBSERVED = "OBSERVED"
     #: Our composite, not a v9 field. Labelled as such wherever it surfaces.
     DERIVED = "DERIVED"
-    #: Suppressed. Never zero, and always with a reason.
-    WITHHELD = "WITHHELD"
+    #: An account fact from the workbook, not counted from a call. No
+    #: producer yet — see the module docstring.
+    REFERENCE = "REFERENCE"
 
 
 class WithheldReason(str, Enum):
@@ -90,21 +109,27 @@ class Figure:
     value: float | None
     n: int
     call_ids: tuple[str, ...]
-    epistemic: EpistemicClass
+    #: Where the number came from. `None` only on a withheld figure whose
+    #: origin is genuinely nothing — NO_FIELD, where the workbook has no
+    #: such field, so there is no source to name. A figure withheld below
+    #: min n keeps its basis: "our composite, too few calls to publish" is
+    #: a more useful thing to render than "withheld".
+    basis: Basis | None
     withheld_reason: WithheldReason | None = None
     caveats: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        withheld = self.epistemic is EpistemicClass.WITHHELD
+        withheld = self.withheld_reason is not None
+        if not withheld and self.basis is None:
+            raise ValueError(
+                "A published figure must say where it came from — a number on screen "
+                "with no stated origin is the thing `basis` exists to prevent."
+            )
         if withheld and self.value is not None:
             raise ValueError(
                 "A withheld figure must not carry a value — zero reads as good news "
                 "where the truth is absence of evidence."
             )
-        if withheld and self.withheld_reason is None:
-            raise ValueError("A withheld figure must say why it is withheld.")
-        if not withheld and self.withheld_reason is not None:
-            raise ValueError("A published figure must not carry a withheld reason.")
         if self.n < 0:
             raise ValueError("n cannot be negative.")
         if len(self.call_ids) != self.n:
@@ -115,23 +140,45 @@ class Figure:
 
     @property
     def published(self) -> bool:
-        return self.epistemic is not EpistemicClass.WITHHELD
+        """Suppression lives in one place, and this reads it.
+
+        `withheld_reason` is the single fact; this is a view of it. There is
+        no second field to disagree with, which is what D13 bought.
+        """
+        return self.withheld_reason is None
 
     @classmethod
-    def measured(
+    def observed(
         cls,
         value: float,
         call_ids: tuple[str, ...],
         *,
         caveats: tuple[str, ...] = (),
     ) -> Figure:
+        """Counted from the calls. Was `measured` before D13."""
         return cls(
             value=value,
             n=len(call_ids),
             call_ids=call_ids,
-            epistemic=EpistemicClass.MEASURED,
+            basis=Basis.OBSERVED,
             caveats=caveats,
         )
+
+    @classmethod
+    def reference(
+        cls,
+        value: float,
+        *,
+        caveats: tuple[str, ...] = (),
+    ) -> Figure:
+        """An account fact from the workbook, not counted from any call.
+
+        No `call_ids`, and that is the point rather than an omission: there
+        are no calls behind a renewal date. `n` is 0, which for this basis
+        means "not a sample" rather than "no evidence" — a reader must not
+        see it gated against a min n it was never a sample for.
+        """
+        return cls(value=value, n=0, call_ids=(), basis=Basis.REFERENCE, caveats=caveats)
 
     @classmethod
     def derived(
@@ -146,7 +193,7 @@ class Figure:
             value=value,
             n=len(call_ids),
             call_ids=call_ids,
-            epistemic=EpistemicClass.DERIVED,
+            basis=Basis.DERIVED,
             caveats=caveats,
         )
 
@@ -156,6 +203,7 @@ class Figure:
         reason: WithheldReason,
         call_ids: tuple[str, ...] = (),
         *,
+        basis: Basis | None = None,
         caveats: tuple[str, ...] = (),
     ) -> Figure:
         """Suppressed, with its evidence still attached.
@@ -163,12 +211,17 @@ class Figure:
         The call ids survive suppression on purpose: a reader who is told
         four calls is too few to publish a rate should still be able to open
         those four calls.
+
+        `basis` survives too, where there is one. A composite withheld below
+        min n is still our composite, and saying so is more use than
+        "withheld" alone. It stays `None` for `NO_FIELD`, where the workbook
+        has no such field and there is no origin to name.
         """
         return cls(
             value=None,
             n=len(call_ids),
             call_ids=call_ids,
-            epistemic=EpistemicClass.WITHHELD,
+            basis=basis,
             withheld_reason=reason,
             caveats=caveats,
         )
@@ -196,13 +249,18 @@ class Figure:
         Getting that backwards turns a real gate into one that always passes.
         """
         sample = len(call_ids) if n is None else n
+        basis = Basis.DERIVED if derived else Basis.OBSERVED
         if threshold.withheld(sample):
             return cls.withheld(
                 WithheldReason.BELOW_MIN_N,
                 call_ids,
+                # The gate knows the basis whether or not it publishes, so it
+                # passes it through. Dropping it here would make a withheld
+                # composite indistinguishable from a withheld count.
+                basis=basis,
                 caveats=(below_min_n_caveat(threshold, sample),),
             )
-        published = cls.derived if derived else cls.measured
+        published = cls.derived if derived else cls.observed
         return published(value, call_ids)
 
 

@@ -633,6 +633,91 @@ volume would blank most of the exec screen for any short period. **Disclosure
 was chosen over suppression** — if that ever reads wrong on a real screen, this
 is the decision to revisit.
 
+**D12 — What "flagged" names. DECIDED 2026-09-25 by Ranjit** on the brief in
+`Decisions-C1-C3.md`. Minnie owns the conflict (C1) and may overturn this; it is
+recorded as decided rather than defaulted so nobody reads it later as silence.
+
+> **"Flagged" means metric 10 and nothing else.** The ten indicator families are
+> shown as a **count**, never as a level, and the word **"band"** is reserved for
+> employer size in lives — it names no risk concept anywhere.
+
+Three things wore two words between them: `RiskAssessment.flagged` (metric 10's
+four conditions, eligible at 3 calls), `NV.isFlagged` in the prototype (two or
+more of ten indicator families, no eligibility floor at all), and `band` in
+`accounts.py`, which is the peer-comparison size denominator. The first two
+select **different populations in both directions** — an employer with one call
+firing three families is "High" in the prototype and *not assessable* under
+metric 10, which at batch-1 volume is the common case rather than the edge.
+
+What this settles, so the screens have an answer without coming back:
+
+- The risk list sorts by **indicator count, then soonest renewal** — the
+  prototype's own order, without naming the result a band.
+- The risk filter offers **`flagged=true|false`** and **`minIndicators=N`**. It
+  does not offer `band=High`. This is a URL contract and is expensive to move
+  after the screens ship, which is why it is settled here rather than in a
+  component.
+- **Ineligible is its own visual state**, never folded into "not flagged".
+  `RiskAssessment.state` already writes the sentence for it.
+
+The rejected alternative was adopting the prototype's four-level pill as the
+headline. It is the more attractive screen, and it is the failure
+`config/dashboard.yaml` names outright: *"Two scoring systems on one page, one of
+which quietly feeds the other, is how a yes/no flag turns back into a band."*
+
+The deliberate cost: **the risk screen is less immediately scannable.** A colour
+ramp sorts itself at a glance and a count does not. That is the price of having
+one scoring system instead of two, and it is paid on the screen a reader looks at
+first. Almost nothing is built for this decision — the boolean, the 0–4 count,
+`eligible`, `quotable` and all ten gated families already exist and already reach
+the wire, including the conditions and families that did **not** fire. D12 is a
+naming and rendering ruling, not new computation.
+
+**D13 — Epistemic vocabulary. DECIDED 2026-09-25 by Ranjit** on the same brief.
+Minnie owns the conflict (C3), with Karim on `Open-Decisions.md` item 2.
+
+> **A figure carries `basis`: OBSERVED · REFERENCE · DERIVED.** Suppression leaves
+> the enum and stays on `published` + `withheldReason`, which already carry it.
+> **PATTERN, INFERENCE and RECOMMENDATION are panel-level** and remain frontend
+> copy, because the server authors no claims.
+
+The plan stated this as three values versus six. That is not what it is. The two
+vocabularies **attach to different objects at different granularities**: the API's
+class is a property of *one number*, and the prototype's chip is a property of a
+*panel header* above a block of prose. A panel tagged `inference` contains no
+figure at all — it contains a sentence, so there is nothing for a figure-level
+enum to label.
+
+The six therefore split on a real seam. OBSERVED, REFERENCE and DERIVED say where
+a number came from and fit on a figure; PATTERN, INFERENCE and RECOMMENDATION say
+what a claim asserts, and **no response carries narrative, headline or insight
+text today** — all panel copy is written in the frontend.
+
+MEASURED is renamed OBSERVED: a breaking rename with no behavioural change, cheap
+now and not cheap later, and it removes a word no reader uses. WITHHELD leaves
+`basis` because `Figure.__post_init__` already makes a withheld value
+structurally impossible and `published` is the field clients branch on — holding
+suppression in two places would put the reason in neither.
+
+The rejected alternative was the plan's own recommendation: one six-value enum on
+the figure. It would have put three values on figures that can never hold them
+and left the panels that genuinely need those words still labelled in frontend
+copy — the same split, with an enum pretending otherwise.
+
+The deliberate cost, and it is real: **REFERENCE is not free.** Adding it means
+auditing every existing figure for whether it is counted from calls or is an
+account fact from the workbook. That is the only part of D13 that is work rather
+than naming, and it is the part most likely to be pushed back on. The rest is one
+enum, one mapping function and a client regeneration — `epistemic` is defined in
+exactly one place, `FigureResponse`.
+
+**What D13 does not settle:** whether a recommendation must be labelled *on the
+wire* rather than only on screen. `/insights/actions` returns recommended actions
+today with nothing in the response saying they are recommendations. If there is an
+audit expectation that a suggested action is machine-labelled as suggested, so it
+cannot be quoted out of context as a measurement, that is a backend field. Carried
+as **C3a** in the revised plan's §14.2 against Phase 4, not silently closed here.
+
 ---
 
 ## 6. Architecture

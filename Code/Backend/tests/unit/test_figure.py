@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from domain.aggregation.figure import (
-    EpistemicClass,
+    Basis,
     Figure,
     WithheldReason,
     below_min_n_caveat,
@@ -47,26 +47,40 @@ def test_a_withheld_figure_cannot_carry_a_value() -> None:
             value=0.0,
             n=3,
             call_ids=_CALLS,
-            epistemic=EpistemicClass.WITHHELD,
+            basis=Basis.OBSERVED,
             withheld_reason=WithheldReason.BELOW_MIN_N,
         )
 
 
-def test_a_withheld_figure_must_say_why() -> None:
-    """ "Not shown" with no reason is indistinguishable from a bug."""
-    with pytest.raises(ValueError, match="must say why"):
-        Figure(value=None, n=0, call_ids=(), epistemic=EpistemicClass.WITHHELD)
+def test_a_published_figure_must_say_where_it_came_from() -> None:
+    """D13: a number on screen with no stated origin is what `basis` prevents.
+
+    The mirror of the withheld-reason invariant. Before D13 this was
+    unreachable — `epistemic` was required and WITHHELD lived inside it, so
+    "published with nothing said about it" could not be expressed. Now that
+    suppression is `withheld_reason` alone, it can be, so it is refused.
+    """
+    with pytest.raises(ValueError, match="must say where it came from"):
+        Figure(value=1.0, n=0, call_ids=(), basis=None)
 
 
-def test_a_published_figure_cannot_carry_a_withheld_reason() -> None:
-    with pytest.raises(ValueError, match="must not carry a withheld reason"):
-        Figure(
-            value=1.0,
-            n=0,
-            call_ids=(),
-            epistemic=EpistemicClass.MEASURED,
-            withheld_reason=WithheldReason.BELOW_MIN_N,
-        )
+def test_suppression_is_one_field_and_published_reads_it() -> None:
+    """There is no second field to disagree with. That is what D13 bought.
+
+    `published` was a view of `epistemic`, and `withheld_reason` had to be
+    kept consistent with it by two hand-written invariants. One fact now.
+    """
+    published = Figure(value=1.0, n=0, call_ids=(), basis=Basis.OBSERVED)
+    withheld = Figure(
+        value=None,
+        n=0,
+        call_ids=(),
+        basis=Basis.OBSERVED,
+        withheld_reason=WithheldReason.BELOW_MIN_N,
+    )
+
+    assert published.published is True
+    assert withheld.published is False
 
 
 def test_every_withheld_reason_means_something_different() -> None:
@@ -86,7 +100,7 @@ def test_every_withheld_reason_means_something_different() -> None:
 
 def test_n_and_the_call_ids_cannot_disagree() -> None:
     with pytest.raises(ValueError, match="every figure opens its evidence"):
-        Figure(value=1.0, n=10, call_ids=_CALLS, epistemic=EpistemicClass.MEASURED)
+        Figure(value=1.0, n=10, call_ids=_CALLS, basis=Basis.OBSERVED)
 
 
 def test_a_withheld_figure_keeps_its_evidence() -> None:
@@ -98,9 +112,50 @@ def test_a_withheld_figure_keeps_its_evidence() -> None:
     assert figure.published is False
 
 
+def test_a_gated_composite_keeps_its_basis_when_withheld() -> None:
+    """ "Our composite, too few calls" beats "withheld" on a panel.
+
+    The gate knows the basis whether or not it publishes. Dropping it would
+    make a withheld composite indistinguishable from a withheld count, and
+    §9 insight 29 requires composites labelled *wherever* they surface —
+    which includes the times they do not carry a number.
+    """
+    figure = Figure.gated(_threshold(), value=42.0, call_ids=_CALLS, derived=True)
+
+    assert figure.published is False
+    assert figure.basis is Basis.DERIVED
+
+
+def test_a_figure_with_no_field_behind_it_names_no_basis() -> None:
+    """Insights 6, 17 and 25: the workbook has no such field.
+
+    There is no origin to state, so `basis` is null rather than a guess.
+    This is the only case where a figure may decline to say where it came
+    from, and it may because there is genuinely nothing there.
+    """
+    figure = Figure.withheld(WithheldReason.NO_FIELD)
+
+    assert figure.basis is None
+    assert figure.published is False
+
+
+def test_a_reference_fact_is_not_a_sample() -> None:
+    """There are no calls behind a renewal date, and n is not evidence here.
+
+    `n == 0` on a REFERENCE figure means "not a sample", not "no evidence".
+    A reader must not see it gated against a min n it was never a sample for.
+    """
+    figure = Figure.reference(1450.0)
+
+    assert figure.basis is Basis.REFERENCE
+    assert figure.published is True
+    assert figure.n == 0
+    assert figure.call_ids == ()
+
+
 def test_a_negative_n_is_refused() -> None:
     with pytest.raises(ValueError, match="cannot be negative"):
-        Figure(value=None, n=-1, call_ids=(), epistemic=EpistemicClass.MEASURED)
+        Figure(value=None, n=-1, call_ids=(), basis=Basis.OBSERVED)
 
 
 # --- Gating on the metric's own min n --------------------------------------
@@ -121,7 +176,7 @@ def test_a_sample_at_min_n_is_published() -> None:
 
     assert figure.published is True
     assert figure.value == pytest.approx(42.0)
-    assert figure.epistemic is EpistemicClass.MEASURED
+    assert figure.basis is Basis.OBSERVED
 
 
 def test_a_metric_with_no_min_n_is_never_gated() -> None:
@@ -156,7 +211,7 @@ def test_a_derived_figure_is_labelled_as_derived() -> None:
 
     figure = Figure.gated(_threshold(), value=1.0, call_ids=calls, derived=True)
 
-    assert figure.epistemic is EpistemicClass.DERIVED
+    assert figure.basis is Basis.DERIVED
     assert figure.published is True
 
 
