@@ -718,6 +718,25 @@ audit expectation that a suggested action is machine-labelled as suggested, so i
 cannot be quoted out of context as a measurement, that is a backend field. Carried
 as **C3a** in the revised plan's §14.2 against Phase 4, not silently closed here.
 
+**D14 — The revised plan's open questions. DECIDED 2026-09-25 by Minnie**, on
+the defaults and recommendations in `Revised-Implementation-Plan.md` §14. One
+entry for eleven answers, because ten of them accept the plan's own default and
+the reasoning for each is already written beside it there.
+
+| Item | Answer | Note |
+|---|---|---|
+| **C4** `design_churn_profile` on screen | **Not shipped.** | The disclosure V2 makes is made in prose. `test_no_circular_scoring.py` stands unchanged. |
+| **C8a** `archetype` | **Dropped** until a source exists. | The `brush_off` and `circular` playbooks are held back with it. Karim can reopen it by naming a source. |
+| **C8c** `caller_type` filter | **Omitted** until `Open-Decisions.md` closes the question. | The exec lens keeps its comparison and states the field's provenance. |
+| **C3a** Recommendations on the wire | **Labelled in the response**, not only on screen. | A suggested action must not be readable as a measurement. Built with Phase 4's write path. |
+| **R9** Who may edit an action | **Trusted network, single tenant**, stated in this plan and on the screen. | No permission model is invented. Revisit before any multi-tenant or external deployment. |
+| **C5** `/rules` | **Ships, reachable from `/agents`**, not on the main rail. | Insights 23, 24 and 27 render there. |
+| **C6** `/demand` | **Ships.** | Insights 16 and 19 have no other home. |
+| **G9** `/value-pack` | **Deferred.** | Insights 30–32 stay PARTIAL and are recorded as not built, not as cut. |
+| **U1** The four exec lens groupings | **A client requirement.** | The exec response is shaped around Employers · Churn & retention · Product & service · Payer & carrier, and they are not reorganised as a presentational choice. |
+| **U2** AI surfaces when the provider is unavailable | **Show an explicit "unavailable" state**, like the withheld panels. | Not templated copy standing in for generated text, and not a silently hidden panel. |
+| **U3** The seven-lane action lifecycle | **STILL OPEN — asked of the client.** Nobody on the team knows whether it is the client's process. | Until answered, Phase 4 keeps the lifecycle states in configuration rather than in code, so a different answer is a config change and a migration of existing rows, not a rewrite. |
+
 ---
 
 ## 6. Architecture

@@ -30,7 +30,10 @@ _POLL_SECONDS = 2.0
 
 
 def _out(line: str) -> None:
+    # Flushed per line: a run takes minutes, and redirected to a file an
+    # unflushed stdout shows nothing until the process exits.
     sys.stdout.write(f"{line}\n")
+    sys.stdout.flush()
 
 
 def _progress_line(progress: RunProgress) -> str:
