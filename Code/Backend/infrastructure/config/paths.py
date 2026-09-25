@@ -35,13 +35,20 @@ DEFAULT_FRONTEND_DIST: Path = PROJECT_ROOT / "Code" / "Frontend" / "dist"
 # gate passing, so the label-leak proof §6.3 calls the single most important
 # safety property was not actually running. Tracked and found by default, it
 # runs everywhere. Still overridable — a deployment that does not look like
-# this checkout sets WORKBOOK_PATH and TRANSCRIPTS_PATH.
+# this checkout sets WORKBOOK_PATH and TRANSCRIPTS_DIR.
 DEFAULT_CORPUS_DIR: Path = PROJECT_ROOT / "Documents"
-# The v9 build-bible workbook.
-DEFAULT_WORKBOOK_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_corpus_v9_build_bible_2.xlsx"
-# The matched-pair transcripts PDF (plan §11: workbook _2 with PDF _1, no
-# other pairing).
-DEFAULT_TRANSCRIPTS_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_v9_transcripts_batch1_001-100_1.pdf"
+# The v9 build-bible workbook — the current one only. A superseded revision
+# (see Documents/superseded/) is kept as a regression fixture, never read by
+# default.
+DEFAULT_WORKBOOK_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_corpus_v9_build_bible_6.xlsx"
+# Every current transcript batch PDF lives directly in this directory —
+# `PdfCorpusSource`/`PdfAnswerKeySource` glob `*.pdf` here, non-recursively,
+# so `Documents/superseded/` is naturally excluded (see plan §11: a
+# superseded batch and its current revision must never both be ingested,
+# which is exactly how the "17 Sep re-issue" trap there happened once).
+# The corpus is delivered in batches short of a 600-call target — more
+# will land in this directory over time, never requiring a settings change.
+DEFAULT_TRANSCRIPTS_DIR: Path = DEFAULT_CORPUS_DIR
 # L3's fixed scoring rubric (Call Quality Framework sheet).
 DEFAULT_RUBRIC_PATH: Path = DEFAULT_CONFIG_DIR / "rubric.yaml"
 

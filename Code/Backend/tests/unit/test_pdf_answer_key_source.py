@@ -12,7 +12,7 @@ from tests.fixtures.transcript_snippets import C0001_RAW_BLOCK
 
 
 def _source_with_blocks(monkeypatch: pytest.MonkeyPatch, *blocks: str) -> PdfAnswerKeySource:
-    monkeypatch.setattr(pdf_answer_key_source, "extract_call_blocks", lambda _path: blocks)
+    monkeypatch.setattr(pdf_answer_key_source, "extract_call_blocks_across", lambda _paths: blocks)
     return PdfAnswerKeySource(Path("unused"))
 
 

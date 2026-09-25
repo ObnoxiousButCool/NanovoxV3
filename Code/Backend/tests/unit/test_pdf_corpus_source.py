@@ -1,6 +1,6 @@
 """`PdfCorpusSource` — the legitimate half of each call, and nothing else.
 
-`extract_call_blocks` is monkeypatched to return fixture blocks directly,
+`extract_call_blocks_across` is monkeypatched to return fixture blocks directly,
 so these tests need no real PDF file on disk.
 """
 
@@ -19,7 +19,7 @@ from tests.fixtures.transcript_snippets import C0001_RAW_BLOCK
 
 
 def _source_with_blocks(monkeypatch: pytest.MonkeyPatch, *blocks: str) -> PdfCorpusSource:
-    monkeypatch.setattr(pdf_corpus_source, "extract_call_blocks", lambda _path: blocks)
+    monkeypatch.setattr(pdf_corpus_source, "extract_call_blocks_across", lambda _paths: blocks)
     return PdfCorpusSource(Path("unused"))
 
 

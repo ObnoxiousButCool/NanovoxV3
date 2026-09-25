@@ -14,7 +14,12 @@ from pathlib import Path
 
 from application.ports.answer_key_source import AnswerKeySource
 from domain.entities.answer_key import AnswerKey
-from infrastructure.corpus.pdf_text import call_reference, extract_call_blocks, split_call_block
+from infrastructure.corpus.pdf_text import (
+    call_reference,
+    discover_batch_pdfs,
+    extract_call_blocks_across,
+    split_call_block,
+)
 
 # Header line 1 reads e.g. "C-0001 — Claims & EOB"; captures the category.
 _LINE_1 = re.compile(r"^C-\d{4} — (?P<category>.+)$")
@@ -38,12 +43,16 @@ def _parse_rule_refs(raw: str) -> tuple[str, ...]:
 
 
 class PdfAnswerKeySource(AnswerKeySource):
-    def __init__(self, path: Path) -> None:
-        self._path = path
+    """Reads every batch PDF found directly in `directory` (non-recursive —
+    see `discover_batch_pdfs`)."""
+
+    def __init__(self, directory: Path) -> None:
+        self._directory = directory
 
     def read(self) -> tuple[AnswerKey, ...]:
         keys = []
-        for block in extract_call_blocks(self._path):
+        blocks = extract_call_blocks_across(discover_batch_pdfs(self._directory))
+        for block in blocks:
             reference = call_reference(block)
             (line1, line2, line3), _dialogue_text, call_tags_text = split_call_block(block)
             keys.append(self._parse_call(reference, line1, line2, line3, call_tags_text))

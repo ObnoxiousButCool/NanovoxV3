@@ -18,6 +18,9 @@ like a plausible corpus:
             escalation that was requested but not handled
     C-9004  malformed cells in five columns, to prove the parser warns and
             leaves the field unset rather than guessing
+    C-9005  an escalation with nothing warranting it, escalated anyway — the
+            tracker's " — OVER-ESCALATION" annotation on an otherwise
+            untriggered row (first seen on C-0120, batch 2a)
 """
 
 from __future__ import annotations
@@ -151,6 +154,32 @@ TRACKER_SHEETS: Sheets = {
             "present",  # missing the target
             "just_a_code",  # missing severity and owner
             "triggered true|authority_limit",  # truncated
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+        ],
+        [
+            "C-9005",
+            "Thu 06 Aug 2026 14:05",
+            "B2a",
+            "MEMBER",
+            "CB-7700301",
+            "Priya Osei",
+            "AGT-07|Marcus Diallo",
+            "Billing & Premium",
+            "dental",
+            "—",
+            "invoice_statement",
+            "RESOLVED",
+            "78",
+            "310",
+            "Competent and resolved",
+            "absent",
+            "",
+            "triggered false|none|requested_by_caller false|handled true — OVER-ESCALATION",
             "",
             "",
             "",

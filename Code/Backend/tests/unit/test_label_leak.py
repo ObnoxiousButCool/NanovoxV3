@@ -25,7 +25,7 @@ from tests.support.leak_check import assert_no_answer_key_leak
     "block", [C0001_RAW_BLOCK, C0999_RAW_BLOCK_WITH_BLANK_HEADER_LINE], ids=["C-0001", "C-0999"]
 )
 def test_no_answer_key_text_survives_stripping(monkeypatch: pytest.MonkeyPatch, block: str) -> None:
-    monkeypatch.setattr(pdf_corpus_source, "extract_call_blocks", lambda _path: (block,))
+    monkeypatch.setattr(pdf_corpus_source, "extract_call_blocks_across", lambda _paths: (block,))
     (record,) = PdfCorpusSource(Path("unused")).read()
 
     assert_no_answer_key_leak(record)
