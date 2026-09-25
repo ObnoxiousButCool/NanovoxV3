@@ -1,0 +1,42 @@
+# The action centre's lifecycle (Revised plan Phase 4). Loaded and validated
+# at startup by infrastructure/config/action_lifecycle_loader.py.
+#
+# The seven lanes are the v2 prototype's (Prototype/v2/actions.html). Whether
+# they are the client's own process is still open with the client (D14, U3),
+# which is why they live here rather than in code.
+#
+# `requires` is what an action must carry to sit in a state. Monitoring and
+# completed require a measurement (the plan's rule, D14 as answered on
+# 2026-09-25): what was done and a measurement window, and for completed the
+# outcome too.
+#
+# `open` marks a state still being worked; an open action past its due date
+# reads as past due whichever lane it is in. "Overdue" stays a lane someone
+# moves a card into, as the prototype has it.
+
+initial: needs_action
+
+states:
+  - code: needs_action
+    label: Needs action
+    open: true
+  - code: assigned
+    label: Assigned
+    open: true
+  - code: in_progress
+    label: In progress
+    open: true
+  - code: overdue
+    label: Overdue
+    open: true
+  - code: action_taken
+    label: Action taken
+    open: false
+  - code: monitoring
+    label: Monitoring
+    open: false
+    requires: [action_taken, measurement_window]
+  - code: completed
+    label: Completed
+    open: false
+    requires: [action_taken, measurement_window, outcome]

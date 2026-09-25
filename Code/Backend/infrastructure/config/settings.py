@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     # The playbook catalogue behind every issue key a screen links to
     # (Revised plan Phase 4, I3). Validated at startup, like the thresholds.
     playbooks_path: Path = DEFAULT_CONFIG_DIR / "playbooks.yaml"
+    # The action centre's lanes and what each requires (D14, U3: config,
+    # not code, until the client confirms the lifecycle).
+    action_lifecycle_path: Path = DEFAULT_CONFIG_DIR / "action_lifecycle.yaml"
 
     # --- Model providers (plan §8 Phase 3, decision D1) ---------------------
     # OpenAI gpt-4o-mini is the default; Anthropic and Ollama are the only two
