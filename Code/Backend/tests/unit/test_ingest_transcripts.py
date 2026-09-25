@@ -13,6 +13,7 @@ from domain.entities.employer_contact import EmployerContact
 from domain.entities.ingested_call import IngestedCall
 from domain.entities.member import Member
 from domain.entities.rule import Rule
+from domain.entities.touchpoint import Touchpoint
 from domain.entities.turn import Turn
 from domain.value_objects.authority import Authority
 from domain.value_objects.call_resolution_status import CallResolutionStatus
@@ -88,6 +89,9 @@ class _FakeLookup(ReferenceLookup):
         return ()
 
     async def list_rules(self) -> tuple[Rule, ...]:
+        return ()
+
+    async def list_touchpoints(self) -> tuple[Touchpoint, ...]:
         return ()
 
 

@@ -1,0 +1,274 @@
+"""The action centre's write side over HTTP (Revised plan Phase 4).
+
+Create → assign → tick → log → action taken → measure → complete, against a
+real database, plus every refusal the lifecycle makes.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from application.ports.reference_source import ReferenceDataset
+from domain.entities.ingested_call import IngestedCall
+from domain.value_objects.call_resolution_status import CallResolutionStatus
+from domain.value_objects.caller_type import CallerType
+from infrastructure.persistence.repositories.call_repository import SqlCallRepository
+from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
+from infrastructure.system_clock import SystemClock
+from tests.integration.test_reference_lookup import _BROKER, _EMPLOYER
+
+URL = "/api/v1/insights/actions"
+_WINDOW = {"start": "2026-10-01", "end": "2026-10-28"}
+
+
+def _call(reference: str) -> IngestedCall:
+    return IngestedCall(
+        reference=reference,
+        caller_type=CallerType.MEMBER,
+        caller_ref="CB-7700205",
+        agent_ref="AGT-01",
+        transcript=None,
+        resolution_status=CallResolutionStatus.RESOLVED,
+        resolution_reason=None,
+        member_ref=None,
+        employer_contact_ref=None,
+        employer_ref=None,
+    )
+
+
+@pytest.fixture
+async def seeded(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    await SqlCallRepository(session_factory, SystemClock()).upsert_all(
+        (_call("C-0001"), _call("C-0002"))
+    )
+    await SqlReferenceRepository(session_factory).upsert(
+        ReferenceDataset(brokers=(_BROKER,), employers=(_EMPLOYER,))
+    )
+
+
+def _create(client: TestClient, **body: Any) -> dict[str, Any]:
+    response = client.post(URL, json={"title": "Fix escalations", **body})
+    assert response.status_code == 201, response.text
+    created: dict[str, Any] = response.json()
+    return created
+
+
+def _patch(client: TestClient, action_id: int, **body: Any) -> Any:
+    return client.patch(f"{URL}/{action_id}", json=body)
+
+
+# --- Create ------------------------------------------------------------------
+
+
+def test_raising_from_an_issue_key_prefills_from_its_playbook(
+    seeded: None, client: TestClient
+) -> None:
+    action = _create(client, issueKey="escalation_missed", callIds=["C-0001", "C-0002"])
+
+    assert action["ownerTeam"] == "Operations"
+    assert action["priority"] == "high"
+    assert action["sourceKind"] == "escalation_missed"
+    assert action["steps"][0] == {
+        "text": "Team lead reviews each call within 48 hours.",
+        "done": False,
+    }
+    assert action["recommendation"] == {
+        "text": "Team lead reviews each call within 48 hours.",
+        "claim": "recommendation",
+    }
+    assert action["evidence"].startswith("A supervisor was warranted")
+    assert action["callIds"] == ["C-0001", "C-0002"]
+    assert action["reference"] == f"ACT-{action['id']:03d}"
+
+
+def test_a_new_action_starts_in_the_first_lane_with_nothing_invented(
+    seeded: None, client: TestClient
+) -> None:
+    """D6: no owner, due date or outcome until someone sets one."""
+    action = _create(client, issueKey="unresolved")
+
+    assert action["status"] == "needs_action"
+    assert action["statusLabel"] == "Needs action"
+    assert action["owner"] is None and action["due"] is None and action["assignedOn"] is None
+    assert action["actionTaken"] is None and action["outcome"] is None
+    assert [entry["text"] for entry in action["log"]] == ["Card created"]
+
+
+def test_raising_by_hand_needs_an_owner_team(seeded: None, client: TestClient) -> None:
+    response = client.post(URL, json={"title": "Something"})
+
+    assert response.status_code == 400
+    assert "owner team" in response.json()["title"]
+
+    manual = _create(client, ownerTeam="Compliance", steps=["Log it."])
+    assert manual["sourceKind"] == "manual"
+    assert manual["priority"] == "medium"
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        ({"issueKey": "tp_made_up"}, "no playbook"),
+        ({"issueKey": "unresolved", "callIds": ["C-9999"]}, "ingested"),
+        ({"issueKey": "unresolved", "employerRef": "EMP-0000"}, "no employer"),
+        ({"issueKey": "unresolved", "status": "archived"}, "not a lifecycle state"),
+        ({"issueKey": "unresolved", "status": "completed"}, "Completed"),
+        ({"issueKey": "unresolved", "title": "  "}, "title"),
+    ],
+)
+def test_bad_creates_are_refused(
+    seeded: None, client: TestClient, body: dict[str, Any], message: str
+) -> None:
+    response = client.post(URL, json={"title": "x", **body})
+
+    assert response.status_code == 400
+    assert message in response.json()["title"]
+
+
+def test_an_action_can_name_a_real_employer(seeded: None, client: TestClient) -> None:
+    action = _create(client, issueKey="exit_language", employerRef=_EMPLOYER.reference)
+
+    assert action["employerRef"] == _EMPLOYER.reference
+
+
+# --- The whole lifecycle ------------------------------------------------------
+
+
+def test_create_assign_tick_log_act_measure_complete(seeded: None, client: TestClient) -> None:
+    action_id = _create(client, issueKey="escalation_missed", callIds=["C-0001"])["id"]
+
+    assigned = _patch(client, action_id, owner="Rebekah Vance", due="2026-10-09", status="assigned")
+    assert assigned.status_code == 200, assigned.text
+    assert assigned.json()["assignedOn"] is not None
+
+    ticked = _patch(client, action_id, ticks=[{"index": 0, "done": True}])
+    assert ticked.json()["steps"][0]["done"] is True
+
+    noted = _patch(client, action_id, note="Called the carrier.")
+    assert noted.json()["log"][-1]["text"] == "Called the carrier."
+
+    taken = _patch(client, action_id, actionTaken="Briefed the team.", status="action_taken")
+    assert taken.json()["status"] == "action_taken"
+
+    monitoring = _patch(client, action_id, measurementWindow=_WINDOW, status="monitoring")
+    assert monitoring.json()["measurementWindow"] == _WINDOW
+
+    completed = _patch(client, action_id, outcome="Refusals fell to zero.", status="completed")
+    body = completed.json()
+    assert completed.status_code == 200, completed.text
+    assert body["status"] == "completed"
+    assert [entry["text"] for entry in body["log"]] == [
+        "Card created",
+        "Owner Rebekah Vance",
+        "Due 2026-10-09",
+        "Moved to Assigned",
+        "Completed step: Team lead reviews each call within 48 hours.",
+        "Called the carrier.",
+        "Action taken: Briefed the team.",
+        "Moved to Action taken",
+        "Measurement window: 2026-10-01 to 2026-10-28",
+        "Moved to Monitoring",
+        "Outcome recorded: Refusals fell to zero.",
+        "Moved to Completed",
+    ]
+
+    reread = client.get(f"{URL}/{action_id}").json()
+    assert reread == body
+
+
+@pytest.mark.parametrize("target", ["monitoring", "completed"])
+def test_monitoring_and_completed_are_refused_without_a_measurement(
+    seeded: None, client: TestClient, target: str
+) -> None:
+    """The plan's hard rule, at the API."""
+    action_id = _create(client, issueKey="unresolved")["id"]
+    _patch(client, action_id, actionTaken="Did it.")
+
+    response = _patch(client, action_id, status=target)
+
+    assert response.status_code == 400
+    assert "measurement window" in response.json()["title"]
+    assert client.get(f"{URL}/{action_id}").json()["status"] == "needs_action"
+
+
+def test_a_refused_edit_changes_nothing(seeded: None, client: TestClient) -> None:
+    """One edit is all or nothing: the owner in a refused move is not saved."""
+    action_id = _create(client, issueKey="unresolved")["id"]
+
+    _patch(client, action_id, owner="Someone", status="completed")
+
+    after = client.get(f"{URL}/{action_id}").json()
+    assert after["owner"] is None
+    assert len(after["log"]) == 1
+
+
+def test_owner_and_due_can_be_cleared(seeded: None, client: TestClient) -> None:
+    action_id = _create(client, issueKey="unresolved", owner="A Person", due="2026-10-09")["id"]
+
+    cleared = _patch(client, action_id, clearOwner=True, clearDue=True).json()
+
+    assert cleared["owner"] is None and cleared["due"] is None
+
+
+def test_an_open_action_past_its_due_date_reads_as_past_due(
+    seeded: None, client: TestClient
+) -> None:
+    """Whatever lane it is in — nobody has to move it to Overdue."""
+    action_id = _create(client, issueKey="unresolved", due="2000-01-01")["id"]
+
+    assert client.get(f"{URL}/{action_id}").json()["pastDue"] is True
+
+
+def test_a_measurement_window_that_ends_before_it_starts_is_refused(
+    seeded: None, client: TestClient
+) -> None:
+    action_id = _create(client, issueKey="unresolved")["id"]
+
+    response = _patch(
+        client, action_id, measurementWindow={"start": "2026-10-02", "end": "2026-10-01"}
+    )
+
+    assert response.status_code == 400
+
+
+def test_an_unknown_action_is_a_404(seeded: None, client: TestClient) -> None:
+    assert client.get(f"{URL}/999").status_code == 404
+    assert _patch(client, 999, note="x").status_code == 404
+
+
+# --- The board ---------------------------------------------------------------
+
+
+def test_the_board_lists_the_lanes_and_says_who_can_edit(seeded: None, client: TestClient) -> None:
+    first = _create(client, issueKey="unresolved")
+    second = _create(client, issueKey="escalation_missed")
+
+    board = client.get(f"{URL}/board").json()
+
+    assert [lane["code"] for lane in board["lanes"]] == [
+        "needs_action",
+        "assigned",
+        "in_progress",
+        "overdue",
+        "action_taken",
+        "monitoring",
+        "completed",
+    ]
+    completed = next(lane for lane in board["lanes"] if lane["code"] == "completed")
+    assert completed["requires"] == ["action_taken", "measurement_window", "outcome"]
+    assert "Trusted network" in board["trustNote"]
+    assert [a["id"] for a in board["actions"]] == [second["id"], first["id"]]
+
+
+def test_the_derived_findings_are_untouched(seeded: None, client: TestClient) -> None:
+    """GET /insights/actions still returns findings, with no status on them."""
+    _create(client, issueKey="unresolved")
+
+    findings = client.get(URL).json()
+
+    assert "items" in findings
+    assert all("status" not in item for item in findings["items"])

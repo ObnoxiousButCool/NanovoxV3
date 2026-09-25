@@ -65,11 +65,47 @@ export interface paths {
         /** Findings to act on, routed, with compliance exposure */
         get: operations["read_actions_api_v1_insights_actions_get"];
         put?: never;
+        /** Raise an action, from a playbook or by hand */
+        post: operations["create_action_api_v1_insights_actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/actions/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every action being worked, with the board's lanes */
+        get: operations["read_board_api_v1_insights_actions_board_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/actions/{action_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One action, with its checklist and activity */
+        get: operations["read_action_api_v1_insights_actions__action_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Move, assign, tick, log or record what was done and what changed */
+        patch: operations["update_action_api_v1_insights_actions__action_id__patch"];
         trace?: never;
     };
     "/api/v1/insights/agents": {
@@ -207,6 +243,40 @@ export interface paths {
         };
         /** Region, broker and employer: isolated or systemic */
         get: operations["read_hierarchy_api_v1_insights_hierarchy_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/playbooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every issue key a screen can link to, and what each means */
+        get: operations["list_playbooks_api_v1_insights_playbooks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/playbooks/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The playbook for one issue key */
+        get: operations["get_playbook_api_v1_insights_playbooks__key__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -441,6 +511,21 @@ export interface components {
              */
             state: string;
         };
+        /** ActionBoardResponse */
+        ActionBoardResponse: {
+            /**
+             * Actions
+             * @description Newest first.
+             */
+            actions: components["schemas"]["ActionResponse"][];
+            /**
+             * Lanes
+             * @description In board order, from configuration.
+             */
+            lanes: components["schemas"]["LaneResponse"][];
+            /** Trustnote */
+            trustNote: string;
+        };
         /**
          * ActionItemResponse
          * @description One finding. No status — see this module's docstring.
@@ -457,6 +542,69 @@ export interface components {
             ownerTeam: string;
             severity: components["schemas"]["CodedValue"];
             signal: components["schemas"]["CodedValue"];
+        };
+        /** ActionResponse */
+        ActionResponse: {
+            /** Actiontaken */
+            actionTaken: string | null;
+            /** Assignedon */
+            assignedOn: string | null;
+            /** Brokerref */
+            brokerRef: string | null;
+            /** Callids */
+            callIds: string[];
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Due */
+            due: string | null;
+            /** Employerref */
+            employerRef: string | null;
+            /** Evidence */
+            evidence: string;
+            /** Id */
+            id: number;
+            /** Issuekey */
+            issueKey: string | null;
+            /**
+             * Log
+             * @description Oldest first. Append-only.
+             */
+            log: components["schemas"]["LogEntryResponse"][];
+            measurementWindow: components["schemas"]["MeasurementWindowBody"] | null;
+            /** Outcome */
+            outcome: string | null;
+            /** Owner */
+            owner: string | null;
+            /** Ownerteam */
+            ownerTeam: string;
+            /** Pastdue */
+            pastDue: boolean;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "high" | "medium" | "low";
+            recommendation: components["schemas"]["RecommendationResponse"] | null;
+            /**
+             * Reference
+             * @description The board's display id, e.g. ACT-007.
+             */
+            reference: string;
+            /** Sourcedetail */
+            sourceDetail: string | null;
+            /** Sourcekind */
+            sourceKind: string;
+            /** Status */
+            status: string;
+            /** Statuslabel */
+            statusLabel: string;
+            /** Steps */
+            steps: components["schemas"]["StepResponse"][];
+            /** Title */
+            title: string;
         };
         /** ActionsResponse */
         ActionsResponse: {
@@ -816,6 +964,37 @@ export interface components {
             failures: number;
             value: components["schemas"]["CodedValue"];
         };
+        /** CreateActionBody */
+        CreateActionBody: {
+            /** Callids */
+            callIds?: string[];
+            /** Due */
+            due?: string | null;
+            /** Employerref */
+            employerRef?: string | null;
+            /** Evidence */
+            evidence?: string | null;
+            /**
+             * Issuekey
+             * @description Prefills steps, owner team, priority and description from its playbook.
+             */
+            issueKey?: string | null;
+            /** Owner */
+            owner?: string | null;
+            /** Ownerteam */
+            ownerTeam?: string | null;
+            /** Priority */
+            priority?: ("high" | "medium" | "low") | null;
+            /**
+             * Status
+             * @description Defaults to the lifecycle's first lane.
+             */
+            status?: string | null;
+            /** Steps */
+            steps?: string[] | null;
+            /** Title */
+            title: string;
+        };
         /** DemandResponse */
         DemandResponse: {
             /** Asof */
@@ -869,6 +1048,16 @@ export interface components {
              * @description Mentions where one side was unknown. Not counted as drift: an unknown is not a disagreement, and scoring it as one would manufacture a finding out of a gap.
              */
             unresolved?: string[];
+        };
+        /** DynamicKindResponse */
+        DynamicKindResponse: {
+            /** Noun */
+            noun: string;
+            /**
+             * Prefix
+             * @enum {string}
+             */
+            prefix: "tp" | "cat" | "sig" | "pl";
         };
         /**
          * EmergingResponse
@@ -1074,6 +1263,13 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** HeldBackResponse */
+        HeldBackResponse: {
+            /** Key */
+            key: string;
+            /** Reason */
+            reason: string;
+        };
         /** HierarchyResponse */
         HierarchyResponse: {
             /** Asof */
@@ -1146,12 +1342,39 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** LaneResponse */
+        LaneResponse: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /**
+             * Open
+             * @description Still being worked. Open and past due reads as past due.
+             */
+            open: boolean;
+            /**
+             * Requires
+             * @description What an action must carry to sit here, e.g. a measurement window.
+             */
+            requires: string[];
+        };
         /** ListProvidersResponse */
         ListProvidersResponse: {
             /** Default */
             default: string;
             /** Providers */
             providers: components["schemas"]["ProviderResponse"][];
+        };
+        /** LogEntryResponse */
+        LogEntryResponse: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Text */
+            text: string;
         };
         /** MatrixRowResponse */
         MatrixRowResponse: {
@@ -1164,6 +1387,19 @@ export interface components {
             };
             /** Region */
             region: string;
+        };
+        /** MeasurementWindowBody */
+        MeasurementWindowBody: {
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
         };
         /**
          * MetricFigureResponse
@@ -1351,6 +1587,80 @@ export interface components {
              */
             to?: string | null;
         };
+        /** PlaybookCatalogueResponse */
+        PlaybookCatalogueResponse: {
+            /**
+             * Dynamickinds
+             * @description Key prefixes resolved per value, e.g. tp_denial_letter_eob.
+             */
+            dynamicKinds: components["schemas"]["DynamicKindResponse"][];
+            /**
+             * Heldback
+             * @description Prototype keys deliberately not shipped, and the decision that holds each.
+             */
+            heldBack: components["schemas"]["HeldBackResponse"][];
+            /**
+             * Playbooks
+             * @description Every static key.
+             */
+            playbooks: components["schemas"]["PlaybookResponse"][];
+            /** Reviewnote */
+            reviewNote: string;
+            /** Reviewed */
+            reviewed: boolean;
+            /** Version */
+            version: string;
+        };
+        /** PlaybookResponse */
+        PlaybookResponse: {
+            /**
+             * Claim
+             * @description Always a recommendation, never a measurement (D14, C3a).
+             * @default recommendation
+             * @constant
+             */
+            claim: "recommendation";
+            /**
+             * Dynamic
+             * @description Built from a template for one touchpoint, category, signal or product line.
+             */
+            dynamic: boolean;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Meaning */
+            meaning: string;
+            /**
+             * Ownerteam
+             * @description The suggested owner. For a touchpoint or signal key this is the workbook's own owner (Touchpoints sheet, Signal Taxonomy).
+             */
+            ownerTeam: string;
+            /**
+             * Reviewed
+             * @description Whether the owning teams have reviewed these steps. False until they do.
+             */
+            reviewed: boolean;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium";
+            /**
+             * Source
+             * @description The kind of action this issue produces, when it produces one.
+             */
+            source: string | null;
+            /** Steps */
+            steps: string[];
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "calls" | "accounts" | "actions";
+            /** Why */
+            why: string;
+        };
         /**
          * ProductLine
          * @enum {string}
@@ -1400,6 +1710,18 @@ export interface components {
          * @enum {string}
          */
         QualityBand: "GOOD" | "AVERAGE" | "POOR";
+        /** RecommendationResponse */
+        RecommendationResponse: {
+            /**
+             * Claim
+             * @description A suggestion, never a measurement (D14, C3a).
+             * @default recommendation
+             * @constant
+             */
+            claim: "recommendation";
+            /** Text */
+            text: string;
+        };
         /** RegionNodeResponse */
         RegionNodeResponse: {
             /** Brokers */
@@ -1626,6 +1948,20 @@ export interface components {
             /** Id */
             id: number;
         };
+        /** StepResponse */
+        StepResponse: {
+            /** Done */
+            done: boolean;
+            /** Text */
+            text: string;
+        };
+        /** TickBody */
+        TickBody: {
+            /** Done */
+            done: boolean;
+            /** Index */
+            index: number;
+        };
         /** TouchpointRowResponse */
         TouchpointRowResponse: {
             /**
@@ -1693,6 +2029,37 @@ export interface components {
             calls: number;
             /** Field */
             field: string;
+        };
+        /** UpdateActionBody */
+        UpdateActionBody: {
+            /** Actiontaken */
+            actionTaken?: string | null;
+            /**
+             * Cleardue
+             * @default false
+             */
+            clearDue: boolean;
+            /**
+             * Clearowner
+             * @default false
+             */
+            clearOwner: boolean;
+            /** Due */
+            due?: string | null;
+            measurementWindow?: components["schemas"]["MeasurementWindowBody"] | null;
+            /**
+             * Note
+             * @description Appended to the activity log as written.
+             */
+            note?: string | null;
+            /** Outcome */
+            outcome?: string | null;
+            /** Owner */
+            owner?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Ticks */
+            ticks?: components["schemas"]["TickBody"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -1932,6 +2299,125 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_action_api_v1_insights_actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateActionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_board_api_v1_insights_actions_board_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionBoardResponse"];
+                };
+            };
+        };
+    };
+    read_action_api_v1_insights_actions__action_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_action_api_v1_insights_actions__action_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                action_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateActionBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2411,6 +2897,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HierarchyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_playbooks_api_v1_insights_playbooks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookCatalogueResponse"];
+                };
+            };
+        };
+    };
+    get_playbook_api_v1_insights_playbooks__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookResponse"];
                 };
             };
             /** @description Validation Error */

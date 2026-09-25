@@ -1,0 +1,265 @@
+# The playbook catalogue — what sits behind every issue a screen links to
+# (Revised plan Phase 4, checkpoint I3). Loaded and validated at startup by
+# infrastructure/config/playbook_loader.py; an unknown or missing key is an
+# error, never a default.
+#
+# Ported from Prototype/v2/nv2.js NV.PLAYBOOK and NV.pb. Three changes, each
+# made by a recorded decision rather than here:
+#   - flagged, renew_soon and unowned are worded to D12: "flagged" means
+#     metric 10 and nothing else, not a count of indicator families.
+#   - high, brush_off and circular are held back (see held_back below).
+#   - Dynamic owners come from the workbook where it has one: the Touchpoints
+#     sheet for a touchpoint, the Signal Taxonomy for a signal.
+#
+# The steps are the prototype's generic good practice, not the owning teams'
+# own. `reviewed` stays false until Operations, Compliance, Account
+# Management and Knowledge Management have reviewed them (R7).
+
+version: "2026-09-25"
+reviewed: false
+review_note: >-
+  These steps are a generic starting playbook written for the prototype. They
+  have not been reviewed by the owning teams (Operations, Compliance, Account
+  Management, Knowledge Management) and are recommendations, not their
+  procedures.
+
+playbooks:
+  flagged:
+    label: Accounts flagged
+    unit: accounts
+    owner_team: Account Management
+    severity: high
+    meaning: Accounts metric 10 flags — two or more of its four named conditions in the window.
+    why: Several problems on one account is the pattern worth a conversation before renewal.
+    steps:
+      - "Work the list top-down: most indicators and soonest renewal first."
+      - Open each account's evidence and confirm the issues are real.
+      - Name an owner and one next step per account.
+      - Review the list weekly until it shrinks.
+
+  renew_soon:
+    label: Flagged and renewing soon
+    unit: accounts
+    owner_team: Account Management
+    severity: high
+    meaning: Accounts metric 10 flags whose renewal falls in the next few months.
+    why: Unresolved service problems are hardest to recover once renewal talks start.
+    steps:
+      - Book a service review with each employer before the renewal meeting.
+      - Fix or give a date for every open issue on the account first.
+      - Brief the broker of record with what went wrong and what was done.
+      - Log the review outcome against the renewal.
+
+  unresolved:
+    label: Unresolved calls
+    unit: calls
+    owner_team: Operations
+    severity: high
+    source: process_gap
+    meaning: The caller ended the call in the same position they started, with nobody owning the next step.
+    why: Unresolved calls come back as repeat contacts and complaints.
+    steps:
+      - Call each member back within two working days and confirm the issue is closed.
+      - "Tag the root cause on each call: rule, system or process."
+      - Where two or more calls share a topic, raise a fix with that touchpoint's owner.
+      - Re-check the count in four weeks.
+
+  escalation_missed:
+    label: Escalations missed
+    unit: calls
+    owner_team: Operations
+    severity: high
+    source: escalation_missed
+    meaning: A supervisor was warranted on the call, and the call ended without one.
+    why: This is a control failure, and the member knows they were refused.
+    steps:
+      - Team lead reviews each call within 48 hours.
+      - Contact the caller and offer the supervisor conversation they did not get.
+      - Brief the agents involved on when escalation is mandatory.
+      - Audit escalation handling weekly until integrity is above 90%.
+
+  complaint_choice:
+    label: Complaints against us
+    unit: calls
+    owner_team: Account Management
+    severity: medium
+    source: process_gap
+    meaning: The caller complained, and the complaint was about us rather than a carrier or broker.
+    why: Complaints we own are the ones we can fix directly.
+    steps:
+      - Log each complaint formally and acknowledge it to the member.
+      - Group complaints by topic and fix the largest topic first.
+      - Brief the broker on affected accounts before their renewal.
+      - Track the complaint count per account at the next review.
+
+  repeat_contact:
+    label: Repeat contacts
+    unit: calls
+    owner_team: Operations
+    severity: medium
+    source: process_gap
+    meaning: The member called again about an issue they had already called about.
+    why: Each repeat is a first call that failed, and it costs the member time twice.
+    steps:
+      - Link each repeat to its first call and find why the first call failed.
+      - Fix the cause at the touchpoint, not only in the call centre.
+      - Set a first-contact resolution target for the topic.
+
+  exit_language:
+    label: Exit or market-test language
+    unit: calls
+    owner_team: Account Management
+    severity: high
+    source: retention_risk
+    meaning: Someone on the call said, in their own words, that they may leave or look elsewhere.
+    why: This is the most direct retention signal the calls carry.
+    steps:
+      - Account manager calls the employer contact within five working days.
+      - Review renewal terms and open service issues before that call.
+      - Loop in the broker of record.
+      - Keep the account on watch until renewal and log the outcome.
+
+  critical_signal:
+    label: Critical signals
+    unit: calls
+    owner_team: Compliance
+    severity: high
+    meaning: A call raised a signal tagged critical severity.
+    why: Critical signals can mean member harm or a regulatory line crossed.
+    steps:
+      - Review each call the same day with the owning team.
+      - Confirm whether a member was harmed or a rule breached.
+      - Record the remediation and close the loop with the member.
+
+  control_exception:
+    label: Compliance control exceptions
+    unit: calls
+    owner_team: Compliance
+    severity: high
+    source: control_exception
+    meaning: A required step, such as a recording disclosure, was missed or done in the wrong order.
+    why: It is a breach on that call however few calls the agent has.
+    steps:
+      - Log each exception in the compliance register.
+      - Coach the agents involved and recheck their next ten calls.
+      - Move to formal review if one agent repeats the exception.
+      - Change the call script so the step cannot be skipped.
+
+  knowledge_failure:
+    label: Rules stated incorrectly
+    unit: calls
+    owner_team: Knowledge Management
+    severity: medium
+    source: knowledge_failure
+    meaning: An agent explained a published rule wrongly on the call.
+    why: The member may act on wrong information about their cover.
+    steps:
+      - Correct the information with each affected member.
+      - If more than one agent got the same rule wrong, rewrite the rule's wording.
+      - If only one agent did, schedule targeted coaching.
+      - Add the rule to the next knowledge check.
+
+  high_effort:
+    label: High member effort
+    unit: calls
+    owner_team: Operations
+    severity: medium
+    source: process_gap
+    meaning: Long calls that also repeated, escalated or ended unresolved.
+    why: Effort is what members remember, even when the issue is solved.
+    steps:
+      - Review the longest calls for avoidable steps.
+      - Simplify the process or add self-service for the top topic.
+      - Re-measure effort after the change.
+
+  broker_adverse:
+    label: Broker named adversely
+    unit: calls
+    owner_team: Broker Relations
+    severity: medium
+    source: broker_pattern
+    meaning: A caller named their broker and was unhappy with them.
+    why: A pattern across one broker's groups is a channel problem, not an account problem.
+    steps:
+      - Log each mention against the broker.
+      - Raise it with the broker at the next check-in.
+      - If one broker reaches three mentions across two employers, escalate to a channel review.
+
+  overdue:
+    label: Overdue actions
+    unit: actions
+    owner_team: Team leads
+    severity: high
+    meaning: Actions past their due date and not yet done.
+    why: An overdue fix means the problem it was raised for is still happening.
+    steps:
+      - Chase each owner for a new date or an escalation.
+      - Reassign any item with no owner response within two days.
+      - Report the overdue count at the weekly operations meeting.
+
+  unowned:
+    label: Flagged accounts with no action
+    unit: accounts
+    owner_team: Account Management
+    severity: medium
+    meaning: Accounts metric 10 flags that no action names yet.
+    why: A flag with no owner is a flag nobody is working.
+    steps:
+      - Pick the top five by indicators and renewal date.
+      - Raise one action per account with a named owner.
+      - Review the rest at the next weekly meeting.
+
+# One template per dynamic key kind: tp_<touchpoint>, cat_<category>,
+# sig_<signal>, pl_<product line>. {subject} is the value's label, {noun} the
+# kind's noun, {owner} the resolved owner team, {controls} a touchpoint's
+# `controls` from the Touchpoints sheet.
+dynamic:
+  tp:
+    noun: touchpoint
+    meaning: Calls about the {subject} {noun} are rising across the quarter.
+    why: This touchpoint is controlled by {controls}, so that is where a fix lands.
+    default_owner_team: Operations
+    steps:
+      - Read the calls behind the rise and note what each caller was trying to do.
+      - Check whether they share one account, one broker or one document.
+      - Take the pattern to {owner}, who owns this touchpoint.
+      - "Set a watch: re-check the count in four weeks before committing to a fix."
+  cat:
+    noun: call topic
+    meaning: Calls about the {subject} {noun} are rising across the quarter.
+    why: A rising count is an early signal, too thin yet to call a trend.
+    default_owner_team: Operations
+    owner_overrides:
+      Broker Conduct: Broker Relations
+    steps:
+      - Read the calls behind the rise and note what each caller was trying to do.
+      - Check whether they share one account, one broker or one document.
+      - Take the pattern to {owner}.
+      - "Set a watch: re-check the count in four weeks before committing to a fix."
+  sig:
+    noun: signal
+    meaning: Calls raising the {subject} {noun} are rising across the quarter.
+    why: A rising count is an early signal, too thin yet to call a trend.
+    default_owner_team: Operations
+    steps:
+      - Read the calls behind the rise and note what each caller was trying to do.
+      - Check whether they share one account, one broker or one document.
+      - Take the pattern to {owner}.
+      - "Set a watch: re-check the count in four weeks before committing to a fix."
+  pl:
+    noun: product line
+    meaning: Calls about the {subject} {noun} are rising across the quarter.
+    why: A rising count is an early signal, too thin yet to call a trend.
+    default_owner_team: Operations
+    steps:
+      - Read the calls behind the rise and note what each caller was trying to do.
+      - Check whether they share one account, one broker or one document.
+      - Take the pattern to {owner}.
+      - "Set a watch: re-check the count in four weeks before committing to a fix."
+
+# Prototype keys deliberately not shipped. Resolving one reports the reason
+# rather than an empty panel.
+held_back:
+  high: D12 reserves "band" for employer size, so there is no High risk band to list.
+  brush_off: D14 (C8a) drops archetype until it has a source, and this playbook is defined by it.
+  circular: D14 (C8a) drops archetype until it has a source, and this playbook is defined by it.
