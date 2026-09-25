@@ -266,6 +266,42 @@ happened.
 
 ## 9. Issues found by run 1 — for Ranjit to decide
 
+> **RESPONSE REQUIRED — Ranjit.** Every row below needs an answer in the
+> *Ranjit's answer* column: **make**, **don't make** (with a reason), or
+> **other** (say what). This is blocking: Stream A's extraction fixes wait
+> on it, and `Revised-Implementation-Plan.md` R1 says the V2 screens lean on
+> exactly these fields.
+>
+> **Default if unanswered.** Following the convention in
+> `Revised-Implementation-Plan.md` §14, silence does not stop work: an item
+> left blank proceeds on its default, and is recorded here as **taken by
+> silence**, not as a decision anyone made. Answering overrides the default
+> at any point, including after the fix has landed.
+
+| Item | Summary | Owner | Default if unanswered | Ranjit's answer |
+|---|---|---|---|---|
+| F1 | Touchpoint chosen from the Touchpoints sheet | Stream A | Make, as recommended | |
+| F2 | Read the tracker's "—" as no touchpoint | Stream B | Make, as recommended | |
+| F3 | Resolve a named broker to its id — option (a) or (b) | Stream A | Make, option (b) | |
+| F4 | One signal per type per call | Stream A | Make, as recommended | |
+| F5 | Signal over-emission; is `process_gap_proposed` redundant with `process_gap`? | Stream A (the question is joint) | Make steps 2–4. Keep `process_gap_proposed` until the question is answered | |
+| F6 | Tighten the process-gap definition; require a quoted turn | Stream A | Make, as recommended | |
+| F7 | Quality score too high | Stream A | Make, after F1–F6 | |
+| F8 | No product line on 27 calls | Stream A | Investigate, then fix if a pattern shows | |
+| F9 | Thin samples treated as provisional | — | Record as provisional; no code | |
+| F10 | Presence fields report precision and recall | Stream B | Make, as recommended | |
+| F11 | CLI prints precision and recall for set fields | Stream B | Make, as recommended | |
+| F12 | Leave derived fields out of "weakest field" | Stream B | Make, as recommended | |
+| F13 | Run CLI flushes its progress lines | Stream A | Make, as recommended | |
+| F14 | README note for local databases missing `ground_truth` | Both | Make, as recommended | |
+| F15 | Prompt changes justified from workbook definitions, not tracker rows | Both | Adopt as a rule | |
+
+A default only ever moves the owner's own code. Stream A will not change
+Stream B's modules (F2, F10–F12) on a default — those wait for Ranjit either
+way.
+
+The full evidence, fix and steps for each item follow.
+
 Every issue the run exposed, whether in the pipeline, the harness, the answer
 key import or the process. **Nothing here has been changed.** Each needs a
 decision: make the fix, do not make it, or do something else. Each fix, if
@@ -509,6 +545,9 @@ re-uses the cached model answers and can be re-measured for free.
   the database.
 - **Proposed fix:** flush after each progress line.
 - **Recommendation:** make it; one line.
+- **Status:** made by Stream A ahead of an answer (Minnie's call — it is
+  Stream A's own CLI and changes no output). Say "don't make" and it is
+  reverted.
 - **Decision (Ranjit):**
 
 ### F14 — Local databases from before the stream merge have no `ground_truth` table

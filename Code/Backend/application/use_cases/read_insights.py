@@ -26,7 +26,7 @@ the same date, which is what makes a reported figure reproducible.
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
@@ -40,6 +40,7 @@ from domain.aggregation.agent_events import (
     agent_quality,
     control_exception_rates,
 )
+from domain.aggregation.broker_drift import Drift, drift
 from domain.aggregation.broker_friction import BrokerFriction, ranked_book_friction
 from domain.aggregation.call_tags import BrokerFacts, CallContext, EmployerFacts, Window
 from domain.aggregation.contact_rate import PeerComparison, employer_contact_rate, peer_comparison
@@ -49,6 +50,7 @@ from domain.aggregation.demand import (
     self_inflicted_demand,
 )
 from domain.aggregation.exec_scorecard import ExecScorecard, exec_scorecard
+from domain.aggregation.filters import AppliedFilter
 from domain.aggregation.indicators import observe
 from domain.aggregation.isolation import (
     RegionNode,
@@ -57,7 +59,7 @@ from domain.aggregation.isolation import (
     systemic_categories,
 )
 from domain.aggregation.patterns import window_for
-from domain.aggregation.repeat_contact import failure_driven_repeat_rate
+from domain.aggregation.repeat_contact import failure_driven_repeat_rate, repeat_references
 from domain.aggregation.risk_flag import (
     Exposure,
     RiskAssessment,
@@ -129,6 +131,15 @@ class InsightsRequest:
     #: (decision D11). `None` at either end means that end is unbounded.
     since: date | None = None
     until: date | None = None
+    #: Keep only repeat contacts, or only calls that are not one. `None`
+    #: narrows nothing, like every other unset filter.
+    #:
+    #: A **derived** filter: a repeat is a relationship between two calls,
+    #: not a property of one, so it cannot live on `InsightFilters` — see
+    #: that module's note on derived filters. It is applied as a second
+    #: stage in `InsightsReader.scope`, over references computed from the
+    #: whole corpus.
+    repeat: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -259,6 +270,7 @@ class InsightsReader:
             employers=corpus.employers,
             quality_bands=self._config.quality_bands,
         )
+        filtered = _narrow_to_repeats(filtered, corpus.calls, request.repeat)
         as_of = request.as_of or self._clock.now().date()
         return ScopedCorpus(
             corpus=corpus,
@@ -267,6 +279,35 @@ class InsightsReader:
             since=request.since,
             until=request.until,
         )
+
+
+def _narrow_to_repeats(
+    filtered: FilteredCalls, corpus: Sequence[CallContext], repeat: bool | None
+) -> FilteredCalls:
+    """The derived repeat filter, applied after the per-call filters.
+
+    The references come from the **corpus**, not from `filtered`: the call a
+    repeat followed may itself have been filtered out, and a repeat does not
+    stop being one because its antecedent is off screen.
+
+    `matched` moves with the narrowing and `considered` does not, so the
+    applied-filters row still reports the shrinkage honestly.
+    """
+    if repeat is None:
+        return filtered
+    references = repeat_references(corpus)
+    kept = tuple(call for call in filtered.calls if (call.reference in references) is repeat)
+    return replace(
+        filtered,
+        calls=kept,
+        applied=(
+            *filtered.applied,
+            AppliedFilter(
+                field="repeat",
+                values=("yes" if repeat else "no",),
+            ),
+        ),
+    )
 
 
 # --------------------------------------------------------------------------
@@ -494,6 +535,9 @@ class AccountDetail:
     risk: RiskAssessment
     observations: tuple[Observation, ...]
     risk_window: Window
+    #: §9 insight 7. Over this employer's calls in the risk window, so the
+    #: period it describes is one the page already states.
+    drift: Drift
 
 
 @dataclass(frozen=True)
@@ -554,6 +598,7 @@ class GetAccountDetail:
             risk=assess(self._config, employer, calls, risk_window),
             observations=observe(self._config, employer, calls, risk_window),
             risk_window=risk_window,
+            drift=drift(risk_window.calls_in(tuple(mine))),
         )
 
 

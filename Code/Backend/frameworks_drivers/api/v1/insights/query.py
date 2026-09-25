@@ -98,6 +98,18 @@ class InsightsQuery:
     escalated: Annotated[bool | None, Query()] = None
     complaint: Annotated[bool | None, Query(description="Whether a complaint was made.")] = None
     compliance_exception: Annotated[bool | None, Query(alias="complianceException")] = None
+    repeat: Annotated[
+        bool | None,
+        Query(
+            description=(
+                "Keep only repeat contacts, or only calls that are not one. Omitted "
+                "means both. A repeat is a relationship between two calls rather than "
+                "a property of one, so it is computed over the whole corpus and "
+                "applied after the other filters — a repeat does not stop being one "
+                "because the call it followed was filtered out."
+            )
+        ),
+    ] = None
 
     # --- Corpus scope, which is not a filter over calls
     source: Annotated[
@@ -195,6 +207,7 @@ class InsightsQuery:
             as_of=self.as_of,
             since=self.from_,
             until=self.to,
+            repeat=self.repeat,
         )
 
 

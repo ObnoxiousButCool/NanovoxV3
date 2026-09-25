@@ -31,6 +31,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 
 import { useFilterOptions, useRisk } from '@/shared/api/insights'
 import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
+import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
+import type { IssueKey } from '@/shared/actions/issueHref'
+import { ISSUE_KEYS } from '@/shared/actions/issueHref'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
 import {
@@ -155,6 +158,7 @@ function RiskBody({
             />
           </BigRow>
           <Note>{data.exposure.caveat}</Note>
+          {data.exposure.employers.length > 0 ? <IssueCue issue="flagged" /> : null}
         </Panel>
       </div>
 
@@ -231,7 +235,16 @@ function RiskBody({
                         </Link>
                       </th>
                       <td>
-                        <RiskPill eligible={account.eligible} flagged={account.flagged} />
+                        {/* A flagged account is the clearest case of a
+                            figure that should lead somewhere: the pill
+                            says what is true, the link says what to do. */}
+                        {account.flagged ? (
+                          <IssueValue issue="flagged" scope={{ employer: account.employerRef }}>
+                            <RiskPill eligible={account.eligible} flagged={account.flagged} />
+                          </IssueValue>
+                        ) : (
+                          <RiskPill eligible={account.eligible} flagged={account.flagged} />
+                        )}
                       </td>
                       <td>
                         {/* A count and the names behind it. Never a level:
@@ -240,11 +253,26 @@ function RiskBody({
                         <span className="nv-indcount">{fired.length} of 10</span>
                         {fired.length > 0 ? (
                           <div className="nv-fires">
-                            {fired.map((observation) => (
-                              <span key={observation.code} className="nv-fire">
-                                {observation.label}
-                              </span>
-                            ))}
+                            {fired.map((observation) =>
+                              // Only the families the action view has a
+                              // playbook for become links. The rest stay
+                              // chips rather than routing to a page that
+                              // would shrug at them.
+                              isIssue(observation.code) ? (
+                                <IssueValue
+                                  key={observation.code}
+                                  issue={observation.code}
+                                  scope={{ employer: account.employerRef }}
+                                  tone="warm"
+                                >
+                                  <span className="nv-fire">{observation.label}</span>
+                                </IssueValue>
+                              ) : (
+                                <span key={observation.code} className="nv-fire">
+                                  {observation.label}
+                                </span>
+                              ),
+                            )}
                           </div>
                         ) : null}
                       </td>
@@ -286,4 +314,9 @@ function RiskBody({
       </div>
     </div>
   )
+}
+
+/** An indicator family the action view has a playbook for. */
+function isIssue(code: string): code is IssueKey {
+  return (ISSUE_KEYS as readonly string[]).includes(code)
 }

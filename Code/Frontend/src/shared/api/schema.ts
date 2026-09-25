@@ -89,6 +89,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/insights/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The filtered corpus, one row per call */
+        get: operations["list_calls_api_v1_insights_calls_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/calls.csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The filtered corpus as CSV
+         * @description Every matching call, not the current page.
+         *
+         *     Paging is a reading convenience; an export of "page 2 of 7" is a file
+         *     whose contents depend on a control the recipient cannot see. The search
+         *     and the filters still apply, because those are the question asked.
+         */
+        get: operations["export_calls_api_v1_insights_calls_csv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/calls/{reference}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One call and the turns behind it */
+        get: operations["read_call_api_v1_insights_calls__reference__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/insights/demand": {
         parameters: {
             query?: never;
@@ -372,6 +430,7 @@ export interface components {
             /** Asof */
             asOf: string;
             contactRate: components["schemas"]["WindowedFigureResponse"];
+            drift: components["schemas"]["DriftResponse"];
             facts: components["schemas"]["AccountFactsResponse"];
             peers: components["schemas"]["PeerComparisonResponse"];
             repeatRate: components["schemas"]["WindowedFigureResponse"];
@@ -598,11 +657,118 @@ export interface components {
             /** Start */
             start: string;
         };
+        /** CallEvidenceResponse */
+        CallEvidenceResponse: {
+            /** Agentref */
+            agentRef: string;
+            /** Callerref */
+            callerRef: string;
+            /** Callertype */
+            callerType: string;
+            /** Employerref */
+            employerRef?: string | null;
+            /** Reference */
+            reference: string;
+            /** Resolutionreason */
+            resolutionReason?: string | null;
+            /** Resolutionstatus */
+            resolutionStatus: string;
+            /**
+             * Transcriptmissing
+             * @description True when the call is stored without a transcript. Distinct from an empty conversation, which is not a thing that happens.
+             */
+            transcriptMissing: boolean;
+            /** Turns */
+            turns?: components["schemas"]["TurnResponse"][];
+        };
+        /**
+         * CallRowResponse
+         * @description One row of the workbench.
+         */
+        CallRowResponse: {
+            /** Agentref */
+            agentRef?: string | null;
+            /**
+             * Ahtseconds
+             * @description Talk time only, so every figure from it is a floor.
+             */
+            ahtSeconds?: number | null;
+            /** Brokeragency */
+            brokerAgency?: string | null;
+            /** Brokerref */
+            brokerRef?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Complaint */
+            complaint: boolean;
+            /** Complaintagainst */
+            complaintAgainst?: string | null;
+            /** Controlexceptions */
+            controlExceptions?: string[];
+            /** Employername */
+            employerName?: string | null;
+            /** Employerref */
+            employerRef?: string | null;
+            /** Escalationhandled */
+            escalationHandled: boolean;
+            /** Escalationtriggered */
+            escalationTriggered: boolean;
+            /** Intents */
+            intents?: string[];
+            /** Knowledgefailure */
+            knowledgeFailure: boolean;
+            /** Occurredon */
+            occurredOn: string;
+            /** Outcome */
+            outcome?: string | null;
+            /** Productlines */
+            productLines?: string[];
+            /**
+             * Qualityscore
+             * @description Null means not recorded, never a score of zero.
+             */
+            qualityScore?: number | null;
+            /** Reference */
+            reference: string;
+            /** Region */
+            region?: string | null;
+            /** Signals */
+            signals?: string[];
+            /** Touchpoint */
+            touchpoint?: string | null;
+        };
         /**
          * CallSource
          * @enum {string}
          */
         CallSource: "CORPUS_PDF" | "PASTED" | "AUDIO";
+        /** CallsPageResponse */
+        CallsPageResponse: {
+            /**
+             * Considered
+             * @description Calls in the corpus before filters and search. Filters slice, never hide: a reader must be able to tell a narrow result from an empty corpus.
+             */
+            considered: number;
+            /**
+             * Omittedcolumns
+             * @description Columns the prototype's export has that this one does not, and why. Stated rather than left as blank columns, which would read as 'no value for this call' instead of 'we do not publish this'.
+             */
+            omittedColumns?: string[];
+            /** Page */
+            page: number;
+            /** Pages */
+            pages: number;
+            /** Perpage */
+            perPage: number;
+            /** Rows */
+            rows: components["schemas"]["CallRowResponse"][];
+            scope: components["schemas"]["ScopeResponse"];
+            /**
+             * Total
+             * @description Rows matching the filters and search, before paging.
+             */
+            total: number;
+        };
         /**
          * Category
          * @enum {string}
@@ -709,6 +875,34 @@ export interface components {
             unattributed: string[];
             /** Windowweeks */
             windowWeeks: number;
+        };
+        /**
+         * DriftResponse
+         * @description §9 insight 7. A flag, never a rate.
+         */
+        DriftResponse: {
+            /**
+             * Checked
+             * @description Broker mentions where both sides resolved, so the comparison could be made. Zero checked with zero mismatches is not a clean book — it is an unexamined one, and `finding` says which.
+             */
+            checked: number;
+            /**
+             * Finding
+             * @description The sentence the panel shows, including when nothing is wrong.
+             */
+            finding: string;
+            /** Flagged */
+            flagged: boolean;
+            /**
+             * Mismatches
+             * @description Calls where the named broker is not the broker of record.
+             */
+            mismatches?: string[];
+            /**
+             * Unresolved
+             * @description Mentions where one side was unknown. Not counted as drift: an unknown is not a disagreement, and scoring it as one would manufacture a finding out of a gap.
+             */
+            unresolved?: string[];
         };
         /** DynamicKindResponse */
         DynamicKindResponse: {
@@ -1510,6 +1704,15 @@ export interface components {
          * @enum {string}
          */
         SignalType: "member_communication_gap" | "process_breakdown" | "compliance_disclosure_missing" | "verification_failure" | "broker_conduct_adverse" | "broker_conduct_positive" | "escalation_missed" | "retention_risk" | "revenue_opportunity" | "knowledge_error" | "network_adequacy" | "billing_defect" | "process_gap_proposed";
+        /**
+         * Sort
+         * @description The six sortable columns, named on the wire rather than by index.
+         *
+         *     Column indices would silently re-point at a different column the first
+         *     time the table's column order changed.
+         * @enum {string}
+         */
+        Sort: "date" | "employer" | "agent" | "category" | "outcome" | "quality";
         /** StartRunRequest */
         StartRunRequest: {
             /** Model */
@@ -1570,6 +1773,15 @@ export interface components {
              * @description Length of the movement window, and of the equal-length window before it that it is compared against. No workbook defines this; see MOVEMENT_WEEKS.
              */
             windowWeeks: number;
+        };
+        /** TurnResponse */
+        TurnResponse: {
+            /** Role */
+            role: string;
+            /** Sequence */
+            sequence: number;
+            /** Text */
+            text: string;
         };
         /**
          * UnmeasurableResponse
@@ -1707,6 +1919,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -1769,6 +1983,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -1829,6 +2045,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -1851,6 +2069,175 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AgentsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_calls_api_v1_insights_calls_get: {
+        parameters: {
+            query?: {
+                /** @description Employer region. */
+                region?: string[] | null;
+                /** @description Broker of record, from reference data — not who was named aloud. */
+                broker?: string[] | null;
+                /** @description Employer reference. */
+                employer?: string[] | null;
+                /** @description Agent reference. */
+                agent?: string[] | null;
+                category?: components["schemas"]["Category"][] | null;
+                /** @description Calls touching this line. A call may touch several. */
+                productLine?: components["schemas"]["ProductLine"][] | null;
+                /** @description Where the failure originated, not where it surfaced. */
+                touchpoint?: string[] | null;
+                outcome?: components["schemas"]["Outcome"][] | null;
+                signal?: components["schemas"]["SignalType"][] | null;
+                intent?: components["schemas"]["IntentType"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
+                escalated?: boolean | null;
+                /** @description Whether a complaint was made. */
+                complaint?: boolean | null;
+                complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
+                /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
+                source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
+                /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
+                asOf?: string | null;
+                /** @description Free text over references, names, topic and outcome — never over transcript text. Every term must match. */
+                q?: string;
+                sort?: components["schemas"]["Sort"];
+                order?: string;
+                page?: number;
+                perPage?: number;
+                /** @description Specific calls, repeated. Powers "download selected" without moving the column list into the browser. Applied after the corpus filters, so a selected call the period excludes stays excluded. */
+                ref?: string[] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallsPageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_calls_api_v1_insights_calls_csv_get: {
+        parameters: {
+            query?: {
+                /** @description Employer region. */
+                region?: string[] | null;
+                /** @description Broker of record, from reference data — not who was named aloud. */
+                broker?: string[] | null;
+                /** @description Employer reference. */
+                employer?: string[] | null;
+                /** @description Agent reference. */
+                agent?: string[] | null;
+                category?: components["schemas"]["Category"][] | null;
+                /** @description Calls touching this line. A call may touch several. */
+                productLine?: components["schemas"]["ProductLine"][] | null;
+                /** @description Where the failure originated, not where it surfaced. */
+                touchpoint?: string[] | null;
+                outcome?: components["schemas"]["Outcome"][] | null;
+                signal?: components["schemas"]["SignalType"][] | null;
+                intent?: components["schemas"]["IntentType"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
+                escalated?: boolean | null;
+                /** @description Whether a complaint was made. */
+                complaint?: boolean | null;
+                complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
+                /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
+                source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
+                /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
+                asOf?: string | null;
+                /** @description Free text over references, names, topic and outcome — never over transcript text. Every term must match. */
+                q?: string;
+                sort?: components["schemas"]["Sort"];
+                order?: string;
+                page?: number;
+                perPage?: number;
+                /** @description Specific calls, repeated. Powers "download selected" without moving the column list into the browser. Applied after the corpus filters, so a selected call the period excludes stays excluded. */
+                ref?: string[] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_call_api_v1_insights_calls__reference__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reference: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallEvidenceResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1889,6 +2276,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -1949,6 +2338,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2009,6 +2400,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2069,6 +2462,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2180,6 +2575,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
@@ -2244,6 +2641,8 @@ export interface operations {
                 /** @description Whether a complaint was made. */
                 complaint?: boolean | null;
                 complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
                 /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
                 source?: components["schemas"]["CallSource"][] | null;
                 /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */

@@ -190,3 +190,25 @@ def _first_follow_up(
         and call.occurred_on < other.occurred_on <= limit
     ]
     return min(later, key=lambda other: (other.occurred_on, other.reference), default=None)
+
+
+def repeat_references(
+    corpus: Sequence[CallContext], *, within_days: int = EXPOSURE_DAYS
+) -> frozenset[str]:
+    """Calls that are themselves a follow-up, by reference.
+
+    The *second* call of each pair, not the first. "Show me the repeat
+    calls" means the ones where the caller had already been in touch — the
+    earlier call was not a repeat when it happened.
+
+    **Computed over the whole corpus, deliberately.** A repeat is a
+    relationship between two calls, and the antecedent may not survive the
+    filters: narrowing to one category would otherwise make a repeat stop
+    being a repeat because the call it followed was filtered out. The
+    caller therefore passes the corpus here and applies the result as a
+    second stage over the filtered calls, which is the arrangement
+    `filters.py` describes for every derived filter.
+    """
+    return frozenset(
+        pair.next_contact.reference for pair in repeats(corpus, within_days=within_days)
+    )

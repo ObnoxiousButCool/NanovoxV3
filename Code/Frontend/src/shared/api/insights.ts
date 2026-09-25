@@ -80,3 +80,34 @@ export function useAccount(employerRef: string, search: string) {
       ),
   })
 }
+
+export type CallsPage = components['schemas']['CallsPageResponse']
+export type CallRow = components['schemas']['CallRowResponse']
+export type CallEvidenceData = components['schemas']['CallEvidenceResponse']
+
+/** The workbench. `search` already carries filters, search, sort and paging. */
+export function useCalls(search: string) {
+  return useScreen<CallsPage>('calls', '/insights/calls', search)
+}
+
+/**
+ * One call's evidence.
+ *
+ * Deliberately **not** keyed by the current filters. Evidence is one call
+ * by reference: if the key carried the filter state, opening the same call
+ * from two screens would refetch it and could show two different frames
+ * for the same call, which is the opposite of evidence.
+ *
+ * `staleTime: Infinity` for the same reason — a call that has already been
+ * read does not change while the reader is looking at it, and a refetch
+ * behind an open drawer would replace the turns under their eyes.
+ */
+export function useCallEvidence(reference: string | null) {
+  return useQuery({
+    queryKey: ['insights', 'call', reference],
+    queryFn: () =>
+      getJson<CallEvidenceData>(`/insights/calls/${encodeURIComponent(reference ?? '')}`),
+    enabled: reference !== null,
+    staleTime: Infinity,
+  })
+}

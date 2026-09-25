@@ -17,13 +17,16 @@ them apart.
 Metric 1 and metric 4 have their own `window_weeks`, so the contact rate and
 the repeat rate state theirs individually, exactly as the exec screen does.
 
-## What is not here
+## Insight 7 — broker-of-record drift
 
-§9 insight 7, broker-of-record drift, belongs on this page and has no
-aggregation yet: `CallContext` carries both the broker named aloud and the
-broker of record, but nothing compares them. Defining that comparison at
-the presentation layer would put a definition somewhere the workbook cannot
-see it, so the field is absent rather than approximated.
+Now built, in `domain/aggregation/broker_drift.py` rather than here: the
+comparison is a definition, and a definition written in a router is one the
+workbook cannot see.
+
+`drift` carries `checked` and `mismatches` separately so the panel can tell
+a clean book from an unexamined one. Zero mismatches out of fourteen
+mentions is a finding; zero mentions is not. The sheet asks for a flag
+rather than a rate, so nothing here divides.
 """
 
 from __future__ import annotations
@@ -91,6 +94,34 @@ class PeerComparisonResponse(CamelModel):
     )
 
 
+class DriftResponse(CamelModel):
+    """§9 insight 7. A flag, never a rate."""
+
+    flagged: bool
+    checked: int = Field(
+        description=(
+            "Broker mentions where both sides resolved, so the comparison could be "
+            "made. Zero checked with zero mismatches is not a clean book — it is an "
+            "unexamined one, and `finding` says which."
+        )
+    )
+    mismatches: list[str] = Field(
+        default_factory=list,
+        description="Calls where the named broker is not the broker of record.",
+    )
+    unresolved: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Mentions where one side was unknown. Not counted as drift: an unknown "
+            "is not a disagreement, and scoring it as one would manufacture a "
+            "finding out of a gap."
+        ),
+    )
+    finding: str = Field(
+        description="The sentence the panel shows, including when nothing is wrong."
+    )
+
+
 class AccountResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
@@ -102,6 +133,7 @@ class AccountResponse(CamelModel):
         description="This account's risk standing, the same shape as on the risk screen."
     )
     risk_window_weeks: int
+    drift: DriftResponse
 
 
 @router.get(
@@ -167,4 +199,11 @@ def _response(detail: AccountDetail, query: InsightsQueryDep) -> AccountResponse
         ),
         risk=account_risk_response(detail.risk, detail.observations),
         risk_window_weeks=round(detail.risk_window.weeks),
+        drift=DriftResponse(
+            flagged=detail.drift.flagged,
+            checked=detail.drift.checked,
+            mismatches=list(detail.drift.mismatches),
+            unresolved=list(detail.drift.unresolved),
+            finding=detail.drift.finding,
+        ),
     )

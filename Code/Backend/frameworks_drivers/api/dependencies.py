@@ -15,8 +15,10 @@ from fastapi import Depends, Request
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
+from application.use_cases.list_calls import ListCalls
 from application.use_cases.list_providers import ListProviders
 from application.use_cases.playbooks import GetPlaybook, ListPlaybooks
+from application.use_cases.read_call_evidence import ReadCallEvidence
 from application.use_cases.read_insights import (
     GetAccountDetail,
     GetAccountRisk,
@@ -90,6 +92,14 @@ def get_hierarchy_use_case(container: ContainerDep) -> GetHierarchy:
     return container.get_hierarchy()
 
 
+def get_list_calls_use_case(container: ContainerDep) -> ListCalls:
+    return container.list_calls()
+
+
+def get_read_call_evidence_use_case(container: ContainerDep) -> ReadCallEvidence:
+    return container.read_call_evidence()
+
+
 def get_demand_use_case(container: ContainerDep) -> GetDemand:
     return container.get_demand()
 
@@ -135,6 +145,8 @@ GetAccountRiskDep = Annotated[GetAccountRisk, Depends(get_account_risk_use_case)
 DashboardConfigDep = Annotated[DashboardConfig, Depends(get_dashboard_config)]
 GetAccountDetailDep = Annotated[GetAccountDetail, Depends(get_account_detail_use_case)]
 GetHierarchyDep = Annotated[GetHierarchy, Depends(get_hierarchy_use_case)]
+ListCallsDep = Annotated[ListCalls, Depends(get_list_calls_use_case)]
+ReadCallEvidenceDep = Annotated[ReadCallEvidence, Depends(get_read_call_evidence_use_case)]
 GetDemandDep = Annotated[GetDemand, Depends(get_demand_use_case)]
 GetActionsDep = Annotated[GetActions, Depends(get_actions_use_case)]
 ListPlaybooksDep = Annotated[ListPlaybooks, Depends(get_list_playbooks_use_case)]
