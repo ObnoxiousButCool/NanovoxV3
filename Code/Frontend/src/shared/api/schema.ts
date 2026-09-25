@@ -1266,6 +1266,15 @@ export interface components {
          * @enum {string}
          */
         Outcome: "RESOLVED" | "PARTIALLY_RESOLVED" | "ESCALATED" | "UNRESOLVED";
+        /**
+         * OutcomeCountResponse
+         * @description One outcome and its calls. Zero is a real count, not a gap.
+         */
+        OutcomeCountResponse: {
+            /** Calls */
+            calls: number;
+            outcome: components["schemas"]["CodedValue"];
+        };
         /** OwnerWorkloadResponse */
         OwnerWorkloadResponse: {
             /**
@@ -1418,13 +1427,30 @@ export interface components {
             /** @description Flagged as a share of the *eligible* employers, never of all of them. */
             flaggedShare: components["schemas"]["FigureResponse"];
             /**
+             * Handlingunavailable
+             * @description Why the prototype's Handling distribution has no counterpart here. Said rather than rendered as an empty chart beside a full one.
+             * @default
+             */
+            handlingUnavailable: string;
+            /**
              * Ineligible
              * @description Employers below the eligibility floor, by reference. Kept apart from `assessed` on purpose: too few calls to assess is not a finding of low risk, and at current volume most of the book is here.
              */
             ineligible: string[];
             /** Ineligiblecount */
             ineligibleCount: number;
+            /**
+             * Outcomes
+             * @description How the window's calls ended, every outcome including the ones at zero and in the workbook's order. Categories that reorder with the data cannot be compared against last week's chart.
+             */
+            outcomes?: components["schemas"]["OutcomeCountResponse"][];
             scope: components["schemas"]["ScopeResponse"];
+            /** Weeklyquality */
+            weeklyQuality?: components["schemas"]["WeekShareResponse"][];
+            /** Weeklyresolved */
+            weeklyResolved?: components["schemas"]["WeekShareResponse"][];
+            /** Weeklyunresolved */
+            weeklyUnresolved?: components["schemas"]["WeekShareResponse"][];
             /**
              * Windowweeks
              * @description Metric 10's window, in weeks, ending on `as_of`.
@@ -1690,6 +1716,30 @@ export interface components {
             calls: number | null;
             /** End */
             end: string;
+            /** Start */
+            start: string;
+        };
+        /**
+         * WeekShareResponse
+         * @description One week of a share series.
+         *
+         *     Two kinds of nothing, kept apart: `calls` is null when the corpus is
+         *     silent about the week, and `share` is null when calls happened but too
+         *     few to publish a rate. A chart draws the first as a gap in the line and
+         *     the second as a gap in the share while still showing the count.
+         */
+        WeekShareResponse: {
+            /** Calls */
+            calls?: number | null;
+            /** End */
+            end: string;
+            /** Matched */
+            matched?: number | null;
+            /**
+             * Share
+             * @description Null below the five-call floor, which is the prototype's own: "weeks with fewer than five calls are left blank rather than shown as a swing". Never zero for a week that was not measured.
+             */
+            share?: number | null;
             /** Start */
             start: string;
         };

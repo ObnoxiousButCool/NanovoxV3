@@ -331,7 +331,9 @@ async def test_exposure_is_never_an_expected_loss(
 ) -> None:
     await seed(session_factory, calls_per_employer={"EMP-01": 4})
 
-    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
+    response = client.get("/api/v1/insights/risk", params={"asOf": AS_OF})
+    assert response.status_code == 200, response.text
+    body = response.json()
 
     assert "not expected loss" in body["exposure"]["caveat"]
 

@@ -32,6 +32,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useFilterOptions, useRisk } from '@/shared/api/insights'
 import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
+import { VBars, VLine } from '@/shared/design/charts'
 import type { IssueKey } from '@/shared/actions/issueHref'
 import { ISSUE_KEYS } from '@/shared/actions/issueHref'
 import { useFilters } from '@/shared/filters/useFilters'
@@ -127,6 +128,16 @@ function RiskBody({
   minIndicators: string | null
   onChange: (key: string, value: string | null) => void
 }) {
+  // Optional on the wire, so each is read once with a default rather than
+  // guarded at every use.
+  const outcomes = data.outcomes ?? []
+  const weeklyUnresolved = data.weeklyUnresolved ?? []
+  const weeklyResolved = data.weeklyResolved ?? []
+  const weeklyQuality = data.weeklyQuality ?? []
+  const endedTotal = outcomes.reduce((total, entry) => total + entry.calls, 0)
+  const unresolvedCount =
+    outcomes.find((entry) => entry.outcome.code === 'UNRESOLVED')?.calls ?? 0
+
   return (
     <div className="nv-grid">
       <div className="nv-c12">
@@ -286,6 +297,99 @@ function RiskBody({
               </tbody>
             </table>
           )}
+        </Panel>
+      </div>
+
+      {/* The three corpus-shape panels V2 puts on this page. They were on
+          /exec or nowhere until conflict C9 was recorded: each screen had
+          been shaped by its endpoint rather than by the page it mirrors. */}
+      <div className="nv-c6">
+        <Panel
+          title="How calls ended"
+          sub={`${String(unresolvedCount)} of ${String(endedTotal)} calls ended unresolved.`}
+          chip={<EpistemicChip kind="observed" />}
+        >
+          {endedTotal === 0 ? (
+            <Empty>No call in scope records an outcome.</Empty>
+          ) : (
+            <VBars
+              ariaLabel="Calls by outcome"
+              labels={outcomes.map((entry) => entry.outcome.label)}
+              series={[
+                {
+                  name: 'Calls',
+                  // Counts, so a zero is a real bar on the baseline rather
+                  // than a gap. Call volume has no minimum.
+                  values: outcomes.map((entry) => entry.calls),
+                  color: 'var(--seq-2)',
+                },
+              ]}
+            />
+          )}
+          <Note>{data.handlingUnavailable}</Note>
+        </Panel>
+      </div>
+
+      <div className="nv-c6">
+        <Panel
+          title="Calls each week"
+          sub="Counts. A blank week is a week the corpus says nothing about."
+          chip={<EpistemicChip kind="observed" />}
+        >
+          <VLine
+            ariaLabel="Calls and unresolved calls per week"
+            labels={weeklyUnresolved.map((week) => week.start.slice(5))}
+            series={[
+              {
+                name: 'Calls',
+                values: weeklyUnresolved.map((week) => week.calls ?? null),
+                color: 'var(--seq-2)',
+              },
+              {
+                name: 'Unresolved',
+                values: weeklyUnresolved.map((week) => week.matched ?? null),
+                color: 'var(--serious)',
+              },
+            ]}
+          />
+        </Panel>
+      </div>
+
+      <div className="nv-c12">
+        <Panel
+          title="Resolved and good-quality calls"
+          sub="Shape, not level. A week under five calls is left blank rather than drawn as a swing."
+          chip={<EpistemicChip kind="observed" />}
+        >
+          <VLine
+            ariaLabel="Resolved and good-quality shares per week"
+            suffix="%"
+            yMax={100}
+            labels={weeklyResolved.map((week) => week.start.slice(5))}
+            series={[
+              {
+                name: 'Resolved',
+                // Null here is two different facts — a silent week and a
+                // week too small to carry a rate — and the chart draws
+                // both as a gap, which is right: neither is a number.
+                values: weeklyResolved.map((week) =>
+                  week.share === null || week.share === undefined
+                    ? null
+                    : Math.round(week.share * 100),
+                ),
+                color: 'var(--good)',
+              },
+              {
+                name: 'Good quality',
+                values: weeklyQuality.map((week) =>
+                  week.share === null || week.share === undefined
+                    ? null
+                    : Math.round(week.share * 100),
+                ),
+                color: 'var(--seq-3)',
+              },
+            ]}
+          />
         </Panel>
       </div>
 

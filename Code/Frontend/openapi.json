@@ -2027,6 +2027,24 @@
         "title": "Outcome",
         "type": "string"
       },
+      "OutcomeCountResponse": {
+        "description": "One outcome and its calls. Zero is a real count, not a gap.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/CodedValue"
+          }
+        },
+        "required": [
+          "outcome",
+          "calls"
+        ],
+        "title": "OutcomeCountResponse",
+        "type": "object"
+      },
       "OwnerWorkloadResponse": {
         "properties": {
           "calls": {
@@ -2353,6 +2371,12 @@
             "$ref": "#/components/schemas/FigureResponse",
             "description": "Flagged as a share of the *eligible* employers, never of all of them."
           },
+          "handlingUnavailable": {
+            "default": "",
+            "description": "Why the prototype's Handling distribution has no counterpart here. Said rather than rendered as an empty chart beside a full one.",
+            "title": "Handlingunavailable",
+            "type": "string"
+          },
           "ineligible": {
             "description": "Employers below the eligibility floor, by reference. Kept apart from `assessed` on purpose: too few calls to assess is not a finding of low risk, and at current volume most of the book is here.",
             "items": {
@@ -2365,8 +2389,37 @@
             "title": "Ineligiblecount",
             "type": "integer"
           },
+          "outcomes": {
+            "description": "How the window's calls ended, every outcome including the ones at zero and in the workbook's order. Categories that reorder with the data cannot be compared against last week's chart.",
+            "items": {
+              "$ref": "#/components/schemas/OutcomeCountResponse"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
           "scope": {
             "$ref": "#/components/schemas/ScopeResponse"
+          },
+          "weeklyQuality": {
+            "items": {
+              "$ref": "#/components/schemas/WeekShareResponse"
+            },
+            "title": "Weeklyquality",
+            "type": "array"
+          },
+          "weeklyResolved": {
+            "items": {
+              "$ref": "#/components/schemas/WeekShareResponse"
+            },
+            "title": "Weeklyresolved",
+            "type": "array"
+          },
+          "weeklyUnresolved": {
+            "items": {
+              "$ref": "#/components/schemas/WeekShareResponse"
+            },
+            "title": "Weeklyunresolved",
+            "type": "array"
           },
           "windowWeeks": {
             "description": "Metric 10's window, in weeks, ending on `as_of`.",
@@ -2976,6 +3029,59 @@
           "calls"
         ],
         "title": "WeekResponse",
+        "type": "object"
+      },
+      "WeekShareResponse": {
+        "description": "One week of a share series.\n\nTwo kinds of nothing, kept apart: `calls` is null when the corpus is\nsilent about the week, and `share` is null when calls happened but too\nfew to publish a rate. A chart draws the first as a gap in the line and\nthe second as a gap in the share while still showing the count.",
+        "properties": {
+          "calls": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calls"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "matched": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null below the five-call floor, which is the prototype's own: \"weeks with fewer than five calls are left blank rather than shown as a swing\". Never zero for a week that was not measured.",
+            "title": "Share"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "WeekShareResponse",
         "type": "object"
       },
       "WindowedFigureResponse": {

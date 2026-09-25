@@ -47,12 +47,14 @@ from pydantic import Field
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetAccountRiskDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from application.use_cases.read_insights import AccountRisk
+    from domain.aggregation.distributions import WeekShare
     from domain.aggregation.indicators import Observation
     from domain.aggregation.risk_flag import RiskAssessment
 
@@ -171,6 +173,36 @@ class RiskQuery:
 RiskQueryDep = Annotated[RiskQuery, Depends()]
 
 
+class OutcomeCountResponse(CamelModel):
+    """One outcome and its calls. Zero is a real count, not a gap."""
+
+    outcome: CodedValue
+    calls: int
+
+
+class WeekShareResponse(CamelModel):
+    """One week of a share series.
+
+    Two kinds of nothing, kept apart: `calls` is null when the corpus is
+    silent about the week, and `share` is null when calls happened but too
+    few to publish a rate. A chart draws the first as a gap in the line and
+    the second as a gap in the share while still showing the count.
+    """
+
+    start: str
+    end: str
+    calls: int | None = None
+    matched: int | None = None
+    share: float | None = Field(
+        default=None,
+        description=(
+            "Null below the five-call floor, which is the prototype's own: "
+            '"weeks with fewer than five calls are left blank rather than shown '
+            'as a swing". Never zero for a week that was not measured.'
+        ),
+    )
+
+
 class RiskScreenResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
@@ -200,6 +232,24 @@ class RiskScreenResponse(CamelModel):
         description="Flagged as a share of the *eligible* employers, never of all of them."
     )
     exposure: ExposureResponse
+    outcomes: list[OutcomeCountResponse] = Field(
+        default_factory=list,
+        description=(
+            "How the window's calls ended, every outcome including the ones at zero "
+            "and in the workbook's order. Categories that reorder with the data "
+            "cannot be compared against last week's chart."
+        ),
+    )
+    weekly_unresolved: list[WeekShareResponse] = Field(default_factory=list)
+    weekly_resolved: list[WeekShareResponse] = Field(default_factory=list)
+    weekly_quality: list[WeekShareResponse] = Field(default_factory=list)
+    handling_unavailable: str = Field(
+        default="",
+        description=(
+            "Why the prototype's Handling distribution has no counterpart here. "
+            "Said rather than rendered as an empty chart beside a full one."
+        ),
+    )
 
 
 @router.get(
@@ -229,6 +279,16 @@ async def read_account_risk(
         ineligible=list(result.ineligible),
         ineligible_count=len(result.ineligible),
         flagged_share=FigureResponse.of(result.flagged_share),
+        outcomes=[
+            # `coded` is the one place an enum becomes a label, so this
+            # chart cannot drift from the wording every other panel uses.
+            OutcomeCountResponse(outcome=coded(entry.outcome), calls=entry.calls)
+            for entry in result.outcomes
+        ],
+        weekly_unresolved=[_week(entry) for entry in result.weekly_unresolved],
+        weekly_resolved=[_week(entry) for entry in result.weekly_resolved],
+        weekly_quality=[_week(entry) for entry in result.weekly_quality],
+        handling_unavailable=HANDLING_UNAVAILABLE,
         exposure=ExposureResponse(
             employers=list(result.exposure.employers),
             lives=result.exposure.lives,
@@ -283,4 +343,22 @@ def account_risk_response(
             )
             for observation in observations
         ],
+    )
+
+
+#: Conflict C8a, said on the wire rather than left as a missing chart.
+HANDLING_UNAVAILABLE = (
+    "The prototype also splits these calls by handling archetype. `archetype` is not "
+    "one of the sixteen Call Tag Schema fields and has no workbook source (conflict "
+    "C8a), so it is absent rather than invented."
+)
+
+
+def _week(entry: WeekShare) -> WeekShareResponse:
+    return WeekShareResponse(
+        start=entry.start,
+        end=entry.end,
+        calls=entry.calls,
+        matched=entry.matched,
+        share=entry.share,
     )

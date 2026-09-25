@@ -50,6 +50,7 @@ from pydantic import Field
 from domain.aggregation.figure import Basis, WithheldReason
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
+from domain.value_objects.outcome import Outcome
 from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
 from domain.value_objects.signal_severity import SignalSeverity
@@ -79,6 +80,15 @@ LABELS: dict[Enum, str] = {
     Basis.OBSERVED: "Observed",
     Basis.DERIVED: "Derived",
     Basis.REFERENCE: "Reference",
+    # --- How a call ended (schema field 1). The prototype's own wording,
+    # which is a reader's rather than the enum's: "Partly resolved" is what
+    # the chart legend says, and a chart that disagreed with the rest of
+    # the screen about a category name would be read as a different
+    # category.
+    Outcome.RESOLVED: "Resolved",
+    Outcome.PARTIALLY_RESOLVED: "Partly resolved",
+    Outcome.ESCALATED: "Escalated",
+    Outcome.UNRESOLVED: "Unresolved",
     # --- Why a figure is withheld. Each means something different to a
     # reader: more calls fixes the first, only a schema change fixes the
     # second, and the third is not a finding of low risk.
@@ -131,6 +141,7 @@ LABELS: dict[Enum, str] = {
 #: shipping blank labels to a screen.
 LABELLED_ENUMS: tuple[type[Enum], ...] = (
     Basis,
+    Outcome,
     WithheldReason,
     SignalSeverity,
     SignalType,

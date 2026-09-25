@@ -49,6 +49,15 @@ from domain.aggregation.demand import (
     complaint_attributed_to_choice,
     self_inflicted_demand,
 )
+from domain.aggregation.distributions import (
+    OutcomeCount,
+    WeekShare,
+    good_quality,
+    outcome_counts,
+    resolved,
+    unresolved,
+    weekly_shares,
+)
 from domain.aggregation.exec_scorecard import ExecScorecard, exec_scorecard
 from domain.aggregation.filters import AppliedFilter
 from domain.aggregation.indicators import observe
@@ -247,6 +256,14 @@ class RiskResult:
     exposure: Exposure
     flagged_share: Figure
     window: Window
+    #: How the calls in the window ended, every outcome including zero.
+    outcomes: tuple[OutcomeCount, ...]
+    #: Volume and unresolved count per week. Counts, so no floor applies.
+    weekly_unresolved: tuple[WeekShare, ...]
+    #: Resolved and good-quality shares per week, withheld below the
+    #: five-call floor rather than drawn as a swing.
+    weekly_resolved: tuple[WeekShare, ...]
+    weekly_quality: tuple[WeekShare, ...]
 
 
 class InsightsReader:
@@ -513,6 +530,12 @@ class GetAccountRisk:
             exposure=exposure(assessments, scope.corpus.employers),
             flagged_share=flagged_share(self._config, assessments),
             window=window,
+            # Over the filtered calls in metric 10's window, so the shape
+            # describes the same period as the flags beside it.
+            outcomes=outcome_counts(window.calls_in(tuple(calls))),
+            weekly_unresolved=weekly_shares(calls, window, unresolved),
+            weekly_resolved=weekly_shares(calls, window, resolved),
+            weekly_quality=weekly_shares(calls, window, good_quality(self._config.quality_bands)),
         )
 
 
