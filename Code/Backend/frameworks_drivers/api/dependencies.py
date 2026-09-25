@@ -17,6 +17,13 @@ from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from application.use_cases.list_calls import ListCalls
 from application.use_cases.list_providers import ListProviders
+from application.use_cases.manage_actions import (
+    ActionContext,
+    CreateAction,
+    GetAction,
+    ListActions,
+    UpdateAction,
+)
 from application.use_cases.playbooks import GetPlaybook, ListPlaybooks
 from application.use_cases.read_call_evidence import ReadCallEvidence
 from application.use_cases.read_insights import (
@@ -116,6 +123,26 @@ def get_playbook_use_case(container: ContainerDep) -> GetPlaybook:
     return container.get_playbook()
 
 
+def get_create_action_use_case(container: ContainerDep) -> CreateAction:
+    return container.create_action()
+
+
+def get_update_action_use_case(container: ContainerDep) -> UpdateAction:
+    return container.update_action()
+
+
+def get_action_use_case(container: ContainerDep) -> GetAction:
+    return container.get_action()
+
+
+def get_list_actions_use_case(container: ContainerDep) -> ListActions:
+    return container.list_actions()
+
+
+def get_action_context(container: ContainerDep) -> ActionContext:
+    return ActionContext(lifecycle=container.action_lifecycle, today=container.clock.now().date())
+
+
 def get_rules_use_case(container: ContainerDep) -> GetRules:
     return container.get_rules()
 
@@ -151,5 +178,10 @@ GetDemandDep = Annotated[GetDemand, Depends(get_demand_use_case)]
 GetActionsDep = Annotated[GetActions, Depends(get_actions_use_case)]
 ListPlaybooksDep = Annotated[ListPlaybooks, Depends(get_list_playbooks_use_case)]
 GetPlaybookDep = Annotated[GetPlaybook, Depends(get_playbook_use_case)]
+CreateActionDep = Annotated[CreateAction, Depends(get_create_action_use_case)]
+UpdateActionDep = Annotated[UpdateAction, Depends(get_update_action_use_case)]
+GetActionDep = Annotated[GetAction, Depends(get_action_use_case)]
+ListActionsDep = Annotated[ListActions, Depends(get_list_actions_use_case)]
+ActionContextDep = Annotated[ActionContext, Depends(get_action_context)]
 GetRulesDep = Annotated[GetRules, Depends(get_rules_use_case)]
 GetAgentsDep = Annotated[GetAgents, Depends(get_agents_use_case)]

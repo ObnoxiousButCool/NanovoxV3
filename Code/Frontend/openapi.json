@@ -181,6 +181,37 @@
         "title": "AccountRiskResponse",
         "type": "object"
       },
+      "ActionBoardResponse": {
+        "properties": {
+          "actions": {
+            "description": "Newest first.",
+            "items": {
+              "$ref": "#/components/schemas/ActionResponse"
+            },
+            "title": "Actions",
+            "type": "array"
+          },
+          "lanes": {
+            "description": "In board order, from configuration.",
+            "items": {
+              "$ref": "#/components/schemas/LaneResponse"
+            },
+            "title": "Lanes",
+            "type": "array"
+          },
+          "trustNote": {
+            "title": "Trustnote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lanes",
+          "actions",
+          "trustNote"
+        ],
+        "title": "ActionBoardResponse",
+        "type": "object"
+      },
       "ActionItemResponse": {
         "description": "One finding. No status \u2014 see this module's docstring.",
         "properties": {
@@ -215,6 +246,233 @@
           "callIds"
         ],
         "title": "ActionItemResponse",
+        "type": "object"
+      },
+      "ActionResponse": {
+        "properties": {
+          "actionTaken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actiontaken"
+          },
+          "assignedOn": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assignedon"
+          },
+          "brokerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brokerref"
+          },
+          "callIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Callids",
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "due": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due"
+          },
+          "employerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employerref"
+          },
+          "evidence": {
+            "title": "Evidence",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "issueKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuekey"
+          },
+          "log": {
+            "description": "Oldest first. Append-only.",
+            "items": {
+              "$ref": "#/components/schemas/LogEntryResponse"
+            },
+            "title": "Log",
+            "type": "array"
+          },
+          "measurementWindow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasurementWindowBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "ownerTeam": {
+            "title": "Ownerteam",
+            "type": "string"
+          },
+          "pastDue": {
+            "title": "Pastdue",
+            "type": "boolean"
+          },
+          "priority": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference": {
+            "description": "The board's display id, e.g. ACT-007.",
+            "title": "Reference",
+            "type": "string"
+          },
+          "sourceDetail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourcedetail"
+          },
+          "sourceKind": {
+            "title": "Sourcekind",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "statusLabel": {
+            "title": "Statuslabel",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/StepResponse"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "title",
+          "sourceKind",
+          "sourceDetail",
+          "issueKey",
+          "evidence",
+          "recommendation",
+          "ownerTeam",
+          "owner",
+          "priority",
+          "status",
+          "statusLabel",
+          "pastDue",
+          "employerRef",
+          "brokerRef",
+          "callIds",
+          "steps",
+          "log",
+          "createdAt",
+          "assignedOn",
+          "due",
+          "actionTaken",
+          "outcome",
+          "measurementWindow"
+        ],
+        "title": "ActionResponse",
         "type": "object"
       },
       "ActionsResponse": {
@@ -1108,6 +1366,136 @@
         "title": "CountResponse",
         "type": "object"
       },
+      "CreateActionBody": {
+        "properties": {
+          "callIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Callids",
+            "type": "array"
+          },
+          "due": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due"
+          },
+          "employerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employerref"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "issueKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Prefills steps, owner team, priority and description from its playbook.",
+            "title": "Issuekey"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "ownerTeam": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ownerteam"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "enum": [
+                  "high",
+                  "medium",
+                  "low"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the lifecycle's first lane.",
+            "title": "Status"
+          },
+          "steps": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Steps"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "CreateActionBody",
+        "type": "object"
+      },
       "DemandResponse": {
         "properties": {
           "asOf": {
@@ -1863,6 +2251,39 @@
         "title": "LabelledFigureResponse",
         "type": "object"
       },
+      "LaneResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "open": {
+            "description": "Still being worked. Open and past due reads as past due.",
+            "title": "Open",
+            "type": "boolean"
+          },
+          "requires": {
+            "description": "What an action must carry to sit here, e.g. a measurement window.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Requires",
+            "type": "array"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "open",
+          "requires"
+        ],
+        "title": "LaneResponse",
+        "type": "object"
+      },
       "ListProvidersResponse": {
         "properties": {
           "default": {
@@ -1882,6 +2303,25 @@
           "providers"
         ],
         "title": "ListProvidersResponse",
+        "type": "object"
+      },
+      "LogEntryResponse": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "text"
+        ],
+        "title": "LogEntryResponse",
         "type": "object"
       },
       "MatrixRowResponse": {
@@ -1904,6 +2344,26 @@
           "counts"
         ],
         "title": "MatrixRowResponse",
+        "type": "object"
+      },
+      "MeasurementWindowBody": {
+        "properties": {
+          "end": {
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          },
+          "start": {
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "MeasurementWindowBody",
         "type": "object"
       },
       "MetricFigureResponse": {
@@ -2486,6 +2946,26 @@
         "title": "QualityBand",
         "type": "string"
       },
+      "RecommendationResponse": {
+        "properties": {
+          "claim": {
+            "const": "recommendation",
+            "default": "recommendation",
+            "description": "A suggestion, never a measurement (D14, C3a).",
+            "title": "Claim",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "RecommendationResponse",
+        "type": "object"
+      },
       "RegionNodeResponse": {
         "properties": {
           "brokers": {
@@ -2950,6 +3430,42 @@
         "title": "StartRunResponse",
         "type": "object"
       },
+      "StepResponse": {
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "done"
+        ],
+        "title": "StepResponse",
+        "type": "object"
+      },
+      "TickBody": {
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "done"
+        ],
+        "title": "TickBody",
+        "type": "object"
+      },
       "TouchpointRowResponse": {
         "properties": {
           "attribution": {
@@ -3090,6 +3606,107 @@
           "calls"
         ],
         "title": "UnmeasurableResponse",
+        "type": "object"
+      },
+      "UpdateActionBody": {
+        "properties": {
+          "actionTaken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actiontaken"
+          },
+          "clearDue": {
+            "default": false,
+            "title": "Cleardue",
+            "type": "boolean"
+          },
+          "clearOwner": {
+            "default": false,
+            "title": "Clearowner",
+            "type": "boolean"
+          },
+          "due": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due"
+          },
+          "measurementWindow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MeasurementWindowBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Appended to the activity log as written.",
+            "title": "Note"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "ticks": {
+            "items": {
+              "$ref": "#/components/schemas/TickBody"
+            },
+            "title": "Ticks",
+            "type": "array"
+          }
+        },
+        "title": "UpdateActionBody",
         "type": "object"
       },
       "ValidationError": {
@@ -4107,6 +4724,158 @@
         "summary": "Findings to act on, routed, with compliance exposure",
         "tags": [
           "insights"
+        ]
+      },
+      "post": {
+        "operationId": "create_action_api_v1_insights_actions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Raise an action, from a playbook or by hand",
+        "tags": [
+          "actions"
+        ]
+      }
+    },
+    "/api/v1/insights/actions/board": {
+      "get": {
+        "operationId": "read_board_api_v1_insights_actions_board_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionBoardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Every action being worked, with the board's lanes",
+        "tags": [
+          "actions"
+        ]
+      }
+    },
+    "/api/v1/insights/actions/{action_id}": {
+      "get": {
+        "operationId": "read_action_api_v1_insights_actions__action_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "action_id",
+            "required": true,
+            "schema": {
+              "title": "Action Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "One action, with its checklist and activity",
+        "tags": [
+          "actions"
+        ]
+      },
+      "patch": {
+        "operationId": "update_action_api_v1_insights_actions__action_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "action_id",
+            "required": true,
+            "schema": {
+              "title": "Action Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateActionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Move, assign, tick, log or record what was done and what changed",
+        "tags": [
+          "actions"
         ]
       }
     },

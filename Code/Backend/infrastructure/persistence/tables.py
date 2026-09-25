@@ -13,7 +13,7 @@ actually uses (plan §8 Phase 1).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import JSON, ForeignKey, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -490,3 +490,75 @@ class GroundTruthRow(Base):
     repeat_of_note: Mapped[str | None] = mapped_column(nullable=True)
 
     imported_at: Mapped[datetime] = mapped_column(nullable=False)
+
+
+class ActionRow(Base):
+    """One action somebody works (Revised plan Phase 4, D6) — not a finding.
+
+    `domain.aggregation.actions` derives findings on every read and stores
+    nothing; this is the record with a status, an owner and a history. The
+    status codes are `config/action_lifecycle.yaml`'s, so they are stored as
+    plain strings rather than an enum the database would have to migrate.
+    """
+
+    __tablename__ = "actions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(nullable=False)
+    source_kind: Mapped[str] = mapped_column(nullable=False)  # ActionSourceKind.value
+    source_detail: Mapped[str | None] = mapped_column(nullable=True)
+    issue_key: Mapped[str | None] = mapped_column(nullable=True)
+    evidence: Mapped[str] = mapped_column(nullable=False)
+    recommendation: Mapped[str | None] = mapped_column(nullable=True)
+    owner_team: Mapped[str] = mapped_column(nullable=False)
+    owner: Mapped[str | None] = mapped_column(nullable=True)
+    priority: Mapped[str] = mapped_column(nullable=False)  # Priority.value
+    status: Mapped[str] = mapped_column(nullable=False, index=True)
+    employer_ref: Mapped[str | None] = mapped_column(nullable=True, index=True)
+    broker_ref: Mapped[str | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(nullable=False)
+    assigned_on: Mapped[date | None] = mapped_column(nullable=True)
+    due: Mapped[date | None] = mapped_column(nullable=True)
+    action_taken: Mapped[str | None] = mapped_column(nullable=True)
+    outcome: Mapped[str | None] = mapped_column(nullable=True)
+    measurement_start: Mapped[date | None] = mapped_column(nullable=True)
+    measurement_end: Mapped[date | None] = mapped_column(nullable=True)
+    #: Set only on seeded actions, so reseeding does not duplicate one.
+    seed_key: Mapped[str | None] = mapped_column(nullable=True, unique=True)
+
+
+class ActionCallRow(Base):
+    """The calls behind an action. Many to many: a call can sit behind
+    several actions, and an action behind several calls."""
+
+    __tablename__ = "action_calls"
+    __table_args__ = (UniqueConstraint("action_id", "call_id", name="uq_action_call"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    action_id: Mapped[int] = mapped_column(ForeignKey("actions.id"), nullable=False, index=True)
+    call_id: Mapped[int] = mapped_column(ForeignKey("calls.id"), nullable=False)
+    position: Mapped[int] = mapped_column(nullable=False)
+
+
+class ActionStepRow(Base):
+    """One checklist step, in order."""
+
+    __tablename__ = "action_steps"
+    __table_args__ = (UniqueConstraint("action_id", "position", name="uq_action_step"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    action_id: Mapped[int] = mapped_column(ForeignKey("actions.id"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(nullable=False)
+    text: Mapped[str] = mapped_column(nullable=False)
+    done: Mapped[bool] = mapped_column(nullable=False, default=False)
+
+
+class ActionLogRow(Base):
+    """The activity timeline. Append-only: an entry is never edited."""
+
+    __tablename__ = "action_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    action_id: Mapped[int] = mapped_column(ForeignKey("actions.id"), nullable=False, index=True)
+    at: Mapped[datetime] = mapped_column(nullable=False)
+    text: Mapped[str] = mapped_column(nullable=False)
