@@ -92,6 +92,18 @@ def _flag(part: str, name: str) -> bool | None:
     return None
 
 
+def _without_annotation(part: str) -> str:
+    """Drops a trailing `" — <label>"` comment, e.g. `"handled true —
+    OVER-ESCALATION"` → `"handled true"`.
+
+    Scoped to this one call site rather than applied broadly: an em dash on
+    its own is `_NONE_MARKER` elsewhere in the tracker (a blank cell), so a
+    generic strip-after-em-dash rule would misread those cells instead.
+    """
+    head, separator, _annotation = part.partition(" — ")
+    return head if separator else part
+
+
 class XlsxGroundTruthSource(GroundTruthSource):
     def __init__(self, path: Path) -> None:
         self._path = path
@@ -254,6 +266,21 @@ class _Mapper:
                 parts[1],
                 _flag(parts[2], "requested_by_caller"),
                 _flag(parts[3], "handled"),
+            )
+        if parts[0] == _TRIGGERED_FALSE and len(parts) == 4 and parts[1] == "none":
+            # Nothing warranted escalation, and it happened anyway — the
+            # tracker calls this out with a trailing " — OVER-ESCALATION"
+            # annotation on the "handled" fact (first seen on C-0120). The
+            # annotation names a finding, not a fourth fact to store: an
+            # escalation with no trigger type is not one of the eight
+            # documented trigger types, and the combination
+            # triggered=False, handled=True is already visible as an
+            # anomaly to anything that reads both fields.
+            return (
+                False,
+                None,
+                _flag(parts[2], "requested_by_caller"),
+                _flag(_without_annotation(parts[3]), "handled"),
             )
         warn("Escalation", raw)
         return None, None, None, None

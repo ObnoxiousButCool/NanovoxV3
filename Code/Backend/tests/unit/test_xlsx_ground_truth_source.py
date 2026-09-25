@@ -29,7 +29,13 @@ def _row(reference: str) -> GroundTruth:
 def test_reads_every_tracker_row() -> None:
     dataset = map_tracker_to_dataset(TRACKER_SHEETS)
 
-    assert [r.reference for r in dataset.rows] == ["C-9001", "C-9002", "C-9003", "C-9004"]
+    assert [r.reference for r in dataset.rows] == [
+        "C-9001",
+        "C-9002",
+        "C-9003",
+        "C-9004",
+        "C-9005",
+    ]
 
 
 def test_maps_the_five_fields_the_pdf_also_carries() -> None:
@@ -92,6 +98,21 @@ def test_not_triggered_leaves_the_other_three_escalation_facts_unset() -> None:
     assert row.escalation_type is None
     assert row.escalation_requested_by_caller is None
     assert row.escalation_handled is None
+
+
+def test_an_escalation_nothing_warranted_is_read_without_its_annotation() -> None:
+    """C-0120 (batch 2a) is the corpus's first "OVER-ESCALATION": nothing
+    triggered it, and it was handled anyway. The annotation names the
+    finding rather than a fifth fact — triggered=False with handled=True is
+    already visible as the anomaly to anything reading both fields.
+    """
+    row = _row("C-9005")
+
+    assert row.escalation_triggered is False
+    assert row.escalation_type is None
+    assert row.escalation_requested_by_caller is False
+    assert row.escalation_handled is True
+    assert not [w for w in map_tracker_to_dataset(TRACKER_SHEETS).warnings if "C-9005" in w]
 
 
 def test_reads_a_semicolon_separated_list_of_signals_with_severity_and_owner() -> None:
@@ -167,7 +188,7 @@ def test_one_unreadable_row_does_not_cost_the_other_ninety_nine() -> None:
     """
     dataset = map_tracker_to_dataset(TRACKER_SHEETS)
 
-    assert len(dataset.rows) == 4
+    assert len(dataset.rows) == 5
     assert _row("C-9001").category is Category.CLAIMS_AND_EOB
 
 

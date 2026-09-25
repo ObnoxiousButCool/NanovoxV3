@@ -18,6 +18,7 @@ The corpus lives in `Documents/` and is tracked, so this runs by default.
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -26,7 +27,7 @@ import pytest
 from application.ports.diagnostics_source import Diagnostics
 from frameworks_drivers.cli.evaluate_extraction import EXIT_NOTHING_COMPARED, main
 from frameworks_drivers.container import build_container, dispose_container
-from infrastructure.config.paths import DEFAULT_TRANSCRIPTS_PATH, DEFAULT_WORKBOOK_PATH
+from infrastructure.config.paths import DEFAULT_TRANSCRIPTS_DIR, DEFAULT_WORKBOOK_PATH
 from infrastructure.config.settings import get_settings
 from infrastructure.persistence.models import Base
 
@@ -39,7 +40,7 @@ def _isolated_settings_cache() -> Iterator[None]:
 
 
 @pytest.mark.skipif(
-    not (DEFAULT_WORKBOOK_PATH.exists() and DEFAULT_TRANSCRIPTS_PATH.exists()),
+    not (DEFAULT_WORKBOOK_PATH.exists() and DEFAULT_TRANSCRIPTS_DIR.exists()),
     reason="corpus not found — expected it under Documents/ (see infrastructure/config/paths.py)",
 )
 def test_a_corpus_with_answers_and_no_extractions_reports_nothing_compared(
@@ -52,7 +53,7 @@ def test_a_corpus_with_answers_and_no_extractions_reports_nothing_compared(
     db_path = tmp_path / "evaluate.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("WORKBOOK_PATH", str(DEFAULT_WORKBOOK_PATH))
-    monkeypatch.setenv("TRANSCRIPTS_PATH", str(DEFAULT_TRANSCRIPTS_PATH))
+    monkeypatch.setenv("TRANSCRIPTS_DIR", str(DEFAULT_TRANSCRIPTS_DIR))
     monkeypatch.setenv("LOG_ENABLED", "false")
     monkeypatch.setenv("FRONTEND_DIST_PATH", str(tmp_path / "no-frontend"))
 
@@ -75,7 +76,9 @@ def test_a_corpus_with_answers_and_no_extractions_reports_nothing_compared(
 
     output = capsys.readouterr().out
     assert exit_code == EXIT_NOTHING_COMPARED, "no extraction has run, so nothing is comparable"
-    assert "Scored 0 of 100 call(s) with an answer key (0% coverage)." in output
+    # Not a fixed call count: the corpus arrives in batches short of a
+    # 600-call target (Corpus-v10-Schema-Update.md).
+    assert re.search(r"Scored 0 of \d+ call\(s\) with an answer key \(0% coverage\)\.", output)
     assert "NOTHING COMPARED" in output
     assert "Run the extraction first." in output
     # The distinction the exit code exists for: this is not a bad score.
@@ -83,7 +86,7 @@ def test_a_corpus_with_answers_and_no_extractions_reports_nothing_compared(
 
 
 @pytest.mark.skipif(
-    not (DEFAULT_WORKBOOK_PATH.exists() and DEFAULT_TRANSCRIPTS_PATH.exists()),
+    not (DEFAULT_WORKBOOK_PATH.exists() and DEFAULT_TRANSCRIPTS_DIR.exists()),
     reason="corpus not found — expected it under Documents/ (see infrastructure/config/paths.py)",
 )
 def test_the_diagnostics_read_the_real_corpus(
@@ -102,7 +105,7 @@ def test_the_diagnostics_read_the_real_corpus(
     db_path = tmp_path / "diagnostics.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("WORKBOOK_PATH", str(DEFAULT_WORKBOOK_PATH))
-    monkeypatch.setenv("TRANSCRIPTS_PATH", str(DEFAULT_TRANSCRIPTS_PATH))
+    monkeypatch.setenv("TRANSCRIPTS_DIR", str(DEFAULT_TRANSCRIPTS_DIR))
     monkeypatch.setenv("LOG_ENABLED", "false")
     monkeypatch.setenv("FRONTEND_DIST_PATH", str(tmp_path / "no-frontend"))
 

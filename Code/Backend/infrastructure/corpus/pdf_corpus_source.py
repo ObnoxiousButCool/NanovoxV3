@@ -20,7 +20,12 @@ from application.ports.transcript_source import RawCallRecord, TranscriptSource
 from domain.speaker_resolution import RawTurn, resolve_speaker_roles
 from domain.value_objects.call_source import CallSource
 from domain.value_objects.caller_type import CallerType
-from infrastructure.corpus.pdf_text import call_reference, extract_call_blocks, split_call_block
+from infrastructure.corpus.pdf_text import (
+    call_reference,
+    discover_batch_pdfs,
+    extract_call_blocks_across,
+    split_call_block,
+)
 
 # Header line 2 reads e.g. "Mon 06 Jul 2026 09:14 · AHT 6m 20s · Competent and
 # resolved · rules C-12, P-14" — this captures only the date/time and talk
@@ -79,12 +84,16 @@ def _parse_raw_turns(dialogue_text: str) -> tuple[RawTurn, ...]:
 
 
 class PdfCorpusSource(TranscriptSource):
-    def __init__(self, path: Path) -> None:
-        self._path = path
+    """Reads every batch PDF found directly in `directory` (non-recursive —
+    see `discover_batch_pdfs`)."""
+
+    def __init__(self, directory: Path) -> None:
+        self._directory = directory
 
     def read(self) -> tuple[RawCallRecord, ...]:
         records = []
-        for block in extract_call_blocks(self._path):
+        blocks = extract_call_blocks_across(discover_batch_pdfs(self._directory))
+        for block in blocks:
             reference = call_reference(block)
             (_line1, line2, line3), dialogue_text, _call_tags_text = split_call_block(block)
             records.append(self._parse_call(reference, line2, line3, dialogue_text))

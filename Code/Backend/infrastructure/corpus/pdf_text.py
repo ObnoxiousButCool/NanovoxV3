@@ -16,12 +16,26 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
+from domain.errors import ValidationError
+
 _CALL_HEADER = re.compile(r"C-\d{4} — ")
 # The running header/footer repeated on every page. Removed globally before
 # splitting into calls, since it can land mid-block at a page break (see
 # calls C-0033, C-0046, C-0064 in batch 1, where it falls between the
 # dialogue and the CALL TAGS block rather than at a block boundary).
-_PAGE_FURNITURE = re.compile(r"NanoVox — Corpus v9 · transcripts batch 1\n\d+\n?")
+#
+# Line-anchored on the constant "NanoVox — Corpus v9 ·" prefix rather than
+# the exact batch label that follows it: each batch's PDF has printed a
+# different footer — "transcripts batch 1", "transcripts batch 1 rev-2",
+# "transcripts batch 2a", "batch 3 (C-0151 to C-0200 of 600)" — and a version
+# hardcoded to one of them silently leaves the others in the dialogue text.
+# A previous version of this pattern did exactly that: it matched only
+# "batch 1" and left page furniture glued onto 134 of batch 1 rev-2's ~1,700
+# turns, undetected until that revision arrived. The optional trailing
+# `\d+` line covers the page number when it renders on its own line; some
+# pages instead render it glued onto the footer's own line (e.g. "...rev-2
+# 2"), which the greedy `.*$` on the footer line already consumes.
+_PAGE_FURNITURE = re.compile(r"^NanoVox — Corpus v9 ·.*$\n?(?:^\d+$\n?)?", re.MULTILINE)
 
 
 def extract_call_blocks(path: Path) -> tuple[str, ...]:
@@ -29,6 +43,42 @@ def extract_call_blocks(path: Path) -> tuple[str, ...]:
     reader = PdfReader(str(path))
     text = "\n".join(page.extract_text() or "" for page in reader.pages)
     return split_into_call_blocks(text)
+
+
+def discover_batch_pdfs(directory: Path) -> tuple[Path, ...]:
+    """Every current batch's PDF in `directory`, sorted by name.
+
+    Non-recursive: a superseded revision kept in `directory/superseded/`
+    (Corpus-v10-Schema-Update.md) is deliberately not found by this glob,
+    so it can sit in the tree as a regression fixture without ever being
+    ingested alongside its replacement.
+    """
+    return tuple(sorted(directory.glob("*.pdf")))
+
+
+def extract_call_blocks_across(paths: tuple[Path, ...]) -> tuple[str, ...]:
+    """Every call's raw text across several PDFs, in file order.
+
+    The corpus arrives in batches, each its own PDF with disjoint call
+    references — C-0001 to C-0100 in one file, C-0101 to C-0150 in the
+    next, and so on toward the 600-call target. A call reference appearing
+    in more than one file is refused rather than silently taking whichever
+    file happened to be read last: nothing here can tell which copy is
+    current.
+    """
+    blocks: list[str] = []
+    seen: dict[str, Path] = {}
+    for path in paths:
+        for block in extract_call_blocks(path):
+            reference = call_reference(block)
+            if reference in seen:
+                raise ValidationError(
+                    f"Call {reference} appears in more than one corpus PDF.",
+                    detail=f"Found in both {seen[reference].name!r} and {path.name!r}.",
+                )
+            seen[reference] = path
+            blocks.append(block)
+    return tuple(blocks)
 
 
 def split_into_call_blocks(text: str) -> tuple[str, ...]:

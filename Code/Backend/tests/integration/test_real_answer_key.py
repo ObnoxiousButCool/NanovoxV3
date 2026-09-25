@@ -4,13 +4,18 @@ workbook and the PDF agree on all five fields they both carry.
 This is the regression guard that matters most in B1. Plan §11's trap is
 that a workbook from one revision and a transcripts PDF from another are
 *each* internally consistent, so a mismatched pair misattributes every call
-and nothing announces it. These two files state the same five fields about
-the same 100 calls independently, which makes their agreement the only
-check anyone has that the pair is the matched one.
+and nothing announces it. These two sources state the same five fields
+about the same calls independently, which makes their agreement the only
+check anyone has that the set is the matched one.
 
 Fails, rather than skips, if the corpus is absent: it lives in `Documents/`
 and is tracked. A skip here would be the same silent nothing the corpus
 tests used to produce.
+
+The corpus arrives in batches short of a 600-call target
+(Corpus-v10-Schema-Update.md); only the batch-1-specific tests below pin an
+exact count, because they cross-check figures the prototype's own tooling
+published for that batch alone. Everything else asserts a floor.
 """
 
 from __future__ import annotations
@@ -20,12 +25,15 @@ import pytest
 from application.use_cases.import_answer_key import compare_shared_fields
 from domain.value_objects.category import Category
 from domain.value_objects.outcome import Outcome
-from infrastructure.config.paths import DEFAULT_TRANSCRIPTS_PATH, DEFAULT_WORKBOOK_PATH
+from infrastructure.config.paths import DEFAULT_TRANSCRIPTS_DIR, DEFAULT_WORKBOOK_PATH
 from infrastructure.corpus.pdf_answer_key_source import PdfAnswerKeySource
 from infrastructure.reference.xlsx_ground_truth_source import XlsxGroundTruthSource
 
+# Batch 1 was C-0001 to C-0100. Later batches don't renumber it.
+_BATCH_1_LAST_REFERENCE = "C-0100"
+
 pytestmark = pytest.mark.skipif(
-    not (DEFAULT_WORKBOOK_PATH.exists() and DEFAULT_TRANSCRIPTS_PATH.exists()),
+    not (DEFAULT_WORKBOOK_PATH.exists() and DEFAULT_TRANSCRIPTS_DIR.exists()),
     reason="corpus not found — expected it under Documents/ (see infrastructure/config/paths.py)",
 )
 
@@ -36,7 +44,7 @@ def test_every_tracker_row_parses_with_no_warnings() -> None:
     """
     dataset = XlsxGroundTruthSource(DEFAULT_WORKBOOK_PATH).read()
 
-    assert len(dataset.rows) == 100
+    assert len(dataset.rows) >= 100
     assert dataset.warnings == ()
 
 
@@ -44,7 +52,7 @@ def test_the_tracker_and_the_pdf_agree_on_every_shared_field() -> None:
     truths = {
         row.reference: row for row in XlsxGroundTruthSource(DEFAULT_WORKBOOK_PATH).read().rows
     }
-    keys = {key.reference: key for key in PdfAnswerKeySource(DEFAULT_TRANSCRIPTS_PATH).read()}
+    keys = {key.reference: key for key in PdfAnswerKeySource(DEFAULT_TRANSCRIPTS_DIR).read()}
 
     assert truths.keys() == keys.keys(), "the two sources describe different sets of calls"
 
@@ -58,10 +66,16 @@ def test_the_tracker_and_the_pdf_agree_on_every_shared_field() -> None:
 
 def test_the_answer_key_reproduces_the_corpus_figures_the_prototype_documents() -> None:
     """`Prototype/tools/README.md` states these from an entirely separate
-    pipeline. Reading the same workbook through this one and getting the
-    same numbers is a cross-check on both.
+    pipeline, run against batch 1 alone. Reading the same batch through this
+    one and getting the same numbers is a cross-check on both — filtered to
+    C-0001 through C-0100 so a later batch's mix doesn't change what this
+    checks.
     """
-    rows = XlsxGroundTruthSource(DEFAULT_WORKBOOK_PATH).read().rows
+    rows = [
+        row
+        for row in XlsxGroundTruthSource(DEFAULT_WORKBOOK_PATH).read().rows
+        if row.reference <= _BATCH_1_LAST_REFERENCE
+    ]
 
     outcomes = dict.fromkeys(Outcome, 0)
     for row in rows:

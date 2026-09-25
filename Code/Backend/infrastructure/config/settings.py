@@ -31,7 +31,7 @@ from infrastructure.config.paths import (
     DEFAULT_FRONTEND_DIST,
     DEFAULT_LOG_DIR,
     DEFAULT_RUBRIC_PATH,
-    DEFAULT_TRANSCRIPTS_PATH,
+    DEFAULT_TRANSCRIPTS_DIR,
     DEFAULT_WORKBOOK_PATH,
     default_database_url,
 )
@@ -75,7 +75,12 @@ class Settings(BaseSettings):
 
     # --- Reference data (plan §8 Phase 1) -----------------------------------
     workbook_path: Path = DEFAULT_WORKBOOK_PATH
-    transcripts_path: Path = DEFAULT_TRANSCRIPTS_PATH
+    # A directory, not one file: the corpus arrives in batches short of a
+    # 600-call target, and every current batch's PDF sits directly in here
+    # (Corpus-v10-Schema-Update.md). A superseded revision lives in
+    # `<dir>/superseded/` instead, so it is kept as a fixture without ever
+    # being ingested alongside its replacement.
+    transcripts_dir: Path = DEFAULT_TRANSCRIPTS_DIR
     rubric_path: Path = DEFAULT_RUBRIC_PATH
 
     # --- Dashboard thresholds (plan §8 Phase 6) ----------------------------

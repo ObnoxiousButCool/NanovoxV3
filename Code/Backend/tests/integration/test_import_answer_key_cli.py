@@ -12,6 +12,7 @@ The end-to-end case runs against the real corpus, which is tracked under
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from frameworks_drivers.cli.import_answer_key import (
     _report,
     main,
 )
-from infrastructure.config.paths import DEFAULT_TRANSCRIPTS_PATH, DEFAULT_WORKBOOK_PATH
+from infrastructure.config.paths import DEFAULT_TRANSCRIPTS_DIR, DEFAULT_WORKBOOK_PATH
 from infrastructure.config.settings import get_settings
 from infrastructure.persistence.models import Base
 
@@ -120,7 +121,7 @@ def test_a_long_disagreement_list_is_truncated_with_a_count(
 
 
 @pytest.mark.skipif(
-    not (DEFAULT_WORKBOOK_PATH.exists() and DEFAULT_TRANSCRIPTS_PATH.exists()),
+    not (DEFAULT_WORKBOOK_PATH.exists() and DEFAULT_TRANSCRIPTS_DIR.exists()),
     reason="corpus not found — expected it under Documents/ (see infrastructure/config/paths.py)",
 )
 def test_the_real_corpus_imports_and_reconciles_end_to_end(
@@ -136,7 +137,7 @@ def test_the_real_corpus_imports_and_reconciles_end_to_end(
     db_path = tmp_path / "answer_key_cli.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("WORKBOOK_PATH", str(DEFAULT_WORKBOOK_PATH))
-    monkeypatch.setenv("TRANSCRIPTS_PATH", str(DEFAULT_TRANSCRIPTS_PATH))
+    monkeypatch.setenv("TRANSCRIPTS_DIR", str(DEFAULT_TRANSCRIPTS_DIR))
     monkeypatch.setenv("LOG_ENABLED", "false")
     monkeypatch.setenv("FRONTEND_DIST_PATH", str(tmp_path / "no-frontend"))
 
@@ -157,7 +158,9 @@ def test_the_real_corpus_imports_and_reconciles_end_to_end(
     assert main() == EXIT_OK
 
     output = capsys.readouterr().out
-    assert "Imported 100 answer-key rows." in output
+    # Not a fixed count: the corpus arrives in batches short of a 600-call
+    # target (Corpus-v10-Schema-Update.md), so only the shape is pinned.
+    assert re.search(r"Imported \d+ answer-key rows\.", output)
     assert "Reconciled: the tracker and the PDF agree on every shared field." in output
     assert "warning:" not in output
     assert "unmatched" not in output
