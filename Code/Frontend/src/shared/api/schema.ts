@@ -157,6 +157,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/insights/playbooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every issue key a screen can link to, and what each means */
+        get: operations["list_playbooks_api_v1_insights_playbooks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/insights/playbooks/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The playbook for one issue key */
+        get: operations["get_playbook_api_v1_insights_playbooks__key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/insights/risk": {
         parameters: {
             query?: never;
@@ -676,6 +710,16 @@ export interface components {
             /** Windowweeks */
             windowWeeks: number;
         };
+        /** DynamicKindResponse */
+        DynamicKindResponse: {
+            /** Noun */
+            noun: string;
+            /**
+             * Prefix
+             * @enum {string}
+             */
+            prefix: "tp" | "cat" | "sig" | "pl";
+        };
         /**
          * EmergingResponse
          * @description One value of some attribute, counted across equal slices.
@@ -879,6 +923,13 @@ export interface components {
             status: components["schemas"]["ComponentStatus"];
             /** Version */
             version: string;
+        };
+        /** HeldBackResponse */
+        HeldBackResponse: {
+            /** Key */
+            key: string;
+            /** Reason */
+            reason: string;
         };
         /** HierarchyResponse */
         HierarchyResponse: {
@@ -1147,6 +1198,80 @@ export interface components {
              * @description Latest call date included. Null means unbounded.
              */
             to?: string | null;
+        };
+        /** PlaybookCatalogueResponse */
+        PlaybookCatalogueResponse: {
+            /**
+             * Dynamickinds
+             * @description Key prefixes resolved per value, e.g. tp_denial_letter_eob.
+             */
+            dynamicKinds: components["schemas"]["DynamicKindResponse"][];
+            /**
+             * Heldback
+             * @description Prototype keys deliberately not shipped, and the decision that holds each.
+             */
+            heldBack: components["schemas"]["HeldBackResponse"][];
+            /**
+             * Playbooks
+             * @description Every static key.
+             */
+            playbooks: components["schemas"]["PlaybookResponse"][];
+            /** Reviewnote */
+            reviewNote: string;
+            /** Reviewed */
+            reviewed: boolean;
+            /** Version */
+            version: string;
+        };
+        /** PlaybookResponse */
+        PlaybookResponse: {
+            /**
+             * Claim
+             * @description Always a recommendation, never a measurement (D14, C3a).
+             * @default recommendation
+             * @constant
+             */
+            claim: "recommendation";
+            /**
+             * Dynamic
+             * @description Built from a template for one touchpoint, category, signal or product line.
+             */
+            dynamic: boolean;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Meaning */
+            meaning: string;
+            /**
+             * Ownerteam
+             * @description The suggested owner. For a touchpoint or signal key this is the workbook's own owner (Touchpoints sheet, Signal Taxonomy).
+             */
+            ownerTeam: string;
+            /**
+             * Reviewed
+             * @description Whether the owning teams have reviewed these steps. False until they do.
+             */
+            reviewed: boolean;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "high" | "medium";
+            /**
+             * Source
+             * @description The kind of action this issue produces, when it produces one.
+             */
+            source: string | null;
+            /** Steps */
+            steps: string[];
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "calls" | "accounts" | "actions";
+            /** Why */
+            why: string;
         };
         /**
          * ProductLine
@@ -1966,6 +2091,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HierarchyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_playbooks_api_v1_insights_playbooks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookCatalogueResponse"];
+                };
+            };
+        };
+    };
+    get_playbook_api_v1_insights_playbooks__key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaybookResponse"];
                 };
             };
             /** @description Validation Error */

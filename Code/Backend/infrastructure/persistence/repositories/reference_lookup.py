@@ -17,6 +17,7 @@ from domain.entities.employer import Employer
 from domain.entities.employer_contact import EmployerContact
 from domain.entities.member import Member
 from domain.entities.rule import Rule
+from domain.entities.touchpoint import Touchpoint
 from domain.value_objects.authority import Authority
 from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
@@ -27,6 +28,7 @@ from infrastructure.persistence.tables import (
     EmployerRow,
     MemberRow,
     RuleRow,
+    TouchpointRow,
 )
 
 
@@ -158,5 +160,17 @@ class SqlReferenceLookup(ReferenceLookup):
                     confidence=RuleConfidence(row.confidence),
                     call_scenarios=row.call_scenarios,
                 )
+                for row in rows
+            )
+
+    async def list_touchpoints(self) -> tuple[Touchpoint, ...]:
+        async with self._session_factory() as session:
+            rows = (
+                (await session.execute(select(TouchpointRow).order_by(TouchpointRow.reference)))
+                .scalars()
+                .all()
+            )
+            return tuple(
+                Touchpoint(reference=row.reference, owner=row.owner, controls=row.controls)
                 for row in rows
             )

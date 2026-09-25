@@ -162,6 +162,9 @@ source_modules = [
     # for a reason that bites harder: nothing downstream of a figure can tell
     # where its number came from.
     "domain.aggregation",
+    # Revised plan Phase 4: the issue-key registry the screens resolve.
+    "domain.playbooks",
+    "application.use_cases.playbooks",
 ]
 forbidden_modules = [
     "application.ports.answer_key_source",

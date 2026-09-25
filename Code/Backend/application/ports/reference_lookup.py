@@ -16,6 +16,7 @@ from domain.entities.employer import Employer
 from domain.entities.employer_contact import EmployerContact
 from domain.entities.member import Member
 from domain.entities.rule import Rule
+from domain.entities.touchpoint import Touchpoint
 
 
 class ReferenceLookup(ABC):
@@ -44,3 +45,8 @@ class ReferenceLookup(ABC):
         """Every known rule — L3/L4 are shown only the subset
         `domain.extraction.rule_scoping.scope_rules` selects for a call's
         category and product lines (plan §7, "never all 122")."""
+
+    @abstractmethod
+    async def list_touchpoints(self) -> tuple[Touchpoint, ...]:
+        """Every Touchpoints-sheet row. A `tp_<touchpoint>` playbook key
+        resolves only for a touchpoint here, with its owner and controls."""

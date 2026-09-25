@@ -16,6 +16,7 @@ from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from application.use_cases.list_providers import ListProviders
+from application.use_cases.playbooks import GetPlaybook, ListPlaybooks
 from application.use_cases.read_insights import (
     GetAccountDetail,
     GetAccountRisk,
@@ -97,6 +98,14 @@ def get_actions_use_case(container: ContainerDep) -> GetActions:
     return container.get_actions()
 
 
+def get_list_playbooks_use_case(container: ContainerDep) -> ListPlaybooks:
+    return container.list_playbooks()
+
+
+def get_playbook_use_case(container: ContainerDep) -> GetPlaybook:
+    return container.get_playbook()
+
+
 def get_rules_use_case(container: ContainerDep) -> GetRules:
     return container.get_rules()
 
@@ -128,5 +137,7 @@ GetAccountDetailDep = Annotated[GetAccountDetail, Depends(get_account_detail_use
 GetHierarchyDep = Annotated[GetHierarchy, Depends(get_hierarchy_use_case)]
 GetDemandDep = Annotated[GetDemand, Depends(get_demand_use_case)]
 GetActionsDep = Annotated[GetActions, Depends(get_actions_use_case)]
+ListPlaybooksDep = Annotated[ListPlaybooks, Depends(get_list_playbooks_use_case)]
+GetPlaybookDep = Annotated[GetPlaybook, Depends(get_playbook_use_case)]
 GetRulesDep = Annotated[GetRules, Depends(get_rules_use_case)]
 GetAgentsDep = Annotated[GetAgents, Depends(get_agents_use_case)]

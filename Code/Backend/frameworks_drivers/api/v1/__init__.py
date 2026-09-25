@@ -13,6 +13,7 @@ from frameworks_drivers.api.v1.insights import (
     exec_scorecard,
     filters,
     hierarchy,
+    playbooks,
     risk,
     rules,
 )
@@ -30,6 +31,7 @@ router.include_router(accounts.router)
 router.include_router(hierarchy.router)
 router.include_router(demand.router)
 router.include_router(actions.router)
+router.include_router(playbooks.router)
 router.include_router(rules.router)
 router.include_router(agents.router)
 

@@ -48,6 +48,7 @@ from application.use_cases.import_answer_key import ImportAnswerKey
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
 from application.use_cases.list_providers import ListProviders, ProviderProbe
+from application.use_cases.playbooks import GetPlaybook, ListPlaybooks
 from application.use_cases.read_insights import (
     GetAccountDetail,
     GetAccountRisk,
@@ -63,8 +64,10 @@ from application.use_cases.read_insights import (
 from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
 from application.use_cases.run_extraction_pipeline import ExtractionPipeline
 from domain.dashboard_config import DashboardConfig
+from domain.playbooks import PlaybookCatalogue
 from domain.scoring.rubric import Rubric
 from infrastructure.config.dashboard_config import load_dashboard_config
+from infrastructure.config.playbook_loader import load_playbooks
 from infrastructure.config.rubric_loader import load_rubric
 from infrastructure.config.settings import Settings
 from infrastructure.corpus.pdf_answer_key_source import PdfAnswerKeySource
@@ -132,6 +135,9 @@ class Container:
     # panels of one screen would be unexplainable.
     insights_source: InsightsSource
     dashboard_config: DashboardConfig
+    #: Loaded at startup so a broken catalogue stops the application
+    #: rather than rendering an empty panel (Revised plan I3).
+    playbook_catalogue: PlaybookCatalogue
 
     def insights_reader(self) -> InsightsReader:
         return InsightsReader(
@@ -167,6 +173,12 @@ class Container:
 
     def get_agents(self) -> GetAgents:
         return GetAgents(self.insights_reader(), self.dashboard_config)
+
+    def list_playbooks(self) -> ListPlaybooks:
+        return ListPlaybooks(self.playbook_catalogue)
+
+    def get_playbook(self) -> GetPlaybook:
+        return GetPlaybook(self.playbook_catalogue, self.reference_lookup)
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
@@ -294,6 +306,7 @@ def build_container(settings: Settings) -> Container:
         answer_key_source=PdfAnswerKeySource(settings.transcripts_path),
         insights_source=SqlInsightsSource(session_factory),
         dashboard_config=load_dashboard_config(settings.dashboard_config_path),
+        playbook_catalogue=load_playbooks(settings.playbooks_path),
     )
 
 

@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     # thresholds are versioned data, and `.env` is not where a number anyone
     # has to defend in front of a client belongs.
     dashboard_config_path: Path = DEFAULT_CONFIG_DIR / "dashboard.yaml"
+    # The playbook catalogue behind every issue key a screen links to
+    # (Revised plan Phase 4, I3). Validated at startup, like the thresholds.
+    playbooks_path: Path = DEFAULT_CONFIG_DIR / "playbooks.yaml"
 
     # --- Model providers (plan §8 Phase 3, decision D1) ---------------------
     # OpenAI gpt-4o-mini is the default; Anthropic and Ollama are the only two

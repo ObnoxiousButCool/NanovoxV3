@@ -13,6 +13,7 @@ from domain.entities.broker import Broker
 from domain.entities.employer import Employer
 from domain.entities.employer_contact import EmployerContact
 from domain.entities.member import Member
+from domain.entities.touchpoint import Touchpoint
 from domain.value_objects.authority import Authority
 from infrastructure.persistence.repositories.reference_lookup import SqlReferenceLookup
 from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
@@ -175,3 +176,25 @@ async def test_an_empty_reference_dataset_lists_no_brokers(
     brokers = await SqlReferenceLookup(session_factory).list_brokers()
 
     assert brokers == ()
+
+
+async def test_lists_every_touchpoint_with_its_owner_and_controls(
+    engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """A `tp_` playbook key resolves only against these, so the owner and
+    controls must round-trip as the Touchpoints sheet has them."""
+    await SqlReferenceRepository(session_factory).upsert(
+        ReferenceDataset(
+            touchpoints=(
+                Touchpoint("renewal_pack", "Account Management", "Choice"),
+                Touchpoint("denial_letter_eob", "Claims Operations", "the carrier"),
+            )
+        )
+    )
+
+    touchpoints = await SqlReferenceLookup(session_factory).list_touchpoints()
+
+    assert touchpoints == (
+        Touchpoint("denial_letter_eob", "Claims Operations", "the carrier"),
+        Touchpoint("renewal_pack", "Account Management", "Choice"),
+    )

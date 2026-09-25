@@ -48,6 +48,7 @@ from domain.entities.employer_contact import EmployerContact
 from domain.entities.ingested_call import IngestedCall
 from domain.entities.member import Member
 from domain.entities.rule import Rule
+from domain.entities.touchpoint import Touchpoint
 from domain.entities.transcript import Transcript
 from domain.entities.turn import Turn
 from domain.errors import NotFoundError, ProviderUnavailableError
@@ -180,6 +181,9 @@ class _FakeLookup(ReferenceLookup):
         return ()
 
     async def list_rules(self) -> tuple[Rule, ...]:
+        return ()
+
+    async def list_touchpoints(self) -> tuple[Touchpoint, ...]:
         return ()
 
 
