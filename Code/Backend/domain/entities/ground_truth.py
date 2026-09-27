@@ -15,7 +15,8 @@ import-linter contract "Extraction cannot read the answer key" in
 forbids `domain.entities.answer_key`.
 
 Distinct from `AnswerKey`, which is the *PDF's* five-field version of the
-same truth. The tracker carries twenty-four columns and the PDF header
+same truth. The tracker carries twenty-nine columns (twenty-four plus the
+five v10 added — `Corpus-v10-Schema-Update.md` §3) and the PDF header
 carries five; the five overlap, which is exactly what makes them worth
 cross-checking (`ImportAnswerKey`). Two sources, two entities, one
 reconciliation — not one entity pretending the two sources agree.
@@ -27,6 +28,8 @@ from dataclasses import dataclass, field
 
 from domain.value_objects.category import Category
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.preventable import Preventable
+from domain.value_objects.root_cause_owner import RootCauseOwner
 
 
 @dataclass(frozen=True)
@@ -102,3 +105,13 @@ class GroundTruth:
     # it would be inventing precision the cell does not have.
     repeat_of_reference: str | None = None
     repeat_of_note: str | None = None
+
+    # --- v10: the four new schema fields (`Corpus-v10-Schema-Update.md` §3) --
+    root_cause_owner: RootCauseOwner | None = None
+    preventable: Preventable | None = None
+    primary_issue: str = ""
+    secondary_issues: tuple[str, ...] = ()
+    #: Deliberately a raw string, never parsed into `ImpactScope` — the
+    #: tracker's own free text is messier than the pipeline's target shape.
+    #: See `domain/value_objects/impact_scope.py`'s docstring.
+    impact_scope: str = ""

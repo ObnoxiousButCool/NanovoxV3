@@ -61,6 +61,12 @@ INSIGHTS: tuple[Insight, ...] = (
         ("complaint.present", "complaint.attribution_target", "outcome", "intent"),
     ),
     Insight(2, "Size-matched contact rate", "/accounts", ()),
+    Insight(
+        6,
+        "Employer-caused member confusion",
+        "/accounts",
+        ("root_cause_owner",),
+    ),
     Insight(3, "Authority-weighted exit language", "/risk", ("intent",)),
     Insight(4, "Failure-driven repeat contact", "/accounts", ("outcome",)),
     Insight(
@@ -107,6 +113,12 @@ INSIGHTS: tuple[Insight, ...] = (
         ("touchpoint", "complaint.present", "complaint.attribution_target"),
         partial=True,
     ),
+    Insight(
+        17,
+        "Proximate vs root cause",
+        "/demand",
+        ("touchpoint", "complaint.attribution_target", "root_cause_owner"),
+    ),
     Insight(18, "The unattributed bucket", "/demand", ("touchpoint", "complaint.present")),
     Insight(
         27,
@@ -151,7 +163,15 @@ INSIGHTS: tuple[Insight, ...] = (
 #: §9's WITHHELD insights. Listed so a reader can see they were considered
 #: and excluded on purpose: each is withheld because a field does not exist,
 #: which no agreement figure can change.
-WITHHELD_INSIGHTS: tuple[int, ...] = (6, 9, 17, 22, 25, 26)
+#:
+#: 6 and 17 moved off this list once `root_cause_owner` (v10) shipped — see
+#: `Corpus-v10-Schema-Update.md` §3's own table: `EMPLOYER` is precisely the
+#: value insight 6 was withheld for lack of, and `root_cause_owner` is the
+#: second, root-level record insight 17 was missing. 25 stays withheld
+#: (`Corpus-v10-Decisions.md` item F: `MEMBER_MISUNDERSTANDING` is adjacent
+#: in spirit but not the `PLAN_AS_DESIGNED`/`MEMBER_COMPREHENSION` pair the
+#: insight specifies).
+WITHHELD_INSIGHTS: tuple[int, ...] = (9, 22, 25, 26)
 
 
 def insights_resting_on(field: str) -> tuple[Insight, ...]:
@@ -188,8 +208,21 @@ def fields_in_use() -> tuple[str, ...]:
 #: - `escalation.requested_by_caller` reaches the screens only through the
 #:   `escalation_missed` signal ("an explicit escalation request went
 #:   nowhere"), so it is scored but never read directly.
+#: - `preventable`, `primary_issue`, `secondary_issues` and `impact_scope`
+#:   are the v10 fields with no insight mapped yet — `root_cause_owner` is
+#:   the one insights 6 and 17 needed, but nothing in §9 names these four
+#:   directly. Recorded rather than left implicit for the same reason as
+#:   the other two: a field nobody depends on is either a field the screens
+#:   do not need, or an insight nobody has mapped yet.
 #:
 #: Both are questions for the check-in, not findings. A field nobody depends
 #: on is either a field the screens do not need or an insight nobody has
 #: mapped yet, and only Minnie can say which.
-UNMAPPED_FIELDS: tuple[str, ...] = ("escalation.requested_by_caller", "score")
+UNMAPPED_FIELDS: tuple[str, ...] = (
+    "escalation.requested_by_caller",
+    "impact_scope",
+    "preventable",
+    "primary_issue",
+    "score",
+    "secondary_issues",
+)

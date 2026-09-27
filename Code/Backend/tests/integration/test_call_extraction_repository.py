@@ -34,13 +34,16 @@ from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
+from domain.value_objects.impact_scope import ImpactScope, ImpactScopeBucket
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
 from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.polarity import Polarity
+from domain.value_objects.preventable import Preventable
 from domain.value_objects.process_gap import ProcessGap, ProcessGapStatus, RaisedBy
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.root_cause_owner import RootCauseOwner
 from domain.value_objects.score import ScoreStatus
 from domain.value_objects.signal import Signal
 from domain.value_objects.signal_type import SignalType
@@ -98,6 +101,9 @@ _BASE_SAVE = L2Save(
     broker_named_aloud=BrokerNamedAloud(present=False),
     touchpoint=None,
     summary="The member's crown claim was explained and closed.",
+    primary_issue=None,
+    secondary_issues=(),
+    impact_scope=None,
     provenance=_PROVENANCE,
 )
 
@@ -223,6 +229,73 @@ class TestRoundTrip:
 
         assert found is not None
         assert found.broker_named_aloud == mention
+
+    async def test_primary_and_secondary_issues_round_trip(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await _seed_call(session_factory)
+        repository = SqlCallExtractionRepository(session_factory)
+
+        await repository.save_l2(
+            "C-0001",
+            _save(primary_issue="claims & eob", secondary_issues=("missing id card", "dependent")),
+        )
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.primary_issue == "claims & eob"
+        assert found.secondary_issues == ("missing id card", "dependent")
+
+    async def test_a_call_with_no_primary_issue_yet_reads_back_none_not_empty_string(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await _seed_call(session_factory)
+        repository = SqlCallExtractionRepository(session_factory)
+
+        await repository.save_l2("C-0001", _save())
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.primary_issue is None
+        assert found.secondary_issues == ()
+
+    async def test_an_impact_scope_with_a_count_round_trips(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await _seed_call(session_factory)
+        repository = SqlCallExtractionRepository(session_factory)
+        scope = ImpactScope(bucket=ImpactScopeBucket.N_EMPLOYEES, count=11)
+
+        await repository.save_l2("C-0001", _save(impact_scope=scope))
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.impact_scope == scope
+
+    async def test_an_impact_scope_with_no_count_round_trips(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await _seed_call(session_factory)
+        repository = SqlCallExtractionRepository(session_factory)
+        scope = ImpactScope(bucket=ImpactScopeBucket.ONE_MEMBER)
+
+        await repository.save_l2("C-0001", _save(impact_scope=scope))
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.impact_scope == scope
+
+    async def test_no_impact_scope_yet_reads_back_none(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await _seed_call(session_factory)
+        repository = SqlCallExtractionRepository(session_factory)
+
+        await repository.save_l2("C-0001", _save())
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.impact_scope is None
 
     async def test_a_second_save_replaces_rather_than_duplicates(
         self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
@@ -404,6 +477,8 @@ def _l4_save(**overrides: Any) -> L4Save:
         "escalation_trigger_type": None,
         "process_gap": _ABSENT_GAP,
         "touchpoint": None,
+        "root_cause_owner": RootCauseOwner.CHOICE,
+        "preventable": Preventable.YES,
         "provenance": _L4_PROVENANCE,
     }
     defaults.update(overrides)
@@ -489,6 +564,35 @@ class TestL4RoundTrip:
 
         assert found is not None
         assert found.touchpoint == "enrolment_meeting"
+
+    async def test_root_cause_owner_and_preventable_round_trip(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await _seed_call(session_factory)
+        repository = SqlCallExtractionRepository(session_factory)
+
+        await repository.save_l4(
+            "C-0001",
+            _l4_save(root_cause_owner=RootCauseOwner.BROKER, preventable=Preventable.PARTLY),
+        )
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.root_cause_owner is RootCauseOwner.BROKER
+        assert found.preventable is Preventable.PARTLY
+
+    async def test_no_l4_pass_yet_reads_back_no_root_cause_owner_or_preventable(
+        self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await _seed_call(session_factory)
+        repository = SqlCallExtractionRepository(session_factory)
+
+        await repository.save_l2("C-0001", _save())
+        found = await repository.get("C-0001")
+
+        assert found is not None
+        assert found.root_cause_owner is None
+        assert found.preventable is None
 
     async def test_a_second_l4_save_replaces_its_signals_rather_than_appending(
         self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]

@@ -19,6 +19,15 @@ sheet actually contains, not against what it might reasonably contain:
     Broker named        present|BRK-01|ADVERSE
     Repeat of           C-0002 | 06 Jul | closed unresolved
     Rule refs           A-05, A-06, A-09     (or the em-dash for none)
+    Root cause owner    CHOICE   (matches `RootCauseOwner`'s own names)
+    Preventable         Partly — communication   (only the leading word maps)
+    Secondary issues    missing ID card, dependent add   (or "none"/em-dash)
+
+Two of the five v10 columns need no splitting at all: `Primary issue` and
+`Impact scope` are read as plain strings — the first because it has no
+vocabulary yet (`Corpus-v10-Decisions.md` item C), the second because the
+tracker's own free text is deliberately kept raw rather than force-parsed
+(see `domain/value_objects/impact_scope.py`).
 
 Anything that does not match produces a warning naming the call and the
 column, and leaves that field unset. It never guesses, and it never aborts
@@ -41,6 +50,8 @@ from domain.entities.ground_truth import GroundTruth, GroundTruthSignal
 from domain.errors import ReferenceIntegrityError
 from domain.value_objects.category import Category
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.preventable import Preventable
+from domain.value_objects.root_cause_owner import RootCauseOwner
 from infrastructure.reference.workbook_xml import Sheets, read_workbook_sheets
 
 # Called with (column name, offending raw value) when a cell does not match
@@ -171,6 +182,9 @@ class _Mapper:
         )
         repeat_reference, repeat_note = cls._repeat_of(value("Repeat of"))
 
+        root_cause_owner = cls._root_cause_owner(value("Root cause owner"), warn)
+        preventable = cls._preventable(value("Preventable"), warn)
+
         return GroundTruth(
             reference=reference,
             category=cls._category(value("Category"), warn),
@@ -201,6 +215,11 @@ class _Mapper:
             broker_named_sentiment=broker_sentiment,
             repeat_of_reference=repeat_reference,
             repeat_of_note=repeat_note,
+            root_cause_owner=root_cause_owner,
+            preventable=preventable,
+            primary_issue=value("Primary issue"),
+            secondary_issues=cls._secondary_issues(value("Secondary issues")),
+            impact_scope=value("Impact scope"),
         )
 
     # --- per-column parsing ------------------------------------------------
@@ -335,6 +354,39 @@ class _Mapper:
             return True, parts[1], parts[2]
         warn("Broker named", raw)
         return None, None, None
+
+    @staticmethod
+    def _root_cause_owner(raw: str, warn: Warn) -> RootCauseOwner | None:
+        """The tracker's own values match `RootCauseOwner`'s names exactly
+        (verified against the real 200-row tracker) — still handled
+        tolerantly, since a workbook revision could write something else."""
+        if not raw:
+            return None
+        try:
+            return RootCauseOwner(raw.strip())
+        except ValueError:
+            warn("Root cause owner", raw)
+            return None
+
+    @staticmethod
+    def _preventable(raw: str, warn: Warn) -> Preventable | None:
+        """`"Partly — communication"` / `"Partly - communication"` → only
+        the leading Yes/Partly/No word maps to the enum; the lever text
+        after the dash is commentary, not a fifth value."""
+        if not raw:
+            return None
+        head = raw.split(" —", 1)[0].split(" -", 1)[0].strip()
+        try:
+            return Preventable(head)
+        except ValueError:
+            warn("Preventable", raw)
+            return None
+
+    @staticmethod
+    def _secondary_issues(raw: str) -> tuple[str, ...]:
+        if not raw or raw == _NONE_MARKER or raw.strip().lower() == "none":
+            return ()
+        return tuple(item.strip() for item in raw.split(",") if item.strip())
 
     @staticmethod
     def _repeat_of(raw: str) -> tuple[str | None, str | None]:

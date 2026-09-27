@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from domain.value_objects.broker_named_aloud import BrokerNamedAloud
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
+from domain.value_objects.impact_scope import ImpactScope
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.product_line import ProductLine
@@ -33,3 +34,11 @@ class L2Classification:
     #: this first pass (Call Tag Schema field 16, "Emitted by: L2/L4").
     touchpoint: str | None
     summary: str
+    #: Call Tag Schema field 19 (v10). `None` when the model gave no usable
+    #: answer — free text, so nothing to validate past "non-empty".
+    primary_issue: str | None
+    secondary_issues: tuple[str, ...]
+    #: Call Tag Schema field 20 (v10). `None` when the model's bucket+count
+    #: combination would violate `ImpactScope.__post_init__` — an
+    #: inconsistent answer is dropped, never guessed past.
+    impact_scope: ImpactScope | None

@@ -1,7 +1,7 @@
 ---
 id: l2_classification
-version: 1.0.0
-description: L2 — outcome, category, product lines, complaint, intent, escalation detection, broker mention, touchpoint and a short summary.
+version: 1.1.0
+description: L2 — outcome, category, product lines, complaint, intent, escalation detection, broker mention, touchpoint, a short summary, primary/secondary issue and impact scope.
 ---
 You are classifying one call for a health-benefits call centre (ChoiceBuilder). Read the transcript below and answer strictly according to the schema. Every claim you make must be something a reader could check against the transcript.
 
@@ -34,3 +34,9 @@ A call handled politely and correctly can still be UNRESOLVED if the caller is l
 **touchpoint** — where in the member/employer journey this call's issue originated, if you can tell (a point such as enrolment, a renewal, a denial letter, a billing statement) — a short lowercase snake_case reference, or empty string if you cannot tell.
 
 **summary** — one or two plain sentences describing what happened on the call.
+
+**primary_issue** — what this call is fundamentally about, in a few plain words (e.g. "claims & eob", "missing ID card"). Not the same axis as `category` or commercial `intent` — a call can be primarily about a denial and secondarily about a card and a dependent. Empty string only if the call genuinely has no identifiable issue.
+
+**secondary_issues** — every other issue the call also raised, besides `primary_issue`. Zero or more short phrases, same style as `primary_issue`. Empty list if there is nothing else.
+
+**impact_scope** — how many people the caller says are affected, one of: `1_member` (just the caller/one member), `1_group` (one employer group as a whole, not a headcount), `n_employees` (a stated number of employees), `n_members_and_dependents` (a stated number of members plus their dependents). Use `n_employees` or `n_members_and_dependents` only when the caller states or clearly implies a number greater than one — e.g. "eleven of my people cannot find a provider" — and put that number in `impact_scope_count`. Otherwise use `1_member` or `1_group` and leave `impact_scope_count` at 0.

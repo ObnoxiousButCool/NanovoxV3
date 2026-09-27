@@ -25,6 +25,7 @@ from application.ports.llm_provider import LLMProvider, LlmRequest
 from application.ports.prompts import PromptSource
 from application.ports.reference_lookup import ReferenceLookup
 from application.ports.stage_cache import StageCache, StageCacheKey
+from domain.derivations.root_cause import preventable_of, root_cause_owner
 from domain.entities.l4_signals_and_gaps import L4SignalsAndGaps
 from domain.entities.rule import Rule
 from domain.entities.transcript import Transcript
@@ -33,6 +34,7 @@ from domain.extraction.evidence import EvidenceValidation, validate_evidence
 from domain.extraction.rule_scoping import scope_rules
 from domain.layers import Layer
 from domain.transcript_hash import content_hash
+from domain.value_objects.complaint import Complaint
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.process_gap import ProcessGap, ProcessGapStatus, RaisedBy
 from domain.value_objects.signal import Signal
@@ -149,6 +151,15 @@ class ClassifyCallL4:
             touchpoint=response.touchpoint or None,
         )
 
+        # Call Tag Schema fields 17-18 (v10) — computed, not extracted, from
+        # L2's own complaint and this pass's own signals (see
+        # `domain/derivations/root_cause.py`). L2 always saves a complaint
+        # once it has run at all, so the fallback below only guards mypy's
+        # narrowing, not a real gap.
+        complaint = l2.complaint if l2.complaint is not None else Complaint(present=False)
+        owner = root_cause_owner(complaint, findings.signals)
+        preventable = preventable_of(owner)
+
         await self._extractions.save_l4(
             call_reference,
             L4Save(
@@ -157,6 +168,8 @@ class ClassifyCallL4:
                 escalation_trigger_type=findings.escalation_trigger_type,
                 process_gap=findings.process_gap,
                 touchpoint=findings.touchpoint,
+                root_cause_owner=owner,
+                preventable=preventable,
                 provenance=L4Provenance(
                     provider=provider.name,
                     model=provider.model,

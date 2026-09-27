@@ -86,3 +86,32 @@ def test_no_insight_is_listed_twice() -> None:
     numbers = [insight.number for insight in INSIGHTS]
 
     assert len(numbers) == len(set(numbers))
+
+
+# --- v10: root_cause_owner unblocks insights 6 and 17 -----------------------
+
+
+def test_insights_6_and_17_are_no_longer_withheld() -> None:
+    """`root_cause_owner` (v10) supplies exactly what each was withheld for
+    lack of — see `Corpus-v10-Schema-Update.md` §3's own table."""
+    assert 6 not in WITHHELD_INSIGHTS
+    assert 17 not in WITHHELD_INSIGHTS
+
+
+def test_insight_6_depends_on_root_cause_owner() -> None:
+    insight = next(i for i in INSIGHTS if i.number == 6)
+
+    assert "root_cause_owner" in insight.fields
+
+
+def test_insight_17_depends_on_root_cause_owner() -> None:
+    insight = next(i for i in INSIGHTS if i.number == 17)
+
+    assert "root_cause_owner" in insight.fields
+
+
+def test_insight_25_stays_withheld() -> None:
+    """`Corpus-v10-Decisions.md` item F: `MEMBER_MISUNDERSTANDING` is
+    adjacent in spirit but not the exact pair the insight specifies, so
+    nothing here reinterprets it into BUILD."""
+    assert 25 in WITHHELD_INSIGHTS

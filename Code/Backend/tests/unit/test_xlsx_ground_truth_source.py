@@ -17,6 +17,8 @@ from domain.entities.ground_truth import GroundTruth
 from domain.errors import ReferenceIntegrityError
 from domain.value_objects.category import Category
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.preventable import Preventable
+from domain.value_objects.root_cause_owner import RootCauseOwner
 from infrastructure.reference.xlsx_ground_truth_source import map_tracker_to_dataset
 from tests.fixtures.tracker_sheet import TRACKER_SHEETS
 
@@ -176,10 +178,65 @@ def test_an_unreadable_cell_warns_and_leaves_the_field_unset() -> None:
     assert row.complaint_present is None
     assert row.escalation_triggered is None
     assert row.signals == ()
+    assert row.root_cause_owner is None
+    assert row.preventable is None
 
     warned_on = {w.split(": ", 1)[1].split(" value", 1)[0] for w in dataset.warnings}
-    assert warned_on == {"Category", "Outcome", "Complaint", "Escalation", "Signals"}
+    assert warned_on == {
+        "Category",
+        "Outcome",
+        "Complaint",
+        "Escalation",
+        "Signals",
+        "Root cause owner",
+        "Preventable",
+    }
     assert all(w.startswith("C-9004:") for w in dataset.warnings)
+
+
+def test_root_cause_owner_matches_the_enums_own_names() -> None:
+    assert _row("C-9001").root_cause_owner is RootCauseOwner.CHOICE
+    assert _row("C-9003").root_cause_owner is RootCauseOwner.CARRIER
+
+
+def test_an_empty_root_cause_owner_cell_is_absent_not_unknown() -> None:
+    assert _row("C-9002").root_cause_owner is None
+
+
+def test_preventable_reads_the_plain_form() -> None:
+    assert _row("C-9001").preventable is Preventable.YES
+
+
+def test_preventable_takes_only_the_leading_word_before_the_lever() -> None:
+    """The tracker writes "Partly — communication": the lever names which
+    lever fixes it, but only the Yes/Partly/No word maps to the enum."""
+    row = _row("C-9003")
+
+    assert row.preventable is Preventable.PARTLY
+    assert not [w for w in map_tracker_to_dataset(TRACKER_SHEETS).warnings if "C-9003" in w]
+
+
+def test_primary_issue_is_read_as_free_text() -> None:
+    assert _row("C-9001").primary_issue == "claims & eob"
+    assert _row("C-9002").primary_issue == ""
+
+
+def test_secondary_issues_are_comma_split_and_trimmed() -> None:
+    assert _row("C-9001").secondary_issues == ("missing id card", "dependent add")
+
+
+def test_secondary_issues_none_or_blank_is_an_empty_tuple() -> None:
+    assert _row("C-9002").secondary_issues == ()
+    assert _row("C-9003").secondary_issues == ()  # the cell literally says "none"
+
+
+def test_impact_scope_is_kept_as_a_raw_unparsed_string() -> None:
+    """Deliberately not forced into `ImpactScope`'s four buckets — the
+    tracker's own free text is messier than the pipeline's target shape.
+    See `domain/value_objects/impact_scope.py`."""
+    assert _row("C-9001").impact_scope == "1 member"
+    assert _row("C-9005").impact_scope == "n_employees: 3"
+    assert _row("C-9002").impact_scope == ""
 
 
 def test_one_unreadable_row_does_not_cost_the_other_ninety_nine() -> None:

@@ -36,9 +36,12 @@ from domain.value_objects.call_source import CallSource
 from domain.value_objects.caller_type import CallerType
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
+from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
+from domain.value_objects.preventable import Preventable
 from domain.value_objects.process_gap import ProcessGapStatus, RaisedBy
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.root_cause_owner import RootCauseOwner
 from domain.value_objects.signal_type import SignalType
 from domain.value_objects.speaker_role import SpeakerRole
 from infrastructure.llm.prompt_source import FilePromptSource
@@ -403,6 +406,54 @@ class TestRuleScoping:
         prompt_text = provider.requests[0].prompt
         assert "C-01" in prompt_text
         assert "C-02" not in prompt_text
+
+
+class TestRootCauseOwnerAndPreventable:
+    async def test_a_complaints_attribution_is_saved_as_the_owner(self) -> None:
+        """Computed, not extracted — see `domain/derivations/root_cause.py`.
+        The complaint comes from L2's own saved classification, never from
+        anything L4's model answers."""
+        calls = _FakeCalls((_call(),))
+        l2 = _l2(
+            complaint=Complaint(present=True, attributed_to=ComplaintAttribution.BROKER),
+        )
+        use_case, extractions = _use_case(calls=calls, lookup=_FakeLookup(), l2=l2)
+
+        await use_case.execute("C-0001", FakeProvider(_response()))
+
+        assert extractions.saved["C-0001"].root_cause_owner is RootCauseOwner.BROKER
+        assert extractions.saved["C-0001"].preventable is Preventable.PARTLY
+
+    async def test_a_blameless_call_still_gets_an_owner_and_a_preventable_value(self) -> None:
+        """§9's own gap statement: a third of calls carried no owner at all
+        — `MEMBER_MISUNDERSTANDING` closes it, on every call, not only
+        complaint calls (`Corpus-v10-Decisions.md` item A)."""
+        calls = _FakeCalls((_call(),))
+        use_case, extractions = _use_case(calls=calls, lookup=_FakeLookup(), l2=_l2())
+
+        await use_case.execute("C-0001", FakeProvider(_response()))
+
+        owner = RootCauseOwner.MEMBER_MISUNDERSTANDING
+        assert extractions.saved["C-0001"].root_cause_owner is owner
+        assert extractions.saved["C-0001"].preventable is Preventable.PARTLY
+
+    async def test_the_most_severe_owned_signal_wins_with_no_complaint(self) -> None:
+        calls = _FakeCalls((_call(),))
+        use_case, extractions = _use_case(calls=calls, lookup=_FakeLookup(), l2=_l2())
+        response = _response(
+            signals=[
+                SignalResponse(
+                    type="broker_conduct_adverse",
+                    quote="Nobody ever applied my portal submission",
+                    turn_seq=1,
+                )
+            ]
+        )
+
+        await use_case.execute("C-0001", FakeProvider(response))
+
+        assert extractions.saved["C-0001"].root_cause_owner is RootCauseOwner.BROKER
+        assert extractions.saved["C-0001"].preventable is Preventable.PARTLY
 
 
 class TestStageCache:

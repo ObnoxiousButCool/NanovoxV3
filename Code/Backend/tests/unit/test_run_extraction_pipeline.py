@@ -115,6 +115,10 @@ def _l2_response(**overrides: object) -> L2Response:
         ),
         "touchpoint": "",
         "summary": "The member's crown claim was explained and closed.",
+        "primary_issue": "claims & eob",
+        "secondary_issues": [],
+        "impact_scope": "1_member",
+        "impact_scope_count": 0,
     }
     defaults.update(overrides)
     return L2Response(**defaults)  # type: ignore[arg-type]
