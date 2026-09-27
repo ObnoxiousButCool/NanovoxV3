@@ -23,11 +23,14 @@ from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
+from domain.value_objects.impact_scope import ImpactScope, ImpactScopeBucket
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
 from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.preventable import Preventable
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.root_cause_owner import RootCauseOwner
 from domain.value_objects.score import Score
 from domain.value_objects.signal import Signal
 from domain.value_objects.signal_type import SignalType
@@ -347,3 +350,149 @@ def test_a_scored_call_compares_its_score() -> None:
     extraction = CallExtraction(call_reference="C-0001", quality_score=Score(91))
 
     assert _verdict(compare_call(truth, extraction), "score") is Verdict.AGREED
+
+
+# --- v10: root_cause_owner and preventable ----------------------------------
+
+
+def test_root_cause_owner_is_an_exact_enum_comparison() -> None:
+    truth = GroundTruth(reference="C-0001", root_cause_owner=RootCauseOwner.BROKER)
+    extraction = CallExtraction(call_reference="C-0001", root_cause_owner=RootCauseOwner.BROKER)
+
+    assert _verdict(compare_call(truth, extraction), "root_cause_owner") is Verdict.AGREED
+
+
+def test_root_cause_owner_disagrees_on_a_different_owner() -> None:
+    truth = GroundTruth(reference="C-0001", root_cause_owner=RootCauseOwner.BROKER)
+    extraction = CallExtraction(call_reference="C-0001", root_cause_owner=RootCauseOwner.CARRIER)
+
+    assert _verdict(compare_call(truth, extraction), "root_cause_owner") is Verdict.DISAGREED
+
+
+def test_root_cause_owner_belongs_to_l4() -> None:
+    mapped = compare_call(GroundTruth(reference="C-0001"), None)
+
+    assert "root_cause_owner" in {m.field for m in fields_for(Layer.L4, mapped)}
+
+
+def test_preventable_is_an_exact_enum_comparison() -> None:
+    truth = GroundTruth(reference="C-0001", preventable=Preventable.PARTLY)
+    extraction = CallExtraction(call_reference="C-0001", preventable=Preventable.PARTLY)
+
+    assert _verdict(compare_call(truth, extraction), "preventable") is Verdict.AGREED
+
+
+def test_preventable_disagrees_on_a_different_value() -> None:
+    truth = GroundTruth(reference="C-0001", preventable=Preventable.YES)
+    extraction = CallExtraction(call_reference="C-0001", preventable=Preventable.NO)
+
+    assert _verdict(compare_call(truth, extraction), "preventable") is Verdict.DISAGREED
+
+
+# --- v10: primary_issue ------------------------------------------------------
+
+
+def test_primary_issue_agrees_case_insensitively() -> None:
+    truth = GroundTruth(reference="C-0001", primary_issue="Claims & EOB")
+    extraction = CallExtraction(call_reference="C-0001", primary_issue="claims & eob")
+
+    assert _verdict(compare_call(truth, extraction), "primary_issue") is Verdict.AGREED
+
+
+def test_primary_issue_disagrees_on_different_text() -> None:
+    truth = GroundTruth(reference="C-0001", primary_issue="claims & eob")
+    extraction = CallExtraction(call_reference="C-0001", primary_issue="billing dispute")
+
+    assert _verdict(compare_call(truth, extraction), "primary_issue") is Verdict.DISAGREED
+
+
+def test_primary_issue_is_incomparable_when_the_pipeline_said_nothing() -> None:
+    truth = GroundTruth(reference="C-0001", primary_issue="claims & eob")
+    extraction = CallExtraction(call_reference="C-0001", primary_issue=None)
+
+    comparison = _exact(compare_call(truth, extraction), "primary_issue")
+    assert comparison.missing is MissingSide.PIPELINE
+
+
+# --- v10: secondary_issues ---------------------------------------------------
+
+
+def test_secondary_issues_agree_on_any_shared_item() -> None:
+    """Free text on both sides rarely matches word for word, so any overlap
+    — not exact-set equality — counts as agreement."""
+    truth = GroundTruth(reference="C-0001", secondary_issues=("missing ID card", "dependent add"))
+    extraction = CallExtraction(call_reference="C-0001", secondary_issues=("Missing Id Card",))
+
+    assert _verdict(compare_call(truth, extraction), "secondary_issues") is Verdict.AGREED
+
+
+def test_secondary_issues_disagree_with_no_overlap_at_all() -> None:
+    truth = GroundTruth(reference="C-0001", secondary_issues=("missing ID card",))
+    extraction = CallExtraction(call_reference="C-0001", secondary_issues=("billing dispute",))
+
+    assert _verdict(compare_call(truth, extraction), "secondary_issues") is Verdict.DISAGREED
+
+
+def test_secondary_issues_both_empty_agrees() -> None:
+    """No secondary issues is a real answer on both sides, not a missing
+    one — same convention as every other list-valued field here."""
+    truth = GroundTruth(reference="C-0001", secondary_issues=())
+    extraction = CallExtraction(call_reference="C-0001", secondary_issues=())
+
+    assert _verdict(compare_call(truth, extraction), "secondary_issues") is Verdict.AGREED
+
+
+# --- v10: impact_scope --------------------------------------------------------
+
+
+def test_impact_scope_agrees_when_the_buckets_word_is_in_the_tracker_text() -> None:
+    truth = GroundTruth(reference="C-0001", impact_scope="1 member, self only")
+    extraction = CallExtraction(
+        call_reference="C-0001",
+        impact_scope=ImpactScope(bucket=ImpactScopeBucket.ONE_MEMBER),
+    )
+
+    assert _verdict(compare_call(truth, extraction), "impact_scope") is Verdict.AGREED
+
+
+def test_impact_scope_with_a_count_also_checks_the_digit() -> None:
+    truth = GroundTruth(reference="C-0001", impact_scope="11 employees affected")
+    extraction = CallExtraction(
+        call_reference="C-0001",
+        impact_scope=ImpactScope(bucket=ImpactScopeBucket.N_EMPLOYEES, count=11),
+    )
+
+    assert _verdict(compare_call(truth, extraction), "impact_scope") is Verdict.AGREED
+
+
+def test_impact_scope_disagrees_when_the_count_does_not_match() -> None:
+    """The heuristic checks the digits too — a right bucket with a wrong
+    count is not the same finding as "eleven of my people"."""
+    truth = GroundTruth(reference="C-0001", impact_scope="4 employees affected")
+    extraction = CallExtraction(
+        call_reference="C-0001",
+        impact_scope=ImpactScope(bucket=ImpactScopeBucket.N_EMPLOYEES, count=11),
+    )
+
+    assert _verdict(compare_call(truth, extraction), "impact_scope") is Verdict.DISAGREED
+
+
+def test_impact_scope_disagrees_on_a_different_bucket_word() -> None:
+    truth = GroundTruth(reference="C-0001", impact_scope="the whole employer group")
+    extraction = CallExtraction(
+        call_reference="C-0001",
+        impact_scope=ImpactScope(bucket=ImpactScopeBucket.ONE_MEMBER),
+    )
+
+    assert _verdict(compare_call(truth, extraction), "impact_scope") is Verdict.DISAGREED
+
+
+def test_impact_scope_is_incomparable_when_the_tracker_never_said() -> None:
+    truth = GroundTruth(reference="C-0001", impact_scope="")
+    extraction = CallExtraction(
+        call_reference="C-0001",
+        impact_scope=ImpactScope(bucket=ImpactScopeBucket.ONE_MEMBER),
+    )
+
+    comparison = _exact(compare_call(truth, extraction), "impact_scope")
+    assert comparison.missing is MissingSide.ANSWER_KEY

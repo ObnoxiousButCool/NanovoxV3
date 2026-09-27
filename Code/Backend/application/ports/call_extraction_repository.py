@@ -20,11 +20,14 @@ from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
 from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
+from domain.value_objects.impact_scope import ImpactScope
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.preventable import Preventable
 from domain.value_objects.process_gap import ProcessGap
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.root_cause_owner import RootCauseOwner
 from domain.value_objects.signal import Signal
 
 
@@ -54,6 +57,13 @@ class L2Save:
     broker_named_aloud: BrokerNamedAloud
     touchpoint: str | None
     summary: str
+    #: Call Tag Schema field 19 (v10). `None` when the model gave no usable
+    #: answer.
+    primary_issue: str | None
+    secondary_issues: tuple[str, ...]
+    #: Call Tag Schema field 20 (v10). `None` when nothing usable survived
+    #: validation.
+    impact_scope: ImpactScope | None
     provenance: L2Provenance
 
 
@@ -110,6 +120,10 @@ class L4Save:
     #: Empty when L4 has nothing to add to or revise from L2's first pass
     #: (leaves the existing `touchpoint` column untouched).
     touchpoint: str | None
+    #: Call Tag Schema fields 17-18 (v10) — computed, not extracted. See
+    #: `domain/derivations/root_cause.py`.
+    root_cause_owner: RootCauseOwner
+    preventable: Preventable
     provenance: L4Provenance
 
 

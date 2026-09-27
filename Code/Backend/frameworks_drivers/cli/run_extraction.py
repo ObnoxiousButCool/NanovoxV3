@@ -10,6 +10,15 @@ Ingest and import_reference must have already run: this works whichever
 calls are already in the database. Progress is printed as the run
 proceeds; interrupting the process (a crash, a kill) leaves the run
 resumable — run again with ``--resume <id>``.
+
+Three safety measures wrap the run itself (``Corpus-v10-Schema-Update.md``'s
+finding: a run once left the database failing ``PRAGMA integrity_check``,
+with tables reading back each other's rows). A write lock refuses to start
+if another invocation's heartbeat is still fresh; the database is backed up
+before anything writes; and it is checked again once the run finishes,
+whichever way. None of the three explain what caused that corruption — they
+bound its cost, so the next occurrence is a restore and a clear signal
+rather than a rebuild from nothing.
 """
 
 from __future__ import annotations
@@ -22,9 +31,23 @@ from domain.errors import NanoVoxInsightsError
 from domain.run_progress import RunProgress
 from frameworks_drivers.container import build_container, dispose_container
 from infrastructure.config.settings import get_settings
+from infrastructure.persistence.backup import backup_before_run
+from infrastructure.persistence.integrity import OK, check_integrity
+from infrastructure.runner.database_write_lock import DatabaseWriteLock
 
 EXIT_OK = 0
 EXIT_FAILED = 1
+#: The run finished — nothing about the orchestration broke — but more
+#: items failed than completed. Distinct from EXIT_FAILED: the process
+#: succeeded and the extraction did not, which is a different fact from
+#: "could not run this at all" and needs its own code so a caller
+#: automating this (CI, a schedule) can tell the two apart rather than
+#: reading a quiet EXIT_OK off a run that mostly failed.
+EXIT_MOSTLY_FAILED = 2
+#: The database failed its post-run integrity check. Takes priority over
+#: every other code: whatever else happened, this is the one fact that
+#: makes every other result unreliable.
+EXIT_DATABASE_CORRUPT = 3
 
 _POLL_SECONDS = 2.0
 
@@ -45,10 +68,33 @@ def _progress_line(progress: RunProgress) -> str:
     )
 
 
+def _exit_code_for(progress: RunProgress) -> int:
+    """The process exit code for a run that finished without the
+    orchestration itself breaking.
+
+    More failures than successes is treated as "not worth trusting" rather
+    than as the normal cost of resumability: an occasional item failing
+    among mostly-completed ones is expected and does not fail the run
+    (`RunExtractionOverCorpus`'s own design), but a run that is mostly
+    failure is a different fact from a run that mostly worked, and a
+    caller automating this needs the exit code to say which.
+    """
+    if progress.failed > progress.completed:
+        return EXIT_MOSTLY_FAILED
+    return EXIT_OK
+
+
 async def _run(args: argparse.Namespace) -> int:
     settings = get_settings()
     container = build_container(settings)
+    lock = DatabaseWriteLock(settings.database_file)
+    exit_code = EXIT_OK
     try:
+        lock.acquire()
+        backup_path = await backup_before_run(settings.database_file)
+        if backup_path is not None:
+            _out(f"Backed up the database to {backup_path} before starting.")
+
         use_case = container.run_extraction_over_corpus()
         reconciled = await use_case.reconcile_interrupted()
         if reconciled:
@@ -63,6 +109,7 @@ async def _run(args: argparse.Namespace) -> int:
 
         while True:
             await asyncio.sleep(_POLL_SECONDS)
+            lock.heartbeat()
             view = await use_case.status(run_id)
             if view is None:  # pragma: no cover - the run this process just created
                 raise NanoVoxInsightsError(f"Run {run_id} disappeared mid-run.")
@@ -70,14 +117,27 @@ async def _run(args: argparse.Namespace) -> int:
             if view.progress.is_exhausted:
                 _out(f"Run {run_id} finished: {view.record.status.value}.")
                 break
+
+        exit_code = _exit_code_for(view.progress)
+        if exit_code == EXIT_MOSTLY_FAILED:
+            _out(
+                f"MOSTLY FAILED: {view.progress.failed} of {view.progress.total} call(s) failed, "
+                f"only {view.progress.completed} completed. The run finished; the extraction "
+                "did not — check the failure reasons before trusting anything built on this run."
+            )
     except NanoVoxInsightsError as exc:
         _out(f"FAILED: {exc.message}")
-        return EXIT_FAILED
+        exit_code = EXIT_FAILED
     finally:
+        integrity = await check_integrity(container.engine)
+        if integrity != OK:
+            _out(f"DATABASE CORRUPT: {integrity}")
+            exit_code = EXIT_DATABASE_CORRUPT
+        lock.release()
         await container.background_runner.shutdown()
         await dispose_container(container)
 
-    return EXIT_OK
+    return exit_code
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:

@@ -258,10 +258,11 @@ class StageCacheEntryRow(Base):
 
 class CallExtractionRow(Base):
     """The pipeline's own output for one call — the Call Tag Schema's
-    sixteen fields, filled in as L1 → L2 → (L3 ∥ L4) run (plan §7, §8
-    Phase 4). One row per call (Data Model sheet: the call is the fact
-    table); separate from `CallRow`, which is Phase 2's ingestion record
-    and never touched again once a call is resolved.
+    twenty fields (sixteen since Phase 4, plus the four v10 added —
+    `Corpus-v10-Schema-Update.md` §3), filled in as L1 → L2 → (L3 ∥ L4) run
+    (plan §7, §8 Phase 4). One row per call (Data Model sheet: the call is
+    the fact table); separate from `CallRow`, which is Phase 2's ingestion
+    record and never touched again once a call is resolved.
 
     Only L2's columns are non-null yet — L1 is pure and recomputed on
     demand rather than stored, and L3/L4's columns arrive with those
@@ -296,6 +297,17 @@ class CallExtractionRow(Base):
     )
     touchpoint: Mapped[str | None] = mapped_column(nullable=True)
     summary: Mapped[str | None] = mapped_column(nullable=True)
+    #: Call Tag Schema field 19 (v10). Free text, never validated against a
+    #: vocabulary — see `Corpus-v10-Decisions.md` item C.
+    primary_issue: Mapped[str | None] = mapped_column(nullable=True)
+    secondary_issues: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    #: Call Tag Schema field 20 (v10). `ImpactScopeBucket.value`, or `None`
+    #: when L2 hasn't run or gave nothing usable.
+    impact_scope_bucket: Mapped[str | None] = mapped_column(nullable=True)
+    #: The N in "N employees" / "N members + dependents" — `None` for the
+    #: two buckets that are inherently one person, or when there is no
+    #: bucket at all.
+    impact_scope_count: Mapped[int | None] = mapped_column(nullable=True)
 
     l2_provider: Mapped[str | None] = mapped_column(nullable=True)
     l2_model: Mapped[str | None] = mapped_column(nullable=True)
@@ -325,6 +337,10 @@ class CallExtractionRow(Base):
     process_gap_proposed_change: Mapped[str | None] = mapped_column(nullable=True)
     process_gap_raised_by: Mapped[str | None] = mapped_column(nullable=True)
     process_gap_status: Mapped[str | None] = mapped_column(nullable=True)
+    #: Call Tag Schema fields 17-18 (v10) — computed, not extracted.
+    #: `RootCauseOwner.value` / `Preventable.value`.
+    root_cause_owner: Mapped[str | None] = mapped_column(nullable=True)
+    preventable: Mapped[str | None] = mapped_column(nullable=True)
 
     l4_provider: Mapped[str | None] = mapped_column(nullable=True)
     l4_model: Mapped[str | None] = mapped_column(nullable=True)
@@ -488,6 +504,14 @@ class GroundTruthRow(Base):
 
     repeat_of_reference: Mapped[str | None] = mapped_column(nullable=True)
     repeat_of_note: Mapped[str | None] = mapped_column(nullable=True)
+
+    # --- v10: the four new schema fields (`Corpus-v10-Schema-Update.md` §3) --
+    root_cause_owner: Mapped[str | None] = mapped_column(nullable=True)  # RootCauseOwner.value
+    preventable: Mapped[str | None] = mapped_column(nullable=True)  # Preventable.value
+    primary_issue: Mapped[str] = mapped_column(nullable=False, default="")
+    secondary_issues: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    #: Raw tracker text, unparsed — see `domain/entities/ground_truth.py`.
+    impact_scope: Mapped[str] = mapped_column(nullable=False, default="")
 
     imported_at: Mapped[datetime] = mapped_column(nullable=False)
 

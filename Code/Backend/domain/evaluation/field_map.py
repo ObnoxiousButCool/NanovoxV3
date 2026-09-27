@@ -76,6 +76,7 @@ from domain.evaluation.comparison import (
     compare_set,
 )
 from domain.value_objects.control_exception_type import ControlExceptionType
+from domain.value_objects.impact_scope import ImpactScope, ImpactScopeBucket
 
 
 class Layer(str, Enum):
@@ -262,6 +263,23 @@ def compare_call(truth: GroundTruth, extraction: CallExtraction | None) -> tuple
             "process_gap.present", truth.process_gap_present, gap.present if gap else None
         ),
     )
+    add(
+        "root_cause_owner",
+        Layer.L4,
+        compare_exact(
+            "root_cause_owner", truth.root_cause_owner, call.root_cause_owner if call else None
+        ),
+    )
+    add(
+        "preventable",
+        Layer.L4,
+        compare_exact("preventable", truth.preventable, call.preventable if call else None),
+    )
+
+    # --- L2: the other three v10 fields ---
+    add("primary_issue", Layer.L2, _primary_issue(truth, call))
+    add("secondary_issues", Layer.L2, _secondary_issues(truth, call))
+    add("impact_scope", Layer.L2, _impact_scope(truth, call))
 
     return tuple(fields)
 
@@ -326,6 +344,103 @@ def _signals(truth: GroundTruth, call: CallExtraction | None) -> SetComparison:
     expected = {signal.code for signal in truth.signals}
     actual = None if call is None else {signal.type.value for signal in call.signals}
     return compare_set("signals", expected, actual)
+
+
+def _primary_issue(truth: GroundTruth, call: CallExtraction | None) -> Comparison:
+    """Case-insensitive text equality — the only free-text field with no
+    controlled vocabulary (`Corpus-v10-Decisions.md` item C), so an exact
+    case match would fail on capitalisation alone rather than on substance.
+    """
+    expected = _blank(truth.primary_issue)
+    actual = call.primary_issue if call else None
+    if expected is None or actual is None:
+        return compare_exact("primary_issue", expected, actual)
+    agreed = expected.strip().lower() == actual.strip().lower()
+    return Comparison(
+        field="primary_issue",
+        verdict=Verdict.AGREED if agreed else Verdict.DISAGREED,
+        expected=expected,
+        actual=actual,
+    )
+
+
+def _secondary_issues(truth: GroundTruth, call: CallExtraction | None) -> Comparison:
+    """Overlap, not exact-set equality: `secondary_issues` is free text on
+    both sides, so the tracker and the pipeline rarely phrase an issue
+    identically. Any shared item (case-insensitive) counts as agreement —
+    the same "at least one word right" leniency `primary_issue` gets, but
+    applied per-item across a set rather than to one string.
+    """
+    expected = {item.strip().lower() for item in truth.secondary_issues if item.strip()}
+    if call is None:
+        return compare_exact(
+            "secondary_issues", ", ".join(sorted(expected)) if expected else None, None
+        )
+    actual = {item.strip().lower() for item in call.secondary_issues if item.strip()}
+    expected_render = ", ".join(sorted(expected)) or None
+    actual_render = ", ".join(sorted(actual)) or None
+    if not expected and not actual:
+        return Comparison(field="secondary_issues", verdict=Verdict.AGREED)
+    if not expected or not actual:
+        return compare_exact("secondary_issues", expected_render, actual_render)
+    agreed = bool(expected & actual)
+    return Comparison(
+        field="secondary_issues",
+        verdict=Verdict.AGREED if agreed else Verdict.DISAGREED,
+        expected=expected_render,
+        actual=actual_render,
+    )
+
+
+#: Words that name each `ImpactScopeBucket`'s subject, to look for in the
+#: tracker's own free text (`GroundTruth.impact_scope`, deliberately unparsed
+#: — see `domain/value_objects/impact_scope.py`). Best-effort only: this is
+#: a keyword heuristic over prose, not a parse, so it under-reads phrasing
+#: that avoids these exact words (e.g. "the whole team" for `1_group`).
+_IMPACT_SCOPE_WORDS: dict[ImpactScopeBucket, tuple[str, ...]] = {
+    ImpactScopeBucket.ONE_MEMBER: ("member",),
+    ImpactScopeBucket.ONE_GROUP: ("group",),
+    ImpactScopeBucket.N_EMPLOYEES: ("employee",),
+    ImpactScopeBucket.N_MEMBERS_AND_DEPENDENTS: ("member", "dependent"),
+}
+
+
+def _impact_scope(truth: GroundTruth, call: CallExtraction | None) -> Comparison:
+    """Best-effort comparison of the pipeline's `ImpactScope` (bucket +
+    optional count) against the tracker's raw string.
+
+    Heuristic, not exact: agreement means the bucket's characteristic
+    word(s) appear in the tracker's text, and — when the bucket carries a
+    count — that number's digits also appear there. This will miss a
+    genuine agreement written in different words (a spelled-out "eleven"
+    against a stored count of 11) and will not be fooled into a false
+    disagreement by punctuation or case; it trades recall for never
+    silently mis-scoring a call it can't confidently read.
+    """
+    expected = _blank(truth.impact_scope)
+    scope = call.impact_scope if call else None
+    actual = _render_impact_scope(scope)
+    if expected is None or scope is None:
+        return compare_exact("impact_scope", expected, actual)
+
+    haystack = expected.lower()
+    agreed = all(word in haystack for word in _IMPACT_SCOPE_WORDS[scope.bucket])
+    if agreed and scope.count is not None:
+        agreed = str(scope.count) in haystack
+    return Comparison(
+        field="impact_scope",
+        verdict=Verdict.AGREED if agreed else Verdict.DISAGREED,
+        expected=expected,
+        actual=actual,
+    )
+
+
+def _render_impact_scope(scope: ImpactScope | None) -> str | None:
+    if scope is None:
+        return None
+    if scope.count is None:
+        return scope.bucket.value
+    return f"{scope.bucket.value} (count={scope.count})"
 
 
 def _control_exceptions(truth: GroundTruth, call: CallExtraction | None) -> SetComparison:

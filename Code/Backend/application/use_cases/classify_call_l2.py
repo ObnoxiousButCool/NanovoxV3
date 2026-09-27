@@ -39,6 +39,7 @@ from domain.value_objects.broker_sentiment import BrokerSentiment
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.impact_scope import ImpactScope, ImpactScopeBucket
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
 from domain.value_objects.outcome import Outcome
@@ -140,6 +141,9 @@ class ClassifyCallL2:
                 broker_named_aloud=classification.broker_named_aloud,
                 touchpoint=classification.touchpoint,
                 summary=classification.summary,
+                primary_issue=classification.primary_issue,
+                secondary_issues=classification.secondary_issues,
+                impact_scope=classification.impact_scope,
                 provenance=L2Provenance(
                     provider=provider.name,
                     model=provider.model,
@@ -201,8 +205,25 @@ def _to_domain(
         broker_named_aloud=broker_named_aloud,
         touchpoint=response.touchpoint or None,
         summary=response.summary,
+        primary_issue=response.primary_issue or None,
+        secondary_issues=tuple(response.secondary_issues),
+        impact_scope=_validate_impact_scope(response),
     )
     return classification, intent_validation
+
+
+def _validate_impact_scope(response: L2Response) -> ImpactScope | None:
+    """`None` when the model's bucket+count combination is internally
+    inconsistent — a bucket that needs a count but was given none (or the
+    reverse) is treated the same way every other malformed answer in this
+    layer is: dropped, never guessed past, and never allowed to crash the
+    pipeline."""
+    bucket = ImpactScopeBucket(response.impact_scope)
+    count = response.impact_scope_count or None
+    try:
+        return ImpactScope(bucket=bucket, count=count)
+    except ValidationError:
+        return None
 
 
 def _validate_complaint(response: L2Response) -> Complaint:

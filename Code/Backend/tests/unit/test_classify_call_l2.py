@@ -134,6 +134,10 @@ def _response(**overrides: object) -> L2Response:
         ),
         "touchpoint": "",
         "summary": "The member's crown claim was explained and closed.",
+        "primary_issue": "claims & eob",
+        "secondary_issues": [],
+        "impact_scope": "1_member",
+        "impact_scope_count": 0,
     }
     defaults.update(overrides)
     return L2Response(**defaults)  # type: ignore[arg-type]
@@ -437,6 +441,78 @@ class TestComplaintValidation:
         result = await use_case.execute("C-0001", FakeProvider(response))
 
         assert not result.classification.complaint.present
+
+
+class TestImpactScopeAndIssues:
+    async def test_primary_and_secondary_issues_are_saved_as_given(self) -> None:
+        calls = _FakeCalls((_call(),))
+        use_case, _, extractions = _use_case(calls=calls, lookup=_FakeLookup())
+        response = _response(primary_issue="claims & eob", secondary_issues=["id card"])
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        assert result.classification.primary_issue == "claims & eob"
+        assert result.classification.secondary_issues == ("id card",)
+        assert extractions.saved["C-0001"].primary_issue == "claims & eob"
+        assert extractions.saved["C-0001"].secondary_issues == ("id card",)
+
+    async def test_an_empty_primary_issue_is_normalised_to_none(self) -> None:
+        calls = _FakeCalls((_call(),))
+        use_case, _, _ = _use_case(calls=calls, lookup=_FakeLookup())
+        response = _response(primary_issue="")
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        assert result.classification.primary_issue is None
+
+    async def test_a_bucket_needing_a_count_with_one_given_is_accepted(self) -> None:
+        calls = _FakeCalls((_call(),))
+        use_case, _, extractions = _use_case(calls=calls, lookup=_FakeLookup())
+        response = _response(impact_scope="n_employees", impact_scope_count=11)
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        scope = result.classification.impact_scope
+        assert scope is not None
+        assert scope.bucket.value == "n_employees"
+        assert scope.count == 11
+        assert extractions.saved["C-0001"].impact_scope == scope
+
+    async def test_a_singular_bucket_with_no_count_is_accepted(self) -> None:
+        calls = _FakeCalls((_call(),))
+        use_case, _, _ = _use_case(calls=calls, lookup=_FakeLookup())
+        response = _response(impact_scope="1_group", impact_scope_count=0)
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        scope = result.classification.impact_scope
+        assert scope is not None
+        assert scope.bucket.value == "1_group"
+        assert scope.count is None
+
+    async def test_a_bucket_needing_a_count_with_none_given_is_dropped_not_crashed(self) -> None:
+        """An internally inconsistent answer — a plural bucket with no count
+        — must not crash the pipeline: it is treated as no usable impact
+        scope at all, the same way every other malformed L2 answer is."""
+        calls = _FakeCalls((_call(),))
+        use_case, _, extractions = _use_case(calls=calls, lookup=_FakeLookup())
+        response = _response(impact_scope="n_employees", impact_scope_count=0)
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        assert result.classification.impact_scope is None
+        assert extractions.saved["C-0001"].impact_scope is None
+
+    async def test_a_singular_bucket_with_a_count_is_dropped_not_crashed(self) -> None:
+        """The reverse inconsistency: a bucket that carries no count given
+        one anyway."""
+        calls = _FakeCalls((_call(),))
+        use_case, _, _ = _use_case(calls=calls, lookup=_FakeLookup())
+        response = _response(impact_scope="1_member", impact_scope_count=5)
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        assert result.classification.impact_scope is None
 
 
 class TestStageCache:

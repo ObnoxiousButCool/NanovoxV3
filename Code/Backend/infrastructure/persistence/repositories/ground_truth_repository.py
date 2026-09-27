@@ -27,6 +27,8 @@ from application.ports.ground_truth_repository import GroundTruthCounts, GroundT
 from domain.entities.ground_truth import GroundTruth, GroundTruthSignal
 from domain.value_objects.category import Category
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.preventable import Preventable
+from domain.value_objects.root_cause_owner import RootCauseOwner
 from infrastructure.persistence.tables import CallRow, GroundTruthRow
 
 
@@ -131,6 +133,12 @@ def _apply(row: GroundTruthRow, truth: GroundTruth, imported_at: datetime) -> No
     row.repeat_of_reference = truth.repeat_of_reference
     row.repeat_of_note = truth.repeat_of_note
 
+    row.root_cause_owner = truth.root_cause_owner.value if truth.root_cause_owner else None
+    row.preventable = truth.preventable.value if truth.preventable else None
+    row.primary_issue = truth.primary_issue
+    row.secondary_issues = list(truth.secondary_issues)
+    row.impact_scope = truth.impact_scope
+
     row.imported_at = imported_at
 
 
@@ -171,4 +179,9 @@ def _to_domain(row: GroundTruthRow, reference: str) -> GroundTruth:
         broker_named_sentiment=row.broker_named_sentiment,
         repeat_of_reference=row.repeat_of_reference,
         repeat_of_note=row.repeat_of_note,
+        root_cause_owner=(RootCauseOwner(row.root_cause_owner) if row.root_cause_owner else None),
+        preventable=(Preventable(row.preventable) if row.preventable else None),
+        primary_issue=row.primary_issue or "",
+        secondary_issues=tuple(row.secondary_issues or ()),
+        impact_scope=row.impact_scope or "",
     )

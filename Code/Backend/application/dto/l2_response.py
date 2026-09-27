@@ -28,6 +28,7 @@ ProductLineLiteral = Literal["dental", "vision", "life", "chiro", "program"]
 ComplaintAttributionLiteral = Literal["CHOICE", "BROKER", "CARRIER", "PROVIDER", "NONE"]
 IntentTypeLiteral = Literal["expansion", "market_test", "cancellation"]
 BrokerSentimentLiteral = Literal["ADVERSE", "POSITIVE", "NONE"]
+ImpactScopeLiteral = Literal["1_member", "1_group", "n_employees", "n_members_and_dependents"]
 
 
 class ComplaintResponse(BaseModel):
@@ -62,3 +63,19 @@ class L2Response(BaseModel):
     #: A Touchpoints-sheet reference, or empty string if none applies.
     touchpoint: str
     summary: str
+    #: Call Tag Schema field 19 (v10). Empty string if the call has no
+    #: clear primary issue.
+    primary_issue: str
+    #: Everything else the call also raised, besides `primary_issue`. Empty
+    #: list if there is nothing else.
+    secondary_issues: list[str]
+    #: Call Tag Schema field 20 (v10) — how many people the caller says are
+    #: affected.
+    impact_scope: ImpactScopeLiteral
+    #: The N in "N employees" / "N members + dependents". `0` — not
+    #: `None` — when the bucket is one of the two inherently-singular ones
+    #: and carries no count; strict schema-constrained decoding needs every
+    #: field present, so `0` is this field's own "not applicable" literal,
+    #: the same way `"NONE"` and `""` serve that purpose elsewhere in this
+    #: schema.
+    impact_scope_count: int = Field(ge=0)

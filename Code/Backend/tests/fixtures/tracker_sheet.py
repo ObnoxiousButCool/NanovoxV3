@@ -16,11 +16,15 @@ like a plausible corpus:
             every optional cell empty, and an em-dash for "no rules"
     C-9003  the four-word outcome the tracker spells with a space, and an
             escalation that was requested but not handled
-    C-9004  malformed cells in five columns, to prove the parser warns and
+    C-9004  malformed cells in seven columns, to prove the parser warns and
             leaves the field unset rather than guessing
     C-9005  an escalation with nothing warranting it, escalated anyway — the
             tracker's " — OVER-ESCALATION" annotation on an otherwise
             untriggered row (first seen on C-0120, batch 2a)
+
+Five more columns, added for the v10 schema fields (`Corpus-v10-Schema-Update.md`
+§3): `Root cause owner`, `Preventable`, `Primary issue`, `Secondary issues`,
+`Impact scope`. C-9003 also exercises `Preventable`'s "Partly — lever" shape.
 """
 
 from __future__ import annotations
@@ -52,6 +56,11 @@ _HEADER = [
     "Process gap",
     "Broker named",
     "Repeat of",
+    "Root cause owner",
+    "Preventable",
+    "Primary issue",
+    "Secondary issues",
+    "Impact scope",
 ]
 
 TRACKER_SHEETS: Sheets = {
@@ -82,6 +91,11 @@ TRACKER_SHEETS: Sheets = {
             "present|denial letter should name the waiting period",
             "present|BRK-01|ADVERSE",
             "C-0002 | 06 Jul | closed unresolved",
+            "CHOICE",
+            "Yes",
+            "claims & eob",
+            "missing id card, dependent add",
+            "1 member",
         ],
         [
             "C-9002",
@@ -102,6 +116,11 @@ TRACKER_SHEETS: Sheets = {
             "absent",
             "",
             "triggered false",
+            "",
+            "",
+            "",
+            "",
+            "",
             "",
             "",
             "",
@@ -134,6 +153,11 @@ TRACKER_SHEETS: Sheets = {
             "",
             "",
             "",
+            "CARRIER",
+            "Partly — communication",
+            "coverage explanation",
+            "none",
+            "1 group",
         ],
         [
             "C-9004",
@@ -157,6 +181,11 @@ TRACKER_SHEETS: Sheets = {
             "",
             "",
             "",
+            "",
+            "",
+            "",
+            "NOT_A_REAL_OWNER",  # not a RootCauseOwner
+            "Sorta",  # not Yes/Partly/No
             "",
             "",
             "",
@@ -186,6 +215,11 @@ TRACKER_SHEETS: Sheets = {
             "",
             "",
             "",
+            "",
+            "",
+            "billing dispute",
+            "",
+            "n_employees: 3",
         ],
     ]
 }

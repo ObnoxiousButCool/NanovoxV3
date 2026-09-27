@@ -28,13 +28,16 @@ from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
+from domain.value_objects.impact_scope import ImpactScope, ImpactScopeBucket
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
 from domain.value_objects.knowledge_failure import KnowledgeFailure
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.polarity import Polarity
+from domain.value_objects.preventable import Preventable
 from domain.value_objects.process_gap import ProcessGap, ProcessGapStatus, RaisedBy
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.root_cause_owner import RootCauseOwner
 from domain.value_objects.score import Score, ScoreStatus
 from domain.value_objects.signal import Signal
 from domain.value_objects.signal_type import SignalType
@@ -122,6 +125,14 @@ class SqlCallExtractionRepository(CallExtractionRepository):
             )
             row.touchpoint = result.touchpoint
             row.summary = result.summary
+            row.primary_issue = result.primary_issue
+            row.secondary_issues = list(result.secondary_issues)
+            row.impact_scope_bucket = (
+                result.impact_scope.bucket.value if result.impact_scope is not None else None
+            )
+            row.impact_scope_count = (
+                result.impact_scope.count if result.impact_scope is not None else None
+            )
             row.l2_provider = result.provenance.provider
             row.l2_model = result.provenance.model
             row.l2_prompt_version = result.provenance.prompt_version
@@ -212,6 +223,8 @@ class SqlCallExtractionRepository(CallExtractionRepository):
             # means "nothing to add", not "clear what L2 found".
             if result.touchpoint:
                 row.touchpoint = result.touchpoint
+            row.root_cause_owner = result.root_cause_owner.value
+            row.preventable = result.preventable.value
             row.l4_provider = result.provenance.provider
             row.l4_model = result.provenance.model
             row.l4_prompt_version = result.provenance.prompt_version
@@ -275,6 +288,13 @@ def _to_domain(
             matches_employer_of_record=row.broker_named_aloud_matches_employer_of_record,
         )
 
+    impact_scope = None
+    if row.impact_scope_bucket is not None:
+        impact_scope = ImpactScope(
+            bucket=ImpactScopeBucket(row.impact_scope_bucket),
+            count=row.impact_scope_count,
+        )
+
     return CallExtraction(
         call_reference=call_reference,
         control_exceptions=(
@@ -299,6 +319,9 @@ def _to_domain(
         broker_named_aloud=broker_named_aloud,
         touchpoint=row.touchpoint,
         summary=row.summary,
+        primary_issue=row.primary_issue,
+        secondary_issues=tuple(row.secondary_issues or ()),
+        impact_scope=impact_scope,
         quality_score=Score(row.quality_score) if row.quality_score is not None else None,
         quality_status=ScoreStatus(row.quality_status) if row.quality_status is not None else None,
         quality_tier=Tier(row.quality_tier) if row.quality_tier is not None else None,
@@ -355,4 +378,8 @@ def _to_domain(
             if row.process_gap_present is not None
             else None
         ),
+        root_cause_owner=(
+            RootCauseOwner(row.root_cause_owner) if row.root_cause_owner is not None else None
+        ),
+        preventable=(Preventable(row.preventable) if row.preventable is not None else None),
     )
