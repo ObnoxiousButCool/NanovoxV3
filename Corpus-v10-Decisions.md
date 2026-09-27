@@ -32,15 +32,45 @@ including after something built on it.
 
 | # | Question | Owner | Default if unanswered | Answer |
 |---|---|---|---|---|
-| A | Does a **blameless** call still get a `root_cause_owner`? | Minnie | **No safe default.** This defines what "44% preventable by Choice" means and cannot be deferred into the prompt. | |
-| B | Does `root_cause_owner` feed the risk flag, or stay informational? | Minnie | **Informational only**, the same ruling the ten indicator families carry (D12). | |
-| C | Does `primary_issue` get a controlled vocabulary? | Ranjit | **Free text, not aggregated** — shown per call, not rolled up, until a vocabulary is defined. | |
-| D | Is `impact_scope`'s number captured, or only the bucket? | Ranjit | **Both** — the bucket as today's enum-shaped value, plus an optional count when the caller's words carry one ("eleven of my people"). | |
-| E | Is D5 formally closed? | Minnie, with Karim | **Proposed closed**, pending confirmation — `root_cause_owner`'s `EMPLOYER` value is what D5 asked for, but D10's "fault records" framing may not survive contact with four flat fields rather than a table. | |
-| F | Does insight 25 count as partially addressed? | Minnie | **No** — stays WITHHELD. `MEMBER_MISUNDERSTANDING` is adjacent, not the `PLAN_AS_DESIGNED`/`MEMBER_COMPREHENSION` pair the insight specifies. | |
-| G | When does Phase 5's evaluation re-run? | Minnie | **A separate check-in**, after the four fields are built and every available batch is ingested — running now would only re-measure the same 100 calls. | |
+| A | Does a **blameless** call still get a `root_cause_owner`? | Minnie | **No safe default.** This defines what "44% preventable by Choice" means and cannot be deferred into the prompt. | **Yes.** Built as the `MEMBER_MISUNDERSTANDING` fallback — every call gets an owner, blameless ones included. Decided 2026-09-27 under delegated build authority, not by Minnie; hers to override if she'd rather exclude blameless calls from the denominator. |
+| B | Does `root_cause_owner` feed the risk flag, or stay informational? | Minnie | **Informational only**, the same ruling the ten indicator families carry (D12). | Followed the default — informational only. Not wired into any risk score; used only by insights 6/17 and by the evaluation harness. |
+| C | Does `primary_issue` get a controlled vocabulary? | Ranjit | **Free text, not aggregated** — shown per call, not rolled up, until a vocabulary is defined. | Followed the default — plain string, compared case-insensitively, never aggregated. |
+| D | Is `impact_scope`'s number captured, or only the bucket? | Ranjit | **Both** — the bucket as today's enum-shaped value, plus an optional count when the caller's words carry one ("eleven of my people"). | Followed the default — `ImpactScope` carries `bucket` + optional `count`. Ground truth keeps the tracker's own text raw rather than parsing it into the same shape (see `domain/value_objects/impact_scope.py`). |
+| E | Is D5 formally closed? | Minnie, with Karim | **Proposed closed**, pending confirmation — `root_cause_owner`'s `EMPLOYER` value is what D5 asked for, but D10's "fault records" framing may not survive contact with four flat fields rather than a table. | **Still open.** Ranjit: please confirm with Karim whether the flat-fields framing satisfies D10, or whether the fault-records table is still wanted. |
+| F | Does insight 25 count as partially addressed? | Minnie | **No** — stays WITHHELD. `MEMBER_MISUNDERSTANDING` is adjacent, not the `PLAN_AS_DESIGNED`/`MEMBER_COMPREHENSION` pair the insight specifies. | Followed the default — insight 25 stays in `WITHHELD_INSIGHTS`. |
+| G | When does Phase 5's evaluation re-run? | Minnie | **A separate check-in**, after the four fields are built and every available batch is ingested — running now would only re-measure the same 100 calls. | **In progress, blocked on Ranjit.** The fields are built and merged; a full 200-call run was started 2026-09-27 and every call failed on `HTTP 401` — the `OPENAI_API_KEY` in `Code/Backend/.env` is being rejected, apparently since Ranjit last changed it. Ranjit: please provide a working key; the run resumes as soon as one lands. |
 
 ---
+
+## Status — 2026-09-27
+
+All four v10 fields are built, tested, and merged to `main` (PR 23457, on
+top of PR 23449's corpus plumbing and the run-safety work in PR 23448).
+Gate green twice over, independently re-verified both before and after
+merge: import-linter (5 kept, 0 broken), ruff, mypy, full backend and
+frontend test suites, migration heads.
+
+**Shipped:**
+- `root_cause_owner` / `preventable` — computed server-side in L4 from
+  `complaint` + `signals`, never sent to the model
+  (`domain/derivations/root_cause.py`).
+- `primary_issue` / `secondary_issues` / `impact_scope` — extracted by L2,
+  prompt bumped to `1.1.0`.
+- Storage on both `call_extractions` and `ground_truth`, one migration
+  (`20260927_0900_add_v10_schema_fields`).
+- Answer-key parsing for the five new tracker columns, and evaluation
+  comparators for all five new fields (`domain/evaluation/field_map.py`).
+- Insights 6 and 17 moved off `WITHHELD_INSIGHTS` — the field they were
+  missing now exists.
+
+**Left — see the Answer column above for detail, repeated here as a
+punch list:**
+1. **E** — Ranjit to confirm with Karim whether D5/D10 are satisfied by
+   four flat fields, or still want the fault-records table.
+2. **G** — Ranjit to supply a working `OPENAI_API_KEY`; the 200-call
+   Phase 5 re-run is built and ready, just blocked on this. Everything
+   else needed for the run — the corpus, the pipeline, a local
+   backend + frontend to view the results — is in place and tested.
 
 ## Full context per item
 
