@@ -4,10 +4,10 @@
 (`nanovox_corpus_v9_build_bible_6.xlsx`) and three transcript PDFs
 (`batch1_rev2` 001–100, `batch2a_rev2` 101–150, `batch3` 151–200) to
 `C:\Users\ShlokaKulkarni\Downloads\updateddocs`.
-**Status:** analysis only. Nothing in this document has been applied to the
-repository — no files copied, no code changed, no settings touched — except
-where a finding is explicitly marked done below. More batches are still
-coming: the workbook's own control totals target 600 calls; we have 200.
+**Status:** §10 step 1 ("corpus plumbing") is done — see §12. Steps 2–4 (the
+four new fields, end to end, and a second evaluation run) are still ahead
+and still gated on §9's decisions. More batches are still coming: the
+workbook's own control totals target 600 calls; we have 200.
 
 **Governing documents unchanged:** the v9 workbook still wins on definitions
 (`plan.md` §3.0). This update *is* a workbook revision, so where it speaks,
@@ -208,11 +208,7 @@ title (a different string, `"...Transcripts, batch N ..."`, capital T) is
 already excluded from every call block by the existing block-splitting
 logic, so it needs no special handling.
 
-**Not yet applied.** This is Stream A's own file, low-risk, and fully
-verified — I'd normally just fix it. Holding off only because it's cleanest
-to land alongside the actual new corpus files, once §9's placement question
-is answered, rather than as a change with nothing yet to test it against in
-CI. Flagging as ready rather than assuming — see §9, item 1.
+**Applied**, in §12's PR, once §9 item 1 was answered.
 
 ---
 
@@ -345,14 +341,14 @@ Following the convention already in use for `Revised-Implementation-Plan.md`
 §14: each item names a default that lets the mechanical work start without
 stalling, and flags genuinely open questions with no safe default.
 
-| # | Question | Default if unanswered | Owner |
-|---|---|---|---|
-| 1 | **Where do the new corpus files live, and do they replace or sit alongside the old ones?** `Documents/` is git-tracked; four PDFs plus the workbook is more surface than the current one-workbook-one-PDF layout was built for. | Add alongside (don't delete the old batch1 PDF — its dialogue is a subset, but keeping it costs nothing and losing it loses a known-good regression fixture); apply §4's fix in the same change that adds the files, since there's nothing to verify it against until then. | Minnie |
-| 2 | **Multi-batch architecture**: a list of paths in settings, or a directory glob (`Documents/*.pdf`, sorted)? A glob is friendlier to "more batches are still coming" but is less explicit about which files are in scope. | Directory glob over `Documents/`, matching the existing "found by default" philosophy in `paths.py`'s own comment. | Stream A |
-| 3 | **Is D5 formally closed?** The schema change exists and root_cause_owner carries EMPLOYER, which is exactly what D5 asked for — but D5 says "confirm with Minnie" per its own heading, and D10's "fault records" framing may not survive contact with what actually shipped (four flat fields, not a fault-record table). | Hold as proposed-closed here; record formally in `plan.md` once Minnie/Karim confirm the framing, rather than assume. | Minnie, with Karim |
-| 4 | **`root_cause_owner`: a new L4 LLM output, or a deterministic derivation** from `complaint.attributed_to` and the signal taxonomy's owners (the algorithm the schema itself gives)? Changes whether this is a prompt change or a pure function, and whether the field can disagree with the fields it's built from. | Deterministic derivation, following the precedent of metric 4 and member-effort-complexity ("computed, not extracted") and because the schema names the exact rule to apply. `preventable` is unambiguously deterministic either way. | Minnie |
-| 5 | **Insight 25** — does `MEMBER_MISUNDERSTANDING` partially address it, or does it stay WITHHELD as specified (`PLAN_AS_DESIGNED`/`MEMBER_COMPREHENSION`, neither of which arrived)? | Stays WITHHELD; don't reinterpret the insight to fit what shipped. | Minnie |
-| 6 | **Do we re-run Phase 5's evaluation** once the new fields and batches are ingested, or treat it as a separate, later check-in? | Separate check-in, after the fields are built and at least one full ingest of all available batches — re-running now would only re-measure the same 100 calls with nothing new to show. | Minnie |
+| # | Question | Default if unanswered | Owner | State |
+|---|---|---|---|---|
+| 1 | **Where do the new corpus files live, and do they replace or sit alongside the old ones?** `Documents/` is git-tracked; four PDFs plus the workbook is more surface than the current one-workbook-one-PDF layout was built for. | Add alongside (don't delete the old batch1 PDF — its dialogue is a subset, but keeping it costs nothing and losing it loses a known-good regression fixture); apply §4's fix in the same change that adds the files, since there's nothing to verify it against until then. | Minnie | **DECIDED 2026-09-25 — add alongside.** Old files moved to `Documents/superseded/`, new ones added to `Documents/`. See §12. |
+| 2 | **Multi-batch architecture**: a list of paths in settings, or a directory glob (`Documents/*.pdf`, sorted)? A glob is friendlier to "more batches are still coming" but is less explicit about which files are in scope. | Directory glob over `Documents/`, matching the existing "found by default" philosophy in `paths.py`'s own comment. | Stream A | **DONE**, on the default — see §12. |
+| 3 | **Is D5 formally closed?** The schema change exists and root_cause_owner carries EMPLOYER, which is exactly what D5 asked for — but D5 says "confirm with Minnie" per its own heading, and D10's "fault records" framing may not survive contact with what actually shipped (four flat fields, not a fault-record table). | Hold as proposed-closed here; record formally in `plan.md` once Minnie/Karim confirm the framing, rather than assume. | Minnie, with Karim | Still open. |
+| 4 | **`root_cause_owner`: a new L4 LLM output, or a deterministic derivation** from `complaint.attributed_to` and the signal taxonomy's owners (the algorithm the schema itself gives)? Changes whether this is a prompt change or a pure function, and whether the field can disagree with the fields it's built from. | Deterministic derivation, following the precedent of metric 4 and member-effort-complexity ("computed, not extracted") and because the schema names the exact rule to apply. `preventable` is unambiguously deterministic either way. | Minnie | **DECIDED 2026-09-25 — deterministic derivation.** Not yet built (§10 step 2). |
+| 5 | **Insight 25** — does `MEMBER_MISUNDERSTANDING` partially address it, or does it stay WITHHELD as specified (`PLAN_AS_DESIGNED`/`MEMBER_COMPREHENSION`, neither of which arrived)? | Stays WITHHELD; don't reinterpret the insight to fit what shipped. | Minnie | Still open. |
+| 6 | **Do we re-run Phase 5's evaluation** once the new fields and batches are ingested, or treat it as a separate, later check-in? | Separate check-in, after the fields are built and at least one full ingest of all available batches — re-running now would only re-measure the same 100 calls with nothing new to show. | Minnie | Still open. |
 
 ---
 
@@ -381,10 +377,59 @@ Stream A/B split already in use.
 
 ---
 
-## 11. What I'm doing now versus what's paused
+## 11. What's paused
 
-Per your instruction, nothing else has moved: Phase 4's actions PR
-(`phase4-actions`) is untouched and unaffected by any of this. I've made no
-changes to the repository — no files copied in, no settings edited, no code
-touched — pending your answers in §9. Tell me which way to take item 1 and
-I'll start on step 1 of §10.
+Phase 4's actions PR (`phase4-actions`) is untouched and unaffected by any
+of this. Steps 2–4 of §10 wait on §9's remaining open items (3, 5, 6).
+
+---
+
+## 12. Step 1 shipped: corpus plumbing
+
+On branch `corpus-v10-plumbing`, off `main`. Everything below is applied
+and gate-verified (`scripts/check.sh` green, full backend suite passing,
+97% coverage, all five import-linter contracts kept).
+
+**Files.** The four new documents are in `Documents/`; the superseded bible
+and batch-1 PDF moved to `Documents/superseded/` (`git mv`, history kept).
+
+**§4's footer fix**, applied as written there.
+
+**Multi-file ingestion.** `transcripts_path` (one `Path`) is now
+`transcripts_dir` (one directory); `PdfCorpusSource` and
+`PdfAnswerKeySource` both take a directory and read every `*.pdf` in it,
+non-recursively — `discover_batch_pdfs`/`extract_call_blocks_across`, new
+in `pdf_text.py`. A call reference appearing in more than one file is
+refused with both filenames named, not silently taken from whichever file
+happened to be read last. `workbook_path`'s default now points at
+`nanovox_corpus_v9_build_bible_6.xlsx`.
+
+**The hardcoded-100 tests** (§8's table) now assert a floor (`>= 100`)
+rather than an exact count, except the two tests that specifically
+cross-check figures the prototype's own tooling published for batch 1
+alone (`Prototype/tools/README.md`) — those now filter to `C-0001`–`C-0100`
+explicitly, so a later batch's mix can't silently change what they check.
+
+**A second parsing gap, found by these tests, not by reading — fixed.**
+Running the real corpus through the newly-generalised ingestion surfaced
+one row the answer-key importer couldn't parse:
+`xlsx_ground_truth_source.py`'s `_escalation` method recognised exactly two
+shapes — `"triggered false"` bare, or a full `"triggered true|<type>|
+requested_by_caller <bool>|handled <bool>"` — and warned on anything else.
+C-0120 (batch 2a) is a third shape the corpus hadn't written before: an
+escalation *nothing warranted*, that happened anyway —
+`"triggered false|none|requested_by_caller false|handled true —
+OVER-ESCALATION"`. The `GroundTruth` entity already has independent
+`escalation_triggered`/`escalation_handled` fields, so this needed no new
+field — only the parser taught to read the fourth shape, dropping the
+trailing `" — OVER-ESCALATION"` annotation once it's done its job (the
+combination `triggered=False, handled=True` is already the anomaly; the
+label names it, it doesn't add a fact). Scoped narrowly to this one call
+site — a generic "strip after em dash" rule would misread the tracker's
+other use of `—` as its blank-cell marker. Verified against the real
+workbook (the warning is gone) and locked in with a fixture case
+(`C-9005` in `tests/fixtures/tracker_sheet.py`) plus two unit tests.
+
+**Not touched**: nothing about the four new v10 fields. `GroundTruth`,
+`CallExtraction`, the L2/L4 prompts and the evaluation harness are
+unchanged — that's §10 steps 2–3, still ahead.
