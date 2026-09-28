@@ -37,6 +37,7 @@ from domain.value_objects.caller_type import CallerType
 from domain.value_objects.category import Category
 from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.escalation import Escalation
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.preventable import Preventable
 from domain.value_objects.process_gap import ProcessGapStatus, RaisedBy
@@ -308,6 +309,58 @@ class TestEscalationTriggerType:
         result = await use_case.execute("C-0001", FakeProvider(response))
 
         assert result.findings.escalation_trigger_type is None
+
+
+class TestEscalationHandled:
+    async def test_handled_is_kept_when_l2_found_an_escalation(self) -> None:
+        calls = _FakeCalls((_call(),))
+        use_case, _ = _use_case(
+            calls=calls, lookup=_FakeLookup(), l2=_l2(escalation_triggered=True)
+        )
+        response = _response(escalation_handled=True)
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        assert result.findings.escalation_handled is True
+
+    async def test_handled_is_refused_when_l2_found_no_escalation(self) -> None:
+        """ "Handled" is a property of an escalation, not of a call.
+
+        Asked on a call that never escalated, a model answers yes — nothing
+        went wrong — and the answer stores as "never triggered, but
+        handled". `Escalation` refuses to construct that, so it reached
+        production as a 500 on every insights endpoint once real extractions
+        existed. Thirty-eight rows of it.
+        """
+        calls = _FakeCalls((_call(),))
+        use_case, _ = _use_case(
+            calls=calls, lookup=_FakeLookup(), l2=_l2(escalation_triggered=False)
+        )
+        response = _response(escalation_handled=True)
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        assert result.findings.escalation_handled is False
+
+    async def test_what_is_stored_can_always_be_read_back(self) -> None:
+        """The invariant the reader enforces, asserted where it is produced."""
+        calls = _FakeCalls((_call(),))
+        use_case, _ = _use_case(
+            calls=calls, lookup=_FakeLookup(), l2=_l2(escalation_triggered=False)
+        )
+        response = _response(escalation_handled=True, escalation_trigger_type="authority_limit")
+
+        result = await use_case.execute("C-0001", FakeProvider(response))
+
+        Escalation(
+            triggered=False,
+            trigger_type=(
+                result.findings.escalation_trigger_type.value
+                if result.findings.escalation_trigger_type
+                else None
+            ),
+            handled=result.findings.escalation_handled,
+        )
 
 
 class TestProcessGap:

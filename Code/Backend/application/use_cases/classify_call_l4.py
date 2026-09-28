@@ -141,11 +141,26 @@ class ClassifyCallL4:
             else None
         )
 
+        # `handled` is gated on the same verdict, for the same reason. It is
+        # not a property of the call; it is a property of an escalation, and
+        # on a call that never escalated the question has no subject. Asked
+        # anyway, a model answers "yes" — nothing went wrong — and the answer
+        # stores as "never triggered, but handled", which `Escalation`
+        # refuses to construct and which took every insights endpoint down
+        # with a 500 once real extractions existed.
+        #
+        # Escalation integrity divides handled by *warranted*, so a false
+        # here cannot flatter the metric: these calls are in neither half.
+        # `bool(...)` because L2's verdict is tri-state: an unset one means
+        # nobody has decided whether this call escalated, and a `handled`
+        # of true under that is the same unanswerable claim as under false.
+        escalation_handled = bool(l2.escalation_triggered and response.escalation_handled)
+
         process_gap = _validate_process_gap(response)
 
         findings = L4SignalsAndGaps(
             signals=signal_validation.accepted,
-            escalation_handled=response.escalation_handled,
+            escalation_handled=escalation_handled,
             escalation_trigger_type=escalation_trigger_type,
             process_gap=process_gap,
             touchpoint=response.touchpoint or None,
