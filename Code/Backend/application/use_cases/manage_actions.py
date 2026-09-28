@@ -63,6 +63,11 @@ class CreateActionRequest:
     due: date | None = None
     steps: tuple[str, ...] | None = None
     employer_ref: str | None = None
+    #: Set only by seeding (`application.use_cases.seed_actions`), never by
+    #: the API — a human raising a card has no seed to record and no
+    #: business setting one by hand. `NewAction.seed_key`'s own docstring:
+    #: "so a second seed finds it rather than creating it again."
+    seed_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -163,6 +168,7 @@ class CreateAction:
             created_at=now,
             assigned_on=now.date() if owner else None,
             due=request.due,
+            seed_key=request.seed_key,
         )
         # A card created straight into monitoring or completed must carry
         # what those lanes require; it cannot, so this refuses it early.

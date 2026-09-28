@@ -69,6 +69,7 @@ from application.use_cases.read_insights import (
 )
 from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
 from application.use_cases.run_extraction_pipeline import ExtractionPipeline
+from application.use_cases.seed_actions import SeedActions
 from domain.actions import Lifecycle
 from domain.dashboard_config import DashboardConfig
 from domain.errors import ConfigurationError, NotFoundError
@@ -237,6 +238,18 @@ class Container:
     def list_actions(self) -> ListActions:
         return ListActions(
             actions=self.action_repository, lifecycle=self.action_lifecycle, clock=self.clock
+        )
+
+    def seed_actions(self) -> SeedActions:
+        """Phase 4's seeding CLI. Reuses `create_action()` unmodified — a
+        seeded card is created exactly as a human raising one from a
+        playbook link would be, just looped over every signal type raised
+        anywhere in the corpus."""
+        return SeedActions(
+            reader=self.insights_reader(),
+            actions=self.action_repository,
+            create_action=self.create_action(),
+            catalogue=self.playbook_catalogue,
         )
 
     def get_health(self) -> GetHealth:
