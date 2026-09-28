@@ -492,6 +492,12 @@ export interface components {
          *     prototype wins on presentation and the workbook wins on definitions
          *     (`plan.md` §3.0), so that tile is carried as a conflict rather than
          *     served.
+         *
+         *     `scored_calls` is not that figure in disguise. It counts how many calls
+         *     carry a score, which is coverage of a per-call figure the calls table
+         *     already prints; it says nothing about how high those scores are. It is
+         *     sent so the screen can state the withholding with a number behind it
+         *     rather than leaving a silent hole where the prototype has a tile.
          */
         AccountProfileResponse: {
             /**
@@ -509,6 +515,11 @@ export interface components {
              * @description Metric 4's own numerator over this account, so the count cannot disagree with the repeat rate beside it.
              */
             repeatContacts: number;
+            /**
+             * Scoredcalls
+             * @description How many of `calls` carry a quality score. Coverage, not quality: no average over an employer is published, here or anywhere.
+             */
+            scoredCalls: number;
             /**
              * Topics
              * @description What they called about, most first. Only the categories this account raised — unlike the outcome chart, a category nobody called about is not a finding here.

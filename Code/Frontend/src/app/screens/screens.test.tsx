@@ -989,14 +989,41 @@ describe('the account tiles and topics', () => {
     }
   })
 
-  it('never shows an average call quality for an account', async () => {
-    // Metric 12 is per agent. Rolling it up to an employer is forbidden by
-    // the Metrics sheet, so the prototype's fifth tile is carried as a
-    // conflict rather than served. This is the assertion that keeps it out.
+  it('states that average call quality is not published, rather than omitting it', async () => {
+    // Metric 12 is per agent; rolling it up to an employer is forbidden by
+    // the Metrics sheet. The tile is still rendered, because a silently
+    // missing figure and a figure we decline to publish read the same to
+    // a reader and are not the same thing.
+    renderAt('/accounts/EMP-1001')
+    await screen.findByText(/This account.s calls/)
+    const tiles = screen.getByText(/This account.s calls/).closest('section')
+
+    expect(tiles).not.toBeNull()
+    expect(
+      within(tiles as HTMLElement).getByText('Average call quality', {
+        // The tooltip repeats the phrase; the tile's own label is the one
+        // that must be on screen.
+        selector: '.nv-k',
+      }),
+    ).toBeInTheDocument()
+    expect(within(tiles as HTMLElement).getByText('Not published')).toBeInTheDocument()
+  })
+
+  it('puts no number where the account-level quality average would be', async () => {
+    // The assertion that actually keeps the rollup out. The tile's value
+    // must never become a score: `scoredCalls` is coverage and lives in the
+    // meta line, so the value itself carries no digit at all.
     renderAt('/accounts/EMP-1001')
     await screen.findByText(/This account.s calls/)
 
-    expect(screen.queryByText(/average call quality/i)).not.toBeInTheDocument()
+    const label = screen.getByText('Average call quality', { selector: '.nv-k' })
+    const tile = label.closest('.nv-big')
+
+    expect(tile).not.toBeNull()
+    const value = (tile as HTMLElement).querySelector('.nv-v')
+
+    expect(value).not.toBeNull()
+    expect(value?.textContent ?? '').not.toMatch(/[0-9]/)
   })
 
   it('ranks what they call about, most first', async () => {

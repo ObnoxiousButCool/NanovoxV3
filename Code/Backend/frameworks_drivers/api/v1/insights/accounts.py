@@ -144,6 +144,12 @@ class AccountProfileResponse(CamelModel):
     prototype wins on presentation and the workbook wins on definitions
     (`plan.md` §3.0), so that tile is carried as a conflict rather than
     served.
+
+    `scored_calls` is not that figure in disguise. It counts how many calls
+    carry a score, which is coverage of a per-call figure the calls table
+    already prints; it says nothing about how high those scores are. It is
+    sent so the screen can state the withholding with a number behind it
+    rather than leaving a silent hole where the prototype has a tile.
     """
 
     calls: int = Field(description="This account's calls in the risk window.")
@@ -162,6 +168,12 @@ class AccountProfileResponse(CamelModel):
             "Calls whose category the pipeline never filled. Sent so the topics "
             "below can be reconciled against `calls` rather than quietly falling "
             "short of it."
+        )
+    )
+    scored_calls: int = Field(
+        description=(
+            "How many of `calls` carry a quality score. Coverage, not quality: "
+            "no average over an employer is published, here or anywhere."
         )
     )
     topics: list[TopicCountResponse] = Field(
@@ -264,6 +276,7 @@ def build_account_response(detail: AccountDetail, query: InsightsQueryDep) -> Ac
             repeat_contacts=detail.profile.repeat_contacts,
             escalations_missed=detail.profile.escalations_missed,
             uncategorised=detail.profile.uncategorised,
+            scored_calls=detail.profile.scored_calls,
             topics=[
                 # `category.value` is the workbook's own wording; `labels.py`
                 # deliberately does not map categories, because re-labelling

@@ -26,6 +26,7 @@ def _call(
     outcome: Outcome | None = Outcome.RESOLVED,
     category: Category | None = Category.CLAIMS_AND_EOB,
     escalation: Escalation | None = None,
+    quality_score: int | None = None,
     caller: str = "CB-1",
 ) -> CallContext:
     return CallContext(
@@ -34,6 +35,7 @@ def _call(
             outcome=outcome,
             category=category,
             escalation=escalation,
+            quality_score=quality_score,
             caller_ref=caller,
         ),
         occurred_on=date(2026, month, day),
@@ -135,3 +137,24 @@ class TestWhatIsDeliberatelyAbsent:
 
         assert not hasattr(profile, "quality")
         assert not any("quality" in field for field in vars(profile))
+
+    def test_coverage_is_counted_but_never_summarised(self) -> None:
+        """`scored_calls` says how many calls carry a score, not how high
+        they are. Two calls scoring 20 and 100 give the same count as two
+        scoring 90 and 95 — which is the point: it is the coverage of a
+        per-call figure, and no ordering of accounts can be read out of it."""
+        low = [_call("C-1", quality_score=20), _call("C-2", quality_score=100)]
+        high = [_call("C-3", quality_score=90), _call("C-4", quality_score=95)]
+
+        assert account_profile(low, WINDOW).scored_calls == 2
+        assert account_profile(high, WINDOW).scored_calls == 2
+
+    def test_an_unscored_call_is_not_counted_as_scored(self) -> None:
+        """A missing score is a gap in coverage, never a zero — the same rule
+        the withheld figures follow everywhere else."""
+        calls = [_call("C-1", quality_score=80), _call("C-2")]
+
+        profile = account_profile(calls, WINDOW)
+
+        assert profile.calls == 2
+        assert profile.scored_calls == 1

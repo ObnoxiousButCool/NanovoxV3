@@ -38,6 +38,8 @@ import {
   KpiTile,
   Note,
   Panel,
+  Tooltip,
+  Withheld,
 } from '@/shared/design/primitives'
 import type { Column, Row } from '@/shared/design/primitives'
 
@@ -232,15 +234,24 @@ export function AccountActions({
 /**
  * The four tiles the prototype puts above the account detail.
  *
- * **Four, not five.** `employer.html` has an "Average call quality" tile.
- * Metric 12 is defined per agent, and the domain states that rolling it up
- * to an employer is forbidden by the Metrics sheet — so the API does not
- * serve it and this does not show it. The prototype wins on presentation
- * and the workbook wins on definitions (§3.0); this is a definition.
+ * **Five tiles, and the fifth says why it has no number.** `employer.html`
+ * ends with "Average call quality". Metric 12 is defined per agent and the
+ * domain states that rolling it up to an employer is forbidden by the
+ * Metrics sheet, so no average is served or computed. What this used to do
+ * was leave the slot out entirely — and a silently missing tile is the one
+ * thing the rest of this application never does. Withheld is not zero, and
+ * it is not absence either: it is a figure we decline to publish, with the
+ * reason attached, which is what `tone="withheld"` is for.
  *
- * Every tile is a **count**, so none is suppressed: zero unresolved calls
- * out of four is a true and useful statement, where a zero *rate* over four
- * would not be.
+ * The count beside it is **coverage, not quality**: how many of the
+ * account's calls carry a score at all. Every one of those scores is
+ * already printed against its own call in the panel below, because metric
+ * 12 is admissible as a property of a call. It is the summary over an
+ * employer that the sheet forbids, and none is made here.
+ *
+ * The other four tiles are **counts**, so none is suppressed: zero
+ * unresolved calls out of four is a true and useful statement, where a zero
+ * *rate* over four would not be.
  */
 export function AccountTiles({ profile }: { profile: AccountProfile }) {
   return (
@@ -272,6 +283,30 @@ export function AccountTiles({ profile }: { profile: AccountProfile }) {
           value={profile.escalationsMissed}
           issue="escalation_missed"
           meta="warranted, not given"
+        />
+        <KpiTile
+          tone="withheld"
+          label="Average call quality"
+          // Never a number here. The reason is the finding.
+          value={<Withheld reason={{ code: 'per_agent_only', label: 'Not published' }} />}
+          meta={
+            <span className="nv-indcount">
+              {profile.scoredCalls === 0
+                ? 'No call here carries a score'
+                : `${String(profile.scoredCalls)} of ${String(profile.calls)} calls scored — each one below`}
+            </span>
+          }
+          info={
+            <Tooltip>
+              <p>
+                <b>Why there is no average call quality</b>
+              </p>
+              Metric 12 is a property of the call and the agent. The Metrics sheet says
+              it is never averaged to an employer, product line or broker, so this
+              account has no quality score of its own — the per-call scores in the calls
+              panel are the figure, and they are not summed into one.
+            </Tooltip>
+          }
         />
       </BigRow>
     </Panel>

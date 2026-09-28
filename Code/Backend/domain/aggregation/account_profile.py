@@ -20,6 +20,47 @@ An account-level average is exactly that rollup. `plan.md` §3.0 gives the
 prototype the presentation authority and the workbook the definitions, and
 this is a definition. Recorded as a conflict rather than quietly built.
 
+What the sheet forbids is a **summary statistic over an employer**, not the
+score itself: metric 12 is admissible as a property of the call, and every
+one of this account's scores is already printed beside its call. So what is
+counted here is `scored_calls` — how many of the account's calls carry a
+score at all. That is coverage, not quality: it says how much of the window
+the per-call scores cover, and it is the honest thing to put where the
+prototype puts a mean. A count of calls below some threshold is *not* here,
+because picking the threshold is the rollup again in different clothes.
+
+## Nor a quality range, and this one was measured rather than argued
+
+The obvious next proposal is a *range* — lowest and highest scored call —
+on the grounds that `agent_quality` publishes exactly that per agent, and a
+range is not an average, so the sheet's wording does not reach it. Measured
+against this corpus on 2026-09-28, the range carries no information about an
+account at all:
+
+- **The high end is a constant.** 67% of the 238 scored calls score exactly
+  100. Of the 16 accounts with three or more scored calls, **all 16** have a
+  maximum of 100, and 100 is the only distinct maximum in the book. An
+  account with three calls reaches it by luck 96% of the time.
+- **The low end is sample size.** Correlation between an account's call
+  count and its observed range is 0.67. Comparing each account against 4,000
+  random draws of the same size from the book-wide pool, **every account's
+  range falls inside the 5th-95th percentile of the random draw.** Not one
+  is distinguishable from calls dealt at random.
+- **59 accounts have one scored call**, where the range is zero by
+  construction and would render as a single number that looks like a
+  measurement and is a sample of one.
+
+So a reader comparing "62-100" with "78-100" would be reading the difference
+between sixteen calls and eighteen. The sheet's prohibition and the
+statistics agree here, which is the usual sign that the sheet already knew.
+The median does not rescue it either — the book-wide median is 100.
+
+This closes the question rather than leaving it open for a person: it is not
+a presentation disagreement to be settled by Minnie or Karim, it is a figure
+that would vary only with call volume while looking like a judgement about
+an account. What the page shows instead is the per-call scores in the calls
+panel, where a 62 stays attached to the one call that earned it.
+
 ## Topics are what they called about, not which categories exist
 
 The ranking lists only the categories this account actually raised, in
@@ -66,6 +107,9 @@ class AccountProfile:
     #: bars can be reconciled against `calls` rather than silently falling
     #: short of it.
     uncategorised: int
+    #: How many of `calls` carry a quality score. Coverage of the per-call
+    #: figure, never a summary of it — see the module docstring.
+    scored_calls: int
     topics: tuple[TopicCount, ...]
 
 
@@ -98,6 +142,7 @@ def account_profile(calls: Sequence[CallContext], window: Window) -> AccountProf
             ]
         ),
         uncategorised=uncategorised,
+        scored_calls=len([call for call in mine if call.tags.quality_score is not None]),
         # Most first, then the workbook's own order for a tie, so two
         # categories on the same count do not swap places between reads.
         topics=tuple(
