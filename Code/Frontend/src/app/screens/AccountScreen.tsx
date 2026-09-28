@@ -22,11 +22,10 @@
  * so rather than rendering a dash that reads as zero difference.
  */
 
-import { Link } from 'react-router-dom'
-
 import type { AccountDetail } from '@/shared/api/insights'
 import { IssueCue } from '@/shared/actions/IssueLink'
 import { isIssueKey } from '@/shared/actions/issueHref'
+import { AccountTopics } from '@/app/screens/AccountPanels'
 import { CallEvidence } from '@/shared/design/drawer/Evidence'
 import { useDrawer } from '@/shared/design/drawer'
 import {
@@ -108,7 +107,7 @@ export function AccountBody({
   const fired = risk.observations.filter((observation) => observation.observed)
 
   return (
-    <div className="nv-grid">
+    <>
       <div className="nv-c6">
         <Panel
           title="The account"
@@ -130,6 +129,10 @@ export function AccountBody({
                   ? 'Not recorded'
                   : `$${facts.annualPremium.toLocaleString()}`}
               </b>
+            </div>
+            <div>
+              <span className="nv-figlabel">Admin fee</span>
+              <b>${facts.annualFee.toLocaleString()} a year</b>
             </div>
             <div>
               <span className="nv-figlabel">Renewal</span>
@@ -208,7 +211,7 @@ export function AccountBody({
         </Panel>
       </div>
 
-      <div className="nv-c12">
+      <div className="nv-c7">
         <Panel
           title="The risk flag"
           sub={`Metric 10 over ${String(data.riskWindowWeeks)} weeks, as at ${data.asOf}.`}
@@ -292,6 +295,10 @@ export function AccountBody({
         </Panel>
       </div>
 
+      <div className="nv-c5">
+        <AccountTopics profile={data.profile} />
+      </div>
+
       <div className="nv-c12">
         <Panel
           title="Broker of record"
@@ -310,13 +317,6 @@ export function AccountBody({
         </Panel>
       </div>
 
-      <div className="nv-c12">
-        <Note>
-          The calls behind these figures open in Phase 3, when <Link to="/calls">/calls</Link>{' '}
-          exists. Until then the evidence is the call references the API returns, not a
-          screen.
-        </Note>
-      </div>
-    </div>
+    </>
   )
 }

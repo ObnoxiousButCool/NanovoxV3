@@ -61,8 +61,17 @@
 .nv-c8 {
   grid-column: span 8;
 }
+/* `employer.html`'s 7/5 split: the indicator panel and what they call
+   about, which are deliberately unequal because one is a list and one is a
+   ranking of at most seven bars. */
+.nv-c7 {
+  grid-column: span 7;
+}
 .nv-c6 {
   grid-column: span 6;
+}
+.nv-c5 {
+  grid-column: span 5;
 }
 .nv-c4 {
   grid-column: span 4;
@@ -72,7 +81,9 @@
  * unreadable panels. */
 @media (max-width: 900px) {
   .nv-c8,
+  .nv-c7,
   .nv-c6,
+  .nv-c5,
   .nv-c4 {
     grid-column: span 12;
   }
@@ -168,6 +179,18 @@
   vertical-align: top;
   padding: 10px 12px 10px 0;
   border-top: 1px solid var(--rule);
+}
+
+/* A cell's second line — the date under a call reference, the touchpoint
+   under a topic. The prototype's `td .sm` is a block; inline it runs the two
+   together, so "C-0064" and its date read as one string. */
+.nv-risktable td small,
+.nv-tblwrap td small {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 2px;
 }
 
 .nv-risktable thead th {

@@ -40,12 +40,7 @@ import {
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
 import { AccountBody } from '@/app/screens/AccountScreen'
-import {
-  AccountActions,
-  AccountCalls,
-  AccountTiles,
-  AccountTopics,
-} from '@/app/screens/AccountPanels'
+import { AccountActions, AccountCalls, AccountTiles } from '@/app/screens/AccountPanels'
 import { Empty, Note } from '@/shared/design/primitives'
 import { InsightStrip } from '@/shared/insights/Insights'
 import '@/app/screens/accounts.css'
@@ -227,9 +222,6 @@ export function AccountsScreen() {
                 <AccountTiles profile={account.data.profile} />
               </div>
               <AccountBody data={account.data} brokerName={brokerName} />
-              <div className="nv-c6">
-                <AccountTopics profile={account.data.profile} />
-              </div>
               <div className="nv-c12">
                 <AccountCalls employerRef={selected} search={filters.apiSearch} />
               </div>

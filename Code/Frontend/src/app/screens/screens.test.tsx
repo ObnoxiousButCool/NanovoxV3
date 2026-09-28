@@ -973,6 +973,22 @@ describe('the account tiles and topics', () => {
     expect(within(tiles as HTMLElement).getByText('0')).toBeInTheDocument()
   })
 
+  it('gives every panel on the detail a column span', async () => {
+    // The detail is a twelve-column grid. A child without a span class
+    // takes one column of twelve and its contents spill over the panel
+    // beside it — which is exactly what a nested `nv-grid` wrapper did
+    // here, and what no screenshot-free test would otherwise catch.
+    renderAt('/accounts/EMP-1001')
+    await screen.findByText(/This account.s calls/)
+
+    const detail = document.querySelector('.nv-acctdetail')
+
+    expect(detail).not.toBeNull()
+    for (const child of Array.from((detail as HTMLElement).children)) {
+      expect(Array.from(child.classList).some((name) => /^nv-c[0-9]+$/.test(name))).toBe(true)
+    }
+  })
+
   it('never shows an average call quality for an account', async () => {
     // Metric 12 is per agent. Rolling it up to an employer is forbidden by
     // the Metrics sheet, so the prototype's fifth tile is carried as a
