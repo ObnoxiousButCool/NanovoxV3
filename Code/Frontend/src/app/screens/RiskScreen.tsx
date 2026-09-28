@@ -34,7 +34,7 @@ import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { VBars, VLine } from '@/shared/design/charts'
 import type { IssueKey } from '@/shared/actions/issueHref'
-import { ISSUE_KEYS } from '@/shared/actions/issueHref'
+import { ISSUE_KEYS, RENEW_SOON_MONTHS } from '@/shared/actions/issueHref'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
 import { InsightFeed } from '@/shared/insights/Insights'
@@ -42,7 +42,6 @@ import {
   BigRow,
   Empty,
   EpistemicChip,
-  FigureSample,
   FigureValue,
   KpiTile,
   Note,
@@ -144,6 +143,14 @@ function RiskBody({
   const endedTotal = outcomes.reduce((total, entry) => total + entry.calls, 0)
   const unresolvedCount =
     outcomes.find((entry) => entry.outcome.code === 'UNRESOLVED')?.calls ?? 0
+  const assessed = data.assessed
+  const flaggedAccounts = assessed.filter((account) => account.flagged)
+  const renewingSoon = flaggedAccounts.filter(
+    (account) =>
+      account.monthsToRenewal !== null &&
+      account.monthsToRenewal !== undefined &&
+      account.monthsToRenewal <= RENEW_SOON_MONTHS,
+  )
 
   return (
     <div className="nv-grid">
@@ -155,28 +162,76 @@ function RiskBody({
         >
           <BigRow>
             <KpiTile
-              label="Flagged, of those assessable"
-              value={<FigureValue figure={data.flaggedShare} format={percent} />}
-              meta={<FigureSample figure={data.flaggedShare} />}
+              label="Accounts flagged"
+              value={String(flaggedAccounts.length)}
+              tone={flaggedAccounts.length > 0 ? 'hot' : 'plain'}
+              meta={
+                <>
+                  <FigureValue figure={data.flaggedShare} format={percent} /> of{' '}
+                  {String(data.assessedCount)} assessed
+                  {data.ineligibleCount > 0
+                    ? ` · ${String(data.ineligibleCount)} could not be`
+                    : null}
+                  <br />
+                  {flaggedAccounts.length > 0 ? <IssueCue issue="flagged" /> : null}
+                </>
+              }
             />
             <KpiTile
-              label="Assessed"
-              value={String(data.assessedCount)}
-              meta={<span className="nv-indcount">had enough calls</span>}
+              label="Flagged & renewing soon"
+              value={String(renewingSoon.length)}
+              tone={renewingSoon.length > 0 ? 'hot' : 'plain'}
+              meta={
+                <>
+                  <span className="nv-indcount">
+                    renewal within {RENEW_SOON_MONTHS} months
+                  </span>
+                  <br />
+                  {renewingSoon.length > 0 ? <IssueCue issue="renew_soon" /> : null}
+                </>
+              }
             />
             <KpiTile
-              label="Could not be assessed"
-              value={String(data.ineligibleCount)}
-              meta={<span className="nv-indcount">too few calls</span>}
+              label="Unresolved calls"
+              value={String(unresolvedCount)}
+              tone={unresolvedCount > 0 ? 'hot' : 'plain'}
+              meta={
+                <>
+                  <span className="nv-indcount">of {String(endedTotal)} calls</span>
+                  <br />
+                  {unresolvedCount > 0 ? <IssueCue issue="unresolved" /> : null}
+                </>
+              }
             />
             <KpiTile
-              label="Lives behind the flagged"
-              value={String(data.exposure.lives)}
-              meta={<span className="nv-indcount">exposure, not expected loss</span>}
+              label="Escalations missed"
+              value={String(data.escalationsMissed)}
+              tone={data.escalationsMissed > 0 ? 'hot' : 'plain'}
+              meta={
+                <>
+                  <span className="nv-indcount">
+                    {String(data.escalationsTriggered - data.escalationsMissed)} of{' '}
+                    {String(data.escalationsTriggered)} handled
+                  </span>
+                  <br />
+                  {data.escalationsMissed > 0 ? <IssueCue issue="escalation_missed" /> : null}
+                </>
+              }
+            />
+            <KpiTile
+              label="Exit language"
+              value={String(data.exitLanguageCalls)}
+              tone={data.exitLanguageCalls > 0 ? 'warm' : 'plain'}
+              meta={
+                <>
+                  <span className="nv-indcount">said on a call, verbatim</span>
+                  <br />
+                  {data.exitLanguageCalls > 0 ? <IssueCue issue="exit_language" /> : null}
+                </>
+              }
             />
           </BigRow>
           <Note>{data.exposure.caveat}</Note>
-          {data.exposure.employers.length > 0 ? <IssueCue issue="flagged" /> : null}
         </Panel>
       </div>
 
@@ -319,19 +374,7 @@ function RiskBody({
           {endedTotal === 0 ? (
             <Empty>No call in scope records an outcome.</Empty>
           ) : (
-            <VBars
-              ariaLabel="Calls by outcome"
-              labels={outcomes.map((entry) => entry.outcome.label)}
-              series={[
-                {
-                  name: 'Calls',
-                  // Counts, so a zero is a real bar on the baseline rather
-                  // than a gap. Call volume has no minimum.
-                  values: outcomes.map((entry) => entry.calls),
-                  color: 'var(--seq-2)',
-                },
-              ]}
-            />
+            <OutcomeBar outcomes={outcomes} />
           )}
           <Note>{data.handlingUnavailable}</Note>
         </Panel>
@@ -343,7 +386,7 @@ function RiskBody({
           sub="Counts. A blank week is a week the corpus says nothing about."
           chip={<EpistemicChip kind="observed" />}
         >
-          <VLine
+          <VBars
             ariaLabel="Calls and unresolved calls per week"
             labels={weeklyUnresolved.map((week) => week.start.slice(5))}
             series={[
@@ -423,7 +466,67 @@ function RiskBody({
           )}
         </Panel>
       </div>
+
+      <div className="nv-c12">
+        <BandCalibrationPanel panel={data.bandCalibration} />
+      </div>
     </div>
+  )
+}
+
+/** Insight 9, withheld unconditionally — no gate unlocks it, only a schema
+ * change (a termination/renewal outcome per employer) nobody has made. */
+function BandCalibrationPanel({
+  panel,
+}: {
+  panel: RiskScreenData['bandCalibration']
+}) {
+  return (
+    <Panel title={panel.question} chip={<EpistemicChip kind="inference" />}>
+      <Note>{panel.why}</Note>
+      <Note>{panel.unlockedBy}</Note>
+    </Panel>
+  )
+}
+
+/** The workbook's own order for an outcome — the legend and the bar read
+ * left to right in the order a call resolves worse, matching the prototype
+ * rather than whatever order the API happens to list them in. */
+const OUTCOME_COLOR: Record<string, string> = {
+  RESOLVED: 'var(--good)',
+  PARTIALLY_RESOLVED: 'var(--warning)',
+  ESCALATED: 'var(--s1)',
+  UNRESOLVED: 'var(--critical)',
+}
+
+/** "How calls ended" as one bar, segmented by count — the prototype's
+ * shape. A segment's width is its own share of the total, so agreement or
+ * disagreement with the corpus is visible without adding the numbers up. */
+function OutcomeBar({ outcomes }: { outcomes: NonNullable<RiskScreenData['outcomes']> }) {
+  return (
+    <>
+      <div className="nv-stackbar">
+        {outcomes.map((entry) => (
+          <div
+            key={entry.outcome.code}
+            style={{
+              flex: Math.max(entry.calls, 0.0001),
+              background: OUTCOME_COLOR[entry.outcome.code] ?? 'var(--ink-3)',
+            }}
+          >
+            {entry.calls}
+          </div>
+        ))}
+      </div>
+      <ul className="nv-stackbar-legend">
+        {outcomes.map((entry) => (
+          <li key={entry.outcome.code}>
+            <i style={{ background: OUTCOME_COLOR[entry.outcome.code] ?? 'var(--ink-3)' }} />
+            {entry.outcome.label} {entry.calls}
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }
 

@@ -100,6 +100,24 @@ const RISK = {
     premiumIncomplete: false,
     caveat: 'Exposure across 0 flagged account(s): 0 lives. Exposure, not expected loss.',
   },
+  bandCalibration: {
+    insight: 9,
+    question: 'Whether the risk bands actually predict who leaves',
+    why: 'No termination or renewal outcome exists in the corpus to calibrate against.',
+    unlockedBy: 'a termination/renewal outcome per employer',
+  },
+  escalationsTriggered: 0,
+  escalationsMissed: 0,
+  exitLanguageCalls: 0,
+}
+
+const ACTION_BOARD = {
+  lanes: [
+    { code: 'triage', label: 'Triage', open: true, requires: [] },
+    { code: 'done', label: 'Done', open: false, requires: [] },
+  ],
+  actions: [],
+  trustNote: 'There is no sign-in; anyone who can reach this can edit it.',
 }
 
 const FAMILIES = [
@@ -365,6 +383,7 @@ function routeFor(url: string): unknown {
   if (url.includes('/insights/agents')) return AGENTS
   if (url.includes('/insights/exec')) return EXEC
   if (url.includes('/insights/risk')) return RISK
+  if (url.includes('/insights/actions/board')) return ACTION_BOARD
   if (url.includes('/insights/hierarchy')) return HIERARCHY
   if (url.includes('/insights/accounts/')) return ACCOUNT
   if (url.includes('/insights/calls')) return CALLS
@@ -474,6 +493,335 @@ describe('/exec', () => {
   })
 })
 
+function observationsWithNObserved(n: number) {
+  return Array.from({ length: 10 }, (_, i) => ({
+    code: `family_${String(i)}`,
+    label: `Family ${String(i)}`,
+    observed: i < n,
+    hits: i < n ? 2 : 0,
+    employerCalls: 9,
+    rate: 0.2,
+    available: true,
+    unavailableBecause: '',
+  }))
+}
+
+function bucket(hits: number) {
+  return { start: '2026-09-01', end: '2026-09-07', calls: 10, hits }
+}
+
+const EXEC_RICH = {
+  scope: SCOPE,
+  asOf: '2026-09-28',
+  calls: 100,
+  metrics: EXEC.metrics,
+  escalation: [
+    {
+      label: 'Handled, of escalations that were warranted',
+      figure: {
+        value: 0.6,
+        published: true,
+        n: 5,
+        callIds: ['C-1', 'C-2', 'C-3', 'C-4', 'C-5'],
+        basis: { code: 'OBSERVED', label: 'Observed' },
+        withheldReason: null,
+        caveats: [],
+      },
+    },
+    {
+      label: 'Escalations warranted, of all calls',
+      figure: {
+        value: 0.05,
+        published: true,
+        n: 100,
+        callIds: [],
+        basis: { code: 'OBSERVED', label: 'Observed' },
+        withheldReason: null,
+        caveats: [],
+      },
+    },
+  ],
+  intentRouted: WITHHELD,
+  areaOfConcern: {
+    category: 'Coverage & Benefits',
+    calls: 5,
+    unresolved: 3,
+    escalationsTriggered: 2,
+    escalationsHandled: 0,
+  },
+  trends: {
+    windowStart: '2026-08-31',
+    windowEnd: '2026-09-28',
+    windowWeeks: 4,
+    priorStart: '2026-08-03',
+    priorEnd: '2026-08-30',
+    weeks: [{ start: '2026-09-22', end: '2026-09-28', calls: 25 }],
+    movements: [
+      {
+        label: 'Repeat contacts',
+        now: 2,
+        prior: 6,
+        callsNow: 40,
+        callsPrior: 40,
+        expected: 6,
+        z: -2.4,
+        beyondNoise: true,
+        worse: false,
+      },
+      {
+        label: 'Unresolved calls',
+        now: 12,
+        prior: 10,
+        callsNow: 40,
+        callsPrior: 40,
+        expected: 10,
+        z: 2.1,
+        beyondNoise: true,
+        worse: true,
+      },
+    ],
+    emerging: [
+      {
+        kind: 'category',
+        key: 'Coverage & Benefits',
+        buckets: [bucket(1), bucket(2), bucket(5)],
+        delta: 4,
+        rising: true,
+      },
+      {
+        kind: 'signal',
+        key: 'retention_risk',
+        buckets: [bucket(0), bucket(1), bucket(3)],
+        delta: 3,
+        rising: true,
+      },
+      {
+        kind: 'touchpoint',
+        key: 'denial_letter_eob',
+        buckets: [bucket(1), bucket(1), bucket(2)],
+        delta: 1,
+        rising: true,
+      },
+      {
+        kind: 'product_line',
+        key: 'dental',
+        buckets: [bucket(5), bucket(3), bucket(1)],
+        delta: -4,
+        rising: false,
+      },
+      {
+        kind: 'category',
+        key: 'Broker Conduct',
+        buckets: [bucket(3), bucket(2), bucket(1)],
+        delta: -2,
+        rising: false,
+      },
+    ],
+  },
+}
+
+const RISK_RICH = {
+  scope: SCOPE,
+  asOf: '2026-09-28',
+  windowWeeks: 12,
+  assessed: [
+    {
+      employerRef: 'EMP-1001',
+      calls: 12,
+      eligible: true,
+      flagged: true,
+      quotable: true,
+      state: 'Flagged: 5 of 4 conditions met.',
+      conditionsMet: 3,
+      conditions: [],
+      evidence: [],
+      observations: observationsWithNObserved(5),
+      renewalMonth: 'November',
+      monthsToRenewal: 2,
+    },
+    {
+      employerRef: 'EMP-1002',
+      calls: 9,
+      eligible: true,
+      flagged: true,
+      quotable: true,
+      state: 'Flagged: 3 of 4 conditions met.',
+      conditionsMet: 2,
+      conditions: [],
+      evidence: [],
+      observations: observationsWithNObserved(3),
+      renewalMonth: 'March',
+      monthsToRenewal: 6,
+    },
+    {
+      employerRef: 'EMP-1003',
+      calls: 4,
+      eligible: true,
+      flagged: false,
+      quotable: false,
+      state: 'Not flagged: 1 of 4 conditions met.',
+      conditionsMet: 1,
+      conditions: [],
+      evidence: [],
+      observations: observationsWithNObserved(1),
+      renewalMonth: 'January',
+      monthsToRenewal: 1,
+    },
+  ],
+  assessedCount: 3,
+  ineligible: [],
+  ineligibleCount: 0,
+  flaggedShare: {
+    value: 2 / 3,
+    published: true,
+    n: 3,
+    callIds: ['C-1', 'C-2', 'C-3'],
+    basis: { code: 'OBSERVED', label: 'Observed' },
+    withheldReason: null,
+    caveats: [],
+  },
+  exposure: {
+    employers: ['EMP-1001', 'EMP-1002'],
+    lives: 250,
+    annualPremium: 0,
+    premiumIncomplete: true,
+    caveat: 'Exposure across 2 flagged account(s): 250 lives. Exposure, not expected loss.',
+  },
+  bandCalibration: RISK.bandCalibration,
+}
+
+const ACTION_BOARD_RICH = {
+  lanes: [
+    { code: 'needs_action', label: 'Needs action', open: true, requires: [] },
+    { code: 'in_progress', label: 'In progress', open: true, requires: [] },
+    { code: 'completed', label: 'Completed', open: false, requires: [] },
+  ],
+  actions: [
+    { id: 1, status: 'needs_action', pastDue: true, outcome: null },
+    { id: 2, status: 'needs_action', pastDue: false, outcome: null },
+    { id: 3, status: 'in_progress', pastDue: false, outcome: null },
+    { id: 4, status: 'in_progress', pastDue: true, outcome: null },
+    { id: 5, status: 'completed', pastDue: false, outcome: 'Fixed the billing rule.' },
+  ],
+  trustNote: 'There is no sign-in; anyone who can reach this can edit it.',
+}
+
+describe('/exec, with accounts, escalations and an action board', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.includes('/insights/exec')
+                ? EXEC_RICH
+                : input.includes('/insights/risk')
+                  ? RISK_RICH
+                  : input.includes('/insights/actions/board')
+                    ? ACTION_BOARD_RICH
+                    : routeFor(input),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+  })
+
+  it('lists the flagged accounts in the needs-attention panel, most indicators first', async () => {
+    renderAt('/exec')
+
+    await waitFor(() => {
+      expect(screen.getByText('Needs attention now')).toBeInTheDocument()
+    })
+    // Two of three assessed accounts are flagged; the unflagged EMP-1003
+    // never appears here even though it was assessed.
+    expect(screen.getByText(/2 of 3 accounts are flagged/i)).toBeInTheDocument()
+    // Each name also appears in the filter bar's employer dropdown, so this
+    // counts rather than insisting on a single match.
+    expect(screen.getAllByText('Cedar Point Workforce Partners').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Park Mechanical').length).toBeGreaterThan(0)
+    expect(screen.getByText('5 of 10 indicators')).toBeInTheDocument()
+    expect(screen.getByText('renews in 2 months')).toBeInTheDocument()
+  })
+
+  it('gets the four-tile row right, including a gauge with a rendered value', async () => {
+    renderAt('/exec')
+
+    await waitFor(() => {
+      expect(screen.getByText('Risk and follow-through, at a glance')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Accounts flagged')).toBeInTheDocument()
+    // Two flagged accounts, out of three assessed.
+    const tiles = screen.getByText('Accounts flagged').closest('.nv-big')
+    expect(tiles).not.toBeNull()
+    expect(within(tiles as HTMLElement).getByText('2')).toBeInTheDocument()
+    // Both renewing within four months: EMP-1001 (2) and EMP-1002 is not
+    // (6 months out), so only one flagged account is renewing soon.
+    const renewTile = screen.getByText('Flagged & renewing soon').closest('.nv-big')
+    expect(within(renewTile as HTMLElement).getByText('1')).toBeInTheDocument()
+    // The gauge: 3 of 5 triggered escalations handled is 60%.
+    expect(screen.getByText('60%')).toBeInTheDocument()
+    expect(screen.getByText('3 of 5 handled')).toBeInTheDocument()
+    // Two actions are past due.
+    const overdueTile = screen.getByText('Overdue actions').closest('.nv-big')
+    expect(within(overdueTile as HTMLElement).getByText('2')).toBeInTheDocument()
+  })
+
+  it('computes What went well and Area of concern from the fixture, not literal prototype text', async () => {
+    renderAt('/exec')
+
+    await waitFor(() => {
+      expect(screen.getByText('What went well')).toBeInTheDocument()
+    })
+    const wellPanel = screen.getByText('What went well').closest('.nv-panel') as HTMLElement
+    expect(wellPanel.textContent).toMatch(/Repeat contacts fell from 6 to 2 in the last 4 weeks/)
+
+    const concernPanel = screen.getByText('Area of concern').closest('.nv-panel') as HTMLElement
+    expect(concernPanel.textContent).toMatch(/Coverage & Benefits carries the most unresolved calls \(3\)/)
+    expect(concernPanel.textContent).toMatch(/only 0 of 2 escalations there were handled/)
+  })
+
+  it('shows only the top three rising items as cards, plus an Easing sidebar', async () => {
+    renderAt('/exec')
+
+    await waitFor(() => {
+      expect(screen.getByText('Emerging issues')).toBeInTheDocument()
+    })
+    // The three risen furthest: Coverage & Benefits (+4), retention_risk
+    // (+3), denial_letter_eob (+1). The fourth-largest rise does not exist
+    // in this fixture — the two falling items must not appear as cards.
+    const panel = screen.getByText('Emerging issues').closest('.nv-panel') as HTMLElement
+    expect(within(panel).getByText('Coverage & Benefits')).toBeInTheDocument()
+    expect(within(panel).getByText('retention_risk')).toBeInTheDocument()
+    expect(within(panel).getByText('denial_letter_eob')).toBeInTheDocument()
+    // Each rising card carries its own chart.
+    expect(within(panel).getAllByRole('img').length).toBeGreaterThanOrEqual(3)
+    // Easing: the two falling items, dental first (furthest fallen).
+    expect(within(panel).getByText('Easing')).toBeInTheDocument()
+    expect(within(panel).getByText('dental')).toBeInTheDocument()
+    expect(within(panel).getByText('Broker Conduct')).toBeInTheDocument()
+  })
+
+  it("matches the action-status bar's counts to the fixture action board", async () => {
+    renderAt('/exec')
+
+    await waitFor(() => {
+      expect(screen.getByText('What is being done')).toBeInTheDocument()
+    })
+    // 4 of 5 actions sit in an open lane (needs_action x2, in_progress x2);
+    // 2 are past due; 1 carries a measured outcome.
+    expect(screen.getByText(/4 of 5 actions open, 2 overdue, 1 with a measured outcome/)).toBeInTheDocument()
+    const key = screen.getByText('Needs action').closest('li') as HTMLElement
+    expect(within(key).getByText('2')).toBeInTheDocument()
+    const progressKey = screen.getByText('In progress').closest('li') as HTMLElement
+    expect(within(progressKey).getByText('2')).toBeInTheDocument()
+    const doneKey = screen.getByText('Completed').closest('li') as HTMLElement
+    expect(within(doneKey).getByText('1')).toBeInTheDocument()
+  })
+})
+
 describe('/risk', () => {
   it('keeps unassessable accounts out of "not flagged"', async () => {
     renderAt('/risk')
@@ -500,6 +848,17 @@ describe('/risk', () => {
     })
     // The assertion that matters: the reference appears nowhere on screen.
     expect(screen.queryByText('EMP-1001')).not.toBeInTheDocument()
+  })
+
+  it('renders insight 9 withheld unconditionally, not as an empty panel', async () => {
+    renderAt('/risk')
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Whether the risk bands actually predict who leaves'),
+      ).toBeInTheDocument()
+    })
+    expect(screen.getByText(/no termination or renewal outcome exists/i)).toBeInTheDocument()
   })
 
   it('says the share is over every assessed account, not the filtered rows', async () => {
@@ -552,6 +911,80 @@ describe('/risk, with an account it could assess', () => {
     // A family that did not fire is not named in the row — the count says
     // how many of ten, so absence is already legible without listing eight.
     expect(screen.queryByText('High member effort')).not.toBeInTheDocument()
+  })
+})
+
+describe('/risk, the headline tile row', () => {
+  const FLAGGED_SOON = { ...ASSESSED, flagged: true, monthsToRenewal: 2 }
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.includes('/insights/risk')
+                ? {
+                    ...RISK,
+                    assessed: [FLAGGED_SOON],
+                    assessedCount: 1,
+                    escalationsTriggered: 11,
+                    escalationsMissed: 4,
+                    exitLanguageCalls: 4,
+                  }
+                : routeFor(input),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+  })
+
+  it('counts flagged accounts, not a share, in the headline tile', async () => {
+    renderAt('/risk')
+
+    await waitFor(() => {
+      expect(screen.getByText('Accounts flagged')).toBeInTheDocument()
+    })
+    const tile = screen.getByText('Accounts flagged').closest('div')
+    expect(tile).not.toBeNull()
+    expect(within(tile as HTMLElement).getByText('1')).toBeInTheDocument()
+  })
+
+  it('counts flagged accounts renewing within the shared soon-window', async () => {
+    renderAt('/risk')
+
+    await waitFor(() => {
+      expect(screen.getByText('Flagged & renewing soon')).toBeInTheDocument()
+    })
+    const tile = screen.getByText('Flagged & renewing soon').closest('div')
+    expect(within(tile as HTMLElement).getByText('1')).toBeInTheDocument()
+  })
+
+  it('shows escalations missed against how many were triggered', async () => {
+    renderAt('/risk')
+
+    await waitFor(() => {
+      expect(screen.getByText('Escalations missed')).toBeInTheDocument()
+    })
+    expect(screen.getByText('7 of 11 handled')).toBeInTheDocument()
+  })
+
+  it('links each nonzero headline tile to what to do about it', async () => {
+    renderAt('/risk')
+
+    await waitFor(() => {
+      expect(screen.getByText('Exit language')).toBeInTheDocument()
+    })
+    const links = screen.getAllByRole('link')
+    const focuses = links
+      .map((link) => link.getAttribute('href'))
+      .filter((href): href is string => href !== null && href.includes('/actions?focus='))
+    for (const key of ['flagged', 'renew_soon', 'escalation_missed', 'exit_language']) {
+      expect(focuses.some((href) => href.includes(`focus=${key}`))).toBe(true)
+    }
   })
 })
 

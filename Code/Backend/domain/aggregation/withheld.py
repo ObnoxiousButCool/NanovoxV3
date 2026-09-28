@@ -1,10 +1,15 @@
 """The questions this data cannot answer, stated rather than approximated.
 
-Insights 6, 17 and 25 render withheld panels. `Backend-Stream-B-Measurement.md`
-is blunt about why this module exists: "Do not build a partial version to
-fill the space." A panel that answers three-quarters of a question, with no
-label saying which quarter is missing, is worse than an empty one — the
-reader cannot tell which part to distrust.
+Insights 9, 22 and 25 render withheld panels. (6 and 17 used to be here too —
+`domain/derivations/root_cause.py`'s `root_cause_owner` closed both, and this
+module dropping them the same day is that decision's other half: a panel
+still claiming a question is unanswerable after the field that answers it
+ships is the exact failure mode `Backend-Stream-B-Measurement.md` warns
+about, just pointed the other way.) That doc is blunt about why this module
+exists: "Do not build a partial version to fill the space." A panel that
+answers three-quarters of a question, with no label saying which quarter is
+missing, is worse than an empty one — the reader cannot tell which part to
+distrust.
 
 §8 asks each panel to state three things: the question, why it cannot be
 answered, and exactly what data would unlock it. The third is what separates
@@ -49,41 +54,31 @@ class WithheldPanel:
         )
 
 
-#: Insight 6. `complaint.attributed_to` has CHOICE, BROKER, CARRIER and
-#: PROVIDER — and no EMPLOYER. `test_real_answer_key.py` asserts that over
-#: the real corpus, so if an EMPLOYER value ever appears this panel is what
-#: needs revisiting rather than the test being relaxed. Confirmed against
-#: `Insights-Worth-Building.docx`: an EMPLOYER value is named there as one of
-#: the v10 schema changes being *proposed*, not something v9 has.
-EMPLOYER_CAUSED_CONFUSION = WithheldPanel(
-    insight=6,
-    question="How much member confusion is caused by the employer rather than by us",
+#: Insight 9. `plan.md` §9: no termination or lapse outcome exists anywhere
+#: in the corpus — v9 records what a call was about, never what an account
+#: went on to do. Unlike 22, more calls in the *same* shape of batch cannot
+#: unlock this: it needs a fact the schema does not carry at all, which is
+#: why it sits with 25 rather than with 22.
+BAND_CALIBRATION = WithheldPanel(
+    insight=9,
+    question="Whether the risk bands actually predict who leaves",
     why=(
-        "Complaint attribution has four values — CHOICE, BROKER, CARRIER, PROVIDER "
-        "— and EMPLOYER is not one of them. Calls where the employer was at fault are "
-        "attributed to one of the four or carry no complaint at all, so they cannot be "
-        "separated out."
+        "Calibrating a band against renewal outcomes needs a renewal or lapse fact per "
+        "employer. Nothing in the v9 schema records what an account did at renewal — "
+        "only what its calls were about — so there is no outcome to calibrate against."
     ),
-    unlocked_by="an EMPLOYER value in complaint.attributed_to (a v10 proposal, not v9)",
+    unlocked_by=(
+        "a termination/renewal outcome per employer, to compute lapse rate per band, "
+        "lift over the base rate, and a caveat naming bands that don't separate or "
+        "hold fewer than 10 groups"
+    ),
 )
 
-#: Insight 17. Splitting a single call's fault between several parties needs
-#: a per-fault record with a party, a role and a fault type. §7A established
-#: that this is not a v9 concept at all — the docx names a second, per-fault
-#: record as *the* schema change it is proposing.
-SHARED_FAULT = WithheldPanel(
-    insight=17,
-    question="How fault on a single call divides between more than one party",
-    why=(
-        "A call carries one complaint with one attribution. Nothing records a second "
-        "party's contribution, so a call where both the broker and the carrier "
-        "contributed is indistinguishable from one where only the named party did."
-    ),
-    unlocked_by="a per-fault record carrying party, role and fault type (the v10 proposal in §7A)",
-)
-
-#: Insight 25. Same root cause as 17: measuring how often each party is at
-#: fault needs fault records to count.
+#: Insight 25. A relative of insight 17 (now built via `root_cause_owner`),
+#: but a different population: measuring how often each party is at fault
+#: across the whole book still needs a per-fault record to count, which the
+#: v9 schema never carried — `root_cause_owner` names one owner per call, not
+#: every party at fault on it.
 FAULT_BY_PARTY = WithheldPanel(
     insight=25,
     question="How often each party is at fault, across the book",
@@ -111,8 +106,7 @@ DID_IT_WORK = WithheldPanel(
 )
 
 WITHHELD_PANELS: tuple[WithheldPanel, ...] = (
-    EMPLOYER_CAUSED_CONFUSION,
-    SHARED_FAULT,
+    BAND_CALIBRATION,
     FAULT_BY_PARTY,
     DID_IT_WORK,
 )

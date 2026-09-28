@@ -108,6 +108,23 @@ class AccountRiskResponse(CamelModel):
         default_factory=list, description="Every call behind every condition that fired."
     )
     observations: list[ObservationResponse]
+    renewal_month: str | None = Field(
+        default=None,
+        description=(
+            "The employer's renewal month, carried so a screen naming this account "
+            "does not have to look it up separately. Null only for a caller — the "
+            "account page — that already states its own employer's renewal at the "
+            "top level and has no use for a second copy here."
+        ),
+    )
+    months_to_renewal: int | None = Field(
+        default=None,
+        description=(
+            "Whole months from `as_of` to the next renewal. Null when the reference "
+            "data's renewal month could not be read, which sorts and reads as "
+            "unknown rather than as renewing now."
+        ),
+    )
 
 
 class ExposureResponse(CamelModel):
@@ -203,6 +220,16 @@ class WeekShareResponse(CamelModel):
     )
 
 
+class WithheldPanelResponse(CamelModel):
+    """Insight 9 — withheld unconditionally (plan.md's Phase 8 note): no gate
+    unlocks it, only a schema change nobody has made."""
+
+    insight: int
+    question: str
+    why: str
+    unlocked_by: str
+
+
 class RiskScreenResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
@@ -249,6 +276,16 @@ class RiskScreenResponse(CamelModel):
             "Why the prototype's Handling distribution has no counterpart here. "
             "Said rather than rendered as an empty chart beside a full one."
         ),
+    )
+    band_calibration: WithheldPanelResponse = Field(
+        description="Insight 9, withheld until a termination/renewal outcome exists per employer."
+    )
+    escalations_triggered: int = Field(description="Metric 6's denominator, over this window.")
+    escalations_missed: int = Field(
+        description="Warranted and not handled — `Escalation.missed`'s own definition."
+    )
+    exit_language_calls: int = Field(
+        description="Calls carrying the retention_risk signal — exit language, verbatim."
     )
 
 
@@ -302,6 +339,15 @@ def build_risk_response(
         weekly_resolved=[_week(entry) for entry in result.weekly_resolved],
         weekly_quality=[_week(entry) for entry in result.weekly_quality],
         handling_unavailable=HANDLING_UNAVAILABLE,
+        escalations_triggered=result.escalations_triggered,
+        escalations_missed=result.escalations_missed,
+        exit_language_calls=result.exit_language_calls,
+        band_calibration=WithheldPanelResponse(
+            insight=result.band_calibration.insight,
+            question=result.band_calibration.question,
+            why=result.band_calibration.why,
+            unlocked_by=result.band_calibration.unlocked_by,
+        ),
         exposure=ExposureResponse(
             employers=list(result.exposure.employers),
             lives=result.exposure.lives,
@@ -313,17 +359,32 @@ def build_risk_response(
 
 
 def _account(entry: AccountRisk) -> AccountRiskResponse:
-    return account_risk_response(entry.assessment, entry.observations)
+    return account_risk_response(
+        entry.assessment,
+        entry.observations,
+        renewal_month=entry.renewal_month,
+        months_to_renewal=entry.months_to_renewal,
+    )
 
 
 def account_risk_response(
-    assessment: RiskAssessment, observations: Sequence[Observation]
+    assessment: RiskAssessment,
+    observations: Sequence[Observation],
+    *,
+    renewal_month: str | None = None,
+    months_to_renewal: int | None = None,
 ) -> AccountRiskResponse:
     """One employer's risk standing, flattened for the wire.
 
     Shared with the account page so a single account reads the same on both
     screens. Two shapes for one assessment would be two chances for
     "ineligible" to become "not at risk" in different ways.
+
+    `renewal_month` and `months_to_renewal` are keyword-only and default to
+    `None`: the account page already states its own employer's renewal at
+    the top level (`AccountResponse.renewal_month`) and calls this without
+    them, while the risk list's own `_account` passes both so a screen
+    reading this list alone can say when a flagged account renews.
     """
     return AccountRiskResponse(
         employer_ref=assessment.employer_ref,
@@ -356,6 +417,8 @@ def account_risk_response(
             )
             for observation in observations
         ],
+        renewal_month=renewal_month,
+        months_to_renewal=months_to_renewal,
     )
 
 

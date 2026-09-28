@@ -200,6 +200,18 @@
             "title": "Flagged",
             "type": "boolean"
           },
+          "monthsToRenewal": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whole months from `as_of` to the next renewal. Null when the reference data's renewal month could not be read, which sorts and reads as unknown rather than as renewing now.",
+            "title": "Monthstorenewal"
+          },
           "observations": {
             "items": {
               "$ref": "#/components/schemas/ObservationResponse"
@@ -211,6 +223,18 @@
             "description": "Whether there are enough calls to quote this as a figure.",
             "title": "Quotable",
             "type": "boolean"
+          },
+          "renewalMonth": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The employer's renewal month, carried so a screen naming this account does not have to look it up separately. Null only for a caller \u2014 the account page \u2014 that already states its own employer's renewal at the top level and has no use for a second copy here.",
+            "title": "Renewalmonth"
           },
           "state": {
             "description": "What the page says, computed from the numbers. Read this rather than recombining the booleans: 'not eligible' is not 'not at risk'.",
@@ -545,7 +569,7 @@
             "type": "array"
           },
           "didItWork": {
-            "$ref": "#/components/schemas/WithheldPanelResponse",
+            "$ref": "#/components/schemas/frameworks_drivers__api__v1__insights__actions__WithheldPanelResponse",
             "description": "Insight 22, withheld until a comparable before and after exist."
           },
           "items": {
@@ -1266,6 +1290,40 @@
         "title": "Category",
         "type": "string"
       },
+      "CategoryConcernResponse": {
+        "description": "The call topic carrying the most unresolved calls this period, and how\nits escalations fared there.\n\n\"Area of concern\"'s one figure `trends.movements` cannot already answer:\na movement is one measure across every call, and this is the same two\nmeasures broken out by the category driving them. `None` when no\ncategory had an unresolved call \u2014 not a gap, the absence of a finding.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "escalationsHandled": {
+            "title": "Escalationshandled",
+            "type": "integer"
+          },
+          "escalationsTriggered": {
+            "title": "Escalationstriggered",
+            "type": "integer"
+          },
+          "unresolved": {
+            "title": "Unresolved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category",
+          "calls",
+          "unresolved",
+          "escalationsTriggered",
+          "escalationsHandled"
+        ],
+        "title": "CategoryConcernResponse",
+        "type": "object"
+      },
       "CodedValue": {
         "description": "One coded value and the words for it.\n\n`code` is what a filter accepts and what a client branches on; `label`\nis what a person reads. They are never the same field.",
         "properties": {
@@ -1772,6 +1830,17 @@
       },
       "ExecScorecardResponse": {
         "properties": {
+          "areaOfConcern": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategoryConcernResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The category with the most unresolved calls this period, and how its escalations fared. Null when no category had an unresolved call."
+          },
           "asOf": {
             "description": "The date every window on this screen ends on.",
             "title": "Asof",
@@ -3188,6 +3257,25 @@
             "title": "Assessedcount",
             "type": "integer"
           },
+          "bandCalibration": {
+            "$ref": "#/components/schemas/frameworks_drivers__api__v1__insights__risk__WithheldPanelResponse",
+            "description": "Insight 9, withheld until a termination/renewal outcome exists per employer."
+          },
+          "escalationsMissed": {
+            "description": "Warranted and not handled \u2014 `Escalation.missed`'s own definition.",
+            "title": "Escalationsmissed",
+            "type": "integer"
+          },
+          "escalationsTriggered": {
+            "description": "Metric 6's denominator, over this window.",
+            "title": "Escalationstriggered",
+            "type": "integer"
+          },
+          "exitLanguageCalls": {
+            "description": "Calls carrying the retention_risk signal \u2014 exit language, verbatim.",
+            "title": "Exitlanguagecalls",
+            "type": "integer"
+          },
           "exposure": {
             "$ref": "#/components/schemas/ExposureResponse"
           },
@@ -3260,7 +3348,11 @@
           "ineligible",
           "ineligibleCount",
           "flaggedShare",
-          "exposure"
+          "exposure",
+          "bandCalibration",
+          "escalationsTriggered",
+          "escalationsMissed",
+          "exitLanguageCalls"
         ],
         "title": "RiskScreenResponse",
         "type": "object"
@@ -4083,7 +4175,36 @@
         "title": "WindowedFigureResponse",
         "type": "object"
       },
-      "WithheldPanelResponse": {
+      "frameworks_drivers__api__v1__insights__actions__WithheldPanelResponse": {
+        "properties": {
+          "insight": {
+            "title": "Insight",
+            "type": "integer"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "unlockedBy": {
+            "title": "Unlockedby",
+            "type": "string"
+          },
+          "why": {
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "insight",
+          "question",
+          "why",
+          "unlockedBy"
+        ],
+        "title": "WithheldPanelResponse",
+        "type": "object"
+      },
+      "frameworks_drivers__api__v1__insights__risk__WithheldPanelResponse": {
+        "description": "Insight 9 \u2014 withheld unconditionally (plan.md's Phase 8 note): no gate\nunlocks it, only a schema change nobody has made.",
         "properties": {
           "insight": {
             "title": "Insight",
