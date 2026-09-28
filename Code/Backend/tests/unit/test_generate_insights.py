@@ -15,6 +15,7 @@ from domain.insights.generated import (
     GeneratedInsights,
     InsightKind,
     InsightsStatus,
+    Lens,
     Severity,
     UnavailableReason,
 )
@@ -70,6 +71,7 @@ def _item(**overrides: object) -> InsightItem:
         "sentence": "Resolution held at 74% across the period.",
         "kind": "INFERENCE",
         "severity": "READ_FIRST",
+        "lens": "EMPLOYERS",
         "fact_keys": ["first_contact_resolution"],
         "issue_key": "none",
     }
@@ -295,3 +297,54 @@ class TestFiguresInWords:
         result = await _run(service, provider)
 
         assert result.status is InsightsStatus.GENERATED
+
+
+class TestTheFourLenses:
+    async def test_a_lens_reaches_the_wire(self, service: GenerateInsights) -> None:
+        """U1: the exec grid is a client requirement, so the lens is a
+        field rather than a heading the frontend invents."""
+        result = await _run(service, _answering(_item(lens="CHURN_AND_RETENTION")))
+
+        assert result.insights[0].lens is Lens.CHURN_AND_RETENTION
+
+    async def test_no_lens_may_crowd_out_the_others(self, service: GenerateInsights) -> None:
+        """Four sentences under one heading and none under the rest is not
+        the grid the prototype specifies."""
+        provider = _answering(
+            _item(key="a", lens="EMPLOYERS"),
+            _item(key="b", lens="EMPLOYERS"),
+            _item(key="c", lens="EMPLOYERS"),
+            _item(key="d", lens="EMPLOYERS"),
+            _item(key="e", lens="PAYER_AND_CARRIER"),
+        )
+
+        result = await service.execute(
+            GenerateInsightsRequest(facts=_facts(), limit=5, per_lens=3), provider
+        )
+
+        lenses = [insight.lens for insight in result.insights]
+        assert lenses.count(Lens.EMPLOYERS) == 3
+        assert Lens.PAYER_AND_CARRIER in lenses
+
+    async def test_the_cap_removes_but_never_reorders(self, service: GenerateInsights) -> None:
+        provider = _answering(
+            _item(key="a", severity="READ_FIRST", lens="EMPLOYERS"),
+            _item(key="b", severity="WORTH_READING", lens="EMPLOYERS"),
+            _item(key="c", severity="BACKGROUND", lens="EMPLOYERS"),
+            _item(key="d", severity="BACKGROUND", lens="EMPLOYERS"),
+        )
+
+        result = await service.execute(
+            GenerateInsightsRequest(facts=_facts(), limit=4, per_lens=2), provider
+        )
+
+        assert [insight.key for insight in result.insights] == ["a", "b"]
+
+    async def test_an_empty_lens_is_a_true_answer_not_a_gap_to_fill(
+        self, service: GenerateInsights
+    ) -> None:
+        """Nothing here invents a sentence to populate a heading; the grid
+        renders the lens with nothing under it."""
+        result = await _run(service, _answering(_item(lens="EMPLOYERS")))
+
+        assert {insight.lens for insight in result.insights} == {Lens.EMPLOYERS}

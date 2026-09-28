@@ -51,6 +51,7 @@ from domain.aggregation.figure import Basis, WithheldReason
 from domain.insights.generated import (
     InsightKind,
     InsightsStatus,
+    Lens,
     Severity,
     UnavailableReason,
 )
@@ -146,6 +147,12 @@ LABELS: dict[Enum, str] = {
     Severity.READ_FIRST: "Read first",
     Severity.WORTH_READING: "Worth reading",
     Severity.BACKGROUND: "Background",
+    # --- The four exec lenses. A client requirement (U1), so this is the
+    # prototype's own wording and is not reworded to fit a column.
+    Lens.EMPLOYERS: "Employers",
+    Lens.CHURN_AND_RETENTION: "Churn & retention",
+    Lens.PRODUCT_AND_SERVICE: "Product & service",
+    Lens.PAYER_AND_CARRIER: "Payer & carrier",
     # --- Whether there is generated text at all (U2) ---
     InsightsStatus.GENERATED: "Generated",
     InsightsStatus.UNAVAILABLE: "Unavailable",
@@ -177,6 +184,7 @@ LABELLED_ENUMS: tuple[type[Enum], ...] = (
     InsightKind,
     Severity,
     InsightsStatus,
+    Lens,
     UnavailableReason,
 )
 

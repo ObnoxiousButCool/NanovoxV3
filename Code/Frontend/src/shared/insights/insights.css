@@ -115,3 +115,46 @@
 .nv-ai-out-mark {
   color: var(--ink-3);
 }
+
+/* The four-lens grid. All four always render (U1), so the columns do not
+   change shape when the model has nothing to say about one of them. */
+.nv-lenses {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.nv-lens {
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  background: var(--surface);
+  min-width: 0;
+}
+
+.nv-lens header h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.nv-lens header p {
+  margin: 2px 0 8px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.nv-lens ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+/* Never styled as an error or a warning: an empty lens is a true statement
+   about the period, not a failure. */
+.nv-lens-none {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}

@@ -6,13 +6,18 @@
  * playbook this build does not ship.
  */
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 
 import type { GeneratedInsights, Insight } from '@/shared/api/insights'
-import { AI_PROMISE, InsightFeed, InsightStrip } from '@/shared/insights/Insights'
+import {
+  AI_PROMISE,
+  InsightFeed,
+  InsightLenses,
+  InsightStrip,
+} from '@/shared/insights/Insights'
 
 function insight(overrides: Partial<Insight> = {}): Insight {
   return {
@@ -20,6 +25,7 @@ function insight(overrides: Partial<Insight> = {}): Insight {
     sentence: 'Resolution held at 74% across the period.',
     kind: { code: 'INFERENCE', label: 'What this suggests' },
     severity: { code: 'READ_FIRST', label: 'Read first' },
+    lens: { code: 'EMPLOYERS', label: 'Employers' },
     factKeys: ['first_contact_resolution'],
     issueKey: null,
     ...overrides,
@@ -28,6 +34,12 @@ function insight(overrides: Partial<Insight> = {}): Insight {
 
 const GENERATED: GeneratedInsights = {
   status: { code: 'GENERATED', label: 'Generated' },
+  lenses: [
+    { code: 'EMPLOYERS', label: 'Employers' },
+    { code: 'CHURN_AND_RETENTION', label: 'Churn & retention' },
+    { code: 'PRODUCT_AND_SERVICE', label: 'Product & service' },
+    { code: 'PAYER_AND_CARRIER', label: 'Payer & carrier' },
+  ],
   insights: [insight()],
   reason: null,
   provider: 'openai',
@@ -36,6 +48,12 @@ const GENERATED: GeneratedInsights = {
 
 const UNAVAILABLE: GeneratedInsights = {
   status: { code: 'UNAVAILABLE', label: 'Unavailable' },
+  lenses: [
+    { code: 'EMPLOYERS', label: 'Employers' },
+    { code: 'CHURN_AND_RETENTION', label: 'Churn & retention' },
+    { code: 'PRODUCT_AND_SERVICE', label: 'Product & service' },
+    { code: 'PAYER_AND_CARRIER', label: 'Payer & carrier' },
+  ],
   insights: [],
   reason: { code: 'NO_PROVIDER', label: 'No model is configured' },
   provider: null,
@@ -143,5 +161,47 @@ describe('the feed', () => {
 
     expect(screen.queryByText(/Written by/)).not.toBeInTheDocument()
     expect(screen.getByText(/No model is configured/)).toBeInTheDocument()
+  })
+})
+
+describe('the four lenses', () => {
+  it('renders all four even when the model filled only one', () => {
+    // U1 makes the lenses a client requirement, so the grid keeps its shape.
+    // A reader must be able to tell "nothing to say about churn" from
+    // "churn was not considered", and a disappearing column cannot.
+    show(<InsightLenses data={GENERATED} />)
+
+    for (const label of [
+      'Employers',
+      'Churn & retention',
+      'Product & service',
+      'Payer & carrier',
+    ]) {
+      expect(screen.getByRole('heading', { name: label })).toBeInTheDocument()
+    }
+  })
+
+  it('says an empty lens is empty rather than leaving it blank', () => {
+    show(<InsightLenses data={GENERATED} />)
+
+    expect(screen.getAllByText(/Nothing in this period/)).toHaveLength(3)
+  })
+
+  it('files a sentence under its own lens', () => {
+    show(<InsightLenses data={GENERATED} />)
+
+    const employers = screen.getByRole('heading', { name: 'Employers' }).closest('article')
+
+    expect(employers).not.toBeNull()
+    expect(within(employers as HTMLElement).getByText(/Resolution held at 74%/)).toBeInTheDocument()
+  })
+
+  it('still carries the badge and the promise when the model is down', () => {
+    show(<InsightLenses data={UNAVAILABLE} />)
+
+    expect(screen.getByText('AI')).toBeInTheDocument()
+    expect(screen.getByText(/No model is configured/)).toBeInTheDocument()
+    // The grid does not vanish with the sentences.
+    expect(screen.getByRole('heading', { name: 'Payer & carrier' })).toBeInTheDocument()
   })
 })

@@ -351,6 +351,12 @@ const AGENTS = {
 /** The shape a deployment with no model configured serves (U2). */
 const NO_INSIGHTS = {
   status: { code: 'UNAVAILABLE', label: 'Unavailable' },
+  lenses: [
+    { code: 'EMPLOYERS', label: 'Employers' },
+    { code: 'CHURN_AND_RETENTION', label: 'Churn & retention' },
+    { code: 'PRODUCT_AND_SERVICE', label: 'Product & service' },
+    { code: 'PAYER_AND_CARRIER', label: 'Payer & carrier' },
+  ],
   insights: [],
   reason: { code: 'NO_PROVIDER', label: 'No model is configured' },
   provider: null,

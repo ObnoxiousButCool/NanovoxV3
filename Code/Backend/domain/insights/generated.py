@@ -76,6 +76,27 @@ class Severity(str, Enum):
     BACKGROUND = "BACKGROUND"
 
 
+class Lens(str, Enum):
+    """The four readings the exec page groups insights under.
+
+    **U1 (D14, 2026-09-25, Minnie): a client requirement.** Not a
+    presentational choice, so these four and no others, in this order, with
+    the prototype's own wording. Reorganising them is a conversation with
+    the client, not a design decision.
+
+    A lens is a property of a *sentence*, not of a figure. `exec.html` makes
+    that plain — the grid carries an "AI insights" badge, three insights per
+    lens, each written from the figures on the page and adding no number of
+    its own — so the lens lives here beside the sentence rather than on the
+    exec response.
+    """
+
+    EMPLOYERS = "EMPLOYERS"
+    CHURN_AND_RETENTION = "CHURN_AND_RETENTION"
+    PRODUCT_AND_SERVICE = "PRODUCT_AND_SERVICE"
+    PAYER_AND_CARRIER = "PAYER_AND_CARRIER"
+
+
 class InsightsStatus(str, Enum):
     GENERATED = "GENERATED"
     UNAVAILABLE = "UNAVAILABLE"
@@ -109,6 +130,8 @@ class Insight:
     sentence: str
     kind: InsightKind
     severity: Severity
+    #: Which of the four readings this sentence belongs under (U1).
+    lens: Lens
     #: The figures it read, by `Fact.key`. Never empty: a sentence about
     #: nothing on the screen is a sentence about something else.
     fact_keys: tuple[str, ...]

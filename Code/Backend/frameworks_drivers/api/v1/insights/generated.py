@@ -42,7 +42,7 @@ from pydantic import Field
 from application.use_cases.generate_insights import GenerateInsightsRequest
 from domain.aggregation.exec_scorecard import SCORECARD_METRICS
 from domain.insights.facts import Fact, FactSet
-from domain.insights.generated import GeneratedInsights
+from domain.insights.generated import GeneratedInsights, Lens
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import (
     DashboardConfigDep,
@@ -102,6 +102,12 @@ class InsightResponse(CamelModel):
             "'flagged' means metric 10 and nothing else."
         )
     )
+    lens: CodedValue = Field(
+        description=(
+            "Which of the four exec readings this sentence belongs under. A client "
+            "requirement (U1), so the four and their order are fixed."
+        )
+    )
     fact_keys: list[str] = Field(
         description="The figures this sentence read, so it can be checked against them."
     )
@@ -124,6 +130,15 @@ class GeneratedInsightsResponse(CamelModel):
             "and why, the same way a withheld figure does."
         )
     )
+    lenses: list[CodedValue] = Field(
+        description=(
+            "The four exec readings, in order, always — whether or not any insight "
+            "was filed under one. A client requirement (U1), so it travels with the "
+            "response rather than being written down a second time in each client: "
+            "a grid that could only name the lenses it had sentences for would let "
+            "a reader mistake 'nothing to say' for 'not considered'."
+        )
+    )
     insights: list[InsightResponse] = Field(
         description=(
             "Always present, empty when the status is UNAVAILABLE. Required rather "
@@ -143,12 +158,14 @@ class GeneratedInsightsResponse(CamelModel):
     def of(cls, generated: GeneratedInsights) -> GeneratedInsightsResponse:
         return cls(
             status=coded(generated.status),
+            lenses=[coded(lens) for lens in Lens],
             insights=[
                 InsightResponse(
                     key=insight.key,
                     sentence=insight.sentence,
                     kind=coded(insight.kind),
                     severity=coded(insight.severity),
+                    lens=coded(insight.lens),
                     fact_keys=list(insight.fact_keys),
                     issue_key=insight.issue_key,
                 )

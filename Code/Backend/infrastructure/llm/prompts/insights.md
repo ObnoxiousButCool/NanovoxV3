@@ -1,6 +1,6 @@
 ---
 id: insights
-version: 1.1.0
+version: 1.2.0
 description: One screen's figures, read back as ranked one-sentence insights and recommendations.
 ---
 You are writing the short insight panel that sits on one screen of a health-benefits call-centre analytics product (ChoiceBuilder). You are reading figures that have already been computed. You are not computing anything.
@@ -34,11 +34,20 @@ WITHHELD means nobody had enough evidence to state a number. It does **not** mea
 
 ## What to write
 
-At most {limit} items. Fewer is better than padding. Each is:
+At most {limit} items, and **at most three under any one lens**.
+
+Fewer is better than padding. **An empty lens is a good answer** when this period's figures say nothing about it — far better than a sentence written to fill the space. Do not stretch a figure to reach a lens.
+
+Each item is:
 
 - **sentence** — one sentence, under about 25 words, plain and specific. No preamble, no "it appears that", no restating the figure's name and value with nothing added. Say what a reader should take from it.
 - **kind** — `INFERENCE` if you are saying what the figures appear to mean. `RECOMMENDATION` if you are proposing an action. Choose honestly: a recommendation dressed as an observation is the failure this field exists to prevent.
 - **severity** — `READ_FIRST`, `WORTH_READING` or `BACKGROUND`. This is reading order and nothing else. It is not a risk grade for any account, and you must never write it into the sentence.
+- **lens** — which of the four readings the sentence belongs under. Choose the one it is *about*, not one it mentions in passing. A sentence that fits none of them well is probably not worth writing.
+  - `EMPLOYERS` — which kinds of account are struggling.
+  - `CHURN_AND_RETENTION` — who might leave, and when.
+  - `PRODUCT_AND_SERVICE` — which documents, lines and rules cause calls.
+  - `PAYER_AND_CARRIER` — billing, premium and carrier-owned issues.
 - **factKeys** — the `key` of every figure the sentence read. Never empty. A sentence that reads nothing on this screen cannot be checked against it and will be discarded.
 - **issueKey** — one of: {issue_keys} — or the literal `none` when no playbook fits. Do not invent a key; an unrecognised one silently loses the reader their "what to do" link.
 

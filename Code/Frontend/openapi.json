@@ -2062,6 +2062,14 @@
             "title": "Insights",
             "type": "array"
           },
+          "lenses": {
+            "description": "The four exec readings, in order, always \u2014 whether or not any insight was filed under one. A client requirement (U1), so it travels with the response rather than being written down a second time in each client: a grid that could only name the lenses it had sentences for would let a reader mistake 'nothing to say' for 'not considered'.",
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Lenses",
+            "type": "array"
+          },
           "model": {
             "anyOf": [
               {
@@ -2103,6 +2111,7 @@
         },
         "required": [
           "status",
+          "lenses",
           "insights"
         ],
         "title": "GeneratedInsightsResponse",
@@ -2363,6 +2372,10 @@
             "$ref": "#/components/schemas/CodedValue",
             "description": "INFERENCE \u2014 what the figures appear to mean. RECOMMENDATION \u2014 a suggested action. Never OBSERVED: a figure's `basis` says where a number came from, and generated text is never one of those."
           },
+          "lens": {
+            "$ref": "#/components/schemas/CodedValue",
+            "description": "Which of the four exec readings this sentence belongs under. A client requirement (U1), so the four and their order are fixed."
+          },
           "sentence": {
             "description": "Generated text. Every number in it appears in the figures this screen published; a sentence that stated anything else was refused, and the whole surface would read UNAVAILABLE rather than show the rest.",
             "title": "Sentence",
@@ -2378,6 +2391,7 @@
           "sentence",
           "kind",
           "severity",
+          "lens",
           "factKeys"
         ],
         "title": "InsightResponse",

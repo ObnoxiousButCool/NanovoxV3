@@ -32,6 +32,7 @@ def _answer(sentence: str, *, fact_keys: list[str] | None = None) -> InsightsRes
                     "sentence": sentence,
                     "kind": "INFERENCE",
                     "severity": "READ_FIRST",
+                    "lens": "EMPLOYERS",
                     "fact_keys": fact_keys or ["first_contact_resolution"],
                     "issue_key": "none",
                 }
@@ -161,11 +162,15 @@ async def test_the_risk_screen_is_shown_its_own_figures(
     prompt = provider.requests[0].prompt
     assert "the account risk screen" in prompt
     assert "accounts_assessed" in prompt
-    # The weekly series and the premium are deliberately withheld from the
-    # model: a comparison across weeks is a number nobody computed, and the
-    # screen shows lives rather than money.
-    assert "weekly" not in prompt
-    assert "premium" not in prompt
+    # Scoped to the facts block: the instructions around it legitimately use
+    # these words — the "Payer & carrier" lens is described as "billing,
+    # premium and carrier-owned issues" — and what matters is that neither
+    # figure is offered to the model.
+    facts_block = prompt.split("THE FIGURES")[1].split("## The one rule")[0]
+    # A comparison across weeks is a number nobody computed, and the screen
+    # shows lives rather than money.
+    assert "weekly" not in facts_block
+    assert "premium" not in facts_block
 
 
 @pytest.mark.anyio

@@ -1313,6 +1313,11 @@ export interface components {
              * @description Always present, empty when the status is UNAVAILABLE. Required rather than defaulted so a client never has to tell an absent list from an empty one — they would render the same and mean different things.
              */
             insights: components["schemas"]["InsightResponse"][];
+            /**
+             * Lenses
+             * @description The four exec readings, in order, always — whether or not any insight was filed under one. A client requirement (U1), so it travels with the response rather than being written down a second time in each client: a grid that could only name the lenses it had sentences for would let a reader mistake 'nothing to say' for 'not considered'.
+             */
+            lenses: components["schemas"]["CodedValue"][];
             /** Model */
             model?: string | null;
             /**
@@ -1434,6 +1439,8 @@ export interface components {
             key: string;
             /** @description INFERENCE — what the figures appear to mean. RECOMMENDATION — a suggested action. Never OBSERVED: a figure's `basis` says where a number came from, and generated text is never one of those. */
             kind: components["schemas"]["CodedValue"];
+            /** @description Which of the four exec readings this sentence belongs under. A client requirement (U1), so the four and their order are fixed. */
+            lens: components["schemas"]["CodedValue"];
             /**
              * Sentence
              * @description Generated text. Every number in it appears in the figures this screen published; a sentence that stated anything else was refused, and the whole surface would read UNAVAILABLE rather than show the rest.

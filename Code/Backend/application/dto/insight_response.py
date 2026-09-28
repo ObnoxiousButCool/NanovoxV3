@@ -17,6 +17,12 @@ from pydantic import BaseModel, Field
 
 KindLiteral = Literal["INFERENCE", "RECOMMENDATION"]
 SeverityLiteral = Literal["READ_FIRST", "WORTH_READING", "BACKGROUND"]
+LensLiteral = Literal[
+    "EMPLOYERS",
+    "CHURN_AND_RETENTION",
+    "PRODUCT_AND_SERVICE",
+    "PAYER_AND_CARRIER",
+]
 
 
 class InsightItem(BaseModel):
@@ -26,6 +32,7 @@ class InsightItem(BaseModel):
     sentence: str = Field(description="One sentence. No number absent from the facts.")
     kind: KindLiteral
     severity: SeverityLiteral
+    lens: LensLiteral
     fact_keys: list[str] = Field(
         alias="factKeys",
         description="The `key` of every fact this sentence read. Never empty.",

@@ -36,7 +36,7 @@ import { useExec, useGeneratedInsights } from '@/shared/api/insights'
 import type { ExecScorecard } from '@/shared/api/insights'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
-import { InsightStrip } from '@/shared/insights/Insights'
+import { InsightLenses, InsightStrip } from '@/shared/insights/Insights'
 import { VLine } from '@/shared/design/charts'
 import {
   BigRow,
@@ -74,6 +74,9 @@ export function ExecScreen() {
     >
       <InsightStrip data={insights.data} />
       {data === undefined ? null : <ExecBody data={data} />}
+      {/* The prototype puts the grid below the figures it reads, which
+          is also the order that keeps the numbers first on the page. */}
+      <InsightLenses data={insights.data} />
     </Screen>
   )
 }

@@ -52,6 +52,7 @@ from domain.insights.generated import (
     GeneratedInsights,
     Insight,
     InsightKind,
+    Lens,
     Severity,
     UnavailableReason,
 )
@@ -75,6 +76,10 @@ class GenerateInsightsRequest:
     #: asked of the model, because a model told "at most four" will pad to
     #: four.
     limit: int = 4
+    #: At most this many under any one lens, which is what the exec grid
+    #: shows. Applied with `limit`, so a page asking for four sentences
+    #: cannot get four under one heading and none under the rest.
+    per_lens: int = 3
 
 
 class GenerateInsights:
@@ -154,7 +159,7 @@ class GenerateInsights:
 
         ordered = sorted(accepted, key=lambda insight: (_ORDER[insight.severity], insight.key))
         generated = GeneratedInsights.generated(
-            tuple(ordered[: request.limit]),
+            _capped(ordered, limit=request.limit, per_lens=request.per_lens),
             provider=result.provider,
             model=result.model,
         )
@@ -206,6 +211,7 @@ class GenerateInsights:
                     sentence=item.sentence.strip(),
                     kind=InsightKind(item.kind),
                     severity=Severity(item.severity),
+                    lens=Lens(item.lens),
                     fact_keys=cited,
                     issue_key=self._issue_key(item.issue_key),
                 )
@@ -229,6 +235,25 @@ class GenerateInsights:
             )
             return None
         return key
+
+
+def _capped(insights: list[Insight], *, limit: int, per_lens: int) -> tuple[Insight, ...]:
+    """The best `limit` sentences, with no lens allowed to crowd out the rest.
+
+    Order is preserved, so the cap only ever removes: a reader sees the same
+    sentences in the same sequence, minus whichever ones overflowed their
+    heading.
+    """
+    seen: dict[Lens, int] = {}
+    kept: list[Insight] = []
+    for insight in insights:
+        if seen.get(insight.lens, 0) >= per_lens:
+            continue
+        seen[insight.lens] = seen.get(insight.lens, 0) + 1
+        kept.append(insight)
+        if len(kept) >= limit:
+            break
+    return tuple(kept)
 
 
 def _render_facts(facts: FactSet) -> str:

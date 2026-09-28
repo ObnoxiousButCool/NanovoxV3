@@ -179,3 +179,70 @@ export function InsightFeed({ data }: { data: GeneratedInsights | undefined }) {
     </Panel>
   )
 }
+
+
+/**
+ * The four-lens grid `exec.html` carries under "What this period means".
+ *
+ * **The lenses are a client requirement (U1)**, so all four are always
+ * rendered, in this order, whether or not the model had anything to put
+ * under them. A lens with nothing under it is a true statement about the
+ * period's figures — the alternative is a grid that silently changes shape,
+ * where a reader cannot tell "nothing to say about churn" from "churn was
+ * not considered".
+ *
+ * The order and the labels come from the API's own coded values, so the
+ * frontend is not a second place the client's taxonomy is written down.
+ */
+const LENS_SUB: Record<string, string> = {
+  EMPLOYERS: 'Which kinds of account are struggling',
+  CHURN_AND_RETENTION: 'Who might leave, and when',
+  PRODUCT_AND_SERVICE: 'Which documents, lines and rules cause calls',
+  PAYER_AND_CARRIER: 'Billing, premium and carrier-owned issues',
+}
+
+export function InsightLenses({ data }: { data: GeneratedInsights | undefined }) {
+  if (!data) return null
+  const items = data.insights
+
+  return (
+    <Panel
+      title="What this period means"
+      sub="The same calls read through four lenses. Each insight names what the numbers mean and what to do next."
+      chip={<AiBadge />}
+    >
+      {items.length === 0 ? <Unavailable reason={data.reason} /> : null}
+      <div className="nv-lenses">
+        {/* From the response, not a list held here: the taxonomy is the
+            client's, and a second copy in the client is a second copy to
+            disagree. The one-line descriptions below are panel copy, which
+            D13 does keep on this side. */}
+        {data.lenses.map((lens) => {
+          const mine = items.filter((insight) => insight.lens.code === lens.code)
+          return (
+            <article key={lens.code} className="nv-lens">
+              <header>
+                <h3>{lens.label}</h3>
+                <p>{LENS_SUB[lens.code]}</p>
+              </header>
+              {mine.length === 0 ? (
+                <p className="nv-lens-none">
+                  Nothing in this period&rsquo;s figures speaks to this.
+                </p>
+              ) : (
+                <ol>
+                  {mine.map((insight) => (
+                    <li key={insight.key}>
+                      <KindChip insight={insight} />
+                      <InsightBody insight={insight} expanded />
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </article>
+          )
+        })}
+      </div>
+    </Panel>
+  )
+}
