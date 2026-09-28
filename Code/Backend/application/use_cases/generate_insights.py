@@ -23,6 +23,14 @@ and it would hide the event from the people who need to fix the prompt. The
 cost is real and is accepted: one bad sentence costs the reader three good
 ones, and the screen says it could not say.
 
+## Nothing is asked twice
+
+Every model call is billed, and a reader moving the filter bar back and
+forth asks the same question repeatedly. The cache keys on the *facts*
+rather than on the query that produced them, so two filter strings that
+select the same calls share one answer. `application/ports/insight_cache.py`
+explains what is cached and, more importantly, what is not.
+
 ## Ordering is ours, not the model's
 
 Severity comes back from the model; the *order* is applied here, stably, so
@@ -36,9 +44,10 @@ import logging
 from dataclasses import dataclass
 
 from application.dto.insight_response import InsightItem, InsightsResponse
+from application.ports.insight_cache import InsightCache, InsightCacheKey
 from application.ports.llm_provider import LLMProvider, LlmRequest
 from application.ports.prompts import PromptSource
-from domain.insights.facts import FactSet
+from domain.insights.facts import FactSet, spelled_numbers
 from domain.insights.generated import (
     GeneratedInsights,
     Insight,
@@ -69,9 +78,16 @@ class GenerateInsightsRequest:
 
 
 class GenerateInsights:
-    def __init__(self, *, prompts: PromptSource, catalogue: PlaybookCatalogue) -> None:
+    def __init__(
+        self,
+        *,
+        prompts: PromptSource,
+        catalogue: PlaybookCatalogue,
+        cache: InsightCache,
+    ) -> None:
         self._prompts = prompts
         self._catalogue = catalogue
+        self._cache = cache
 
     async def execute(
         self, request: GenerateInsightsRequest, provider: LLMProvider | None
@@ -94,6 +110,17 @@ class GenerateInsights:
             limit=request.limit,
         )
 
+        key = InsightCacheKey(
+            facts_digest=facts.digest,
+            prompt_version=prompt.version,
+            provider=provider.name,
+            model=provider.model,
+            limit=request.limit,
+        )
+        cached = await self._cache.get(key)
+        if cached is not None:
+            return cached
+
         try:
             result = await provider.complete(
                 LlmRequest(
@@ -113,18 +140,26 @@ class GenerateInsights:
 
         accepted = self._accept(list(result.value.insights), facts)
         if accepted is None:
-            return GeneratedInsights.unavailable(UnavailableReason.GUARDRAIL_REJECTED)
+            # Cached: the same figures put to the same model through the same
+            # prompt will very likely be refused again, and re-asking bills to
+            # be told so. Fixing the prompt moves its version, which is in the
+            # key, so the entry invalidates itself.
+            rejected = GeneratedInsights.unavailable(UnavailableReason.GUARDRAIL_REJECTED)
+            await self._cache.put(key, rejected)
+            return rejected
         if not accepted:
             # A well-formed answer with nothing in it is still nothing to show,
             # and must not be dressed up as a generated surface.
             return GeneratedInsights.unavailable(UnavailableReason.NO_PUBLISHED_FACTS)
 
         ordered = sorted(accepted, key=lambda insight: (_ORDER[insight.severity], insight.key))
-        return GeneratedInsights.generated(
+        generated = GeneratedInsights.generated(
             tuple(ordered[: request.limit]),
             provider=result.provider,
             model=result.model,
         )
+        await self._cache.put(key, generated)
+        return generated
 
     def _accept(self, items: list[InsightItem], facts: FactSet) -> list[Insight] | None:
         """Every item, or `None` if any one of them must be refused."""
@@ -132,6 +167,17 @@ class GenerateInsights:
         accepted: list[Insight] = []
 
         for item in items:
+            # Words first: a spelled-out figure is invisible to the digit
+            # check, so testing digits alone would pass the very sentence
+            # the first real run produced.
+            spelled = spelled_numbers(item.sentence)
+            if spelled:
+                logger.error(
+                    "Insight rejected: stated a figure in words rather than digits",
+                    extra={"subject": facts.subject, "words": sorted(spelled)},
+                )
+                return None
+
             unsupported = facts.unsupported_numbers(item.sentence)
             if unsupported:
                 logger.error(

@@ -48,12 +48,12 @@ from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetAccountRiskDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
 from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
-from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
+from frameworks_drivers.api.v1.insights.query import InsightsQuery, InsightsQueryDep
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from application.use_cases.read_insights import AccountRisk
+    from application.use_cases.read_insights import AccountRisk, RiskResult
     from domain.aggregation.distributions import WeekShare
     from domain.aggregation.indicators import Observation
     from domain.aggregation.risk_flag import RiskAssessment
@@ -264,6 +264,19 @@ async def read_account_risk(
     rows: RiskQueryDep,
 ) -> RiskScreenResponse:
     result = await use_case.execute(query.to_request())
+    return build_risk_response(result, query, rows)
+
+
+def build_risk_response(
+    result: RiskResult, query: InsightsQuery, rows: RiskQuery
+) -> RiskScreenResponse:
+    """The risk screen on the wire.
+
+    Extracted from the route so `/insights/generated` can read the same
+    response this screen renders rather than recomputing it — two builders
+    that agree today are two builders, and the day they disagree a sentence
+    quotes a number nobody can see on the page.
+    """
     shown = [entry for entry in result.assessed if rows.keeps(entry)]
     return RiskScreenResponse(
         scope=ScopeResponse.of(

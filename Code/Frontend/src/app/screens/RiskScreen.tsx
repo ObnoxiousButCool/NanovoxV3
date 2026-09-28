@@ -29,7 +29,7 @@
 
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { useFilterOptions, useRisk } from '@/shared/api/insights'
+import { useFilterOptions, useGeneratedInsights, useRisk } from '@/shared/api/insights'
 import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { VBars, VLine } from '@/shared/design/charts'
@@ -37,6 +37,7 @@ import type { IssueKey } from '@/shared/actions/issueHref'
 import { ISSUE_KEYS } from '@/shared/actions/issueHref'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
+import { InsightFeed } from '@/shared/insights/Insights'
 import {
   BigRow,
   Empty,
@@ -66,6 +67,11 @@ export function RiskScreen() {
   if (minIndicators !== null) search.set('minIndicators', minIndicators)
 
   const { data, isPending, error } = useRisk(search.toString())
+  // Deliberately the filter-bar search, not `search`: the row filters
+  // above select rows, and every figure the insights read is computed
+  // over all eligible employers regardless (D12). Keying on `search`
+  // would make a new query for facts that had not moved.
+  const insights = useGeneratedInsights('risk', filters.apiSearch)
   // The same query the filter bar already made, so React Query serves it
   // from cache rather than fetching twice. An employer reference is a code,
   // and `FilterBar` states the rule this screen has to keep too: codes
@@ -109,6 +115,7 @@ export function RiskScreen() {
           onChange={setRow}
         />
       )}
+      <InsightFeed data={insights.data} />
     </Screen>
   )
 }

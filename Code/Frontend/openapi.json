@@ -7878,9 +7878,12 @@
             "name": "screen",
             "required": false,
             "schema": {
-              "const": "exec",
               "default": "exec",
               "description": "Which screen's figures to read.",
+              "enum": [
+                "exec",
+                "risk"
+              ],
               "title": "Screen",
               "type": "string"
             }

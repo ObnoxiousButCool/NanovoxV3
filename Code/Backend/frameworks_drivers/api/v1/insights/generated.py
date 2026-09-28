@@ -47,6 +47,7 @@ from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import (
     DashboardConfigDep,
     GenerateInsightsDep,
+    GetAccountRiskDep,
     GetExecScorecardDep,
     InsightProviderDep,
 )
@@ -57,13 +58,19 @@ from frameworks_drivers.api.v1.insights.exec_scorecard import (
 )
 from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
+from frameworks_drivers.api.v1.insights.risk import (
+    RiskQuery,
+    RiskScreenResponse,
+    build_risk_response,
+)
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
-#: The screens that have an insight surface. One today; the fact builders
-#: are per screen because what counts as a fact is, and a generic one would
-#: have to guess whether a number is a rate or a count.
-Screen = Literal["exec"]
+#: The screens that have an insight surface. The fact builders are per
+#: screen because what counts as a fact is: a generic one would have to
+#: guess whether a number is a rate, a count or a population, and guessing
+#: wrong means the model is shown "12" where the screen shows "12%".
+Screen = Literal["exec", "risk"]
 
 
 def percent(value: float) -> str:
@@ -213,6 +220,53 @@ def exec_facts(response: ExecScorecardResponse) -> FactSet:
     )
 
 
+def _count(key: str, label: str, value: int) -> Fact:
+    """A population, not a rate. Printed as the screen prints it: a bare
+    integer, with no percent sign to be mistaken for one."""
+    return Fact(key=key, label=label, display=str(value), n=value, basis="OBSERVED")
+
+
+def risk_facts(response: RiskScreenResponse) -> FactSet:
+    """The risk screen, flattened into what a sentence may say.
+
+    Four headline figures, the flag's population either side of it, and how
+    the calls ended. Two deliberate omissions:
+
+    - **The weekly series is not here.** Any sentence worth writing about a
+      series is a comparison, and a comparison is a number nobody computed —
+      the guardrail would refuse it, so offering the weeks would only buy
+      rejected answers and the tokens to produce them.
+    - **Annual premium is not here.** The screen shows lives and not money;
+      facts are what the reader can see, and a figure the page withholds is
+      not made quotable by being on the wire.
+    """
+    facts = [
+        _rate("flagged_share", "Flagged, of those assessable", response.flagged_share),
+        _count("accounts_assessed", "Accounts assessed", response.assessed_count),
+        _count(
+            "accounts_not_assessable",
+            "Accounts that could not be assessed",
+            response.ineligible_count,
+        ),
+        _count("accounts_flagged", "Accounts flagged", len(response.exposure.employers)),
+        _count("lives_behind_flagged", "Lives behind the flagged", response.exposure.lives),
+    ]
+    facts.extend(
+        _count(
+            f"ended_{_slug(entry.outcome.label)}",
+            f"Calls that ended {entry.outcome.label.lower()}",
+            entry.calls,
+        )
+        for entry in response.outcomes
+    )
+
+    return FactSet(
+        subject="the account risk screen",
+        facts=tuple(facts),
+        context_numbers=frozenset({str(response.window_weeks), *response.as_of.split("-")}),
+    )
+
+
 @router.get(
     "/generated",
     response_model=GeneratedInsightsResponse,
@@ -223,6 +277,7 @@ async def read_generated_insights(
     use_case: GenerateInsightsDep,
     provider: InsightProviderDep,
     exec_use_case: GetExecScorecardDep,
+    risk_use_case: GetAccountRiskDep,
     config: DashboardConfigDep,
     query: InsightsQueryDep,
     screen: Annotated[Screen, Query(description="Which screen's figures to read.")] = "exec",
@@ -232,8 +287,15 @@ async def read_generated_insights(
     # screen must be a new fact builder, not a new branch inside one.
     match screen:
         case "exec":
-            result = await exec_use_case.execute(query.to_request())
-            facts = exec_facts(build_exec_response(result, config, query))
+            card = await exec_use_case.execute(query.to_request())
+            facts = exec_facts(build_exec_response(card, config, query))
+        case "risk":
+            # `RiskQuery()` with nothing set, deliberately: its two filters
+            # select rows, and the figures below are computed over every
+            # eligible employer regardless (D12). Passing the reader's row
+            # filter would not change one of these numbers.
+            risk = await risk_use_case.execute(query.to_request())
+            facts = risk_facts(build_risk_response(risk, query, RiskQuery()))
 
     generated = await use_case.execute(GenerateInsightsRequest(facts=facts, limit=limit), provider)
     return GeneratedInsightsResponse.of(generated)

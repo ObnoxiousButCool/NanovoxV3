@@ -19,6 +19,7 @@ from domain.insights.generated import (
     UnavailableReason,
 )
 from domain.playbooks import PlaybookCatalogue
+from infrastructure.cache.insight_cache import InMemoryInsightCache
 from infrastructure.config.paths import DEFAULT_CONFIG_DIR
 from infrastructure.config.playbook_loader import load_playbooks
 from infrastructure.llm.prompt_source import FilePromptSource
@@ -34,7 +35,11 @@ def catalogue() -> PlaybookCatalogue:
 @pytest.fixture
 def service(catalogue: PlaybookCatalogue) -> GenerateInsights:
     """Wired to the real prompt file, so a missing placeholder fails here."""
-    return GenerateInsights(prompts=FilePromptSource(PromptLibrary()), catalogue=catalogue)
+    return GenerateInsights(
+        prompts=FilePromptSource(PromptLibrary()),
+        catalogue=catalogue,
+        cache=InMemoryInsightCache(),
+    )
 
 
 def _facts() -> FactSet:
@@ -251,13 +256,14 @@ class TestTheServiceCannotReachPastItsFacts:
         If someone later gives this service a reader "just to look one thing
         up", this test is what says no: the whole basis for trusting its
         output is that everything it saw is on the screen the reader is
-        looking at.
+        looking at. The cache is not an exception — it holds answers this
+        service already produced, never figures it did not.
         """
         import inspect
 
         parameters = set(inspect.signature(GenerateInsights.__init__).parameters)
 
-        assert parameters == {"self", "prompts", "catalogue"}
+        assert parameters == {"self", "prompts", "catalogue", "cache"}
 
     async def test_the_prompt_receives_only_facts(self, service: GenerateInsights) -> None:
         provider = _answering(_item())
@@ -270,3 +276,22 @@ class TestTheServiceCannotReachPastItsFacts:
         # The withheld figure goes in with its reason and no number.
         assert "WITHHELD" in sent
         assert "NO_FIELD" in sent
+
+
+class TestFiguresInWords:
+    async def test_a_spelled_figure_rejects_the_surface(self, service: GenerateInsights) -> None:
+        """The exact sentence the first real run produced. It is even true —
+        and refused anyway, because the check cannot tell a true one from an
+        invented one once the digits are gone."""
+        provider = _answering(_item(sentence="Ninety-five accounts could not be assessed."))
+
+        result = await _run(service, provider)
+
+        assert result.reason is UnavailableReason.GUARDRAIL_REJECTED
+
+    async def test_the_same_figure_in_digits_is_fine(self, service: GenerateInsights) -> None:
+        provider = _answering(_item(sentence="Resolution held at 74% across 112 calls."))
+
+        result = await _run(service, provider)
+
+        assert result.status is InsightsStatus.GENERATED

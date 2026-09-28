@@ -135,6 +135,9 @@ export function useCallEvidence(reference: string | null) {
 }
 
 export type GeneratedInsights = components['schemas']['GeneratedInsightsResponse']
+/** The screens the endpoint has a fact builder for. Widening this without
+ * one on the server is a 422, not an empty panel. */
+export type InsightScreen = 'exec' | 'risk'
 export type Insight = components['schemas']['InsightResponse']
 
 /**
@@ -150,7 +153,7 @@ export type Insight = components['schemas']['InsightResponse']
  * render, and retrying a rejected answer would spend a second model call to
  * be told the same thing.
  */
-export function useGeneratedInsights(screen: 'exec', search: string) {
+export function useGeneratedInsights(screen: InsightScreen, search: string) {
   const query = new URLSearchParams(search)
   query.set('screen', screen)
   return useQuery({

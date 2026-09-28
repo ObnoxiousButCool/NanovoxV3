@@ -9,7 +9,13 @@ from __future__ import annotations
 import pytest
 
 from domain.errors import ValidationError
-from domain.insights.facts import Fact, FactSet, normalise_number, numbers_in
+from domain.insights.facts import (
+    Fact,
+    FactSet,
+    normalise_number,
+    numbers_in,
+    spelled_numbers,
+)
 
 
 def _facts(*facts: Fact, context: frozenset[str] = frozenset()) -> FactSet:
@@ -149,3 +155,33 @@ class TestKeysCarryNoNumbers:
 
     def test_a_worded_key_is_fine(self) -> None:
         assert Fact(key="escalation_handled", label="Escalation", display="10%", n=5).key
+
+
+class TestSpelledNumbers:
+    """A figure written as a word is invisible to the digit check.
+
+    Not hypothetical: the first real model run produced "Ninety-five
+    accounts could not be assessed" and passed a check that reads digits
+    only.
+    """
+
+    def test_a_spelled_figure_is_caught(self) -> None:
+        assert spelled_numbers("Ninety-five accounts could not be assessed.") == {
+            "ninety",
+            "five",
+        }
+
+    def test_a_fraction_is_caught(self) -> None:
+        assert spelled_numbers("Roughly a fifth of calls went unresolved.") == {"fifth"}
+
+    def test_an_ordinal_in_a_metric_name_is_not_a_figure(self) -> None:
+        """ "First contact resolution" is what the metric is called."""
+        assert spelled_numbers("First contact resolution held steady.") == frozenset()
+
+    def test_a_quantifier_is_not_a_magnitude(self) -> None:
+        """Whether "no" is warranted is a question about inference, not
+        arithmetic, and a different check's job."""
+        assert spelled_numbers("No accounts were flagged.") == frozenset()
+
+    def test_digits_are_left_to_the_other_check(self) -> None:
+        assert spelled_numbers("95 accounts could not be assessed.") == frozenset()

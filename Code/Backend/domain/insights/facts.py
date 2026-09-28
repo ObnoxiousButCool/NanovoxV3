@@ -37,13 +37,80 @@ must never happen is a withheld figure silently becoming zero, so
 
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 
 from domain.errors import ValidationError
 
+_FIELD = ""  # unlikely to occur in a label
+_RECORD = ""
+
 #: A numeric token as it appears in prose: 74, 74.2, 74%, 1,234, £12.
 _NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+#: Magnitudes written as words. Checking digits alone is not enough: the
+#: first real model run wrote "Ninety-five accounts could not be assessed"
+#: and walked straight through a check that only reads digits. A figure
+#: spelled out is still a figure.
+#:
+#: **Cardinals and fractions only.** Ordinals are deliberately absent —
+#: "first contact resolution" is a metric's name, and a check that refused
+#: it would refuse the sentences most worth writing. Quantifiers ("no",
+#: "all", "most", "every") are absent too: they are not magnitudes, and
+#: whether they are *warranted* is a question about inference rather than
+#: about arithmetic.
+#:
+#: The cost is real and accepted: a sentence saying "one account is
+#: flagged" is refused even when true, because the fact says "1" and that
+#: is what a sentence should quote.
+_NUMBER_WORDS = frozenset(
+    [
+        "zero",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "ten",
+        "eleven",
+        "twelve",
+        "thirteen",
+        "fourteen",
+        "fifteen",
+        "sixteen",
+        "seventeen",
+        "eighteen",
+        "nineteen",
+        "twenty",
+        "thirty",
+        "forty",
+        "fifty",
+        "sixty",
+        "seventy",
+        "eighty",
+        "ninety",
+        "hundred",
+        "thousand",
+        "million",
+        "billion",
+        "dozen",
+        "half",
+        "halves",
+        "third",
+        "thirds",
+        "quarter",
+        "quarters",
+        "fifth",
+        "fifths",
+    ]
+)
+
+_WORD = re.compile(r"[a-z]+")
 
 
 def normalise_number(token: str) -> str:
@@ -69,6 +136,20 @@ def normalise_number(token: str) -> str:
 def numbers_in(text: str) -> frozenset[str]:
     """Every distinct magnitude stated in `text`."""
     return frozenset(normalise_number(match.group()) for match in _NUMBER.finditer(text))
+
+
+def spelled_numbers(text: str) -> frozenset[str]:
+    """Magnitudes written as words rather than digits.
+
+    Returned separately from `numbers_in` because they are not compared
+    against the facts — they are refused outright. A fact carries the
+    number as the screen prints it, so a sentence has a digit available for
+    every figure it is entitled to mention; choosing a word instead is
+    either a rounding nobody computed or a way around the check.
+    """
+    return frozenset(
+        word for word in _WORD.findall(text.lower().replace("-", " ")) if word in _NUMBER_WORDS
+    )
 
 
 @dataclass(frozen=True)
@@ -149,6 +230,42 @@ class FactSet:
         for fact in self.facts:
             allowed |= fact.numbers
         return frozenset(allowed)
+
+    @property
+    def digest(self) -> str:
+        """A stable hash of everything the model would be told.
+
+        The cache keys on this rather than on the filters that produced it,
+        for the reason `domain/transcript_hash.py` gives about call
+        references: two different filter strings can select the same calls
+        and therefore the same figures, and a cache keyed on the query would
+        bill twice for one answer. Hashing the facts means a changed figure
+        is simply a miss, rather than a staleness bug somebody has to
+        remember to invalidate.
+
+        Every field that reaches the prompt is in here — including the
+        withheld reason and the sample — because each of them can change a
+        sentence while the published number stays put.
+
+        Pure and deterministic: no clock, no randomness, same result on any
+        machine.
+        """
+        parts = [self.subject]
+        for fact in self.facts:
+            parts.append(
+                _FIELD.join(
+                    (
+                        fact.key,
+                        fact.label,
+                        fact.display or "",
+                        str(fact.n),
+                        fact.basis or "",
+                        fact.withheld_reason or "",
+                    )
+                )
+            )
+        parts.extend(sorted(self.context_numbers))
+        return hashlib.sha256(_RECORD.join(parts).encode("utf-8")).hexdigest()
 
     def unsupported_numbers(self, text: str) -> frozenset[str]:
         """Magnitudes in `text` that no fact accounts for.

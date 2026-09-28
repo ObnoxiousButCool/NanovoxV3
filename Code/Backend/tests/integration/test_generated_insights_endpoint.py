@@ -137,3 +137,45 @@ async def test_the_model_is_shown_only_numbers_the_screen_published(
     allowed |= {str(scorecard["calls"])}
 
     assert numbers_in(facts_block) <= allowed
+
+
+@pytest.mark.anyio
+async def test_the_risk_screen_is_shown_its_own_figures(
+    app: FastAPI, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """A second screen means a second fact builder, not a second branch in one."""
+    await seed(session_factory, calls_per_employer={"EMP-1001": 40})
+
+    provider = FakeProvider(
+        _answer("Most accounts could not be assessed.", fact_keys=["accounts_assessed"])
+    )
+    app.dependency_overrides[get_insight_provider] = lambda: provider
+    try:
+        response = client.get(
+            "/api/v1/insights/generated", params={"asOf": AS_OF, "screen": "risk"}
+        )
+    finally:
+        app.dependency_overrides.pop(get_insight_provider, None)
+
+    assert response.status_code == 200
+    prompt = provider.requests[0].prompt
+    assert "the account risk screen" in prompt
+    assert "accounts_assessed" in prompt
+    # The weekly series and the premium are deliberately withheld from the
+    # model: a comparison across weeks is a number nobody computed, and the
+    # screen shows lives rather than money.
+    assert "weekly" not in prompt
+    assert "premium" not in prompt
+
+
+@pytest.mark.anyio
+async def test_an_unknown_screen_is_refused_rather_than_guessed(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed(session_factory, calls_per_employer={"EMP-1001": 40})
+
+    response = client.get(
+        "/api/v1/insights/generated", params={"asOf": AS_OF, "screen": "hierarchy"}
+    )
+
+    assert response.status_code == 422

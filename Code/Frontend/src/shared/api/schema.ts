@@ -2976,7 +2976,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Which screen's figures to read. */
-                screen?: "exec";
+                screen?: "exec" | "risk";
                 /** @description How many sentences at most. */
                 limit?: number;
                 /** @description Employer region. */

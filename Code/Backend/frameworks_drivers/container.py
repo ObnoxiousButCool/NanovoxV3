@@ -32,6 +32,7 @@ from application.ports.diagnostics_source import DiagnosticsSource
 from application.ports.ground_truth_repository import GroundTruthRepository
 from application.ports.ground_truth_source import GroundTruthSource
 from application.ports.health_probe import HealthProbe
+from application.ports.insight_cache import InsightCache
 from application.ports.insights_source import InsightsSource
 from application.ports.llm_provider import LLMProvider
 from application.ports.prompts import PromptSource
@@ -75,6 +76,7 @@ from domain.dashboard_config import DashboardConfig
 from domain.errors import ConfigurationError, NotFoundError
 from domain.playbooks import PlaybookCatalogue
 from domain.scoring.rubric import Rubric
+from infrastructure.cache.insight_cache import InMemoryInsightCache
 from infrastructure.config.action_lifecycle_loader import load_action_lifecycle
 from infrastructure.config.dashboard_config import load_dashboard_config
 from infrastructure.config.playbook_loader import load_playbooks
@@ -149,6 +151,9 @@ class Container:
     #: Loaded at startup so a broken catalogue stops the application
     #: rather than rendering an empty panel (Revised plan I3).
     playbook_catalogue: PlaybookCatalogue
+    #: Held on the container, not built per request: a cache rebuilt for
+    #: every call would be a miss every time and quietly bill for it.
+    insight_cache: InsightCache
     #: The action centre's lanes (D14, U3: config until the client confirms).
     action_lifecycle: Lifecycle
     action_repository: ActionRepository
@@ -197,7 +202,11 @@ class Container:
         return GetAgents(self.insights_reader(), self.dashboard_config)
 
     def generate_insights(self) -> GenerateInsights:
-        return GenerateInsights(prompts=self.prompt_source, catalogue=self.playbook_catalogue)
+        return GenerateInsights(
+            prompts=self.prompt_source,
+            catalogue=self.playbook_catalogue,
+            cache=self.insight_cache,
+        )
 
     def insight_provider(self) -> LLMProvider | None:
         """The provider the insight surface will use, or nothing.
@@ -379,6 +388,7 @@ def build_container(settings: Settings) -> Container:
         insights_source=SqlInsightsSource(session_factory),
         dashboard_config=load_dashboard_config(settings.dashboard_config_path),
         playbook_catalogue=load_playbooks(settings.playbooks_path),
+        insight_cache=InMemoryInsightCache(),
         action_lifecycle=load_action_lifecycle(settings.action_lifecycle_path),
         action_repository=SqlActionRepository(session_factory),
     )
