@@ -36,7 +36,7 @@ from __future__ import annotations
 import math
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import Field
 
 from application.use_cases.generate_insights import GenerateInsightsRequest
@@ -47,9 +47,15 @@ from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import (
     DashboardConfigDep,
     GenerateInsightsDep,
+    GetAccountDetailDep,
     GetAccountRiskDep,
     GetExecScorecardDep,
     InsightProviderDep,
+)
+from frameworks_drivers.api.v1.insights.accounts import (
+    AccountResponse,
+    WindowedFigureResponse,
+    build_account_response,
 )
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse
 from frameworks_drivers.api.v1.insights.exec_scorecard import (
@@ -70,7 +76,7 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 #: screen because what counts as a fact is: a generic one would have to
 #: guess whether a number is a rate, a count or a population, and guessing
 #: wrong means the model is shown "12" where the screen shows "12%".
-Screen = Literal["exec", "risk"]
+Screen = Literal["exec", "risk", "account"]
 
 
 def percent(value: float) -> str:
@@ -284,6 +290,98 @@ def risk_facts(response: RiskScreenResponse) -> FactSet:
     )
 
 
+def _per_thousand(key: str, label: str, entry: WindowedFigureResponse) -> Fact:
+    """A rate per 1,000 lives, printed as the account page prints it.
+
+    One decimal place, matching `per1000` on the screen. The whole guardrail
+    rests on the model seeing the number a reader sees, so this mirrors the
+    frontend's formatting rather than choosing its own.
+    """
+    figure = entry.figure
+    if not figure.published:
+        return Fact(
+            key=key,
+            label=label,
+            display=None,
+            n=figure.n,
+            basis=figure.basis.code if figure.basis else None,
+            withheld_reason=(figure.withheld_reason.code if figure.withheld_reason else "WITHHELD"),
+        )
+    return Fact(
+        key=key,
+        label=label,
+        display=f"{figure.value or 0.0:.1f}",
+        n=figure.n,
+        basis=figure.basis.code if figure.basis else None,
+    )
+
+
+def account_facts(response: AccountResponse) -> FactSet:
+    """One account, flattened into what a sentence about it may say.
+
+    The account's own counts, its two rates, how it sits against its peers,
+    and the flag's standing. Three deliberate omissions:
+
+    - **Enrolled lives, premium and the renewal month.** They are reference
+      facts about what the account *is*, and the page labels them so. A
+      generated sentence that mixed "1,450 lives" into a reading of the
+      calls would blur the one distinction the REFERENCE chip exists to
+      make.
+    - **The topic ranking.** Its categories are prose, and offering the
+      model a list of labels invites a sentence built from the shape of the
+      list rather than from a figure.
+    - **Anything about quality.** Metric 12 is per agent; an account-level
+      quality figure does not exist and must not appear to.
+    """
+    profile = response.profile
+    facts = [
+        _count("calls_in_period", "Calls in the period", profile.calls),
+        _count("unresolved", "Calls that ended unresolved", profile.unresolved),
+        _count("repeat_contacts", "Repeat contacts", profile.repeat_contacts),
+        _count(
+            "escalations_missed",
+            "Escalations warranted and not handled",
+            profile.escalations_missed,
+        ),
+        _per_thousand("contact_rate", "Contact rate per 1,000 lives", response.contact_rate),
+        _rate("repeat_rate", "Failure-driven repeat rate", response.repeat_rate.figure),
+        _count(
+            "conditions_met",
+            "Risk conditions met, of four",
+            response.risk.conditions_met,
+        ),
+        _count(
+            "indicator_families_observed",
+            "Indicator families observed",
+            len([o for o in response.risk.observations if o.observed]),
+        ),
+        _count(
+            "broker_mismatches",
+            "Calls naming a broker other than the one on record",
+            len(response.drift.mismatches),
+        ),
+    ]
+
+    peers = response.peers
+    if peers.peer_median is not None and peers.peers > 0:
+        facts.append(
+            Fact(
+                key="peer_median_contact_rate",
+                label=f"Median contact rate for the {peers.band or 'peer'} band",
+                display=f"{peers.peer_median:.1f}",
+                # The peers are the sample behind this median, not calls.
+                n=peers.peers,
+                basis="DERIVED",
+            )
+        )
+
+    return FactSet(
+        subject=f"the account page for {response.facts.name}",
+        facts=tuple(facts),
+        context_numbers=frozenset({str(response.risk_window_weeks), *response.as_of.split("-")}),
+    )
+
+
 @router.get(
     "/generated",
     response_model=GeneratedInsightsResponse,
@@ -295,17 +393,42 @@ async def read_generated_insights(
     provider: InsightProviderDep,
     exec_use_case: GetExecScorecardDep,
     risk_use_case: GetAccountRiskDep,
+    account_use_case: GetAccountDetailDep,
     config: DashboardConfigDep,
     query: InsightsQueryDep,
     screen: Annotated[Screen, Query(description="Which screen's figures to read.")] = "exec",
     limit: Annotated[int, Query(ge=1, le=8, description="How many sentences at most.")] = 4,
+    employer_ref: Annotated[
+        str | None,
+        Query(
+            alias="employerRef",
+            description="Required when `screen` is `account`; ignored otherwise.",
+        ),
+    ] = None,
 ) -> GeneratedInsightsResponse:
-    # `screen` has one value today. The match stays because adding the second
-    # screen must be a new fact builder, not a new branch inside one.
+    # One fact builder per screen, never a branch inside one: what counts as
+    # a fact differs per page, and a shared builder would have to guess
+    # whether a number is a rate, a count or a population.
     match screen:
         case "exec":
             card = await exec_use_case.execute(query.to_request())
             facts = exec_facts(build_exec_response(card, config, query))
+        case "account":
+            if employer_ref is None:
+                raise HTTPException(
+                    # `HTTP_422_UNPROCESSABLE_ENTITY` is deprecated in the
+                    # installed Starlette, and this project turns warnings
+                    # into errors, so reading it raises rather than warns.
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail="`employerRef` is required when screen is `account`.",
+                )
+            detail = await account_use_case.execute(employer_ref, query.to_request())
+            if detail is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"No employer with reference {employer_ref!r}.",
+                )
+            facts = account_facts(build_account_response(detail, query))
         case "risk":
             # `RiskQuery()` with nothing set, deliberately: its two filters
             # select rows, and the figures below are computed over every

@@ -31,7 +31,12 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { useAccount, useFilterOptions, useRisk } from '@/shared/api/insights'
+import {
+  useAccount,
+  useFilterOptions,
+  useGeneratedInsights,
+  useRisk,
+} from '@/shared/api/insights'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
 import { AccountBody } from '@/app/screens/AccountScreen'
@@ -42,6 +47,7 @@ import {
   AccountTopics,
 } from '@/app/screens/AccountPanels'
 import { Empty, Note } from '@/shared/design/primitives'
+import { InsightStrip } from '@/shared/insights/Insights'
 import '@/app/screens/accounts.css'
 
 /** What the risk screen knows about one account, if anything. */
@@ -132,6 +138,17 @@ export function AccountsScreen() {
 
   const selected = employerRef ?? ordered[0]?.ref
   const account = useAccount(selected ?? '', filters.apiSearch)
+  // Asked for, not fetched on sight: one model call per account, and the
+  // picker holds ninety-five. `readFor` is the account the reader asked
+  // about, so moving to another one puts the offer back rather than
+  // quietly spending again.
+  //
+  // Keyed by the reference either way, so switching account can never
+  // show the last one's sentences under this one's name.
+  const [readFor, setReadFor] = useState<string | null>(null)
+  const insights = useGeneratedInsights('account', filters.apiSearch, selected, {
+    enabled: readFor === selected,
+  })
   const brokerName = (ref: string) =>
     options.data?.brokers.find((broker) => broker.ref === ref)?.agency ?? ref
 
@@ -195,8 +212,17 @@ export function AccountsScreen() {
             </div>
           ) : (
             <>
-              {/* The prototype's order: the account's own counts first,
-                  then the figures, then what it calls about. */}
+              {/* `employer.html`'s order: the strip, then the account's own
+                  counts, then the figures, then what it calls about. */}
+              <div className="nv-c12">
+                <InsightStrip
+                  data={insights.data}
+                  pending={insights.isFetching}
+                  onRequest={() => {
+                    setReadFor(selected)
+                  }}
+                />
+              </div>
               <div className="nv-c12">
                 <AccountTiles profile={account.data.profile} />
               </div>

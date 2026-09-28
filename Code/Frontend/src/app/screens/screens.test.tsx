@@ -1072,3 +1072,42 @@ describe('an indicator on the account page', () => {
     expect(links.some((link) => link.getAttribute('href')?.includes('EMP-1001'))).toBe(true)
   })
 })
+
+describe('the insight strip on an account', () => {
+  const generatedCalls = () =>
+    (globalThis.fetch as unknown as { mock: { calls: string[][] } }).mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => url.includes('screen=account'))
+
+  it('spends nothing until the reader asks', async () => {
+    // One model call per account, and the picker holds ninety-five of them.
+    // Opening an account must not bill for reading it.
+    renderAt('/accounts/EMP-1001')
+    await screen.findByText('The account')
+
+    expect(await screen.findByRole('button', { name: /Read this account/ })).toBeInTheDocument()
+    expect(generatedCalls()).toHaveLength(0)
+  })
+
+  it('asks for the account on screen when the reader does', async () => {
+    renderAt('/accounts/EMP-1001')
+
+    await userEvent.click(await screen.findByRole('button', { name: /Read this account/ }))
+
+    await waitFor(() => {
+      expect(generatedCalls().length).toBeGreaterThan(0)
+    })
+    expect(generatedCalls().every((url) => url.includes('employerRef=EMP-1001'))).toBe(true)
+  })
+
+  it('renders the unavailable state rather than hiding, once asked', async () => {
+    // U2: an explicit state, never a hidden panel — and the figures below
+    // are unaffected either way.
+    renderAt('/accounts/EMP-1001')
+
+    await userEvent.click(await screen.findByRole('button', { name: /Read this account/ }))
+
+    expect(await screen.findByText(/No model is configured/)).toBeInTheDocument()
+    expect(screen.getByText('The account')).toBeInTheDocument()
+  })
+})

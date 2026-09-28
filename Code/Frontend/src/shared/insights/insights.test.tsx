@@ -205,3 +205,36 @@ describe('the four lenses', () => {
     expect(screen.getByRole('heading', { name: 'Payer & carrier' })).toBeInTheDocument()
   })
 })
+
+describe('a strip that must be asked for', () => {
+  it('offers to read rather than reading, and says it costs a call', () => {
+    show(<InsightStrip data={undefined} onRequest={() => undefined} />)
+
+    expect(screen.getByRole('button', { name: /Read this account/ })).toBeInTheDocument()
+    expect(screen.getByText(/costs a call/)).toBeInTheDocument()
+  })
+
+  it('carries the badge and the promise before anything is generated', () => {
+    show(<InsightStrip data={undefined} onRequest={() => undefined} />)
+
+    expect(screen.getByText('AI')).toBeInTheDocument()
+  })
+
+  it('says it is reading while the request is in flight', () => {
+    show(<InsightStrip data={undefined} onRequest={() => undefined} pending />)
+
+    expect(screen.getByRole('button', { name: 'Reading…' })).toBeDisabled()
+  })
+
+  it('still renders nothing where no one is offering to ask', () => {
+    // `/exec` and `/risk` load their own surface, so an absent one there is
+    // a query in flight rather than an offer.
+    const { container } = render(
+      <MemoryRouter>
+        <InsightStrip data={undefined} />
+      </MemoryRouter>,
+    )
+
+    expect(container).toBeEmptyDOMElement()
+  })
+})

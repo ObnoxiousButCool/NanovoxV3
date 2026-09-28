@@ -184,3 +184,67 @@ async def test_an_unknown_screen_is_refused_rather_than_guessed(
     )
 
     assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_the_account_screen_is_shown_only_its_own_account(
+    app: FastAPI, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed(session_factory, calls_per_employer={"EMP-1001": 40})
+
+    provider = FakeProvider(
+        _answer("Contact rate is the figure to watch.", fact_keys=["calls_in_period"])
+    )
+    app.dependency_overrides[get_insight_provider] = lambda: provider
+    try:
+        response = client.get(
+            "/api/v1/insights/generated",
+            params={"asOf": AS_OF, "screen": "account", "employerRef": "EMP-1001"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_insight_provider, None)
+
+    assert response.status_code == 200
+    prompt = provider.requests[0].prompt
+    # The subject names the account the way the page does. (The seed happens
+    # to name employers after their reference, so asserting the code is
+    # absent would test the fixture rather than the behaviour.)
+    name = client.get(f"/api/v1/insights/accounts/EMP-1001?asOf={AS_OF}").json()["facts"]["name"]
+    assert name in prompt
+
+    facts_block = prompt.split("THE FIGURES")[1].split("## The one rule")[0]
+    assert "calls_in_period" in facts_block
+    # Reference facts stay out: a sentence mixing enrolled lives into a
+    # reading of the calls blurs what the REFERENCE chip exists to mark.
+    assert "enrolled" not in facts_block.lower()
+    assert "premium" not in facts_block.lower()
+    # Metric 12 is per agent; an account-level quality figure must not appear
+    # to exist.
+    assert "quality" not in facts_block.lower()
+
+
+@pytest.mark.anyio
+async def test_the_account_screen_needs_to_know_which_account(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed(session_factory, calls_per_employer={"EMP-1001": 40})
+
+    response = client.get("/api/v1/insights/generated", params={"asOf": AS_OF, "screen": "account"})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_an_unknown_account_is_a_404_not_an_empty_surface(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """An insight panel for a reference nobody recognises would invent a
+    business relationship, exactly as the account page itself refuses to."""
+    await seed(session_factory, calls_per_employer={"EMP-1001": 40})
+
+    response = client.get(
+        "/api/v1/insights/generated",
+        params={"asOf": AS_OF, "screen": "account", "employerRef": "EMP-9999"},
+    )
+
+    assert response.status_code == 404

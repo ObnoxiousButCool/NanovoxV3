@@ -158,3 +158,31 @@
   font-size: 11.5px;
   color: var(--ink-3);
 }
+
+/* The ask, where a surface costs a call. Quiet: it is an offer, not a
+   warning, and the figures below it are unaffected either way. */
+.nv-ai-ask {
+  margin: 0 0 8px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.nv-ai-go {
+  appearance: none;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 5px 12px;
+  font: 600 12.5px/1.4 var(--body);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.nv-ai-go:hover:not(:disabled) {
+  border-color: var(--rule-strong);
+}
+
+.nv-ai-go:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}

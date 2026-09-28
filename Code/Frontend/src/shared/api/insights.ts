@@ -137,7 +137,7 @@ export function useCallEvidence(reference: string | null) {
 export type GeneratedInsights = components['schemas']['GeneratedInsightsResponse']
 /** The screens the endpoint has a fact builder for. Widening this without
  * one on the server is a 422, not an empty panel. */
-export type InsightScreen = 'exec' | 'risk'
+export type InsightScreen = 'exec' | 'risk' | 'account'
 export type Insight = components['schemas']['InsightResponse']
 
 /**
@@ -153,11 +153,27 @@ export type Insight = components['schemas']['InsightResponse']
  * render, and retrying a rejected answer would spend a second model call to
  * be told the same thing.
  */
-export function useGeneratedInsights(screen: InsightScreen, search: string) {
+export function useGeneratedInsights(
+  screen: InsightScreen,
+  search: string,
+  /** Required for `account`: which account the sentences are about. */
+  employerRef?: string,
+  /** `enabled: false` holds the request back. A surface that costs a
+   * model call per account is asked for, not fetched on sight — and a
+   * held-back query still returns anything already in the cache, so an
+   * account read once does not have to be paid for twice. */
+  options: { enabled?: boolean } = {},
+) {
   const query = new URLSearchParams(search)
   query.set('screen', screen)
+  if (employerRef !== undefined) query.set('employerRef', employerRef)
   return useQuery({
-    queryKey: ['insights', 'generated', screen, search],
+    // The reference joins the key because it selects a different
+    // account's sentences, not a different view of the same ones.
+    queryKey: ['insights', 'generated', screen, employerRef ?? '', search],
+    enabled:
+      (options.enabled ?? true) &&
+      (screen !== 'account' || employerRef !== undefined),
     queryFn: () => getJson<GeneratedInsights>(`/insights/generated?${query.toString()}`),
     retry: false,
     staleTime: 5 * 60 * 1000,

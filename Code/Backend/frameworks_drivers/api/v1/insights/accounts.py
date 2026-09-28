@@ -206,10 +206,10 @@ async def read_account(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No employer with reference {employer_ref!r}.",
         )
-    return _response(detail, query)
+    return build_account_response(detail, query)
 
 
-def _response(detail: AccountDetail, query: InsightsQueryDep) -> AccountResponse:
+def build_account_response(detail: AccountDetail, query: InsightsQueryDep) -> AccountResponse:
     employer = detail.employer
     band = detail.peers.band
     return AccountResponse(

@@ -107,8 +107,49 @@ function KindChip({ insight }: { insight: Insight }) {
  * Deliberately not clickable. A strip that opened something would compete
  * with the figures beneath it, and the figures are the page.
  */
-export function InsightStrip({ data }: { data: GeneratedInsights | undefined }) {
-  if (!data) return null
+export function InsightStrip({
+  data,
+  onRequest,
+  pending = false,
+}: {
+  data: GeneratedInsights | undefined
+  /**
+   * Given where the surface is asked for rather than fetched on sight.
+   *
+   * On `/exec` and `/risk` there is one surface per page, so loading it is
+   * one call. On an account there are ninety-five of them, one per account
+   * a reader clicks, and each is billed. So that screen hands this a
+   * request handler and the reader decides.
+   *
+   * A held-back query still serves anything already in the cache, so an
+   * account read once shows its sentences again without asking twice.
+   */
+  onRequest?: (() => void) | undefined
+  pending?: boolean
+}) {
+  if (!data) {
+    if (onRequest === undefined) return null
+    return (
+      <section className="nv-ai-strip" aria-label="Generated insights">
+        <header>
+          <h2>What this looks like</h2>
+          <AiBadge />
+        </header>
+        <p className="nv-ai-ask">
+          Reading this account&rsquo;s figures asks a model, which costs a call. The
+          figures below do not wait for it.
+        </p>
+        <button
+          type="button"
+          className="nv-ai-go"
+          onClick={onRequest}
+          disabled={pending}
+        >
+          {pending ? 'Reading…' : 'Read this account'}
+        </button>
+      </section>
+    )
+  }
   const items = data.insights
 
   return (

@@ -3063,9 +3063,11 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Which screen's figures to read. */
-                screen?: "exec" | "risk";
+                screen?: "exec" | "risk" | "account";
                 /** @description How many sentences at most. */
                 limit?: number;
+                /** @description Required when `screen` is `account`; ignored otherwise. */
+                employerRef?: string | null;
                 /** @description Employer region. */
                 region?: string[] | null;
                 /** @description Broker of record, from reference data — not who was named aloud. */

@@ -8028,7 +8028,8 @@
               "description": "Which screen's figures to read.",
               "enum": [
                 "exec",
-                "risk"
+                "risk",
+                "account"
               ],
               "title": "Screen",
               "type": "string"
@@ -8046,6 +8047,24 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Required when `screen` is `account`; ignored otherwise.",
+            "in": "query",
+            "name": "employerRef",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Required when `screen` is `account`; ignored otherwise.",
+              "title": "Employerref"
             }
           },
           {
