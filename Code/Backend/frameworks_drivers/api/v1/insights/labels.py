@@ -161,6 +161,7 @@ LABELS: dict[Enum, str] = {
     UnavailableReason.PROVIDER_FAILED: "The model could not be reached",
     UnavailableReason.GUARDRAIL_REJECTED: "The model stated a figure we did not measure",
     UnavailableReason.NO_PUBLISHED_FACTS: "Nothing on this screen is published yet",
+    UnavailableReason.NOT_ASSESSABLE: "Too few calls to read this account",
     # --- Who a complaint was attributed to ---
     ComplaintAttribution.CHOICE: "Choice",
     ComplaintAttribution.BROKER: "Broker",

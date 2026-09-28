@@ -194,9 +194,30 @@ class Fact:
 
     @property
     def numbers(self) -> frozenset[str]:
-        """The magnitudes this fact licenses a sentence to state."""
+        """The magnitudes this fact licenses a sentence to state.
+
+        The **label** counts too, and that is not a loophole: a number in a
+        figure's name is a unit, not a measurement. "Contact rate per 1,000
+        lives" is called that whatever the rate turns out to be, and a
+        sentence naming the figure has to be able to name it.
+
+        Found the hard way — the prompt was changed to require a sentence
+        about any withheld figure, and the first real run wrote about the
+        contact rate, said "per 1,000 lives", and had the whole surface
+        rejected for quoting a number nobody measured.
+
+        The **reason** counts for the same reason, and it is not hypothetical
+        either: "Not a field in the v9 schema" puts a 9 in front of the
+        model, and a sentence repeating the reason verbatim would have been
+        refused for it.
+
+        The rule this keeps: the model is never shown a number it may not
+        quote. `tests/integration` asserts exactly that against the rendered
+        prompt, because a number offered and then punished is a trap.
+        """
         stated = numbers_in(self.display) if self.display is not None else frozenset()
-        return stated | {normalise_number(str(self.n))}
+        described = numbers_in(self.label) | numbers_in(self.withheld_reason or "")
+        return stated | described | {normalise_number(str(self.n))}
 
 
 @dataclass(frozen=True)

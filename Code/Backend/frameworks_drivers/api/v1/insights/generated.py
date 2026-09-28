@@ -42,7 +42,7 @@ from pydantic import Field
 from application.use_cases.generate_insights import GenerateInsightsRequest
 from domain.aggregation.exec_scorecard import SCORECARD_METRICS
 from domain.insights.facts import Fact, FactSet
-from domain.insights.generated import GeneratedInsights, Lens
+from domain.insights.generated import GeneratedInsights, Lens, UnavailableReason
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import (
     DashboardConfigDep,
@@ -77,6 +77,9 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 #: guess whether a number is a rate, a count or a population, and guessing
 #: wrong means the model is shown "12" where the screen shows "12%".
 Screen = Literal["exec", "risk", "account"]
+
+#: How many sentences an account page shows at most.
+ACCOUNT_INSIGHTS = 2
 
 
 def percent(value: float) -> str:
@@ -202,7 +205,13 @@ def _rate(key: str, label: str, figure: FigureResponse) -> Fact:
             display=None,
             n=figure.n,
             basis=figure.basis.code if figure.basis else None,
-            withheld_reason=(figure.withheld_reason.code if figure.withheld_reason else "WITHHELD"),
+            # The label, not the code: the model is given the words a
+            # reader would see, for the same reason `display` carries the
+            # printed number. Handed `BELOW_MIN_N` it writes "BELOW_MIN_N",
+            # and handed `WITHHELD` it wrote "is WITHHELD" into a sentence.
+            withheld_reason=(
+                figure.withheld_reason.label if figure.withheld_reason else "not published"
+            ),
         )
     return Fact(
         key=key,
@@ -305,7 +314,13 @@ def _per_thousand(key: str, label: str, entry: WindowedFigureResponse) -> Fact:
             display=None,
             n=figure.n,
             basis=figure.basis.code if figure.basis else None,
-            withheld_reason=(figure.withheld_reason.code if figure.withheld_reason else "WITHHELD"),
+            # The label, not the code: the model is given the words a
+            # reader would see, for the same reason `display` carries the
+            # printed number. Handed `BELOW_MIN_N` it writes "BELOW_MIN_N",
+            # and handed `WITHHELD` it wrote "is WITHHELD" into a sentence.
+            withheld_reason=(
+                figure.withheld_reason.label if figure.withheld_reason else "not published"
+            ),
         )
     return Fact(
         key=key,
@@ -347,7 +362,10 @@ def account_facts(response: AccountResponse) -> FactSet:
         _rate("repeat_rate", "Failure-driven repeat rate", response.repeat_rate.figure),
         _count(
             "conditions_met",
-            "Risk conditions met, of four",
+            # Digits, not "of four": a spelled number is refused on sight,
+            # and a label that cannot be quoted is a label that rejects
+            # every sentence naming its figure.
+            "Risk conditions met, of 4",
             response.risk.conditions_met,
         ),
         _count(
@@ -409,6 +427,8 @@ async def read_generated_insights(
     # One fact builder per screen, never a branch inside one: what counts as
     # a fact differs per page, and a shared builder would have to guess
     # whether a number is a rate, a count or a population.
+    per_screen_limit = limit
+
     match screen:
         case "exec":
             card = await exec_use_case.execute(query.to_request())
@@ -428,7 +448,24 @@ async def read_generated_insights(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"No employer with reference {employer_ref!r}.",
                 )
-            facts = account_facts(build_account_response(detail, query))
+            account = build_account_response(detail, query)
+            if not account.risk.eligible:
+                # No model call at all. An account the risk screen could not
+                # assess has too few calls to carry a reading: its counts are
+                # true and already on the tiles, and a sentence restating one
+                # is worth neither the wait nor the spend. Most of the book
+                # lands here at this corpus's volume, which is the point.
+                #
+                # The threshold is metric 10's own eligibility floor rather
+                # than a number invented here.
+                return GeneratedInsightsResponse.of(
+                    GeneratedInsights.unavailable(UnavailableReason.NOT_ASSESSABLE)
+                )
+            facts = account_facts(account)
+            # Two, not four. An account offers fewer figures than the exec
+            # page and most of its counts are already on tiles, so a longer
+            # list is padding by construction.
+            per_screen_limit = min(limit, ACCOUNT_INSIGHTS)
         case "risk":
             # `RiskQuery()` with nothing set, deliberately: its two filters
             # select rows, and the figures below are computed over every
@@ -437,5 +474,7 @@ async def read_generated_insights(
             risk = await risk_use_case.execute(query.to_request())
             facts = risk_facts(build_risk_response(risk, query, RiskQuery()))
 
-    generated = await use_case.execute(GenerateInsightsRequest(facts=facts, limit=limit), provider)
+    generated = await use_case.execute(
+        GenerateInsightsRequest(facts=facts, limit=per_screen_limit), provider
+    )
     return GeneratedInsightsResponse.of(generated)

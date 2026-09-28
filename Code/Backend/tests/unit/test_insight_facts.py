@@ -185,3 +185,35 @@ class TestSpelledNumbers:
 
     def test_digits_are_left_to_the_other_check(self) -> None:
         assert spelled_numbers("95 accounts could not be assessed.") == frozenset()
+
+
+class TestLabelsAreQuotable:
+    """A number in a figure's name is a unit, not a measurement.
+
+    The prompt requires a sentence about any withheld figure. The first real
+    run obeyed, wrote about "Contact rate per 1,000 lives", and had the whole
+    surface rejected for quoting the 1,000 in the figure's own name.
+    """
+
+    def test_a_unit_in_the_label_may_be_quoted(self) -> None:
+        facts = _facts(
+            Fact(
+                key="contact_rate",
+                label="Contact rate per 1,000 lives",
+                display=None,
+                n=18,
+                withheld_reason="BELOW_MIN_N",
+            )
+        )
+
+        assert (
+            facts.unsupported_numbers("Contact rate per 1,000 lives cannot be published yet.")
+            == frozenset()
+        )
+
+    def test_a_number_that_is_neither_label_nor_value_is_still_caught(self) -> None:
+        facts = _facts(
+            Fact(key="contact_rate", label="Contact rate per 1,000 lives", display="4.2", n=18)
+        )
+
+        assert facts.unsupported_numbers("The rate reached 9.7 per 1,000 lives.") == {"9.7"}

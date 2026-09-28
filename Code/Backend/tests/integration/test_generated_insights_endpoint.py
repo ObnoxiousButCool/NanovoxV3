@@ -16,6 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from application.dto.insight_response import InsightItem, InsightsResponse
 from domain.insights.facts import numbers_in
 from frameworks_drivers.api.dependencies import get_insight_provider
+from frameworks_drivers.api.v1.insights.exec_scorecard import ExecScorecardResponse
+from frameworks_drivers.api.v1.insights.generated import exec_facts
 from tests.integration.test_insights_endpoints import AS_OF, seed
 from tests.support.llm import FakeProvider
 
@@ -124,20 +126,15 @@ async def test_the_model_is_shown_only_numbers_the_screen_published(
     finally:
         app.dependency_overrides.pop(get_insight_provider, None)
 
-    # Only the facts block: the instructions around it legitimately contain
-    # numbers of their own ("under about 25 words"), and they are ours.
+    # The invariant: the model is never shown a number it may not quote.
+    # Two different code paths — what `_render_facts` prints and what
+    # `allowed_numbers` permits — and a number offered then punished is a
+    # trap. ("v9" in a withheld reason put a 9 in front of the model once.)
     prompt = provider.requests[0].prompt
     facts_block = prompt.split("THE FIGURES")[1].split("## The one rule")[0]
+    facts = exec_facts(ExecScorecardResponse.model_validate(scorecard))
 
-    figures = [metric["figure"] for metric in scorecard["metrics"]]
-    figures.extend(entry["figure"] for entry in scorecard["escalation"])
-    figures.append(scorecard["intentRouted"])
-
-    allowed = {str(figure["n"]) for figure in figures}
-    allowed |= {str(round(figure["value"] * 100)) for figure in figures if figure["published"]}
-    allowed |= {str(scorecard["calls"])}
-
-    assert numbers_in(facts_block) <= allowed
+    assert numbers_in(facts_block) <= facts.allowed_numbers
 
 
 @pytest.mark.anyio
@@ -248,3 +245,51 @@ async def test_an_unknown_account_is_a_404_not_an_empty_surface(
     )
 
     assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_an_account_nobody_could_assess_spends_nothing(
+    app: FastAPI, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Most of the book is here at this corpus's volume.
+
+    Its counts are true and already on the tiles; a sentence restating one is
+    worth neither the wait nor the spend, so no model is asked at all.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-1001": 1})
+
+    provider = FakeProvider(_answer("Something."))
+    app.dependency_overrides[get_insight_provider] = lambda: provider
+    try:
+        response = client.get(
+            "/api/v1/insights/generated",
+            params={"asOf": AS_OF, "screen": "account", "employerRef": "EMP-1001"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_insight_provider, None)
+
+    body = response.json()
+    assert body["status"]["code"] == "UNAVAILABLE"
+    assert body["reason"]["code"] == "NOT_ASSESSABLE"
+    assert provider.requests == []
+
+
+@pytest.mark.anyio
+async def test_a_withheld_figure_reaches_the_model_in_a_reader_s_words(
+    app: FastAPI, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Handed a code it writes the code. The first real run produced "the
+    contact rate is WITHHELD", which is our token in a reader's sentence."""
+    await seed(session_factory, calls_per_employer={"EMP-1001": 40})
+
+    provider = FakeProvider(_answer("Resolution held."))
+    app.dependency_overrides[get_insight_provider] = lambda: provider
+    try:
+        client.get("/api/v1/insights/generated", params={"asOf": AS_OF})
+    finally:
+        app.dependency_overrides.pop(get_insight_provider, None)
+
+    facts_block = provider.requests[0].prompt.split("THE FIGURES")[1].split("## The one rule")[0]
+    assert "WITHHELD" not in facts_block
+    assert "BELOW_MIN_N" not in facts_block
+    assert "not published" in facts_block

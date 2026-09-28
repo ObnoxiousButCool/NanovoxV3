@@ -265,7 +265,7 @@ def _render_facts(facts: FactSet) -> str:
             lines.append(f"- {fact.key}: {fact.label} = {fact.display} (n={fact.n}{basis})")
         else:
             lines.append(
-                f"- {fact.key}: {fact.label} = WITHHELD ({fact.withheld_reason}, n={fact.n})"
+                f"- {fact.key}: {fact.label} = not published — {fact.withheld_reason} (n={fact.n})"
             )
     return "\n".join(lines)
 

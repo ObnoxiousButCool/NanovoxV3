@@ -119,6 +119,11 @@ class UnavailableReason(str, Enum):
     GUARDRAIL_REJECTED = "GUARDRAIL_REJECTED"
     #: Every figure on the screen is withheld, so there is nothing to read.
     NO_PUBLISHED_FACTS = "NO_PUBLISHED_FACTS"
+    #: The account had too few calls to be assessed at all. Distinct from
+    #: the above: its counts are published and perfectly true, but a
+    #: handful of calls cannot support a reading, and asking anyway would
+    #: bill for a sentence that restates a tile.
+    NOT_ASSESSABLE = "NOT_ASSESSABLE"
 
 
 @dataclass(frozen=True)
