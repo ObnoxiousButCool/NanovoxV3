@@ -48,14 +48,14 @@ describe('App', () => {
     // An empty screen reads as "no data", which is the one thing this
     // application must never accidentally claim.
     //
-    // `/actions` rather than `/calls`: the workbench is built now. This
-    // assertion needs a route that is genuinely still a placeholder, or it
-    // stops testing anything the day the last screen lands.
-    renderApp('/actions')
+    // `/agents` rather than `/actions`: Phase 4 built the action centre.
+    // This assertion needs a route that is genuinely still a placeholder,
+    // or it stops testing anything the day the last screen lands.
+    renderApp('/agents')
 
     expect(screen.getByText(/not built yet/i)).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'What should we do next?' }),
+      screen.getByRole('heading', { name: 'How are agents handling calls?' }),
     ).toBeInTheDocument()
   })
 
