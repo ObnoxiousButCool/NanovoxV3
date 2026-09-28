@@ -12,6 +12,8 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
+from application.ports.llm_provider import LLMProvider
+from application.use_cases.generate_insights import GenerateInsights
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
 from application.use_cases.ingest_transcripts import IngestTranscripts
@@ -69,6 +71,14 @@ def get_import_reference_data_use_case(container: ContainerDep) -> ImportReferen
 
 def get_ingest_transcripts_use_case(container: ContainerDep) -> IngestTranscripts:
     return container.ingest_transcripts()
+
+
+def get_generate_insights_use_case(container: ContainerDep) -> GenerateInsights:
+    return container.generate_insights()
+
+
+def get_insight_provider(container: ContainerDep) -> LLMProvider | None:
+    return container.insight_provider()
 
 
 def get_list_providers_use_case(container: ContainerDep) -> ListProviders:
@@ -163,6 +173,8 @@ GetHealthDep = Annotated[GetHealth, Depends(get_health_use_case)]
 ImportReferenceDataDep = Annotated[ImportReferenceData, Depends(get_import_reference_data_use_case)]
 IngestTranscriptsDep = Annotated[IngestTranscripts, Depends(get_ingest_transcripts_use_case)]
 ListProvidersDep = Annotated[ListProviders, Depends(get_list_providers_use_case)]
+GenerateInsightsDep = Annotated[GenerateInsights, Depends(get_generate_insights_use_case)]
+InsightProviderDep = Annotated[LLMProvider | None, Depends(get_insight_provider)]
 RunExtractionOverCorpusDep = Annotated[
     RunExtractionOverCorpus, Depends(get_run_extraction_over_corpus_use_case)
 ]

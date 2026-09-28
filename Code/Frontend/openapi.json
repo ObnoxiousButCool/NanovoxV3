@@ -2000,6 +2000,63 @@
         "title": "FilterOptionsResponse",
         "type": "object"
       },
+      "GeneratedInsightsResponse": {
+        "description": "The insight surface for one screen, generated or explicitly not.",
+        "properties": {
+          "insights": {
+            "description": "Always present, empty when the status is UNAVAILABLE. Required rather than defaulted so a client never has to tell an absent list from an empty one \u2014 they would render the same and mean different things.",
+            "items": {
+              "$ref": "#/components/schemas/InsightResponse"
+            },
+            "title": "Insights",
+            "type": "array"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote these. Null when nothing was written.",
+            "title": "Provider"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Non-null exactly when the status is UNAVAILABLE."
+          },
+          "status": {
+            "$ref": "#/components/schemas/CodedValue",
+            "description": "GENERATED or UNAVAILABLE. Unavailable is a state to render, not an error and not an empty list: the panel says it could not be written and why, the same way a withheld figure does."
+          }
+        },
+        "required": [
+          "status",
+          "insights"
+        ],
+        "title": "GeneratedInsightsResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2222,6 +2279,57 @@
           "speakerUnresolved"
         ],
         "title": "IngestCountsResponse",
+        "type": "object"
+      },
+      "InsightResponse": {
+        "description": "One generated sentence.",
+        "properties": {
+          "factKeys": {
+            "description": "The figures this sentence read, so it can be checked against them.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Factkeys",
+            "type": "array"
+          },
+          "issueKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The playbook behind its 'what to do' link. Null when none applies, or when the model named one that does not exist.",
+            "title": "Issuekey"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CodedValue",
+            "description": "INFERENCE \u2014 what the figures appear to mean. RECOMMENDATION \u2014 a suggested action. Never OBSERVED: a figure's `basis` says where a number came from, and generated text is never one of those."
+          },
+          "sentence": {
+            "description": "Generated text. Every number in it appears in the figures this screen published; a sentence that stated anything else was refused, and the whole surface would read UNAVAILABLE rather than show the rest.",
+            "title": "Sentence",
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/CodedValue",
+            "description": "Reading order only. Not a risk level, and never an account's: 'flagged' means metric 10 and nothing else."
+          }
+        },
+        "required": [
+          "key",
+          "sentence",
+          "kind",
+          "severity",
+          "factKeys"
+        ],
+        "title": "InsightResponse",
         "type": "object"
       },
       "IntentType": {
@@ -7684,6 +7792,452 @@
           }
         },
         "summary": "Every value the filter bar can offer",
+        "tags": [
+          "insights"
+        ]
+      }
+    },
+    "/api/v1/insights/generated": {
+      "get": {
+        "operationId": "read_generated_insights_api_v1_insights_generated_get",
+        "parameters": [
+          {
+            "description": "Which screen's figures to read.",
+            "in": "query",
+            "name": "screen",
+            "required": false,
+            "schema": {
+              "const": "exec",
+              "default": "exec",
+              "description": "Which screen's figures to read.",
+              "title": "Screen",
+              "type": "string"
+            }
+          },
+          {
+            "description": "How many sentences at most.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 4,
+              "description": "How many sentences at most.",
+              "maximum": 8,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Employer region.",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer region.",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+            "in": "query",
+            "name": "broker",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+              "title": "Broker"
+            }
+          },
+          {
+            "description": "Employer reference.",
+            "in": "query",
+            "name": "employer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer reference.",
+              "title": "Employer"
+            }
+          },
+          {
+            "description": "Agent reference.",
+            "in": "query",
+            "name": "agent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Agent reference.",
+              "title": "Agent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "description": "Calls touching this line. A call may touch several.",
+            "in": "query",
+            "name": "productLine",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductLine"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Calls touching this line. A call may touch several.",
+              "title": "Productline"
+            }
+          },
+          {
+            "description": "Where the failure originated, not where it surfaced.",
+            "in": "query",
+            "name": "touchpoint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the failure originated, not where it surfaced.",
+              "title": "Touchpoint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Outcome"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SignalType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/IntentType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complaintTarget",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintAttribution"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complainttarget"
+            }
+          },
+          {
+            "in": "query",
+            "name": "qualityBand",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/QualityBand"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Qualityband"
+            }
+          },
+          {
+            "in": "query",
+            "name": "escalated",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Escalated"
+            }
+          },
+          {
+            "description": "Whether a complaint was made.",
+            "in": "query",
+            "name": "complaint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Whether a complaint was made.",
+              "title": "Complaint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complianceException",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
+            }
+          },
+          {
+            "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/CallSource"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
+            }
+          },
+          {
+            "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+            "in": "query",
+            "name": "asOf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+              "title": "Asof"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeneratedInsightsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generated insights for one screen",
         "tags": [
           "insights"
         ]

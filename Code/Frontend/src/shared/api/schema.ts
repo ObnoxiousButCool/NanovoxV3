@@ -234,6 +234,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/insights/generated": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Generated insights for one screen */
+        get: operations["read_generated_insights_api_v1_insights_generated_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/insights/hierarchy": {
         parameters: {
             query?: never;
@@ -1241,6 +1258,28 @@ export interface components {
              */
             unlabelledFilters: string[];
         };
+        /**
+         * GeneratedInsightsResponse
+         * @description The insight surface for one screen, generated or explicitly not.
+         */
+        GeneratedInsightsResponse: {
+            /**
+             * Insights
+             * @description Always present, empty when the status is UNAVAILABLE. Required rather than defaulted so a client never has to tell an absent list from an empty one — they would render the same and mean different things.
+             */
+            insights: components["schemas"]["InsightResponse"][];
+            /** Model */
+            model?: string | null;
+            /**
+             * Provider
+             * @description Who wrote these. Null when nothing was written.
+             */
+            provider?: string | null;
+            /** @description Non-null exactly when the status is UNAVAILABLE. */
+            reason?: components["schemas"]["CodedValue"] | null;
+            /** @description GENERATED or UNAVAILABLE. Unavailable is a state to render, not an error and not an empty list: the panel says it could not be written and why, the same way a withheld figure does. */
+            status: components["schemas"]["CodedValue"];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1330,6 +1369,33 @@ export interface components {
             speakerUnresolved: number;
             /** Total */
             total: number;
+        };
+        /**
+         * InsightResponse
+         * @description One generated sentence.
+         */
+        InsightResponse: {
+            /**
+             * Factkeys
+             * @description The figures this sentence read, so it can be checked against them.
+             */
+            factKeys: string[];
+            /**
+             * Issuekey
+             * @description The playbook behind its 'what to do' link. Null when none applies, or when the model named one that does not exist.
+             */
+            issueKey?: string | null;
+            /** Key */
+            key: string;
+            /** @description INFERENCE — what the figures appear to mean. RECOMMENDATION — a suggested action. Never OBSERVED: a figure's `basis` says where a number came from, and generated text is never one of those. */
+            kind: components["schemas"]["CodedValue"];
+            /**
+             * Sentence
+             * @description Generated text. Every number in it appears in the figures this screen published; a sentence that stated anything else was refused, and the whole surface would read UNAVAILABLE rather than show the rest.
+             */
+            sentence: string;
+            /** @description Reading order only. Not a risk level, and never an account's: 'flagged' means metric 10 and nothing else. */
+            severity: components["schemas"]["CodedValue"];
         };
         /**
          * IntentType
@@ -2835,6 +2901,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FilterOptionsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_generated_insights_api_v1_insights_generated_get: {
+        parameters: {
+            query?: {
+                /** @description Which screen's figures to read. */
+                screen?: "exec";
+                /** @description How many sentences at most. */
+                limit?: number;
+                /** @description Employer region. */
+                region?: string[] | null;
+                /** @description Broker of record, from reference data — not who was named aloud. */
+                broker?: string[] | null;
+                /** @description Employer reference. */
+                employer?: string[] | null;
+                /** @description Agent reference. */
+                agent?: string[] | null;
+                category?: components["schemas"]["Category"][] | null;
+                /** @description Calls touching this line. A call may touch several. */
+                productLine?: components["schemas"]["ProductLine"][] | null;
+                /** @description Where the failure originated, not where it surfaced. */
+                touchpoint?: string[] | null;
+                outcome?: components["schemas"]["Outcome"][] | null;
+                signal?: components["schemas"]["SignalType"][] | null;
+                intent?: components["schemas"]["IntentType"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
+                escalated?: boolean | null;
+                /** @description Whether a complaint was made. */
+                complaint?: boolean | null;
+                complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
+                /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
+                source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
+                /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
+                asOf?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeneratedInsightsResponse"];
                 };
             };
             /** @description Validation Error */

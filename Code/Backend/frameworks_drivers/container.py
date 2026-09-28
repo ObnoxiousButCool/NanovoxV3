@@ -33,6 +33,7 @@ from application.ports.ground_truth_repository import GroundTruthRepository
 from application.ports.ground_truth_source import GroundTruthSource
 from application.ports.health_probe import HealthProbe
 from application.ports.insights_source import InsightsSource
+from application.ports.llm_provider import LLMProvider
 from application.ports.prompts import PromptSource
 from application.ports.reference_lookup import ReferenceLookup
 from application.ports.reference_repository import ReferenceRepository
@@ -44,6 +45,7 @@ from application.use_cases.classify_call_l2 import ClassifyCallL2
 from application.use_cases.classify_call_l3 import ClassifyCallL3
 from application.use_cases.classify_call_l4 import ClassifyCallL4
 from application.use_cases.evaluate_extraction import EvaluateExtraction
+from application.use_cases.generate_insights import GenerateInsights
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_answer_key import ImportAnswerKey
 from application.use_cases.import_reference_data import ImportReferenceData
@@ -69,6 +71,7 @@ from application.use_cases.run_extraction_over_corpus import RunExtractionOverCo
 from application.use_cases.run_extraction_pipeline import ExtractionPipeline
 from domain.actions import Lifecycle
 from domain.dashboard_config import DashboardConfig
+from domain.errors import ConfigurationError, NotFoundError
 from domain.playbooks import PlaybookCatalogue
 from domain.scoring.rubric import Rubric
 from infrastructure.config.action_lifecycle_loader import load_action_lifecycle
@@ -191,6 +194,22 @@ class Container:
 
     def get_agents(self) -> GetAgents:
         return GetAgents(self.insights_reader(), self.dashboard_config)
+
+    def generate_insights(self) -> GenerateInsights:
+        return GenerateInsights(prompts=self.prompt_source, catalogue=self.playbook_catalogue)
+
+    def insight_provider(self) -> LLMProvider | None:
+        """The provider the insight surface will use, or nothing.
+
+        Nothing is a legitimate answer, not an error: a deployment with no
+        model configured shows an explicit unavailable panel (U2) and every
+        figure on the screen still renders. A provider that exists but is
+        rejected at call time is a different state, and is reported as one.
+        """
+        try:
+            return self.provider_registry.create()
+        except (ConfigurationError, NotFoundError):
+            return None
 
     def list_playbooks(self) -> ListPlaybooks:
         return ListPlaybooks(self.playbook_catalogue)

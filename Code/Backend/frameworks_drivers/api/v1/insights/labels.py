@@ -48,6 +48,12 @@ from enum import Enum
 from pydantic import Field
 
 from domain.aggregation.figure import Basis, WithheldReason
+from domain.insights.generated import (
+    InsightKind,
+    InsightsStatus,
+    Severity,
+    UnavailableReason,
+)
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.outcome import Outcome
@@ -129,6 +135,25 @@ LABELS: dict[Enum, str] = {
     RuleConfidence.VERIFIED: "Verified",
     RuleConfidence.VERIFIED_SECONDARY: "Verified (secondary source)",
     RuleConfidence.UNVERIFIED: "Unverified",
+    # --- What a generated sentence is doing. Never OBSERVED: `Basis`
+    # describes where a figure came from, and no generated text is one of
+    # its three values (checkpoint I4, the honesty contract).
+    InsightKind.INFERENCE: "What this suggests",
+    InsightKind.RECOMMENDATION: "Suggested action",
+    # --- Reading order for generated prose. Deliberately not "High risk":
+    # D12 reserves the flag for metric 10 and there is no risk band to echo
+    # here, so these are worded as attention rather than as a grade.
+    Severity.READ_FIRST: "Read first",
+    Severity.WORTH_READING: "Worth reading",
+    Severity.BACKGROUND: "Background",
+    # --- Whether there is generated text at all (U2) ---
+    InsightsStatus.GENERATED: "Generated",
+    InsightsStatus.UNAVAILABLE: "Unavailable",
+    # --- and why there is not. Each reason is a different thing to do.
+    UnavailableReason.NO_PROVIDER: "No model is configured",
+    UnavailableReason.PROVIDER_FAILED: "The model could not be reached",
+    UnavailableReason.GUARDRAIL_REJECTED: "The model stated a figure we did not measure",
+    UnavailableReason.NO_PUBLISHED_FACTS: "Nothing on this screen is published yet",
     # --- Who a complaint was attributed to ---
     ComplaintAttribution.CHOICE: "Choice",
     ComplaintAttribution.BROKER: "Broker",
@@ -149,6 +174,10 @@ LABELLED_ENUMS: tuple[type[Enum], ...] = (
     RuleLayer,
     RuleConfidence,
     ComplaintAttribution,
+    InsightKind,
+    Severity,
+    InsightsStatus,
+    UnavailableReason,
 )
 
 

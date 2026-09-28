@@ -43,6 +43,19 @@ export const ISSUE_KEYS = [
 export type IssueKey = (typeof ISSUE_KEYS)[number]
 
 /**
+ * Whether a string names a playbook this build ships.
+ *
+ * Needed because a key can arrive from the API — a generated insight names
+ * one — and three of the prototype's keys are deliberately absent (`high`,
+ * `brush_off`, `circular`, held back by D12 and D14). Linking to one would
+ * produce a focus the actions page cannot honour, so an unrecognised key
+ * loses its link rather than making a dead one.
+ */
+export function isIssueKey(value: string): value is IssueKey {
+  return (ISSUE_KEYS as readonly string[]).includes(value)
+}
+
+/**
  * Narrowing an issue to one account, broker or region.
  *
  * Each field is `string | undefined` rather than merely optional. Under

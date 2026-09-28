@@ -1,10 +1,17 @@
 /**
  * `/exec` — the executive scorecard.
  *
- * Follows the v2 prototype's order: the headline counts, then what moved,
- * then the weekly shape, then what is emerging. The prototype's four
- * "lenses" and its insight feed are not here — both are Phase 5, and a
- * hand-written stand-in would be the invented narrative §2A.4 forbids.
+ * Follows the v2 prototype's order: the insight strip, then the headline
+ * counts, then what moved, then the weekly shape, then what is emerging.
+ * The prototype's four "lenses" are still absent — they are a grouping of
+ * figures, not of sentences, and grouping them by hand here would be the
+ * invented taxonomy §2A.4 forbids until U1's four are wired through.
+ *
+ * ## The insights load separately, and may never arrive
+ *
+ * `useGeneratedInsights` is its own query. The figures are the page and
+ * must never wait on a model; when there is no model the strip renders an
+ * explicit unavailable state (U2) and everything below it is unaffected.
  *
  * ## Movement is shown with its noise test, not instead of it
  *
@@ -25,10 +32,11 @@
 
 import { Link } from 'react-router-dom'
 
-import { useExec } from '@/shared/api/insights'
+import { useExec, useGeneratedInsights } from '@/shared/api/insights'
 import type { ExecScorecard } from '@/shared/api/insights'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
+import { InsightStrip } from '@/shared/insights/Insights'
 import { VLine } from '@/shared/design/charts'
 import {
   BigRow,
@@ -54,6 +62,7 @@ function BasisChip({ figure }: { figure: Figure }) {
 export function ExecScreen() {
   const filters = useFilters()
   const { data, isPending, error } = useExec(filters.apiSearch)
+  const insights = useGeneratedInsights('exec', filters.apiSearch)
 
   return (
     <Screen
@@ -63,6 +72,7 @@ export function ExecScreen() {
       isPending={isPending}
       error={error}
     >
+      <InsightStrip data={insights.data} />
       {data === undefined ? null : <ExecBody data={data} />}
     </Screen>
   )

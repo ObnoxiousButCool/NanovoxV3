@@ -28,13 +28,14 @@ from __future__ import annotations
 from fastapi import APIRouter, status
 from pydantic import Field
 
-from application.use_cases.read_insights import ExecTrends
+from application.use_cases.read_insights import ExecResult, ExecTrends
 from domain.aggregation.exec_scorecard import SCORECARD_METRICS, escalation_integrity_pair
 from domain.aggregation.patterns import window_for
+from domain.dashboard_config import DashboardConfig
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import DashboardConfigDep, GetExecScorecardDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
-from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
+from frameworks_drivers.api.v1.insights.query import InsightsQuery, InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -197,6 +198,22 @@ async def read_exec_scorecard(
     query: InsightsQueryDep,
 ) -> ExecScorecardResponse:
     result = await use_case.execute(query.to_request())
+    return build_exec_response(result, config, query)
+
+
+def build_exec_response(
+    result: ExecResult,
+    config: DashboardConfig,
+    query: InsightsQuery,
+) -> ExecScorecardResponse:
+    """The scorecard on the wire.
+
+    Extracted from the route so the insight surface can read the *same*
+    response this screen renders. `/insights/generated` must not recompute
+    the figures its sentences describe: two builders that agree today are
+    two builders, and the day they disagree the model will be quoting a
+    number no reader can see.
+    """
     card = result.scorecard
     figures = {
         "first_contact_resolution": card.first_contact_resolution,

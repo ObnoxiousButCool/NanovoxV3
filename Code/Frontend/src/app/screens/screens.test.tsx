@@ -296,8 +296,20 @@ const OPTIONS = {
   unlabelledFilters: [],
 }
 
+/** The shape a deployment with no model configured serves (U2). */
+const NO_INSIGHTS = {
+  status: { code: 'UNAVAILABLE', label: 'Unavailable' },
+  insights: [],
+  reason: { code: 'NO_PROVIDER', label: 'No model is configured' },
+  provider: null,
+  model: null,
+}
+
 function routeFor(url: string): unknown {
   if (url.includes('/insights/filters')) return OPTIONS
+  // Checked before `/insights/exec`: the generated surface takes the screen
+  // as a query parameter, so both URLs carry the word.
+  if (url.includes('/insights/generated')) return NO_INSIGHTS
   if (url.includes('/insights/exec')) return EXEC
   if (url.includes('/insights/risk')) return RISK
   if (url.includes('/insights/hierarchy')) return HIERARCHY

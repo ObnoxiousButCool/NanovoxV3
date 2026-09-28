@@ -14,6 +14,7 @@ from frameworks_drivers.api.v1.insights import (
     demand,
     exec_scorecard,
     filters,
+    generated,
     hierarchy,
     playbooks,
     risk,
@@ -38,5 +39,6 @@ router.include_router(actions.router)
 router.include_router(playbooks.router)
 router.include_router(rules.router)
 router.include_router(agents.router)
+router.include_router(generated.router)
 
 __all__ = ["router"]

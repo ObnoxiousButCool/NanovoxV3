@@ -111,3 +111,30 @@ export function useCallEvidence(reference: string | null) {
     staleTime: Infinity,
   })
 }
+
+export type GeneratedInsights = components['schemas']['GeneratedInsightsResponse']
+export type Insight = components['schemas']['InsightResponse']
+
+/**
+ * A screen's generated insights.
+ *
+ * Its own query, never folded into the screen's, so the figures never wait
+ * on a model. The scorecard paints; the sentences arrive after, or an
+ * unavailable panel does.
+ *
+ * `retry: false` because the two failures worth distinguishing are both
+ * already answers rather than errors — no provider configured, and a model
+ * that stated a figure nobody measured. Both come back 200 with a reason to
+ * render, and retrying a rejected answer would spend a second model call to
+ * be told the same thing.
+ */
+export function useGeneratedInsights(screen: 'exec', search: string) {
+  const query = new URLSearchParams(search)
+  query.set('screen', screen)
+  return useQuery({
+    queryKey: ['insights', 'generated', screen, search],
+    queryFn: () => getJson<GeneratedInsights>(`/insights/generated?${query.toString()}`),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  })
+}
