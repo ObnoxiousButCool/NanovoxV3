@@ -41,7 +41,12 @@ from domain.errors import ValidationError
 if TYPE_CHECKING:
     from application.ports.insights_source import CorpusSlice
     from application.use_cases.read_insights import InsightsReader, ScopedCorpus
-    from domain.aggregation.call_tags import BrokerFacts, CallContext, EmployerFacts
+    from domain.aggregation.call_tags import (
+        BrokerFacts,
+        CallContext,
+        CallerFacts,
+        EmployerFacts,
+    )
 
 
 #: The most rows one request may return. The frontend offers 25, 50 and
@@ -81,6 +86,12 @@ class CallRowView:
     occurred_on: date
     employer_ref: str | None
     employer_name: str | None
+    #: Who rang, joined from reference data. `None` where the reference
+    #: matches nobody, which is a gap in reference data rather than an
+    #: anonymous caller, and is why the row keeps the reference too.
+    caller_ref: str | None
+    caller_name: str | None
+    caller_kind: str | None
     broker_ref: str | None
     broker_agency: str | None
     region: str | None
@@ -255,6 +266,7 @@ def _row(call: CallContext, corpus: CorpusSlice) -> CallRowView:
     employer = _employer(corpus.employers, call.employer_ref)
     broker = _broker(corpus.brokers, call.broker_of_record_ref)
     tags = call.tags
+    caller = _caller(corpus.callers, tags.caller_ref)
     complaint = tags.complaint
     escalation = tags.escalation
     return CallRowView(
@@ -262,6 +274,9 @@ def _row(call: CallContext, corpus: CorpusSlice) -> CallRowView:
         occurred_on=call.occurred_on,
         employer_ref=call.employer_ref,
         employer_name=employer.name if employer is not None else None,
+        caller_ref=tags.caller_ref,
+        caller_name=caller.name if caller is not None else None,
+        caller_kind=caller.kind if caller is not None else None,
         broker_ref=call.broker_of_record_ref,
         broker_agency=broker.agency if broker is not None else None,
         region=employer.region if employer is not None else None,
@@ -285,6 +300,12 @@ def _row(call: CallContext, corpus: CorpusSlice) -> CallRowView:
         knowledge_failure=tags.knowledge_failure is not None and tags.knowledge_failure.present,
         intents=tuple(statement.type.value for statement in tags.intent),
     )
+
+
+def _caller(callers: Sequence[CallerFacts], ref: str | None) -> CallerFacts | None:
+    if ref is None:
+        return None
+    return next((caller for caller in callers if caller.reference == ref), None)
 
 
 def _employer(employers: Sequence[EmployerFacts], ref: str | None) -> EmployerFacts | None:

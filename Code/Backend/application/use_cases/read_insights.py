@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING
 
 from application.ports.insights_source import CorpusQuery
 from domain.aggregation.account_profile import AccountProfile, account_profile
+from domain.aggregation.account_stakes import Stake, account_stakes, months_to_renewal
 from domain.aggregation.actions import ActionItem, OwnerWorkload, action_items, by_owner
 from domain.aggregation.agent_events import (
     CONTROL_DENOMINATOR_CAVEAT,
@@ -570,6 +571,18 @@ class AccountDetail:
     #: The counts and the topic ranking the prototype's employer page
     #: shows, over the same risk window as the flag above them.
     profile: AccountProfile
+    #: Workbook facts that raise the stakes on everything else. Reference,
+    #: never observation — true whether or not anybody called.
+    stakes: tuple[Stake, ...]
+    #: Whole months to the renewal, or `None` where the workbook's month is
+    #: not one we can parse. A wrong countdown is worse than none.
+    renewal_in_months: int | None
+    #: This account's calls in the **selected period**. `profile.calls`
+    #: counts the risk window instead, and the two differ whenever the
+    #: reader has widened the period past that window — so the page can say
+    #: which calls its counts leave out rather than appearing to disagree
+    #: with the calls table below it.
+    calls_in_period: int
 
 
 @dataclass(frozen=True)
@@ -632,6 +645,9 @@ class GetAccountDetail:
             risk_window=risk_window,
             drift=drift(risk_window.calls_in(tuple(mine))),
             profile=account_profile(mine, risk_window),
+            stakes=account_stakes(employer, scope.corpus.employers, scope.as_of),
+            renewal_in_months=months_to_renewal(employer.renewal_month, scope.as_of),
+            calls_in_period=len(mine),
         )
 
 

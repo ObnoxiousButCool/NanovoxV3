@@ -74,6 +74,19 @@ class CallRowResponse(CamelModel):
     occurred_on: str
     employer_ref: str | None = None
     employer_name: str | None = None
+    caller_ref: str | None = None
+    caller_name: str | None = Field(
+        default=None,
+        description=(
+            "Who rang, from the Member and Contact sheets. Null where the "
+            "reference matches nobody — a gap in reference data, not an "
+            "anonymous caller, which is why the reference is sent as well."
+        ),
+    )
+    caller_kind: str | None = Field(
+        default=None,
+        description="'member' or 'employer contact'. They carry different authority.",
+    )
     broker_ref: str | None = None
     broker_agency: str | None = None
     region: str | None = None
@@ -382,6 +395,9 @@ def _row_response(row: CallRowView) -> CallRowResponse:
         occurred_on=row.occurred_on.isoformat(),
         employer_ref=row.employer_ref,
         employer_name=row.employer_name,
+        caller_ref=row.caller_ref,
+        caller_name=row.caller_name,
+        caller_kind=row.caller_kind,
         broker_ref=row.broker_ref,
         broker_agency=row.broker_agency,
         region=row.region,

@@ -213,6 +213,14 @@ const ACCOUNT = {
     annualPremium: null,
     renewalMonth: 'Jan',
     annualFee: 0,
+    eligible: 420,
+    // Below rule P-18's 70%, which is what puts a stake on this account.
+    participation: 0.75,
+    linesHeld: 'dental',
+    cobraRegime: 'federal',
+    dentalSponsorship: 'ER',
+    plannedCalls: 24,
+    renewalInMonths: 4,
   },
   contactRate: { windowWeeks: 12, figure: WITHHELD },
   repeatRate: { windowWeeks: 12, figure: WITHHELD },
@@ -238,6 +246,17 @@ const ACCOUNT = {
     unresolved: [],
     finding: 'No drift: all 2 broker mention(s) matched the broker of record.',
   },
+  stakes: [
+    {
+      code: 'high_contact_rate',
+      label: 'Planned contact rate above the book median',
+      detail:
+        '40.0 planned calls per 100 lives, against a book median of 12.0. A plan, not a count — the measured contact rate is the figure above.',
+    },
+  ],
+  // Wider than the risk window the tiles count, so the page has to say
+  // which calls its counts leave out.
+  callsInPeriod: 9,
 }
 
 const HIERARCHY = {
@@ -1024,6 +1043,41 @@ describe('the account tiles and topics', () => {
 
     expect(value).not.toBeNull()
     expect(value?.textContent ?? '').not.toMatch(/[0-9]/)
+  })
+
+  it('shows the account facts that raise the stakes, as reference not event', async () => {
+    // employer.html's structural notes. They are true whether or not
+    // anybody called, so the panel says where they came from — a reader who
+    // took one for a recent event would respond to the wrong thing.
+    renderAt('/accounts/EMP-1001')
+
+    expect(
+      await screen.findByText('Account facts that raise the stakes'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Planned contact rate above the book median'),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/From the workbook, not from these calls/)).toBeInTheDocument()
+  })
+
+  it('reconciles the tile counts against the calls the period holds', async () => {
+    // The tiles count the risk window; the calls panel lists the selected
+    // period. Where they differ the page must say so, or it reads as two
+    // numbers contradicting each other. Filters slice, never hide.
+    renderAt('/accounts/EMP-1001')
+
+    expect(
+      await screen.findByText(/3 of this account.s 9 calls in the selected period/),
+    ).toBeInTheDocument()
+  })
+
+  it('counts enrolled against eligible, and says how long to the renewal', async () => {
+    renderAt('/accounts/EMP-1001')
+    await screen.findByText('The account')
+
+    expect(screen.getByText('315 of 420')).toBeInTheDocument()
+    expect(screen.getByText('75%')).toBeInTheDocument()
+    expect(screen.getByText('in 4 months')).toBeInTheDocument()
   })
 
   it('ranks what they call about, most first', async () => {

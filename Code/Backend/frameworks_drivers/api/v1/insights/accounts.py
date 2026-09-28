@@ -73,6 +73,54 @@ class AccountFactsResponse(CamelModel):
         default=None, description="Null when not recorded — never zero."
     )
     annual_fee: int
+    eligible: int = Field(
+        description="Lives the plan covers. `enrolled` of these is the participation."
+    )
+    participation: float | None = Field(
+        default=None,
+        description=(
+            "Enrolled over eligible. Null where the workbook records none — never "
+            "0.0, which would read as 'nobody enrolled'."
+        ),
+    )
+    lines_held: str
+    cobra_regime: str
+    dental_sponsorship: str = Field(
+        description=(
+            "ER for employer-sponsored, VOL for voluntary. Rule P-18 reaches only the first."
+        )
+    )
+    planned_calls: int = Field(
+        description=(
+            "Calls the workbook's design plans for this account at full corpus. "
+            "A plan, never a count: the corpus is a sample of it."
+        )
+    )
+    renewal_in_months: int | None = Field(
+        default=None,
+        description=(
+            "Whole months to the renewal, 0 meaning this month. Null where the "
+            "workbook's month could not be parsed — never a guessed countdown."
+        ),
+    )
+
+
+class StakeResponse(CamelModel):
+    """One workbook fact that raises the stakes on everything else.
+
+    Reference, not observation. Nothing here counts a call: these are true
+    whether or not anybody rang, which is why the screen puts them beneath
+    the indicators rather than among them.
+    """
+
+    code: str
+    label: str
+    detail: str = Field(
+        description=(
+            "The figures behind the note, already worded, including the rule "
+            "reference where one sets the threshold."
+        )
+    )
 
 
 class PeerComparisonResponse(CamelModel):
@@ -198,6 +246,19 @@ class AccountResponse(CamelModel):
     risk_window_weeks: int
     drift: DriftResponse
     profile: AccountProfileResponse
+    stakes: list[StakeResponse] = Field(
+        description=(
+            "Workbook facts that raise the stakes, most consequential first. "
+            "Empty is a real answer: nothing structural stands out."
+        )
+    )
+    calls_in_period: int = Field(
+        description=(
+            "This account's calls in the selected period. `profile.calls` counts "
+            "the risk window instead, so the two differ when the period is wider "
+            "— sent so a screen can say which calls its counts leave out."
+        )
+    )
 
 
 @router.get(
@@ -246,6 +307,13 @@ def build_account_response(detail: AccountDetail, query: InsightsQueryDep) -> Ac
             broker_ref=employer.broker_ref,
             annual_premium=employer.annual_premium,
             annual_fee=employer.annual_fee,
+            eligible=employer.eligible,
+            participation=employer.participation,
+            lines_held=employer.lines_held,
+            cobra_regime=employer.cobra_regime,
+            dental_sponsorship=employer.dental_sponsorship,
+            planned_calls=employer.planned_calls,
+            renewal_in_months=detail.renewal_in_months,
         ),
         contact_rate=WindowedFigureResponse(
             window_weeks=round(detail.contact_rate_window.weeks),
@@ -270,6 +338,11 @@ def build_account_response(detail: AccountDetail, query: InsightsQueryDep) -> Ac
             unresolved=list(detail.drift.unresolved),
             finding=detail.drift.finding,
         ),
+        stakes=[
+            StakeResponse(code=stake.code, label=stake.label, detail=stake.detail)
+            for stake in detail.stakes
+        ],
+        calls_in_period=detail.calls_in_period,
         profile=AccountProfileResponse(
             calls=detail.profile.calls,
             unresolved=detail.profile.unresolved,

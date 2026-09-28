@@ -49,6 +49,7 @@ from application.ports.insights_source import CorpusQuery, CorpusSlice, Insights
 from domain.aggregation.call_tags import (
     BrokerFacts,
     CallContext,
+    CallerFacts,
     CallTags,
     EmployerFacts,
     book_lives_for,
@@ -74,7 +75,9 @@ from infrastructure.persistence.tables import (
     BrokerRow,
     CallExtractionRow,
     CallRow,
+    EmployerContactRow,
     EmployerRow,
+    MemberRow,
     RuleRow,
     SignalRow,
 )
@@ -102,6 +105,7 @@ class SqlInsightsSource(InsightsSource):
     async def load(self, query: CorpusQuery) -> CorpusSlice:
         async with self._session_factory() as session:
             employers, brokers = await self._reference_data(session)
+            callers = await self._callers(session)
             rules = await self._rules(session)
             calls, undated, unanalysed, unavailable = await self._calls(session, query)
             available_from, available_until = await self._extent(session, query)
@@ -110,6 +114,7 @@ class SqlInsightsSource(InsightsSource):
             calls=calls,
             employers=employers,
             brokers=brokers,
+            callers=callers,
             rules=rules,
             undated=undated,
             unanalysed=unanalysed,
@@ -172,6 +177,24 @@ class SqlInsightsSource(InsightsSource):
             for row in broker_rows
         )
         return employers, brokers
+
+    async def _callers(self, session: AsyncSession) -> tuple[CallerFacts, ...]:
+        """Every member and employer contact, so a row can name who rang.
+
+        Two sheets, one lookup. The `kind` keeps them apart on the row — a
+        member and an employer contact carry different authority, and the
+        prototype's calls table prints which of the two was on the phone
+        under the name.
+        """
+        members = (await session.execute(select(MemberRow))).scalars().all()
+        contacts = (await session.execute(select(EmployerContactRow))).scalars().all()
+        return tuple(
+            [CallerFacts(reference=row.reference, name=row.name, kind="member") for row in members]
+            + [
+                CallerFacts(reference=row.reference, name=row.name, kind="employer contact")
+                for row in contacts
+            ]
+        )
 
     async def _rules(self, session: AsyncSession) -> tuple[RuleFacts, ...]:
         """Every rule, in reference order.
@@ -293,6 +316,13 @@ def _employer_facts(row: EmployerRow) -> EmployerFacts:
         broker_ref=row.broker.reference,
         annual_premium=row.annual_premium,
         annual_fee=row.annual_fee,
+        eligible=row.eligible,
+        participation=row.participation,
+        lines_held=row.lines_held,
+        cobra_regime=row.cobra_regime,
+        dental_sponsorship=row.dental_sponsorship,
+        calls_per_100=row.calls_per_100,
+        planned_calls=row.planned_calls,
     )
 
 

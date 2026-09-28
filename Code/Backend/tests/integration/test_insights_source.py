@@ -430,13 +430,24 @@ class TestReferenceData:
     async def test_the_churn_profile_is_not_on_the_facts_at_all(
         self, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
-        """Structurally out of reach, not merely unread."""
+        """Structurally out of reach, not merely unread.
+
+        This used to assert `eligible` was absent too, as a stand-in for the
+        port being narrow in general. That conflated two different rules.
+        Narrowness is a design preference and `account_stakes` has since
+        needed the reference block, so those fields are carried; the churn
+        profile is a principle, and it is the one this test is about.
+        """
         await seed(session_factory)
 
         result = await SqlInsightsSource(session_factory).load(CorpusQuery())
+        facts = result.employers[0]
 
-        assert not hasattr(result.employers[0], "design_churn_profile")
-        assert not hasattr(result.employers[0], "eligible")
+        assert not hasattr(facts, "design_churn_profile")
+        # The reference fields the stakes read, carried deliberately, so a
+        # future reader can see the line was moved on purpose and where.
+        assert facts.eligible == 200
+        assert facts.lines_held == "dental"
 
 
 class TestEmptyDatabase:

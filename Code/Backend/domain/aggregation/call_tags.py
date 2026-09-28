@@ -138,7 +138,15 @@ class CallContext:
 class EmployerFacts:
     """The employer fields a figure may use, and no others.
 
-    Notably absent: the churn profile. See this module's docstring.
+    Notably absent: the churn profile. See this module's docstring. That
+    absence is the point of this class, and it is enforced by a test rather
+    than by the list being short — so the list may grow when a figure needs
+    a field, and the one field it may never grow is the one the corpus was
+    generated from.
+
+    The reference block below is what `account_stakes` reads. Those are
+    workbook facts about the account rather than anything measured from a
+    call, which is why a screen showing them labels them `reference`.
     """
 
     reference: str
@@ -150,6 +158,43 @@ class EmployerFacts:
     broker_ref: str
     annual_premium: float | None = None
     annual_fee: int = 0
+    #: Lives the plan covers, against which `enrolled` is a participation.
+    #: Zero where the workbook records none; `participation` is then None
+    #: rather than a division nobody can defend.
+    eligible: int = 0
+    #: Enrolled over eligible, derived on ingest and stored. None where the
+    #: workbook could not compute it — never 0.0, which would read as
+    #: "nobody enrolled".
+    participation: float | None = None
+    lines_held: str = ""
+    cobra_regime: str = ""
+    dental_sponsorship: str = ""
+    #: Planned calls per 100 lives per quarter, from the workbook's own
+    #: design. A *plan*, not a measurement — `contact_rate` is the measured
+    #: one, and the two must never be presented as the same number.
+    calls_per_100: float | None = None
+    planned_calls: int = 0
+
+
+@dataclass(frozen=True)
+class CallerFacts:
+    """Who a `caller_ref` belongs to.
+
+    A table row names the person who rang; a figure must not. This is here
+    rather than on `CallTags` for exactly that reason — the aggregations
+    take `CallTags`, so nothing they compute can reach a caller's name, and
+    the workbench joins it in at the row layer the way it already joins the
+    employer name and the broker agency.
+
+    `kind` is the sheet the reference came from, not a judgement: a member
+    (`CB-`) and an employer contact (`CON-`) are different people with
+    different authority, and a row that showed only the name would lose
+    which of the two was on the phone.
+    """
+
+    reference: str
+    name: str
+    kind: str
 
 
 @dataclass(frozen=True)

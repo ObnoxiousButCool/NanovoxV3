@@ -479,3 +479,44 @@ a.nv-fire:hover {
   border-color: var(--rule-strong);
   color: var(--ink);
 }
+
+/* --- Account facts that raise the stakes ----------------------------- */
+
+/* Reference notes, styled apart from the indicator conditions above them:
+   these are true whether or not anybody called, and a reader who took one
+   for a recent event would respond to it as though something had happened. */
+.nv-stakes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nv-stakes li {
+  padding: 8px 0;
+  border-top: 1px solid var(--rule);
+  line-height: 1.5;
+}
+
+.nv-stakes li:first-child {
+  border-top: 0;
+}
+
+.nv-stakes b {
+  display: block;
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.nv-stakes span {
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+
+/* The renewal countdown, under the month it belongs to. */
+.nv-figsub {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+  margin-top: 2px;
+}

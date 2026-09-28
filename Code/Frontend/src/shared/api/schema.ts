@@ -462,6 +462,18 @@ export interface components {
              * @description Broker of record.
              */
             brokerRef: string;
+            /** Cobraregime */
+            cobraRegime: string;
+            /**
+             * Dentalsponsorship
+             * @description ER for employer-sponsored, VOL for voluntary. Rule P-18 reaches only the first.
+             */
+            dentalSponsorship: string;
+            /**
+             * Eligible
+             * @description Lives the plan covers. `enrolled` of these is the participation.
+             */
+            eligible: number;
             /** Employerref */
             employerRef: string;
             /**
@@ -471,10 +483,27 @@ export interface components {
             enrolled: number;
             /** Industry */
             industry: string;
+            /** Linesheld */
+            linesHeld: string;
             /** Name */
             name: string;
+            /**
+             * Participation
+             * @description Enrolled over eligible. Null where the workbook records none — never 0.0, which would read as 'nobody enrolled'.
+             */
+            participation?: number | null;
+            /**
+             * Plannedcalls
+             * @description Calls the workbook's design plans for this account at full corpus. A plan, never a count: the corpus is a sample of it.
+             */
+            plannedCalls: number;
             /** Region */
             region: string;
+            /**
+             * Renewalinmonths
+             * @description Whole months to the renewal, 0 meaning this month. Null where the workbook's month could not be parsed — never a guessed countdown.
+             */
+            renewalInMonths?: number | null;
             /** Renewalmonth */
             renewalMonth: string;
         };
@@ -537,6 +566,11 @@ export interface components {
         AccountResponse: {
             /** Asof */
             asOf: string;
+            /**
+             * Callsinperiod
+             * @description This account's calls in the selected period. `profile.calls` counts the risk window instead, so the two differ when the period is wider — sent so a screen can say which calls its counts leave out.
+             */
+            callsInPeriod: number;
             contactRate: components["schemas"]["WindowedFigureResponse"];
             drift: components["schemas"]["DriftResponse"];
             facts: components["schemas"]["AccountFactsResponse"];
@@ -548,6 +582,11 @@ export interface components {
             /** Riskwindowweeks */
             riskWindowWeeks: number;
             scope: components["schemas"]["ScopeResponse"];
+            /**
+             * Stakes
+             * @description Workbook facts that raise the stakes, most consequential first. Empty is a real answer: nothing structural stands out.
+             */
+            stakes: components["schemas"]["StakeResponse"][];
         };
         /** AccountRiskResponse */
         AccountRiskResponse: {
@@ -884,6 +923,18 @@ export interface components {
             brokerAgency?: string | null;
             /** Brokerref */
             brokerRef?: string | null;
+            /**
+             * Callerkind
+             * @description 'member' or 'employer contact'. They carry different authority.
+             */
+            callerKind?: string | null;
+            /**
+             * Callername
+             * @description Who rang, from the Member and Contact sheets. Null where the reference matches nobody — a gap in reference data, not an anonymous caller, which is why the reference is sent as well.
+             */
+            callerName?: string | null;
+            /** Callerref */
+            callerRef?: string | null;
             /** Category */
             category?: string | null;
             /** Complaint */
@@ -2145,6 +2196,25 @@ export interface components {
          * @enum {string}
          */
         Sort: "date" | "employer" | "agent" | "category" | "outcome" | "quality";
+        /**
+         * StakeResponse
+         * @description One workbook fact that raises the stakes on everything else.
+         *
+         *     Reference, not observation. Nothing here counts a call: these are true
+         *     whether or not anybody rang, which is why the screen puts them beneath
+         *     the indicators rather than among them.
+         */
+        StakeResponse: {
+            /** Code */
+            code: string;
+            /**
+             * Detail
+             * @description The figures behind the note, already worded, including the rule reference where one sets the threshold.
+             */
+            detail: string;
+            /** Label */
+            label: string;
+        };
         /** StartRunRequest */
         StartRunRequest: {
             /** Model */

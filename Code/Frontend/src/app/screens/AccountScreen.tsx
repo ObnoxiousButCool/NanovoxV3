@@ -38,10 +38,65 @@ import {
   Note,
   Panel,
   RiskPill,
+  Tooltip,
 } from '@/shared/design/primitives'
 
 const per1000 = (value: number) => value.toFixed(1)
 const percent = (value: number) => `${String(Math.round(value * 100))}%`
+
+function titleCase(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase().replace(/_/g, ' ')
+}
+
+/**
+ * How long until the renewal, beside the month it falls in.
+ *
+ * `null` where the workbook's month could not be parsed. Rendered as
+ * nothing rather than as a dash: the month above is still true, and a dash
+ * here would suggest the renewal itself was unknown.
+ */
+function RenewalCountdown({ months }: { months: number | null | undefined }) {
+  if (months === null || months === undefined) return null
+  return (
+    <small className="nv-figsub">
+      {months === 0 ? 'this month' : `in ${String(months)} month${months === 1 ? '' : 's'}`}
+    </small>
+  )
+}
+
+/**
+ * "Account facts that raise the stakes" — `employer.html`'s structural notes.
+ *
+ * Reference, never observation: nothing here counts a call, and every note
+ * is true whether or not anybody rang. That is why they sit beneath the
+ * indicators rather than among them, and why the panel says so — a reader
+ * who took "participation is below the threshold" for a recent event would
+ * respond to it as if something had just happened.
+ *
+ * An empty list renders nothing at all. Unlike an indicator that did not
+ * fire, a structural note that does not apply is not a finding: an account
+ * whose participation meets rule P-18 has not told us anything by doing so.
+ */
+function AccountStakes({ stakes }: { stakes: AccountDetail['stakes'] }) {
+  if (stakes.length === 0) return null
+
+  return (
+    <>
+      <h3 className="nv-subhead">Account facts that raise the stakes</h3>
+      <p className="nv-sub">
+        From the workbook, not from these calls. True whether or not anyone rang.
+      </p>
+      <ul className="nv-stakes">
+        {stakes.map((stake) => (
+          <li key={stake.code}>
+            <b>{stake.label}</b>
+            <span>{stake.detail}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
 
 
 /**
@@ -113,11 +168,49 @@ export function AccountBody({
           title="The account"
           sub={`${facts.industry} · ${facts.region}`}
           chip={<EpistemicChip kind="reference" />}
+          info={
+            <Tooltip>
+              <p>
+                <b>More account facts</b>
+              </p>
+              <p>
+                COBRA: {facts.cobraRegime === '' ? 'not recorded' : facts.cobraRegime}
+                <br />
+                Dental:{' '}
+                {facts.dentalSponsorship === 'ER'
+                  ? 'employer-sponsored'
+                  : facts.dentalSponsorship === ''
+                    ? 'not recorded'
+                    : 'voluntary'}
+                <br />
+                Admin fee: ${facts.annualFee.toLocaleString()} a year
+                <br />
+                Planned calls at full corpus: {String(facts.plannedCalls)}
+              </p>
+              <p>
+                Planned calls are the workbook&rsquo;s design for this account. The corpus
+                is a sample of them, so the calls below will be fewer, and the two are
+                never the same number.
+              </p>
+            </Tooltip>
+          }
         >
           <div className="nv-figrow">
             <div>
               <span className="nv-figlabel">Enrolled lives</span>
-              <b>{facts.enrolled.toLocaleString()}</b>
+              <b>
+                {facts.enrolled.toLocaleString()}
+                {facts.eligible > 0 ? ` of ${facts.eligible.toLocaleString()}` : ''}
+              </b>
+            </div>
+            <div>
+              <span className="nv-figlabel">Participation</span>
+              {/* Null is a gap, not nought enrolled. */}
+              <b>
+                {facts.participation === null || facts.participation === undefined
+                  ? 'Not recorded'
+                  : percent(facts.participation)}
+              </b>
             </div>
             <div>
               <span className="nv-figlabel">Annual premium</span>
@@ -135,8 +228,16 @@ export function AccountBody({
               <b>${facts.annualFee.toLocaleString()} a year</b>
             </div>
             <div>
+              <span className="nv-figlabel">Lines held</span>
+              <b>{facts.linesHeld === '' ? 'Not recorded' : titleCase(facts.linesHeld)}</b>
+            </div>
+            <div>
               <span className="nv-figlabel">Renewal</span>
+              {/* The countdown is what makes this actionable; the month
+                  alone leaves the reader to work it out. Null where the
+                  workbook's month could not be parsed — never a guess. */}
               <b>{facts.renewalMonth}</b>
+              <RenewalCountdown months={facts.renewalInMonths} />
             </div>
             <div>
               <span className="nv-figlabel">Broker of record</span>
@@ -147,6 +248,17 @@ export function AccountBody({
             From the workbook, not from a call. These are what the account is, not what
             happened on it.
           </Note>
+          {/* Filters slice, never hide. The tiles count the risk window and
+              the calls panel lists the selected period; where those differ
+              the page says so rather than appearing to contradict itself. */}
+          {data.callsInPeriod > data.profile.calls ? (
+            <Note>
+              {String(data.callsInPeriod - data.profile.calls)} of this account&rsquo;s{' '}
+              {String(data.callsInPeriod)} calls in the selected period fall outside the{' '}
+              {String(data.riskWindowWeeks)}-week window the counts above use. They are in
+              the calls panel below.
+            </Note>
+          ) : null}
         </Panel>
       </div>
 
@@ -292,6 +404,7 @@ export function AccountBody({
               ))}
             </ul>
           )}
+          <AccountStakes stakes={data.stakes} />
         </Panel>
       </div>
 

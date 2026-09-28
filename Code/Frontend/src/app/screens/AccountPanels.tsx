@@ -92,6 +92,7 @@ export function AccountCalls({
             <thead>
               <tr>
                 <th scope="col">Call</th>
+                <th scope="col">Caller</th>
                 <th scope="col">Topic</th>
                 <th scope="col">Outcome</th>
                 <th scope="col">Signals</th>
@@ -133,6 +134,13 @@ function CallLine({ call, onOpen }: { call: CallRow; onOpen: () => void }) {
           {call.reference}
         </button>
         <small>{call.occurredOn}</small>
+      </td>
+      <td>
+        {/* The reference where reference data names nobody: a gap in the
+            Member and Contact sheets, not an anonymous caller, and the
+            reference is still how the reader looks them up. */}
+        {call.callerName ?? call.callerRef ?? 'not recorded'}
+        <small>{call.callerKind ?? 'unknown caller type'}</small>
       </td>
       <td>
         {call.category ?? 'no category'}

@@ -50,7 +50,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from datetime import date
 
-    from domain.aggregation.call_tags import BrokerFacts, CallContext, EmployerFacts
+    from domain.aggregation.call_tags import BrokerFacts, CallContext, CallerFacts, EmployerFacts
     from domain.aggregation.rules import RuleFacts
     from domain.value_objects.call_source import CallSource
 
@@ -88,6 +88,11 @@ class CorpusSlice:
     #: move with call volume.
     employers: tuple[EmployerFacts, ...] = ()
     brokers: tuple[BrokerFacts, ...] = ()
+    #: Members and employer contacts, so a table row can name who rang.
+    #: Every one in reference data, not only those who called — the same
+    #: reason the employers are, and it keeps the join a lookup rather than
+    #: a second query per page.
+    callers: tuple[CallerFacts, ...] = ()
     #: Every rule in the Rules sheets, not only those someone got wrong. A
     #: rule with no failures against it is the normal case and the rewrite
     #: list is built by ranking over all of them; restricting the read to

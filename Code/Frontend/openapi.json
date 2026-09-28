@@ -25,6 +25,20 @@
             "title": "Brokerref",
             "type": "string"
           },
+          "cobraRegime": {
+            "title": "Cobraregime",
+            "type": "string"
+          },
+          "dentalSponsorship": {
+            "description": "ER for employer-sponsored, VOL for voluntary. Rule P-18 reaches only the first.",
+            "title": "Dentalsponsorship",
+            "type": "string"
+          },
+          "eligible": {
+            "description": "Lives the plan covers. `enrolled` of these is the participation.",
+            "title": "Eligible",
+            "type": "integer"
+          },
           "employerRef": {
             "title": "Employerref",
             "type": "string"
@@ -38,13 +52,46 @@
             "title": "Industry",
             "type": "string"
           },
+          "linesHeld": {
+            "title": "Linesheld",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
           },
+          "participation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Enrolled over eligible. Null where the workbook records none \u2014 never 0.0, which would read as 'nobody enrolled'.",
+            "title": "Participation"
+          },
+          "plannedCalls": {
+            "description": "Calls the workbook's design plans for this account at full corpus. A plan, never a count: the corpus is a sample of it.",
+            "title": "Plannedcalls",
+            "type": "integer"
+          },
           "region": {
             "title": "Region",
             "type": "string"
+          },
+          "renewalInMonths": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whole months to the renewal, 0 meaning this month. Null where the workbook's month could not be parsed \u2014 never a guessed countdown.",
+            "title": "Renewalinmonths"
           },
           "renewalMonth": {
             "title": "Renewalmonth",
@@ -59,7 +106,12 @@
           "enrolled",
           "renewalMonth",
           "brokerRef",
-          "annualFee"
+          "annualFee",
+          "eligible",
+          "linesHeld",
+          "cobraRegime",
+          "dentalSponsorship",
+          "plannedCalls"
         ],
         "title": "AccountFactsResponse",
         "type": "object"
@@ -123,6 +175,11 @@
             "title": "Asof",
             "type": "string"
           },
+          "callsInPeriod": {
+            "description": "This account's calls in the selected period. `profile.calls` counts the risk window instead, so the two differ when the period is wider \u2014 sent so a screen can say which calls its counts leave out.",
+            "title": "Callsinperiod",
+            "type": "integer"
+          },
           "contactRate": {
             "$ref": "#/components/schemas/WindowedFigureResponse"
           },
@@ -151,6 +208,14 @@
           },
           "scope": {
             "$ref": "#/components/schemas/ScopeResponse"
+          },
+          "stakes": {
+            "description": "Workbook facts that raise the stakes, most consequential first. Empty is a real answer: nothing structural stands out.",
+            "items": {
+              "$ref": "#/components/schemas/StakeResponse"
+            },
+            "title": "Stakes",
+            "type": "array"
           }
         },
         "required": [
@@ -163,7 +228,9 @@
           "risk",
           "riskWindowWeeks",
           "drift",
-          "profile"
+          "profile",
+          "stakes",
+          "callsInPeriod"
         ],
         "title": "AccountResponse",
         "type": "object"
@@ -1041,6 +1108,41 @@
               }
             ],
             "title": "Brokerref"
+          },
+          "callerKind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "'member' or 'employer contact'. They carry different authority.",
+            "title": "Callerkind"
+          },
+          "callerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who rang, from the Member and Contact sheets. Null where the reference matches nobody \u2014 a gap in reference data, not an anonymous caller, which is why the reference is sent as well.",
+            "title": "Callername"
+          },
+          "callerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Callerref"
           },
           "category": {
             "anyOf": [
@@ -3752,6 +3854,31 @@
         ],
         "title": "Sort",
         "type": "string"
+      },
+      "StakeResponse": {
+        "description": "One workbook fact that raises the stakes on everything else.\n\nReference, not observation. Nothing here counts a call: these are true\nwhether or not anybody rang, which is why the screen puts them beneath\nthe indicators rather than among them.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "description": "The figures behind the note, already worded, including the rule reference where one sets the threshold.",
+            "title": "Detail",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "detail"
+        ],
+        "title": "StakeResponse",
+        "type": "object"
       },
       "StartRunRequest": {
         "properties": {

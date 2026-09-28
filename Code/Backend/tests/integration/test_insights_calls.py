@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from domain.value_objects.call_source import CallSource
@@ -23,6 +24,8 @@ from infrastructure.persistence.tables import (
     CallExtractionRow,
     CallRow,
     CallTurnRow,
+    EmployerRow,
+    MemberRow,
 )
 
 # `_employer` is private to that module, but importing it beats restating the
@@ -421,3 +424,54 @@ async def test_the_repeat_filter_shows_in_the_applied_row(
 
     fields = {entry["field"] for entry in body["scope"]["appliedFilters"]}
     assert "repeat" in fields
+
+
+@pytest.mark.asyncio
+async def test_a_row_names_who_rang(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """The prototype's Caller column, joined from the Member sheet.
+
+    It is a row-level join on purpose. `CallTags` carries the reference and
+    not the name, so no aggregation can reach a caller's identity; the
+    workbench joins it the same way it joins the employer name.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 1})
+    async with session_factory() as session, session.begin():
+        employer = (
+            await session.execute(select(EmployerRow).where(EmployerRow.reference == "EMP-01"))
+        ).scalar_one()
+        session.add(
+            MemberRow(
+                reference="MEM-1",
+                name="Jerome Arellano",
+                age=41,
+                employer_id=employer.id,
+                primary_line="medical",
+                planned_calls=2,
+                repeat_caller=False,
+            )
+        )
+
+    (row,) = client.get("/api/v1/insights/calls", params={"asOf": AS_OF}).json()["rows"]
+
+    assert row["callerName"] == "Jerome Arellano"
+    assert row["callerKind"] == "member"
+
+
+@pytest.mark.asyncio
+async def test_a_caller_reference_nobody_recognises_keeps_the_reference(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """A gap in reference data, not an anonymous caller.
+
+    Without the reference the row would say only "not recorded", and a
+    reader could not tell a missing Member sheet row from a call that
+    genuinely had nobody on it.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 1})
+
+    (row,) = client.get("/api/v1/insights/calls", params={"asOf": AS_OF}).json()["rows"]
+
+    assert row["callerName"] is None
+    assert row["callerRef"] == "MEM-1"
