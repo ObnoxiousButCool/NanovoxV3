@@ -15,6 +15,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { DesignGallery } from '@/app/DesignGallery'
+import { ActionsScreen } from '@/app/screens/ActionsScreen'
 import { ExecScreen } from '@/app/screens/ExecScreen'
 import { AccountScreen } from '@/app/screens/AccountScreen'
 import { CallsScreen } from '@/app/screens/CallsScreen'
@@ -25,7 +26,6 @@ import { StatusPage } from '@/app/StatusPage'
 import { Shell } from '@/shared/design/Shell'
 
 const PHASE_2 = 'Phase 2'
-const PHASE_4 = 'Phase 4'
 
 export function App() {
   return (
@@ -39,7 +39,7 @@ export function App() {
         <Route path="/hierarchy" element={<HierarchyScreen />} />
         <Route path="/agents" element={<ScreenPlaceholder phase={PHASE_2} />} />
         <Route path="/calls" element={<CallsScreen />} />
-        <Route path="/actions" element={<ScreenPlaceholder phase={PHASE_4} />} />
+        <Route path="/actions" element={<ActionsScreen />} />
         <Route path="/design" element={<DesignGallery />} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="*" element={<Navigate to="/exec" replace />} />

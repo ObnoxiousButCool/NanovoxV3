@@ -116,3 +116,38 @@ async function request<T>(path: string, init: RequestInit, options: RequestOptio
 export async function getJson<T>(path: string, options: RequestOptions = {}): Promise<T> {
   return request<T>(path, { method: 'GET', headers: { Accept: 'application/json' } }, options)
 }
+
+const JSON_HEADERS = { Accept: 'application/json', 'Content-Type': 'application/json' }
+
+/**
+ * Issue a POST with a JSON body and parse the JSON response.
+ *
+ * The action board's one create path. Errors surface exactly as `getJson`'s
+ * do — an `ApiError` with the server's own code and correlation ID — so a
+ * failed create reads the same way a failed read does, rather than needing
+ * its own handling at every call site.
+ */
+export async function postJson<T>(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {},
+): Promise<T> {
+  return request<T>(
+    path,
+    { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(body) },
+    options,
+  )
+}
+
+/** Issue a PATCH with a JSON body and parse the JSON response. */
+export async function patchJson<T>(
+  path: string,
+  body: unknown,
+  options: RequestOptions = {},
+): Promise<T> {
+  return request<T>(
+    path,
+    { method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify(body) },
+    options,
+  )
+}

@@ -81,6 +81,21 @@ export function useAccount(employerRef: string, search: string) {
   })
 }
 
+export type ActionsFindings = components['schemas']['ActionsResponse']
+
+/**
+ * Findings to act on — routed by team, with compliance exposure.
+ *
+ * **Not** the action board (`@/shared/api/actionBoard`). This is a reading
+ * of the calls, with no status; the board is the persisted record of what
+ * somebody is doing about it. Keeping the two on separate hooks matches the
+ * separation the backend insists on: merging them is how a finding acquires
+ * a fake status.
+ */
+export function useActionsFindings(search: string) {
+  return useScreen<ActionsFindings>('actionsFindings', '/insights/actions', search)
+}
+
 export type CallsPage = components['schemas']['CallsPageResponse']
 export type CallRow = components['schemas']['CallRowResponse']
 export type CallEvidenceData = components['schemas']['CallEvidenceResponse']
