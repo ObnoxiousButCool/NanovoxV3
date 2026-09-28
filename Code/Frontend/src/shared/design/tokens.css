@@ -110,6 +110,37 @@
  * a full-bleed panel and obvious the moment one is not — and it was: the
  * design gallery showed it straight away.
  */
+/* --- the generated-insight palette --------------------------------------
+ *
+ * `v2.css` keeps these apart from the brand set on purpose: a sentence a
+ * model wrote is not a figure the pipeline computed, and the violet is the
+ * only place in the application where that distinction is carried by colour
+ * rather than by words. The words still carry it too — the badge says "AI"
+ * and the chip says whether the sentence is an inference or a
+ * recommendation — because a reader who cannot see the violet must still be
+ * able to tell the two apart.
+ */
+:root {
+  --ai-a: #184f95;
+  --ai-b: #7c4ddb;
+  --ai-c: #1baf7a;
+  --ai-soft: #f1ecfd;
+}
+
+:root[data-theme='dark'] {
+  --ai-a: #3987e5;
+  --ai-b: #9d7bf0;
+  --ai-soft: #221b33;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ai-a: #3987e5;
+    --ai-b: #9d7bf0;
+    --ai-soft: #221b33;
+  }
+}
+
 html,
 body {
   background: var(--ground);

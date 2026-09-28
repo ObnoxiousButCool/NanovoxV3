@@ -1,11 +1,17 @@
 /* The AI surface. Visually quieter than the figures beside it, on purpose:
    it is the one panel on the page that did not measure anything. */
 
+/* `.aistrip`: the violet wash and the tinted edge that set a written
+   surface apart from the computed ones around it. */
 .nv-ai-strip {
-  border: 1px solid var(--rule);
-  border-radius: var(--r);
-  background: var(--surface-2);
-  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--ai-b) 28%, var(--rule));
+  border-radius: var(--r-lg);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--ai-soft) 70%, var(--surface)),
+    var(--surface) 60%
+  );
+  padding: 14px 16px 16px;
   margin-bottom: 16px;
 }
 
@@ -26,14 +32,89 @@
   margin: 0;
 }
 
+/* `.aibadge`. White on the gradient, so it reads as a label rather than as
+   one more chip in the epistemic set. */
 .nv-ai-mark {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  padding: 1px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font:
+    600 12px/1 var(--display);
+  letter-spacing: 0.03em;
+  padding: 6px 10px;
   border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(120deg, var(--ai-a), var(--ai-b));
+}
+
+.nv-ai-mark svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* `.aicards`: as many across as fit, each at least 260px wide. */
+.nv-ai-strip ul {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+/* `.aicard`. The card sits on the surface rather than in the wash, so the
+   sentence keeps the same contrast as text anywhere else on the page. */
+.nv-ai-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface);
   border: 1px solid var(--rule);
-  color: var(--ink-2);
+  border-radius: var(--r);
+  padding: 12px 14px 10px 16px;
+}
+
+.nv-ai-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--ink-3);
+}
+
+/* The three reading orders, as `.lvl-high` / `.lvl-med` / `.lvl-info` are.
+   Colour is the last signal here, not the first: the order is also spelled
+   out in the card's own footer. */
+.nv-ai-card.nv-ai-lvl-read_first::before {
+  background: var(--critical);
+}
+
+.nv-ai-card.nv-ai-lvl-worth_reading::before {
+  background: var(--serious);
+}
+
+.nv-ai-card.nv-ai-lvl-background::before {
+  background: var(--seq-2);
+}
+
+.nv-ai-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.nv-ai-card footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  font-size: 12.5px;
+}
+
+.nv-ai-card footer .nv-ai-order {
+  color: var(--ink-3);
 }
 
 .nv-ai-strip ul,

@@ -92,11 +92,11 @@ describe('the strip', () => {
         <InsightStrip data={GENERATED} />
       </MemoryRouter>,
     )
-    expect(screen.getByText('AI')).toBeInTheDocument()
+    expect(screen.getByText('AI insights')).toBeInTheDocument()
     unmount()
 
     show(<InsightStrip data={UNAVAILABLE} />)
-    expect(screen.getByText('AI')).toBeInTheDocument()
+    expect(screen.getByText('AI insights')).toBeInTheDocument()
   })
 
   it('renders nothing at all before the query resolves', () => {
@@ -199,7 +199,7 @@ describe('the four lenses', () => {
   it('still carries the badge and the promise when the model is down', () => {
     show(<InsightLenses data={UNAVAILABLE} />)
 
-    expect(screen.getByText('AI')).toBeInTheDocument()
+    expect(screen.getByText('AI insights')).toBeInTheDocument()
     expect(screen.getByText(/No model is configured/)).toBeInTheDocument()
     // The grid does not vanish with the sentences.
     expect(screen.getByRole('heading', { name: 'Payer & carrier' })).toBeInTheDocument()
@@ -217,7 +217,7 @@ describe('a strip that must be asked for', () => {
   it('carries the badge and the promise before anything is generated', () => {
     show(<InsightStrip data={undefined} onRequest={() => undefined} />)
 
-    expect(screen.getByText('AI')).toBeInTheDocument()
+    expect(screen.getByText('AI insights')).toBeInTheDocument()
   })
 
   it('says it is reading while the request is in flight', () => {

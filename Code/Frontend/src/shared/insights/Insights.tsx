@@ -41,10 +41,27 @@ export const AI_PROMISE =
   'Written from the figures on this page. It never calculates, forecasts or adds a ' +
   'number of its own. If an insight and a figure disagree, the figure is right.'
 
-function AiBadge() {
+/**
+ * `NV.aiBadge`: the spark, and the words, on the violet gradient.
+ *
+ * The gradient is the only colour in the application that means "a model
+ * wrote this". It is never the only signal — the label says AI and the
+ * tooltip says what that does and does not permit — because the whole set
+ * has to survive being read in greyscale.
+ */
+function AiBadge({ label = 'AI insights' }: { label?: string }) {
   return (
     <span className="nv-ai">
-      <span className="nv-ai-mark">AI</span>
+      <span className="nv-ai-mark">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+          <path d="M8 0l1.7 5.1L15 7 9.7 8.9 8 14l-1.7-5.1L1 7l5.3-1.9z" />
+          <path
+            d="M13.5 10.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z"
+            opacity=".7"
+          />
+        </svg>
+        {label}
+      </span>
       <Tooltip align="right">{AI_PROMISE}</Tooltip>
     </span>
   )
@@ -163,9 +180,17 @@ export function InsightStrip({
       ) : (
         <ul>
           {items.map((insight) => (
-            <li key={insight.key}>
-              <KindChip insight={insight} />
+            <li
+              key={insight.key}
+              // `.aicard.lvl-*`: the edge that says how hard this one is
+              // asking to be read. The label is in the footer either way.
+              className={`nv-ai-card nv-ai-lvl-${insight.severity.code.toLowerCase()}`}
+            >
               <InsightBody insight={insight} expanded={false} />
+              <footer>
+                <KindChip insight={insight} />
+                <span className="nv-ai-order">{insight.severity.label}</span>
+              </footer>
             </li>
           ))}
         </ul>
