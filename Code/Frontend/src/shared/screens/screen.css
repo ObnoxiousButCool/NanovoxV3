@@ -8,7 +8,7 @@
 
 .nv-pagehead h1 {
   font:
-    600 26px/1.15 var(--display);
+    600 26px/1.5 var(--display);
   letter-spacing: -0.02em;
   color: var(--ink);
   margin: 0;
@@ -90,7 +90,10 @@
 }
 
 /* A row of figures inside a panel — the KPI strip at the top of /exec and
- * the account facts on /accounts/:ref. */
+ * the account facts on /accounts/:ref. `.facts` in `v2.css`: the label is
+ * plain 13px sentence case, not an uppercase tracked micro-label. The
+ * uppercase treatment is reserved for table headers and chips, and using it
+ * here made the account facts read as a form rather than as prose. */
 .nv-figrow {
   display: flex;
   flex-wrap: wrap;
@@ -101,13 +104,19 @@
   min-width: 140px;
 }
 
+/* The value under its label: `.facts b`, block, 15px. */
+.nv-figrow b {
+  display: block;
+  font:
+    600 15px/1.3 var(--body);
+  color: var(--ink);
+  margin-top: 2px;
+}
+
 .nv-figlabel {
   display: block;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 13px;
   color: var(--ink-3);
-  margin-bottom: 4px;
 }
 
 /* The count beside a flag. D12: a number, never a level, so it is styled as
@@ -177,7 +186,7 @@
 .nv-risktable td {
   text-align: left;
   vertical-align: top;
-  padding: 10px 12px 10px 0;
+  padding: 11px 12px 11px 0;
   border-top: 1px solid var(--rule);
 }
 
@@ -261,11 +270,14 @@ a.nv-fire:hover {
 
 /* --- Conditions and indicator families ------------------------------- */
 
+/* `h3.sec` in `v2.css`: the display face at 16px, not the body face at 14.
+   It is the heading inside a panel, and at 14px body it read as bold text
+   rather than as a break in the panel. */
 .nv-subhead {
   font:
-    600 14px/1.3 var(--body);
+    600 16px/1.3 var(--display);
   color: var(--ink);
-  margin: 18px 0 6px;
+  margin: 24px 0 4px;
 }
 
 .nv-conditions {
@@ -303,6 +315,16 @@ a.nv-fire:hover {
 .nv-unavailable {
   color: var(--ink-3);
   font-style: italic;
+}
+
+/* Why a family cannot be computed: a sentence, so it wraps on its own line
+   under the label rather than sitting in the count column, which is nowrap
+   and would push the panel wider than the page. */
+.nv-indreason {
+  grid-column: 2 / -1;
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.45;
 }
 
 /* --- The book: region, broker, employer ------------------------------ */

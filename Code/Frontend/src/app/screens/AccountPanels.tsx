@@ -297,12 +297,13 @@ export function AccountTiles({ profile }: { profile: AccountProfile }) {
           label="Average call quality"
           // Never a number here. The reason is the finding.
           value={<Withheld reason={{ code: 'per_agent_only', label: 'Not published' }} />}
+          // Plain text, not `nv-indcount`: that class is nowrap, which is
+          // right for a bare count and wrong for a sentence — it pushed the
+          // tile past the edge of the page.
           meta={
-            <span className="nv-indcount">
-              {profile.scoredCalls === 0
-                ? 'No call here carries a score'
-                : `${String(profile.scoredCalls)} of ${String(profile.calls)} calls scored — each one below`}
-            </span>
+            profile.scoredCalls === 0
+              ? 'No call here carries a score'
+              : `${String(profile.scoredCalls)} of ${String(profile.calls)} calls scored — each one below`
           }
           info={
             <Tooltip>

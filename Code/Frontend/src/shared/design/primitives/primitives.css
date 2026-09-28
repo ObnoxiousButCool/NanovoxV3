@@ -21,8 +21,9 @@
 }
 
 .nv-panel h2 {
+  /* 1.5, as the prototype's `.panel h2` inherits from the body. */
   font:
-    600 18px/1.25 var(--display);
+    600 18px/1.5 var(--display);
   letter-spacing: -0.01em;
   display: flex;
   align-items: center;

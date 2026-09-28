@@ -385,16 +385,23 @@ export function AccountBody({
                     {!observation.available ? '—' : observation.observed ? '●' : '○'}
                   </span>
                   <span>{observation.label}</span>
-                  <span className="nv-indcount">
-                    {/* Unavailable is never zero. A family whose field v9
-                        does not carry would read as "no high-effort calls
-                        here", which is a false statement about the account. */}
-                    {!observation.available
-                      ? observation.unavailableBecause
-                      : observation.observed
+                  {/* Unavailable is never zero. A family whose field v9
+                      does not carry would read as "no high-effort calls
+                      here", which is a false statement about the account.
+
+                      The reason is a sentence, not a count, so it does not
+                      go in `nv-indcount` — that is nowrap, which is right
+                      for "4 of 18 calls" and made this one sentence 1,458px
+                      wide and put a horizontal scrollbar on the page. */}
+                  {!observation.available ? (
+                    <span className="nv-indreason">{observation.unavailableBecause}</span>
+                  ) : (
+                    <span className="nv-indcount">
+                      {observation.observed
                         ? `${String(observation.hits)} of ${String(observation.employerCalls)} calls`
                         : 'not observed'}
-                  </span>
+                    </span>
+                  )}
                   <IndicatorEvidence
                     code={observation.code}
                     callIds={observation.callIds ?? []}

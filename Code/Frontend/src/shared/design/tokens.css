@@ -116,7 +116,14 @@ body {
   color: var(--ink);
 }
 
+/* The prototype's base, and the reason its pages breathe where ours did
+   not: `Prototype/app.css` sets `font: 400 14px/1.5`, and its headings set
+   only family and weight, so every heading inherits that 1.5. Ours set
+   `font-family` alone and inherited the browser's 16px/normal, then fought
+   it back with a tighter line-height on each heading — which is why our
+   type came out the same size and noticeably more cramped. */
 body {
-  font-family: var(--body);
+  font:
+    400 14px/1.5 var(--body);
   -webkit-font-smoothing: antialiased;
 }
