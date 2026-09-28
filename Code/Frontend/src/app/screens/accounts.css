@@ -83,9 +83,10 @@
   font-size: 12px;
 }
 
+/* `.picker .ph` is set in the display face, not the body face. */
 .nv-picker-head {
-  font-weight: 600;
-  font-size: 12px;
+  font:
+    600 12px/1 var(--display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink-3);

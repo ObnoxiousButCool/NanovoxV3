@@ -123,7 +123,10 @@ body {
    it back with a tighter line-height on each heading — which is why our
    type came out the same size and noticeably more cramped. */
 body {
+  /* 15px, not 14: `app.css` sets 14 and `v2.css` line 9 overrides it with
+     `body { font-size: 15px }`. I had read the first file and not the
+     second, so everything inheriting the base came out a pixel small. */
   font:
-    400 14px/1.5 var(--body);
+    400 15px/1.5 var(--body);
   -webkit-font-smoothing: antialiased;
 }

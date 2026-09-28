@@ -1,9 +1,23 @@
 /* The frame shared by the four read screens: page head, scope line, and the
  * grid the panels sit on. Panel styling itself lives with the primitives. */
 
+/* The page gutter. `v2.css` puts 28px on both `.pagehead` and `.wrap`;
+   ours had none at all, so every screen sat flush against the rail while
+   the prototype's stood 28px clear of it. */
 .nv-screen {
   font-family: var(--body);
   color: var(--ink);
+  padding: 0 28px;
+}
+
+@media (max-width: 900px) {
+  .nv-screen {
+    padding: 0 16px;
+  }
+}
+
+.nv-pagehead {
+  padding-top: 18px;
 }
 
 .nv-pagehead h1 {
@@ -14,10 +28,14 @@
   margin: 0;
 }
 
+/* `.pagehead .q`: 14.5px on the second ink, and deliberately unconstrained
+   — the prototype sets `max-width: none` here, where 68ch was breaking the
+   lede a good deal earlier than the design does. */
 .nv-pagehead .nv-lede {
-  color: var(--ink-3);
-  margin: 6px 0 14px;
-  max-width: 68ch;
+  color: var(--ink-2);
+  font-size: 14.5px;
+  margin: 8px 0 14px;
+  max-width: none;
   line-height: 1.55;
 }
 
@@ -47,12 +65,24 @@
   overflow-wrap: anywhere;
 }
 
-/* Twelve columns, like the prototype's `c12` / `c6` / `c4` panel widths. */
+/* Twelve columns, like the prototype's `c12` / `c6` / `c4` panel widths.
+   The gap is 20px: both `.wrap` and `.detail` use it, and ours was 16.
+
+   No blanket top margin. This class is the page's own grid on six screens
+   and the account detail beside the picker on the seventh, and `.detail`
+   in the prototype has no margin at all — a blanket one pushed the account
+   detail 16px below the picker it is supposed to line up with. The screens
+   that do want the separation get it as a direct child, below. */
 .nv-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 16px;
+  gap: 20px;
+}
+
+/* `.wrap`'s 22px of top padding, applied to whatever a screen puts first. */
+.nv-screen > .nv-grid,
+.nv-screen > .nv-acctsplit {
+  margin-top: 22px;
 }
 
 .nv-c12 {
