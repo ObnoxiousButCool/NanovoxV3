@@ -171,6 +171,14 @@
     width: auto;
     flex: none;
     height: auto;
+    /* The desktop rule sets `align-self: flex-start` so the sidebar does
+       not stretch to the page's height. In a column shell that makes the
+       rail size to its own content instead of the viewport, so the nav
+       strip was 1,454px wide inside a 411px screen and dragged the whole
+       document sideways. `min-width: 0` is what then lets it scroll
+       internally rather than push. */
+    align-self: stretch;
+    min-width: 0;
     position: static;
     border-right: 0;
     border-bottom: 1px solid var(--rule);

@@ -141,6 +141,29 @@
   }
 }
 
+/* Form controls. `app.css` styles these globally; we had styled a few by
+   hand and left the rest bare, which is why the account search box came out
+   as an unstyled browser default sitting inside a designed panel. */
+select,
+input[type='date'],
+input[type='search'],
+input[type='text'] {
+  font:
+    400 13px var(--body);
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--r);
+  padding: 6px 8px;
+  min-width: 120px;
+}
+
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
 html,
 body {
   background: var(--ground);

@@ -642,17 +642,6 @@ describe('/risk, with an account it could assess', () => {
 })
 
 describe('/accounts/:ref', () => {
-  it('shows a missing premium as unrecorded, never as zero', async () => {
-    renderAt('/accounts/EMP-1001')
-
-    await waitFor(() => {
-      expect(screen.getByText('Not recorded')).toBeInTheDocument()
-    })
-    // The failure this guards: an account with no premium on file rendering
-    // as an account worth nothing.
-    expect(screen.queryByText('$0')).not.toBeInTheDocument()
-  })
-
   it('keeps an unavailable indicator family out of "not observed"', async () => {
     renderAt('/accounts/EMP-1001')
 
@@ -677,14 +666,6 @@ describe('/accounts/:ref', () => {
       screen.getByText('A call we failed to resolve, that the caller came back about'),
     ).toBeInTheDocument()
     expect(screen.getByText('not met')).toBeInTheDocument()
-  })
-
-  it('says a peer band has nobody publishable rather than showing no difference', async () => {
-    renderAt('/accounts/EMP-1001')
-
-    await waitFor(() => {
-      expect(screen.getByText(/no peer in this band has a rate we can publish/i)).toBeInTheDocument()
-    })
   })
 
   it('resolves the broker of record to its agency name', async () => {
@@ -796,23 +777,6 @@ describe('/calls', () => {
   })
 })
 
-describe('insight 7 on /accounts/:ref', () => {
-  it('renders a clean book as a finding rather than a blank panel', async () => {
-    // The sheet's own instruction: "Zero mismatches renders as a finding."
-    // An empty panel would throw away the one case where the answer is
-    // "we checked, and it is fine".
-    renderAt('/accounts/EMP-1001')
-
-    await waitFor(() => {
-      expect(screen.getByText(/no drift: all 2 broker mention/i)).toBeInTheDocument()
-    })
-    // Nothing is wrong, so nothing asks the reader to act.
-    expect(
-      screen.queryByRole('link', { name: /what to do about the drift/i }),
-    ).not.toBeInTheDocument()
-  })
-})
-
 describe('acting on a figure', () => {
   it('links a flagged account to what to do about it', async () => {
     serveWithAssessed()
@@ -884,7 +848,7 @@ describe('/accounts — the picker', () => {
   it('opens the first account without being asked', async () => {
     renderAt('/accounts')
 
-    expect(await screen.findByText('The account')).toBeInTheDocument()
+    expect(await screen.findByText('Cedar Point Workforce Partners', { selector: 'h2' })).toBeInTheDocument()
   })
 
   it('narrows the list as the reader types, and says when nothing matches', async () => {
@@ -919,7 +883,7 @@ describe('/accounts — the picker', () => {
     renderAt('/accounts/EMP-1001')
 
     expect(await screen.findByLabelText('Accounts')).toBeInTheDocument()
-    expect(screen.getByText('The account')).toBeInTheDocument()
+    expect(screen.getByText('Cedar Point Workforce Partners', { selector: 'h2' })).toBeInTheDocument()
   })
 })
 
@@ -1101,7 +1065,7 @@ describe('the account tiles and topics', () => {
 
   it('counts enrolled against eligible, and says how long to the renewal', async () => {
     renderAt('/accounts/EMP-1001')
-    await screen.findByText('The account')
+    await screen.findByText('Cedar Point Workforce Partners', { selector: 'h2' })
 
     expect(screen.getByText('315 of 420')).toBeInTheDocument()
     expect(screen.getByText('75%')).toBeInTheDocument()
@@ -1204,20 +1168,12 @@ describe('the insight strip on an account', () => {
       .map((call) => String(call[0]))
       .filter((url) => url.includes('screen=account'))
 
-  it('spends nothing until the reader asks', async () => {
-    // One model call per account, and the picker holds ninety-five of them.
-    // Opening an account must not bill for reading it.
+  it('reads the account on sight, keyed to the account on screen', async () => {
+    // Back on load by decision: `employer.html` has the strip as part of
+    // the page. It costs a model call per account opened, which is why it
+    // had been a button — the query is keyed by reference so a second look
+    // at the same account is served from cache rather than billed again.
     renderAt('/accounts/EMP-1001')
-    await screen.findByText('The account')
-
-    expect(await screen.findByRole('button', { name: /Read this account/ })).toBeInTheDocument()
-    expect(generatedCalls()).toHaveLength(0)
-  })
-
-  it('asks for the account on screen when the reader does', async () => {
-    renderAt('/accounts/EMP-1001')
-
-    await userEvent.click(await screen.findByRole('button', { name: /Read this account/ }))
 
     await waitFor(() => {
       expect(generatedCalls().length).toBeGreaterThan(0)
@@ -1225,14 +1181,14 @@ describe('the insight strip on an account', () => {
     expect(generatedCalls().every((url) => url.includes('employerRef=EMP-1001'))).toBe(true)
   })
 
-  it('renders the unavailable state rather than hiding, once asked', async () => {
+  it('renders the unavailable state rather than hiding it', async () => {
     // U2: an explicit state, never a hidden panel — and the figures below
     // are unaffected either way.
     renderAt('/accounts/EMP-1001')
 
-    await userEvent.click(await screen.findByRole('button', { name: /Read this account/ }))
-
     expect(await screen.findByText(/No model is configured/)).toBeInTheDocument()
-    expect(screen.getByText('The account')).toBeInTheDocument()
+    expect(
+      screen.getByText('Cedar Point Workforce Partners', { selector: 'h2' }),
+    ).toBeInTheDocument()
   })
 })

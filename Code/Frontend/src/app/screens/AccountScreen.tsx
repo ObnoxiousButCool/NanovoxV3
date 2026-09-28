@@ -29,19 +29,14 @@ import { AccountTopics } from '@/app/screens/AccountPanels'
 import { CallEvidence } from '@/shared/design/drawer/Evidence'
 import { useDrawer } from '@/shared/design/drawer'
 import {
-  BigRow,
   Empty,
   EpistemicChip,
-  FigureSample,
-  FigureValue,
-  KpiTile,
   Note,
   Panel,
   RiskPill,
   Tooltip,
 } from '@/shared/design/primitives'
 
-const per1000 = (value: number) => value.toFixed(1)
 const percent = (value: number) => `${String(Math.round(value * 100))}%`
 
 function titleCase(value: string): string {
@@ -150,24 +145,32 @@ function IndicatorEvidence({
   )
 }
 
-export function AccountBody({
+/**
+ * The account, named. `employer.html` opens with this and everything else
+ * follows it — a reader who has just picked one of ninety-five accounts
+ * needs to see which one they landed on before any figure about it.
+ */
+export function AccountHeader({
   data,
   brokerName,
 }: {
   data: AccountDetail
-  /** Falls back to the reference while the options are still loading. */
   brokerName: (ref: string) => string
 }) {
-  const { facts, peers, risk } = data
-  const fired = risk.observations.filter((observation) => observation.observed)
-
+  const { facts, risk } = data
   return (
     <>
-      <div className="nv-c6">
+      {/* `employer.html` leads with the account, not with a panel called
+          "The account": the name is the heading, the industry, broker and
+          region are the subtitle, and the five workbook facts sit under
+          them. A reader who has clicked an account out of ninety-five needs
+          to see which one they landed on before anything else. */}
+      <div className="nv-c12">
         <Panel
-          title="The account"
-          sub={`${facts.industry} · ${facts.region}`}
+          title={facts.name}
+          sub={`${facts.industry} · ${brokerName(facts.brokerRef)} · ${facts.region}`}
           chip={<EpistemicChip kind="reference" />}
+          actions={<RiskPill eligible={risk.eligible} flagged={risk.flagged} />}
           info={
             <Tooltip>
               <p>
@@ -183,7 +186,10 @@ export function AccountBody({
                     ? 'not recorded'
                     : 'voluntary'}
                 <br />
-                Admin fee: ${facts.annualFee.toLocaleString()} a year
+                Annual premium:{' '}
+                {facts.annualPremium === null || facts.annualPremium === undefined
+                  ? 'not recorded'
+                  : `$${facts.annualPremium.toLocaleString()}`}
                 <br />
                 Planned calls at full corpus: {String(facts.plannedCalls)}
               </p>
@@ -195,9 +201,10 @@ export function AccountBody({
             </Tooltip>
           }
         >
+          {/* The prototype's five, in its order. */}
           <div className="nv-figrow">
             <div>
-              <span className="nv-figlabel">Enrolled lives</span>
+              <span className="nv-figlabel">Lives enrolled</span>
               <b>
                 {facts.enrolled.toLocaleString()}
                 {facts.eligible > 0 ? ` of ${facts.eligible.toLocaleString()}` : ''}
@@ -213,41 +220,19 @@ export function AccountBody({
               </b>
             </div>
             <div>
-              <span className="nv-figlabel">Annual premium</span>
-              <b>
-                {/* Null is not zero. An account with no premium recorded is
-                    not an account worth nothing, and the exposure total on
-                    /risk already says it is a floor for this reason. */}
-                {facts.annualPremium === null || facts.annualPremium === undefined
-                  ? 'Not recorded'
-                  : `$${facts.annualPremium.toLocaleString()}`}
-              </b>
+              <span className="nv-figlabel">Lines held</span>
+              <b>{facts.linesHeld === '' ? 'Not recorded' : titleCase(facts.linesHeld)}</b>
             </div>
             <div>
               <span className="nv-figlabel">Admin fee</span>
               <b>${facts.annualFee.toLocaleString()} a year</b>
             </div>
             <div>
-              <span className="nv-figlabel">Lines held</span>
-              <b>{facts.linesHeld === '' ? 'Not recorded' : titleCase(facts.linesHeld)}</b>
-            </div>
-            <div>
-              <span className="nv-figlabel">Renewal</span>
-              {/* The countdown is what makes this actionable; the month
-                  alone leaves the reader to work it out. Null where the
-                  workbook's month could not be parsed — never a guess. */}
+              <span className="nv-figlabel">Renews</span>
               <b>{facts.renewalMonth}</b>
               <RenewalCountdown months={facts.renewalInMonths} />
             </div>
-            <div>
-              <span className="nv-figlabel">Broker of record</span>
-              <b>{brokerName(facts.brokerRef)}</b>
-            </div>
           </div>
-          <Note>
-            From the workbook, not from a call. These are what the account is, not what
-            happened on it.
-          </Note>
           {/* Filters slice, never hide. The tiles count the risk window and
               the calls panel lists the selected period; where those differ
               the page says so rather than appearing to contradict itself. */}
@@ -261,71 +246,19 @@ export function AccountBody({
           ) : null}
         </Panel>
       </div>
+    </>
+  )
+}
 
-      <div className="nv-c6">
-        <Panel
-          title="Against its peers"
-          sub={
-            peers.band === null || peers.band === undefined
-              ? 'This account fits no size band, so there is nobody to compare it with.'
-              : `Size band ${peers.band}, ${String(peers.peers)} peers with a publishable rate.`
-          }
-          chip={<EpistemicChip kind="derived" />}
-        >
-          {peers.peerMedian === null || peers.peerMedian === undefined ? (
-            <Empty>
-              No peer in this band has a rate we can publish, so there is no median to
-              compare against. That is a gap in the comparison, not a finding about this
-              account.
-            </Empty>
-          ) : (
-            <BigRow>
-              <KpiTile
-                label="Peer median contact rate"
-                value={per1000(peers.peerMedian)}
-                meta={<span className="nv-indcount">per 1,000 lives</span>}
-              />
-              <KpiTile
-                label="Difference"
-                value={
-                  peers.difference === null || peers.difference === undefined
-                    ? '–'
-                    : `${peers.difference > 0 ? '+' : ''}${per1000(peers.difference)}`
-                }
-                meta={<span className="nv-indcount">against the median</span>}
-              />
-            </BigRow>
-          )}
-        </Panel>
-      </div>
+export function AccountBody({ data }: { data: AccountDetail }) {
+  const { facts, risk } = data
+  const fired = risk.observations.filter((observation) => observation.observed)
 
-      <div className="nv-c6">
-        <Panel title="Contact rate" chip={<EpistemicChip kind="observed" />}>
-          <BigRow>
-            <KpiTile
-              label={`Per 1,000 lives · ${String(data.contactRate.windowWeeks)}wk`}
-              value={<FigureValue figure={data.contactRate.figure} format={per1000} />}
-              meta={<FigureSample figure={data.contactRate.figure} />}
-            />
-          </BigRow>
-        </Panel>
-      </div>
-
-      <div className="nv-c6">
-        <Panel title="Repeat contact" chip={<EpistemicChip kind="observed" />}>
-          <BigRow>
-            <KpiTile
-              label={`Repeat rate · ${String(data.repeatRate.windowWeeks)}wk`}
-              value={<FigureValue figure={data.repeatRate.figure} format={percent} />}
-              meta={<FigureSample figure={data.repeatRate.figure} />}
-            />
-          </BigRow>
-        </Panel>
-      </div>
-
+  return (
+    <>
       <div className="nv-c7">
         <Panel
-          title="The risk flag"
+          title="What went wrong on this account"
           sub={`Metric 10 over ${String(data.riskWindowWeeks)} weeks, as at ${data.asOf}.`}
           chip={<EpistemicChip kind="observed" />}
           actions={<RiskPill eligible={risk.eligible} flagged={risk.flagged} />}
@@ -417,24 +350,6 @@ export function AccountBody({
 
       <div className="nv-c5">
         <AccountTopics profile={data.profile} />
-      </div>
-
-      <div className="nv-c12">
-        <Panel
-          title="Broker of record"
-          sub="Insight 7: who the caller named, against who is on record."
-          chip={<EpistemicChip kind="observed" />}
-        >
-          {/* The server's sentence, which distinguishes a clean book from
-              an unexamined one. Zero mismatches is a finding, so this
-              panel renders in every case rather than only on drift. */}
-          <Note>{data.drift.finding}</Note>
-          {data.drift.flagged ? (
-            <IssueCue issue="broker_adverse" scope={{ employer: facts.employerRef }}>
-              What to do about the drift
-            </IssueCue>
-          ) : null}
-        </Panel>
       </div>
 
     </>

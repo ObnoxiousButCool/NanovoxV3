@@ -39,7 +39,7 @@ import {
 } from '@/shared/api/insights'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
-import { AccountBody } from '@/app/screens/AccountScreen'
+import { AccountBody, AccountHeader } from '@/app/screens/AccountScreen'
 import { AccountActions, AccountCalls, AccountTiles } from '@/app/screens/AccountPanels'
 import { Empty, Note } from '@/shared/design/primitives'
 import { InsightStrip } from '@/shared/insights/Insights'
@@ -133,17 +133,16 @@ export function AccountsScreen() {
 
   const selected = employerRef ?? ordered[0]?.ref
   const account = useAccount(selected ?? '', filters.apiSearch)
-  // Asked for, not fetched on sight: one model call per account, and the
-  // picker holds ninety-five. `readFor` is the account the reader asked
-  // about, so moving to another one puts the offer back rather than
-  // quietly spending again.
+  // Fetched on sight, as `employer.html` has it: the strip is part of the
+  // page rather than something the reader asks for.
   //
-  // Keyed by the reference either way, so switching account can never
-  // show the last one's sentences under this one's name.
-  const [readFor, setReadFor] = useState<string | null>(null)
-  const insights = useGeneratedInsights('account', filters.apiSearch, selected, {
-    enabled: readFor === selected,
-  })
+  // This costs a model call per account opened, and the picker holds
+  // ninety-five. It was on-demand for exactly that reason and is back on
+  // load by decision, not by oversight. The query is keyed by the
+  // reference, so an account read once is served from cache rather than
+  // billed again, and switching account can never show the last one's
+  // sentences under this one's name.
+  const insights = useGeneratedInsights('account', filters.apiSearch, selected)
   const brokerName = (ref: string) =>
     options.data?.brokers.find((broker) => broker.ref === ref)?.agency ?? ref
 
@@ -209,19 +208,16 @@ export function AccountsScreen() {
             <>
               {/* `employer.html`'s order: the strip, then the account's own
                   counts, then the figures, then what it calls about. */}
+              {/* `employer.html`'s order: the account, then what a model
+                  makes of it, then its own counts, then the rest. */}
+              <AccountHeader data={account.data} brokerName={brokerName} />
               <div className="nv-c12">
-                <InsightStrip
-                  data={insights.data}
-                  pending={insights.isFetching}
-                  onRequest={() => {
-                    setReadFor(selected)
-                  }}
-                />
+                <InsightStrip data={insights.data} pending={insights.isFetching} />
               </div>
               <div className="nv-c12">
                 <AccountTiles profile={account.data.profile} employerRef={selected} />
               </div>
-              <AccountBody data={account.data} brokerName={brokerName} />
+              <AccountBody data={account.data} />
               <div className="nv-c12">
                 <AccountCalls employerRef={selected} search={filters.apiSearch} />
               </div>

@@ -88,32 +88,38 @@ export function AccountCalls({
         </Empty>
       ) : (
         <>
-          <table className="nv-risktable nv-callstable">
-            <thead>
-              <tr>
-                <th scope="col">Call</th>
-                <th scope="col">Caller</th>
-                <th scope="col">Topic</th>
-                <th scope="col">Outcome</th>
-                <th scope="col">Signals</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.rows.map((call) => (
-                <CallLine
-                  key={call.reference}
-                  call={call}
-                  onOpen={() => {
-                    open({
-                      title: `Call ${call.reference}`,
-                      chip: 'observed',
-                      body: <CallEvidence callId={call.reference} />,
-                    })
-                  }}
-                />
-              ))}
-            </tbody>
-          </table>
+          {/* The same scroller `DataTable` puts round its own table. The
+              cells are nowrap, so without it the table sets the width of the
+              page and a phone gets a horizontal scrollbar on the whole
+              document rather than on the table. */}
+          <div className="nv-tblwrap">
+            <table className="nv-risktable nv-callstable">
+              <thead>
+                <tr>
+                  <th scope="col">Call</th>
+                  <th scope="col">Caller</th>
+                  <th scope="col">Topic</th>
+                  <th scope="col">Outcome</th>
+                  <th scope="col">Signals</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.rows.map((call) => (
+                  <CallLine
+                    key={call.reference}
+                    call={call}
+                    onOpen={() => {
+                      open({
+                        title: `Call ${call.reference}`,
+                        chip: 'observed',
+                        body: <CallEvidence callId={call.reference} />,
+                      })
+                    }}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
           {data.total > data.rows.length ? (
             <Note>
               Showing {String(data.rows.length)} of {String(data.total)} calls for this
