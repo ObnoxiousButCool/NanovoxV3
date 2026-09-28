@@ -478,6 +478,50 @@ export interface components {
             /** Renewalmonth */
             renewalMonth: string;
         };
+        /**
+         * AccountProfileResponse
+         * @description The account's own calls, counted.
+         *
+         *     Counts, never rates, so none of these is suppressed: zero unresolved out
+         *     of four calls is a true statement where a zero *rate* over four is not.
+         *
+         *     **There is no average quality here, and there will not be one.** Metric
+         *     12 is defined per agent, and `domain/aggregation/agent_events.py` states
+         *     that rolling it up to an employer is forbidden by the Metrics sheet. The
+         *     v2 prototype shows an "Average call quality" tile on this page; the
+         *     prototype wins on presentation and the workbook wins on definitions
+         *     (`plan.md` §3.0), so that tile is carried as a conflict rather than
+         *     served.
+         */
+        AccountProfileResponse: {
+            /**
+             * Calls
+             * @description This account's calls in the risk window.
+             */
+            calls: number;
+            /**
+             * Escalationsmissed
+             * @description Warranted and not handled. A call with no escalation is in neither.
+             */
+            escalationsMissed: number;
+            /**
+             * Repeatcontacts
+             * @description Metric 4's own numerator over this account, so the count cannot disagree with the repeat rate beside it.
+             */
+            repeatContacts: number;
+            /**
+             * Topics
+             * @description What they called about, most first. Only the categories this account raised — unlike the outcome chart, a category nobody called about is not a finding here.
+             */
+            topics: components["schemas"]["TopicCountResponse"][];
+            /**
+             * Uncategorised
+             * @description Calls whose category the pipeline never filled. Sent so the topics below can be reconciled against `calls` rather than quietly falling short of it.
+             */
+            uncategorised: number;
+            /** Unresolved */
+            unresolved: number;
+        };
         /** AccountResponse */
         AccountResponse: {
             /** Asof */
@@ -486,6 +530,7 @@ export interface components {
             drift: components["schemas"]["DriftResponse"];
             facts: components["schemas"]["AccountFactsResponse"];
             peers: components["schemas"]["PeerComparisonResponse"];
+            profile: components["schemas"]["AccountProfileResponse"];
             repeatRate: components["schemas"]["WindowedFigureResponse"];
             /** @description This account's risk standing, the same shape as on the risk screen. */
             risk: components["schemas"]["AccountRiskResponse"];
@@ -2027,6 +2072,19 @@ export interface components {
             done: boolean;
             /** Index */
             index: number;
+        };
+        /**
+         * TopicCountResponse
+         * @description One category this account called about.
+         */
+        TopicCountResponse: {
+            /** Calls */
+            calls: number;
+            /**
+             * Category
+             * @description The workbook's own wording, e.g. 'Claims & EOB'. Not a code.
+             */
+            category: string;
         };
         /** TouchpointRowResponse */
         TouchpointRowResponse: {

@@ -1,0 +1,176 @@
+/* The account picker beside one account's detail — `employer.html`'s
+   `.md` split, at the prototype's own 300px. */
+
+.nv-acctsplit {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+/* Below the prototype's own breakpoint the picker stacks above the detail
+   rather than squeezing it: a 300px column and a twelve-column grid do not
+   both fit on a phone, and the detail is what the reader came for. */
+@media (max-width: 900px) {
+  .nv-acctsplit {
+    grid-template-columns: 1fr;
+  }
+
+  .nv-picker {
+    position: static;
+    max-height: 320px;
+  }
+}
+
+.nv-picker {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nv-picker input {
+  width: 100%;
+  min-width: 0;
+}
+
+.nv-picker ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.nv-picker li button {
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 9px 8px;
+  border-radius: var(--r);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  font: inherit;
+  color: var(--ink);
+}
+
+.nv-picker li button:hover {
+  background: var(--surface-2);
+}
+
+.nv-picker li button[aria-current='true'] {
+  background: var(--brand-soft);
+}
+
+.nv-picker li b {
+  font-weight: 600;
+  font-size: 14px;
+  display: block;
+}
+
+.nv-picker li small {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.nv-picker-head {
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 2px 4px;
+}
+
+.nv-picker-none {
+  padding: 8px;
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+
+/* The flag and its indicator count. Never a band (D12) — and never colour
+   alone: each state has its own words, so the three are distinguishable
+   without seeing the difference between grey and red. */
+.nv-acct-state {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nv-acct-state i {
+  font-style: normal;
+  font-weight: 600;
+  font-size: 11px;
+  min-width: 17px;
+  text-align: center;
+  padding: 1px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+}
+
+.nv-acct-flag {
+  color: var(--critical);
+  font-weight: 600;
+}
+
+.nv-acct-none {
+  color: var(--ink-3);
+}
+
+.nv-acctdetail {
+  min-width: 0;
+}
+
+/* Signals on a call row, and the two kinds of nothing. */
+.nv-acct-sigs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.nv-acct-sigs span {
+  font-size: 11.5px;
+  color: var(--ink-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+.nv-acct-none {
+  color: var(--ink-3);
+}
+
+/* "What they call about" — the category ranking. */
+.nv-topics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.nv-topics li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(90px, 1fr);
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.nv-topics li > span {
+  overflow-wrap: anywhere;
+}

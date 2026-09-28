@@ -34,7 +34,10 @@ export function useFilterOptions(search: string) {
 export type ExecScorecard = components['schemas']['ExecScorecardResponse']
 export type RiskScreen = components['schemas']['RiskScreenResponse']
 export type AccountDetail = components['schemas']['AccountResponse']
+export type AccountProfile = components['schemas']['AccountProfileResponse']
 export type Hierarchy = components['schemas']['HierarchyResponse']
+export type Agents = components['schemas']['AgentsResponse']
+export type Agent = components['schemas']['AgentResponse']
 
 /**
  * A screen's query, keyed by the filters that produced it.
@@ -58,6 +61,10 @@ export function useExec(search: string) {
 
 export function useRisk(search: string) {
   return useScreen<RiskScreen>('risk', '/insights/risk', search)
+}
+
+export function useAgents(search: string) {
+  return useScreen<Agents>('agents', '/insights/agents', search)
 }
 
 export function useHierarchy(search: string) {

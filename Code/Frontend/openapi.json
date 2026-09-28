@@ -64,6 +64,53 @@
         "title": "AccountFactsResponse",
         "type": "object"
       },
+      "AccountProfileResponse": {
+        "description": "The account's own calls, counted.\n\nCounts, never rates, so none of these is suppressed: zero unresolved out\nof four calls is a true statement where a zero *rate* over four is not.\n\n**There is no average quality here, and there will not be one.** Metric\n12 is defined per agent, and `domain/aggregation/agent_events.py` states\nthat rolling it up to an employer is forbidden by the Metrics sheet. The\nv2 prototype shows an \"Average call quality\" tile on this page; the\nprototype wins on presentation and the workbook wins on definitions\n(`plan.md` \u00a73.0), so that tile is carried as a conflict rather than\nserved.",
+        "properties": {
+          "calls": {
+            "description": "This account's calls in the risk window.",
+            "title": "Calls",
+            "type": "integer"
+          },
+          "escalationsMissed": {
+            "description": "Warranted and not handled. A call with no escalation is in neither.",
+            "title": "Escalationsmissed",
+            "type": "integer"
+          },
+          "repeatContacts": {
+            "description": "Metric 4's own numerator over this account, so the count cannot disagree with the repeat rate beside it.",
+            "title": "Repeatcontacts",
+            "type": "integer"
+          },
+          "topics": {
+            "description": "What they called about, most first. Only the categories this account raised \u2014 unlike the outcome chart, a category nobody called about is not a finding here.",
+            "items": {
+              "$ref": "#/components/schemas/TopicCountResponse"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "uncategorised": {
+            "description": "Calls whose category the pipeline never filled. Sent so the topics below can be reconciled against `calls` rather than quietly falling short of it.",
+            "title": "Uncategorised",
+            "type": "integer"
+          },
+          "unresolved": {
+            "title": "Unresolved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "calls",
+          "unresolved",
+          "repeatContacts",
+          "escalationsMissed",
+          "uncategorised",
+          "topics"
+        ],
+        "title": "AccountProfileResponse",
+        "type": "object"
+      },
       "AccountResponse": {
         "properties": {
           "asOf": {
@@ -81,6 +128,9 @@
           },
           "peers": {
             "$ref": "#/components/schemas/PeerComparisonResponse"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/AccountProfileResponse"
           },
           "repeatRate": {
             "$ref": "#/components/schemas/WindowedFigureResponse"
@@ -106,7 +156,8 @@
           "repeatRate",
           "risk",
           "riskWindowWeeks",
-          "drift"
+          "drift",
+          "profile"
         ],
         "title": "AccountResponse",
         "type": "object"
@@ -3625,6 +3676,26 @@
           "done"
         ],
         "title": "TickBody",
+        "type": "object"
+      },
+      "TopicCountResponse": {
+        "description": "One category this account called about.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "category": {
+            "description": "The workbook's own wording, e.g. 'Claims & EOB'. Not a code.",
+            "title": "Category",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "calls"
+        ],
+        "title": "TopicCountResponse",
         "type": "object"
       },
       "TouchpointRowResponse": {

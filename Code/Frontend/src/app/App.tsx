@@ -17,15 +17,13 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { DesignGallery } from '@/app/DesignGallery'
 import { ActionsScreen } from '@/app/screens/ActionsScreen'
 import { ExecScreen } from '@/app/screens/ExecScreen'
-import { AccountScreen } from '@/app/screens/AccountScreen'
+import { AccountsScreen } from '@/app/screens/AccountsScreen'
+import { AgentsScreen } from '@/app/screens/AgentsScreen'
 import { CallsScreen } from '@/app/screens/CallsScreen'
 import { HierarchyScreen } from '@/app/screens/HierarchyScreen'
 import { RiskScreen } from '@/app/screens/RiskScreen'
-import { ScreenPlaceholder } from '@/app/ScreenPlaceholder'
 import { StatusPage } from '@/app/StatusPage'
 import { Shell } from '@/shared/design/Shell'
-
-const PHASE_2 = 'Phase 2'
 
 export function App() {
   return (
@@ -34,10 +32,13 @@ export function App() {
         <Route path="/" element={<Navigate to="/exec" replace />} />
         <Route path="/exec" element={<ExecScreen />} />
         <Route path="/risk" element={<RiskScreen />} />
-        <Route path="/accounts" element={<ScreenPlaceholder phase={PHASE_2} />} />
-        <Route path="/accounts/:employerRef" element={<AccountScreen />} />
+        {/* One screen for both: the picker belongs on the detail page,
+            as `employer.html` has it, so `/accounts` is not a separate
+            list that navigates away from what it is listing. */}
+        <Route path="/accounts" element={<AccountsScreen />} />
+        <Route path="/accounts/:employerRef" element={<AccountsScreen />} />
         <Route path="/hierarchy" element={<HierarchyScreen />} />
-        <Route path="/agents" element={<ScreenPlaceholder phase={PHASE_2} />} />
+        <Route path="/agents" element={<AgentsScreen />} />
         <Route path="/calls" element={<CallsScreen />} />
         <Route path="/actions" element={<ActionsScreen />} />
         <Route path="/design" element={<DesignGallery />} />

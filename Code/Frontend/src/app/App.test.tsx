@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from '@/app/App'
 import { createQueryClient } from '@/app/queryClient'
-import { UNPLACED_SCREENS } from '@/shared/design/navigation'
+import { NAV_ITEMS, UNPLACED_SCREENS } from '@/shared/design/navigation'
 import { DrawerProvider } from '@/shared/design/drawer'
 import { ThemeProvider } from '@/shared/design/ThemeProvider'
 
@@ -44,20 +44,21 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Executive overview' })).toBeInTheDocument()
   })
 
-  it('says a screen is unbuilt rather than rendering an empty one', () => {
-    // An empty screen reads as "no data", which is the one thing this
-    // application must never accidentally claim.
-    //
-    // `/agents` rather than `/actions`: Phase 4 built the action centre.
-    // This assertion needs a route that is genuinely still a placeholder,
-    // or it stops testing anything the day the last screen lands.
-    renderApp('/agents')
+  it.each(NAV_ITEMS.map((item) => [item.to, item.label] as const))(
+    'renders a real screen at %s, never a placeholder',
+    (to, label) => {
+      // This replaces an assertion that a placeholder said "not built yet".
+      // Its own comment predicted this day: it "stops testing anything the
+      // day the last screen lands", and `/agents` was the last one. The
+      // property worth keeping is the reason the placeholder existed — a
+      // rail entry must never lead somewhere that renders as "no data" —
+      // so this now walks every entry and asserts the opposite.
+      renderApp(to)
 
-    expect(screen.getByText(/not built yet/i)).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'How are agents handling calls?' }),
-    ).toBeInTheDocument()
-  })
+      expect(screen.getByRole('heading', { name: label })).toBeInTheDocument()
+      expect(screen.queryByText(/not built yet/i)).not.toBeInTheDocument()
+    },
+  )
 
   it('keeps the status page reachable at its own route', () => {
     renderApp('/status')

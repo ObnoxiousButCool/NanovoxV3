@@ -31,6 +31,7 @@ from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 from application.ports.insights_source import CorpusQuery
+from domain.aggregation.account_profile import AccountProfile, account_profile
 from domain.aggregation.actions import ActionItem, OwnerWorkload, action_items, by_owner
 from domain.aggregation.agent_events import (
     CONTROL_DENOMINATOR_CAVEAT,
@@ -561,6 +562,9 @@ class AccountDetail:
     #: §9 insight 7. Over this employer's calls in the risk window, so the
     #: period it describes is one the page already states.
     drift: Drift
+    #: The counts and the topic ranking the prototype's employer page
+    #: shows, over the same risk window as the flag above them.
+    profile: AccountProfile
 
 
 @dataclass(frozen=True)
@@ -622,6 +626,7 @@ class GetAccountDetail:
             observations=observe(self._config, employer, calls, risk_window),
             risk_window=risk_window,
             drift=drift(risk_window.calls_in(tuple(mine))),
+            profile=account_profile(mine, risk_window),
         )
 
 

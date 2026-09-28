@@ -1,5 +1,9 @@
 /**
- * `/accounts/:employerRef` — one account.
+ * One account's detail, rendered inside `/accounts` beside the picker.
+ *
+ * The screen wrapper that used to live here is gone: `AccountsScreen` owns
+ * both routes now, and two components fetching the same account to render
+ * the same panels was one more than the page needs.
  *
  * ## Account facts are reference, and are labelled as such
  *
@@ -18,13 +22,10 @@
  * so rather than rendering a dash that reads as zero difference.
  */
 
-import { Link, useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
-import { useAccount, useFilterOptions } from '@/shared/api/insights'
 import type { AccountDetail } from '@/shared/api/insights'
 import { IssueCue } from '@/shared/actions/IssueLink'
-import { useFilters } from '@/shared/filters/useFilters'
-import { Screen } from '@/shared/screens/Screen'
 import {
   BigRow,
   Empty,
@@ -40,35 +41,7 @@ import {
 const per1000 = (value: number) => value.toFixed(1)
 const percent = (value: number) => `${String(Math.round(value * 100))}%`
 
-export function AccountScreen() {
-  const { employerRef = '' } = useParams()
-  const filters = useFilters()
-  const { data, isPending, error } = useAccount(employerRef, filters.apiSearch)
-  // Already fetched by the filter bar, so this is a cache read. Needed for
-  // two codes that would otherwise reach the reader: the employer name
-  // before the account response lands, and the broker of record, which the
-  // account response carries only as a reference.
-  const options = useFilterOptions(filters.apiSearch)
-  const name =
-    options.data?.employers.find((employer) => employer.ref === employerRef)?.name ??
-    employerRef
-  const brokerName = (ref: string) =>
-    options.data?.brokers.find((broker) => broker.ref === ref)?.agency ?? ref
-
-  return (
-    <Screen
-      title={data?.facts.name ?? name}
-      lede="One account: what its calls say, what the workbook says about it, and how it sits against its peers."
-      scope={data?.scope}
-      isPending={isPending}
-      error={error}
-    >
-      {data === undefined ? null : <AccountBody data={data} brokerName={brokerName} />}
-    </Screen>
-  )
-}
-
-function AccountBody({
+export function AccountBody({
   data,
   brokerName,
 }: {

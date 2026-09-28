@@ -122,6 +122,57 @@ class DriftResponse(CamelModel):
     )
 
 
+class TopicCountResponse(CamelModel):
+    """One category this account called about."""
+
+    category: str = Field(
+        description="The workbook's own wording, e.g. 'Claims & EOB'. Not a code."
+    )
+    calls: int
+
+
+class AccountProfileResponse(CamelModel):
+    """The account's own calls, counted.
+
+    Counts, never rates, so none of these is suppressed: zero unresolved out
+    of four calls is a true statement where a zero *rate* over four is not.
+
+    **There is no average quality here, and there will not be one.** Metric
+    12 is defined per agent, and `domain/aggregation/agent_events.py` states
+    that rolling it up to an employer is forbidden by the Metrics sheet. The
+    v2 prototype shows an "Average call quality" tile on this page; the
+    prototype wins on presentation and the workbook wins on definitions
+    (`plan.md` §3.0), so that tile is carried as a conflict rather than
+    served.
+    """
+
+    calls: int = Field(description="This account's calls in the risk window.")
+    unresolved: int
+    repeat_contacts: int = Field(
+        description=(
+            "Metric 4's own numerator over this account, so the count cannot "
+            "disagree with the repeat rate beside it."
+        )
+    )
+    escalations_missed: int = Field(
+        description="Warranted and not handled. A call with no escalation is in neither."
+    )
+    uncategorised: int = Field(
+        description=(
+            "Calls whose category the pipeline never filled. Sent so the topics "
+            "below can be reconciled against `calls` rather than quietly falling "
+            "short of it."
+        )
+    )
+    topics: list[TopicCountResponse] = Field(
+        description=(
+            "What they called about, most first. Only the categories this account "
+            "raised — unlike the outcome chart, a category nobody called about is "
+            "not a finding here."
+        )
+    )
+
+
 class AccountResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
@@ -134,6 +185,7 @@ class AccountResponse(CamelModel):
     )
     risk_window_weeks: int
     drift: DriftResponse
+    profile: AccountProfileResponse
 
 
 @router.get(
@@ -205,5 +257,19 @@ def _response(detail: AccountDetail, query: InsightsQueryDep) -> AccountResponse
             mismatches=list(detail.drift.mismatches),
             unresolved=list(detail.drift.unresolved),
             finding=detail.drift.finding,
+        ),
+        profile=AccountProfileResponse(
+            calls=detail.profile.calls,
+            unresolved=detail.profile.unresolved,
+            repeat_contacts=detail.profile.repeat_contacts,
+            escalations_missed=detail.profile.escalations_missed,
+            uncategorised=detail.profile.uncategorised,
+            topics=[
+                # `category.value` is the workbook's own wording; `labels.py`
+                # deliberately does not map categories, because re-labelling
+                # them would put a second vocabulary beside the sheet's.
+                TopicCountResponse(category=topic.category.value, calls=topic.calls)
+                for topic in detail.profile.topics
+            ],
         ),
     )

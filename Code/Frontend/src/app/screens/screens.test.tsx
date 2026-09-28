@@ -8,7 +8,7 @@
  */
 
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -182,6 +182,17 @@ const ACCOUNT = {
   // A band with nobody publishable in it.
   peers: { band: '200+ lives', peers: 0, peerMedian: null, difference: null },
   risk: ASSESSED,
+  profile: {
+    calls: 6,
+    unresolved: 2,
+    repeatContacts: 1,
+    escalationsMissed: 0,
+    uncategorised: 1,
+    topics: [
+      { category: 'Claims & EOB', calls: 3 },
+      { category: 'Billing & Premium', calls: 2 },
+    ],
+  },
   // Insight 7 with nothing wrong: a clean book is a finding, not a blank.
   drift: {
     flagged: false,
@@ -280,8 +291,8 @@ const OPTIONS = {
   regions: ['Bay Area'],
   brokers: [{ ref: 'BRK-02', agency: 'Whitfield Benefits' }],
   employers: [
-    { ref: 'EMP-1001', name: 'Cedar Point Workforce Partners' },
-    { ref: 'EMP-1002', name: 'Park Mechanical' },
+    { ref: 'EMP-1001', name: 'Cedar Point Workforce Partners', region: 'Bay Area' },
+    { ref: 'EMP-1002', name: 'Park Mechanical', region: 'Bay Area' },
   ],
   agentRefs: [],
   touchpoints: [],
@@ -294,6 +305,47 @@ const OPTIONS = {
   qualityBands: [],
   corpusPeriod: { from: '2026-07-06', to: '2026-09-21' },
   unlabelledFilters: [],
+}
+
+const AGENTS = {
+  scope: SCOPE,
+  asOf: '2026-09-21',
+  windowWeeks: 12,
+  qualityWindowWeeks: null,
+  agents: [
+    {
+      agentRef: 'AGT-01',
+      calls: ['C-1', 'C-2', 'C-3'],
+      knowledgeErrors: ['C-1'],
+      escalationsMissed: [],
+      controlExceptions: [
+        { exceptionType: { code: 'NO_RECORDING_DISCLOSURE', label: 'No recording disclosure' }, calls: 2 },
+      ],
+      knowledgeErrorRate: WITHHELD,
+      quality: {
+        scoredCalls: ['C-1'],
+        medianScore: null,
+        lowest: null,
+        highest: null,
+        caveat: 'Too few scored calls to publish a median for this agent.',
+      },
+    },
+    {
+      agentRef: 'AGT-02',
+      calls: ['C-4'],
+      knowledgeErrors: [],
+      escalationsMissed: [],
+      controlExceptions: [],
+      knowledgeErrorRate: WITHHELD,
+      quality: {
+        scoredCalls: ['C-4'],
+        medianScore: 88,
+        lowest: 88,
+        highest: 88,
+        caveat: '',
+      },
+    },
+  ],
 }
 
 /** The shape a deployment with no model configured serves (U2). */
@@ -310,6 +362,7 @@ function routeFor(url: string): unknown {
   // Checked before `/insights/exec`: the generated surface takes the screen
   // as a query parameter, so both URLs carry the word.
   if (url.includes('/insights/generated')) return NO_INSIGHTS
+  if (url.includes('/insights/agents')) return AGENTS
   if (url.includes('/insights/exec')) return EXEC
   if (url.includes('/insights/risk')) return RISK
   if (url.includes('/insights/hierarchy')) return HIERARCHY
@@ -708,3 +761,181 @@ function serveWithAssessed(): void {
     ),
   )
 }
+
+
+describe('/accounts — the picker', () => {
+  it('lists every account, not only the assessable ones', async () => {
+    // Both fixture employers are ineligible. A picker that showed only
+    // assessed accounts would render an empty book and read as "nothing
+    // here" rather than "nothing could be assessed".
+    renderAt('/accounts')
+
+    const picker = await screen.findByLabelText('Accounts')
+
+    expect(within(picker).getByText('Cedar Point Workforce Partners')).toBeInTheDocument()
+    expect(within(picker).getByText('Park Mechanical')).toBeInTheDocument()
+  })
+
+  it('says an unassessable account was not assessed, never that it is unflagged', async () => {
+    renderAt('/accounts')
+
+    const picker = await screen.findByLabelText('Accounts')
+
+    expect(within(picker).getAllByText('Not assessed')).toHaveLength(2)
+    expect(within(picker).queryByText('Not flagged')).not.toBeInTheDocument()
+  })
+
+  it('shows no risk band anywhere, because D12 removed it', async () => {
+    renderAt('/accounts')
+
+    const picker = await screen.findByLabelText('Accounts')
+
+    for (const band of ['High', 'Elevated', 'Watch', 'Low']) {
+      expect(within(picker).queryByText(band)).not.toBeInTheDocument()
+    }
+  })
+
+  it('opens the first account without being asked', async () => {
+    renderAt('/accounts')
+
+    expect(await screen.findByText('The account')).toBeInTheDocument()
+  })
+
+  it('narrows the list as the reader types, and says when nothing matches', async () => {
+    renderAt('/accounts')
+    const picker = await screen.findByLabelText('Accounts')
+    const search = within(picker).getByLabelText('Search accounts')
+
+    await userEvent.type(search, 'Cedar')
+    expect(within(picker).queryByText('Park Mechanical')).not.toBeInTheDocument()
+
+    await userEvent.clear(search)
+    await userEvent.type(search, 'nothing matches this')
+    expect(within(picker).getByText('No match')).toBeInTheDocument()
+  })
+
+  it('selects an account into the URL, so the view can be linked', async () => {
+    renderAt('/accounts')
+    const picker = await screen.findByLabelText('Accounts')
+
+    await userEvent.click(within(picker).getByRole('button', { name: /Park Mechanical/ }))
+
+    await waitFor(() => {
+      expect(
+        within(picker).getByRole('button', { name: /Park Mechanical/ }),
+      ).toHaveAttribute('aria-current', 'true')
+    })
+  })
+
+  it('keeps the picker beside a deep-linked account', async () => {
+    // The old `/accounts/:ref` route had no picker at all, so arriving from
+    // the risk table left the reader with no way to reach the next account.
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByLabelText('Accounts')).toBeInTheDocument()
+    expect(screen.getByText('The account')).toBeInTheDocument()
+  })
+})
+
+
+describe('/agents', () => {
+  it('counts an event against a person at any volume', async () => {
+    // The page's whole premise: a compliance exception is a breach on that
+    // call whatever the sample, so it is attributed; an average is not.
+    renderAt('/agents')
+    await screen.findByText('Issues by agent')
+
+    const issues = screen.getByText('Issues by agent').closest('section')
+
+    expect(issues).not.toBeNull()
+    expect(within(issues as HTMLElement).getByText('AGT-01')).toBeInTheDocument()
+  })
+
+  it('leaves an agent with no events out of the issues table', async () => {
+    renderAt('/agents')
+    await screen.findByText('Issues by agent')
+
+    const issues = screen.getByText('Issues by agent').closest('section')
+
+    expect(issues).not.toBeNull()
+    expect(within(issues as HTMLElement).queryByText('AGT-02')).not.toBeInTheDocument()
+  })
+
+  it('withholds a median instead of printing a dash that reads as zero', async () => {
+    renderAt('/agents')
+    await screen.findByText('The roster')
+
+    const roster = screen.getByText('The roster').closest('section')
+
+    expect(roster).not.toBeNull()
+    expect(
+      within(roster as HTMLElement).getByText(/Too few scored calls/),
+    ).toBeInTheDocument()
+    expect(within(roster as HTMLElement).getByText('88')).toBeInTheDocument()
+  })
+
+  it('says how many agents could be scored, not just who was', async () => {
+    renderAt('/agents')
+
+    expect(await screen.findByText('1 of 2')).toBeInTheDocument()
+  })
+
+  it('points the rule question at /rules rather than answering it here', async () => {
+    // "Coach the agent or fix the rule?" needs the rule behind each error;
+    // this endpoint carries calls. C5 gives that question its own page.
+    renderAt('/agents')
+
+    const link = await screen.findByRole('link', { name: /rules we fail to explain/i })
+
+    expect(link).toHaveAttribute('href', '/rules')
+  })
+})
+
+describe('the account tiles and topics', () => {
+  it('counts the account’s own calls without suppressing a zero', async () => {
+    // A count of things that happened has no minimum: zero escalations
+    // missed out of six calls is a true statement, where a zero *rate*
+    // over six would not be.
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByText(/This account.s calls/)).toBeInTheDocument()
+    const tiles = screen.getByText(/This account.s calls/).closest('section')
+
+    expect(tiles).not.toBeNull()
+    expect(within(tiles as HTMLElement).getByText('Escalations missed')).toBeInTheDocument()
+    expect(within(tiles as HTMLElement).getByText('0')).toBeInTheDocument()
+  })
+
+  it('never shows an average call quality for an account', async () => {
+    // Metric 12 is per agent. Rolling it up to an employer is forbidden by
+    // the Metrics sheet, so the prototype's fifth tile is carried as a
+    // conflict rather than served. This is the assertion that keeps it out.
+    renderAt('/accounts/EMP-1001')
+    await screen.findByText(/This account.s calls/)
+
+    expect(screen.queryByText(/average call quality/i)).not.toBeInTheDocument()
+  })
+
+  it('ranks what they call about, most first', async () => {
+    renderAt('/accounts/EMP-1001')
+    await screen.findByText('What they call about')
+
+    const topics = screen.getByText('What they call about').closest('section')
+
+    expect(topics).not.toBeNull()
+    const labels = within(topics as HTMLElement)
+      .getAllByRole('listitem')
+      .map((item) => item.textContent ?? '')
+
+    expect(labels[0]).toContain('Claims & EOB')
+    expect(labels[1]).toContain('Billing & Premium')
+  })
+
+  it('says how many calls the bars do not account for', async () => {
+    // The bars plus this number reconcile with the call count. Without it a
+    // reader would silently be shown five of six calls.
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByText(/carried no category/)).toBeInTheDocument()
+  })
+})
