@@ -421,3 +421,38 @@ a.nv-fire:hover {
   padding-left: 14px;
   border-left: 2px solid var(--brand-soft);
 }
+
+/* The calls behind an indicator, and its playbook link. Sits on its own
+   line under the label rather than in a fourth column: the references are
+   variable in number and would otherwise squeeze the label that names
+   them. */
+.nv-indevidence {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 4px;
+}
+
+.nv-callchips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.nv-callchip {
+  appearance: none;
+  border: 1px solid var(--rule);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font: 600 11px/1.6 var(--mono);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.nv-callchip:hover {
+  border-color: var(--rule-strong);
+  color: var(--ink);
+}

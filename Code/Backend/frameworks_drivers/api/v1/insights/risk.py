@@ -88,6 +88,15 @@ class ObservationResponse(CamelModel):
     available: bool = Field(
         description="False when v9 has no field for this family. Not the same as no hits."
     )
+    call_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "The calls this family was observed on, so the reader can open them. "
+            "The envelope's rule — every figure travels with the call ids behind "
+            "it — applies to an indicator as much as to a rate: a family reported "
+            "on three calls that names none of them cannot be argued with."
+        ),
+    )
     unavailable_because: str = ""
 
 
@@ -438,6 +447,7 @@ def account_risk_response(
             ObservationResponse(
                 code=observation.family.code,
                 label=observation.family.label,
+                call_ids=list(observation.call_ids),
                 observed=observation.observed,
                 hits=observation.hits,
                 employer_calls=observation.employer_calls,

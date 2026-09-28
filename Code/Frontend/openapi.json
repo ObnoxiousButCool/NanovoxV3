@@ -2759,6 +2759,14 @@
             "title": "Available",
             "type": "boolean"
           },
+          "callIds": {
+            "description": "The calls this family was observed on, so the reader can open them. The envelope's rule \u2014 every figure travels with the call ids behind it \u2014 applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Callids",
+            "type": "array"
+          },
           "code": {
             "title": "Code",
             "type": "string"

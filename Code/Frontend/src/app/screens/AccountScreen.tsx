@@ -26,6 +26,9 @@ import { Link } from 'react-router-dom'
 
 import type { AccountDetail } from '@/shared/api/insights'
 import { IssueCue } from '@/shared/actions/IssueLink'
+import { isIssueKey } from '@/shared/actions/issueHref'
+import { CallEvidence } from '@/shared/design/drawer/Evidence'
+import { useDrawer } from '@/shared/design/drawer'
 import {
   BigRow,
   Empty,
@@ -40,6 +43,58 @@ import {
 
 const per1000 = (value: number) => value.toFixed(1)
 const percent = (value: number) => `${String(Math.round(value * 100))}%`
+
+
+/**
+ * The calls behind one indicator, and what to do about it.
+ *
+ * `employer.html` puts both on every indicator row, and they are the two
+ * things that make the row usable: the chips are the evidence the figure
+ * rests on, and the link is the only route from "this fired" to "here is
+ * the step". Without them the panel states ten conditions and offers the
+ * reader nothing to do with any of them.
+ *
+ * The playbook link is scoped to this employer, so the action view opens on
+ * this account's instance of the issue rather than the whole book's.
+ */
+function IndicatorEvidence({
+  code,
+  callIds,
+  employerRef,
+}: {
+  code: string
+  callIds: readonly string[]
+  employerRef: string
+}) {
+  const { open } = useDrawer()
+  if (callIds.length === 0) return null
+
+  return (
+    <div className="nv-indevidence">
+      <span className="nv-callchips">
+        {callIds.map((reference) => (
+          <button
+            key={reference}
+            type="button"
+            className="nv-callchip"
+            onClick={() => {
+              open({
+                title: `Call ${reference}`,
+                chip: 'observed',
+                body: <CallEvidence callId={reference} />,
+              })
+            }}
+          >
+            {reference}
+          </button>
+        ))}
+      </span>
+      {/* Dropped rather than guessed when this build ships no playbook for
+          the family — a dead link is worse than none. */}
+      {isIssueKey(code) ? <IssueCue issue={code} scope={{ employer: employerRef }} /> : null}
+    </div>
+  )
+}
 
 export function AccountBody({
   data,
@@ -180,6 +235,11 @@ export function AccountBody({
                     ? `${String((condition.callIds ?? []).length)} call(s)`
                     : 'not met'}
                 </span>
+                <IndicatorEvidence
+                  code={condition.code}
+                  callIds={condition.callIds ?? []}
+                  employerRef={facts.employerRef}
+                />
               </li>
             ))}
           </ul>
@@ -220,6 +280,11 @@ export function AccountBody({
                         ? `${String(observation.hits)} of ${String(observation.employerCalls)} calls`
                         : 'not observed'}
                   </span>
+                  <IndicatorEvidence
+                    code={observation.code}
+                    callIds={observation.callIds ?? []}
+                    employerRef={facts.employerRef}
+                  />
                 </li>
               ))}
             </ul>

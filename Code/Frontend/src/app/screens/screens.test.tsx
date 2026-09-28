@@ -148,6 +148,7 @@ const FAMILIES = [
     rate: 0.33,
     available: true,
     unavailableBecause: '',
+    callIds: ['C-1', 'C-2', 'C-3'],
   },
   {
     code: 'broker_adverse',
@@ -399,6 +400,19 @@ const NO_INSIGHTS = {
   model: null,
 }
 
+/** One call's evidence, as the drawer asks for it. */
+const EVIDENCE = {
+  reference: 'C-1',
+  callerRef: 'CB-7700001',
+  callerType: 'member',
+  agentRef: 'AGT-01',
+  employerRef: 'EMP-1001',
+  resolutionStatus: 'RESOLVED',
+  resolutionReason: null,
+  transcriptMissing: false,
+  turns: [{ seq: 0, speaker: 'AGENT', text: 'Choice Administrators, how can I help?' }],
+}
+
 function routeFor(url: string): unknown {
   if (url.includes('/insights/filters')) return OPTIONS
   // Checked before `/insights/exec`: the generated surface takes the screen
@@ -409,6 +423,9 @@ function routeFor(url: string): unknown {
   if (url.includes('/insights/risk')) return RISK
   if (url.includes('/insights/hierarchy')) return HIERARCHY
   if (url.includes('/insights/accounts/')) return ACCOUNT
+  // Before the list: `/insights/calls/C-1` contains `/insights/calls`, and
+  // serving the page shape for one call's evidence breaks the drawer.
+  if (/\/insights\/calls\/[^?]+/.test(url)) return EVIDENCE
   if (url.includes('/insights/calls')) return CALLS
   return {}
 }
@@ -1024,5 +1041,34 @@ describe('which problems drive the risk', () => {
 
     expect(screen.getByText('Not available on v9 data')).toBeInTheDocument()
     expect(screen.getByText(/derived composite, not a v9 field/)).toBeInTheDocument()
+  })
+})
+
+describe('an indicator on the account page', () => {
+  it('names the calls it was observed on', async () => {
+    // The envelope's rule applies to an indicator as much as to a rate: a
+    // family reported on three calls that names none of them cannot be
+    // argued with.
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByRole('button', { name: 'C-1' })).toBeInTheDocument()
+  })
+
+  it('opens the evidence drawer from a call reference', async () => {
+    renderAt('/accounts/EMP-1001')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'C-1' }))
+
+    expect(await screen.findByText('Call C-1')).toBeInTheDocument()
+  })
+
+  it('offers what to do about the family, scoped to this account', async () => {
+    renderAt('/accounts/EMP-1001')
+    await screen.findByRole('button', { name: 'C-1' })
+
+    const links = screen.getAllByRole('link', { name: /What to do/ })
+
+    expect(links.length).toBeGreaterThan(0)
+    expect(links.some((link) => link.getAttribute('href')?.includes('EMP-1001'))).toBe(true)
   })
 })

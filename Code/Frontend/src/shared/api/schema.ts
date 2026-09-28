@@ -1664,6 +1664,11 @@ export interface components {
              * @description False when v9 has no field for this family. Not the same as no hits.
              */
             available: boolean;
+            /**
+             * Callids
+             * @description The calls this family was observed on, so the reader can open them. The envelope's rule — every figure travels with the call ids behind it — applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with.
+             */
+            callIds?: string[];
             /** Code */
             code: string;
             /** Employercalls */
