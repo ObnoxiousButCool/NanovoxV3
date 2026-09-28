@@ -40,7 +40,7 @@ DEFAULT_CORPUS_DIR: Path = PROJECT_ROOT / "Documents"
 # The v9 build-bible workbook — the current one only. A superseded revision
 # (see Documents/superseded/) is kept as a regression fixture, never read by
 # default.
-DEFAULT_WORKBOOK_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_corpus_v9_build_bible_6.xlsx"
+DEFAULT_WORKBOOK_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_corpus_v9_build_bible_3.xlsx"
 # Every current transcript batch PDF lives directly in this directory —
 # `PdfCorpusSource`/`PdfAnswerKeySource` glob `*.pdf` here, non-recursively,
 # so `Documents/superseded/` is naturally excluded (see plan §11: a
