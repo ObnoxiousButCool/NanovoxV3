@@ -21,12 +21,20 @@ export function KpiTile({
   meta,
   tone = 'plain',
   info,
+  todo,
 }: {
   label: ReactNode
   value: ReactNode
   meta?: ReactNode
   tone?: TileTone
   info?: ReactNode
+  /**
+   * The route from a number to the step that answers it — `.big .todo` in
+   * `v2.css`, which the prototype puts on every tile carrying an issue.
+   * It sits under the meta line rather than on the value, because the
+   * value is a figure and this is a recommendation (C3a).
+   */
+  todo?: ReactNode
 }) {
   return (
     <div className={`nv-big${tone === 'plain' ? '' : ` nv-${tone}`}`}>
@@ -36,6 +44,7 @@ export function KpiTile({
       </span>
       <span className="nv-v">{value}</span>
       {meta ? <span className="nv-m">{meta}</span> : null}
+      {todo}
     </div>
   )
 }

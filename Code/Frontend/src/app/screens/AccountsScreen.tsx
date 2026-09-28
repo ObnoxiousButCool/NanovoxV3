@@ -219,7 +219,7 @@ export function AccountsScreen() {
                 />
               </div>
               <div className="nv-c12">
-                <AccountTiles profile={account.data.profile} />
+                <AccountTiles profile={account.data.profile} employerRef={selected} />
               </div>
               <AccountBody data={account.data} brokerName={brokerName} />
               <div className="nv-c12">

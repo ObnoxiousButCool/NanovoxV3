@@ -239,6 +239,14 @@
   box-shadow: inset 3px 0 0 var(--warning);
 }
 
+/* `.big .todo`: heavier and tighter to the meta line than the standalone
+   cue, which has a paragraph's worth of room around it. */
+.nv-big .nv-todo {
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
 .nv-big.nv-withheld .nv-v {
   color: var(--ink-3);
 }

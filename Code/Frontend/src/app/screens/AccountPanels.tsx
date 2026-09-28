@@ -28,7 +28,7 @@ import { useCalls } from '@/shared/api/insights'
 import type { AccountProfile, CallRow } from '@/shared/api/insights'
 import { CallEvidence } from '@/shared/design/drawer/Evidence'
 import { useDrawer } from '@/shared/design/drawer'
-import { IssueValue } from '@/shared/actions/IssueLink'
+import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { BarCell } from '@/shared/design/charts'
 import {
   BigRow,
@@ -261,7 +261,13 @@ export function AccountActions({
  * unresolved calls out of four is a true and useful statement, where a zero
  * *rate* over four would not be.
  */
-export function AccountTiles({ profile }: { profile: AccountProfile }) {
+export function AccountTiles({
+  profile,
+  employerRef,
+}: {
+  profile: AccountProfile
+  employerRef: string
+}) {
   return (
     <Panel
       title="This account's calls"
@@ -276,18 +282,24 @@ export function AccountTiles({ profile }: { profile: AccountProfile }) {
         />
         <Tile
           label="Unresolved"
+          employerRef={employerRef}
+          tone="warm"
           value={profile.unresolved}
           issue="unresolved"
           meta={`of ${String(profile.calls)} calls`}
         />
         <Tile
           label="Repeat contacts"
+          employerRef={employerRef}
+          tone="warm"
           value={profile.repeatContacts}
           issue="repeat_contact"
           meta="unresolved, and they came back"
         />
         <Tile
           label="Escalations missed"
+          employerRef={employerRef}
+          tone="hot"
           value={profile.escalationsMissed}
           issue="escalation_missed"
           meta="warranted, not given"
@@ -322,23 +334,53 @@ export function AccountTiles({ profile }: { profile: AccountProfile }) {
   )
 }
 
-/** A count that links to its playbook only when there is something to do. */
+/**
+ * A count that links to its playbook only when there is something to do.
+ *
+ * `NV.tile` in the prototype does three things to a tile carrying an issue
+ * and we were doing one. It links the value, **and** tints the tile with an
+ * inset bar, **and** puts "What to do →" underneath. The tint is the part a
+ * reader sees first — a page of flat tiles gives them nothing to look at
+ * first, which is the whole job of a tile strip.
+ *
+ * Zero takes none of it. A tile at zero is a good outcome, not a muted
+ * warning, and offering a playbook for a problem nobody has is noise.
+ */
 function Tile({
   label,
   value,
   issue,
   meta,
+  employerRef,
+  tone,
 }: {
   label: string
   value: number
   issue: 'unresolved' | 'repeat_contact' | 'escalation_missed'
   meta: string
+  employerRef: string
+  /** `hot` for a missed escalation, `warm` for the rest — the prototype's
+      own split, and the reason it is passed rather than derived. */
+  tone: 'hot' | 'warm'
 }) {
+  const raised = value > 0
   return (
     <KpiTile
       label={label}
-      value={value === 0 ? '0' : <IssueValue issue={issue}>{String(value)}</IssueValue>}
+      tone={raised ? tone : 'plain'}
+      value={
+        raised ? (
+          <IssueValue issue={issue} tone={tone} scope={{ employer: employerRef }}>
+            {String(value)}
+          </IssueValue>
+        ) : (
+          '0'
+        )
+      }
       meta={<span className="nv-indcount">{meta}</span>}
+      todo={
+        raised ? <IssueCue issue={issue} scope={{ employer: employerRef }} /> : undefined
+      }
     />
   )
 }

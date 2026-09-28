@@ -1008,6 +1008,34 @@ describe('the account tiles and topics', () => {
     }
   })
 
+  it('tints a tile that carries an issue and offers its playbook', async () => {
+    // `NV.tile` does three things to a tile with an issue: links the value,
+    // tints the tile, and puts "What to do →" underneath. We were doing the
+    // first only, so a strip of flat tiles gave the reader nothing to look
+    // at first — which is the job of a tile strip.
+    renderAt('/accounts/EMP-1001')
+    await screen.findByText(/This account.s calls/)
+
+    const unresolved = screen.getByText('Unresolved').closest('.nv-big')
+
+    expect(unresolved).not.toBeNull()
+    expect((unresolved as HTMLElement).className).toContain('nv-warm')
+    expect(within(unresolved as HTMLElement).getByText(/What to do/)).toBeInTheDocument()
+  })
+
+  it('leaves a tile at zero untinted and offers it no playbook', async () => {
+    // Zero missed escalations is a good outcome, not a muted warning, and a
+    // playbook for a problem nobody has is noise.
+    renderAt('/accounts/EMP-1001')
+    await screen.findByText(/This account.s calls/)
+
+    const missed = screen.getByText('Escalations missed').closest('.nv-big')
+
+    expect(missed).not.toBeNull()
+    expect((missed as HTMLElement).className).not.toContain('nv-hot')
+    expect(within(missed as HTMLElement).queryByText(/What to do/)).not.toBeInTheDocument()
+  })
+
   it('states that average call quality is not published, rather than omitting it', async () => {
     // Metric 12 is per agent; rolling it up to an employer is forbidden by
     // the Metrics sheet. The tile is still rendered, because a silently
