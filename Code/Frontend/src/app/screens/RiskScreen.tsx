@@ -32,7 +32,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useFilterOptions, useGeneratedInsights, useRisk } from '@/shared/api/insights'
 import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
-import { VBars, VLine } from '@/shared/design/charts'
+import { BarCell, VBars, VLine } from '@/shared/design/charts'
 import type { IssueKey } from '@/shared/actions/issueHref'
 import { ISSUE_KEYS } from '@/shared/actions/issueHref'
 import { useFilters } from '@/shared/filters/useFilters'
@@ -40,6 +40,7 @@ import { Screen } from '@/shared/screens/Screen'
 import { InsightFeed } from '@/shared/insights/Insights'
 import {
   BigRow,
+  Delta,
   Empty,
   EpistemicChip,
   FigureSample,
@@ -307,6 +308,11 @@ function RiskBody({
         </Panel>
       </div>
 
+      {/* `index.html`'s order: the accounts, then what drives them. */}
+      <div className="nv-c12">
+        <DriversPanel drivers={data.drivers} />
+      </div>
+
       {/* The three corpus-shape panels V2 puts on this page. They were on
           /exec or nowhere until conflict C9 was recorded: each screen had
           been shaped by its endpoint rather than by the page it mirrors. */}
@@ -430,4 +436,82 @@ function RiskBody({
 /** An indicator family the action view has a playbook for. */
 function isIssue(code: string): code is IssueKey {
   return (ISSUE_KEYS as readonly string[]).includes(code)
+}
+
+/**
+ * "Which problems drive the risk" — the ten indicator families, ranked.
+ *
+ * The prototype prints a percentage change beside each driver. This does
+ * not: at the corpus's volume two calls becoming four is "+100%" and is
+ * also a coin flip, so the server sends `beyondNoise` and the panel speaks
+ * only when that is true. It is the same treatment the exec page's
+ * movements already get.
+ *
+ * Three different absences, kept apart:
+ *
+ * - **Not available** — v9 carries no field for the family, so it is shown
+ *   with its reason. Never a zero.
+ * - **Zero calls** — a real answer, and kept in the list: these ten are the
+ *   risk flag's own inputs, so "nobody raised this" is a finding.
+ * - **No change** — the window was too short to split. The count stands.
+ */
+function DriversPanel({ drivers }: { drivers: RiskScreenData['drivers'] }) {
+  const rows = drivers ?? []
+  const max = Math.max(...rows.map((driver) => driver.calls), 0)
+
+  return (
+    <Panel
+      title="Which problems drive the risk"
+      sub="Each driver is one of the ten indicators, counted in calls. Most common first."
+      chip={<EpistemicChip kind="observed" />}
+    >
+      {rows.length === 0 ? (
+        <Empty title="No indicator has been assessed">
+          Nothing in scope carries enough calls to read the families over.
+        </Empty>
+      ) : (
+        <ul className="nv-drivers">
+          {rows.map((driver, index) => (
+            <li key={driver.code}>
+              <span className="nv-rk">#{index + 1}</span>
+              <span className="nv-drv-label">
+                {isIssue(driver.code) ? (
+                  <IssueValue issue={driver.code} tone="warm">
+                    {driver.label}
+                  </IssueValue>
+                ) : (
+                  driver.label
+                )}
+                <small>
+                  {driver.available
+                    ? [driver.topCategory, driver.topTouchpoint]
+                        .filter((part) => part !== null && part !== undefined && part !== '')
+                        .join(' · ') || 'no calls in scope'
+                    : driver.unavailableBecause}
+                </small>
+              </span>
+              {driver.available ? (
+                <>
+                  <BarCell value={driver.calls} max={max} />
+                  <span className="nv-drv-change">
+                    {driver.change === null || driver.change === undefined ? (
+                      <span className="nv-indcount">no comparison</span>
+                    ) : driver.change.beyondNoise ? (
+                      <Delta now={driver.change.now} prior={driver.change.prior} />
+                    ) : (
+                      <span className="nv-indcount">
+                        {driver.change.prior} → {driver.change.now}, within noise
+                      </span>
+                    )}
+                  </span>
+                </>
+              ) : (
+                <span className="nv-drv-none">Not available on v9 data</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  )
 }

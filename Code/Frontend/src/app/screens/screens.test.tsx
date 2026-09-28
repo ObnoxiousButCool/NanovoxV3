@@ -100,6 +100,42 @@ const RISK = {
     premiumIncomplete: false,
     caveat: 'Exposure across 0 flagged account(s): 0 lives. Exposure, not expected loss.',
   },
+  drivers: [
+    {
+      code: 'unresolved',
+      label: 'Unresolved outcome',
+      calls: 4,
+      callIds: ['C-1', 'C-2', 'C-3', 'C-4'],
+      topCategory: 'Claims & EOB',
+      topTouchpoint: 'denial_letter_eob',
+      available: true,
+      unavailableBecause: '',
+      change: { now: 3, prior: 1, expected: 1.2, beyondNoise: false, worse: true },
+    },
+    {
+      code: 'exit_language',
+      label: 'Exit or market-test language, verbatim',
+      calls: 0,
+      callIds: [],
+      topCategory: null,
+      topTouchpoint: null,
+      available: true,
+      unavailableBecause: '',
+      change: null,
+    },
+    // v9 carries no field for this one: reported with its reason, not as a zero.
+    {
+      code: 'high_effort',
+      label: 'High member effort',
+      calls: 0,
+      callIds: [],
+      topCategory: null,
+      topTouchpoint: null,
+      available: false,
+      unavailableBecause: 'Member effort is a derived composite, not a v9 field.',
+      change: null,
+    },
+  ],
 }
 
 const FAMILIES = [
@@ -552,12 +588,20 @@ describe('/risk, with an account it could assess', () => {
   it('names the families that fired rather than only counting them', async () => {
     renderAt('/risk')
 
+    // Scoped to the accounts table: the drivers panel below it names the
+    // same ten families book-wide, so an unscoped query matches both.
+    const assessed = await screen.findByText('Accounts assessed')
+    const panel = assessed.closest('section')
+
+    expect(panel).not.toBeNull()
     await waitFor(() => {
-      expect(screen.getByText('Unresolved outcome')).toBeInTheDocument()
+      expect(within(panel as HTMLElement).getByText('Unresolved outcome')).toBeInTheDocument()
     })
     // A family that did not fire is not named in the row — the count says
     // how many of ten, so absence is already legible without listing eight.
-    expect(screen.queryByText('High member effort')).not.toBeInTheDocument()
+    expect(
+      within(panel as HTMLElement).queryByText('High member effort'),
+    ).not.toBeInTheDocument()
   })
 })
 
@@ -943,5 +987,42 @@ describe('the account tiles and topics', () => {
     renderAt('/accounts/EMP-1001')
 
     expect(await screen.findByText(/carried no category/)).toBeInTheDocument()
+  })
+})
+
+describe('which problems drive the risk', () => {
+  it('ranks the families by the calls they account for', async () => {
+    renderAt('/risk')
+
+    expect(await screen.findByText('Which problems drive the risk')).toBeInTheDocument()
+    expect(screen.getByText('Unresolved outcome')).toBeInTheDocument()
+  })
+
+  it('reports a move inside the noise as counts, never as a change', async () => {
+    // Two calls becoming four is "+100%" and also a coin flip. The server
+    // sends `beyondNoise`; the panel says nothing moved unless it is true.
+    renderAt('/risk')
+    await screen.findByText('Which problems drive the risk')
+
+    expect(screen.getByText(/1 → 3, within noise/)).toBeInTheDocument()
+  })
+
+  it('keeps a family nobody raised, at zero', async () => {
+    // These ten are the flag's own inputs, so "nobody raised this" is a
+    // finding about the book rather than a long tail to trim.
+    renderAt('/risk')
+    await screen.findByText('Which problems drive the risk')
+
+    expect(
+      screen.getByText('Exit or market-test language, verbatim'),
+    ).toBeInTheDocument()
+  })
+
+  it('says a family v9 cannot compute is unavailable, never zero', async () => {
+    renderAt('/risk')
+    await screen.findByText('Which problems drive the risk')
+
+    expect(screen.getByText('Not available on v9 data')).toBeInTheDocument()
+    expect(screen.getByText(/derived composite, not a v9 field/)).toBeInTheDocument()
   })
 })

@@ -1266,6 +1266,44 @@
         "title": "Category",
         "type": "string"
       },
+      "ChangeResponse": {
+        "description": "How a driver moved between the first and last part of the window.\n\nCounts and a noise verdict, never a percentage. At this corpus's volume\ntwo calls becoming four is \"+100%\" and is also a coin flip, so\n`beyondNoise` is the only field a screen should use to decide whether to\nsay anything happened. It is the same test the exec page's movements\ncarry, for the same reason.",
+        "properties": {
+          "beyondNoise": {
+            "title": "Beyondnoise",
+            "type": "boolean"
+          },
+          "expected": {
+            "description": "What the later part would have shown if nothing changed except how busy it was. Without this scaling every busy period reads as a deterioration.",
+            "title": "Expected",
+            "type": "number"
+          },
+          "now": {
+            "description": "Calls in the last part of the window.",
+            "title": "Now",
+            "type": "integer"
+          },
+          "prior": {
+            "description": "Calls in the first part.",
+            "title": "Prior",
+            "type": "integer"
+          },
+          "worse": {
+            "description": "Whether the move is in the bad direction for this family.",
+            "title": "Worse",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "now",
+          "prior",
+          "expected",
+          "beyondNoise",
+          "worse"
+        ],
+        "title": "ChangeResponse",
+        "type": "object"
+      },
       "CodedValue": {
         "description": "One coded value and the words for it.\n\n`code` is what a filter accepts and what a client branches on; `label`\nis what a person reads. They are never the same field.",
         "properties": {
@@ -1645,6 +1683,84 @@
           "finding"
         ],
         "title": "DriftResponse",
+        "type": "object"
+      },
+      "DriverResponse": {
+        "description": "One indicator family's share of the book's calls.",
+        "properties": {
+          "available": {
+            "description": "False when v9 carries no field for this family. Such a driver is reported with its reason and never as zero \u2014 'we cannot look' and 'nobody raised it' are different findings.",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "callIds": {
+            "description": "So the driver can be argued with.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Callids",
+            "type": "array"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChangeResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when the window is too short to split, or the family cannot be computed. Absent is not 'no change'."
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "topCategory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What these calls were most often about. Context for the driver, never a second measurement of it. Null when none is recorded.",
+            "title": "Topcategory"
+          },
+          "topTouchpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Toptouchpoint"
+          },
+          "unavailableBecause": {
+            "default": "",
+            "title": "Unavailablebecause",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "calls",
+          "callIds",
+          "available"
+        ],
+        "title": "DriverResponse",
         "type": "object"
       },
       "DynamicKindResponse": {
@@ -3201,6 +3317,14 @@
             "description": "How many employers were assessed **before** `flagged` and `minIndicators` narrowed the list. Filters slice, never hide: a reader has to be able to tell a narrow screen from an empty one.",
             "title": "Assessedcount",
             "type": "integer"
+          },
+          "drivers": {
+            "description": "Which of the ten indicator families account for the most calls, most first. Includes the families at zero: these ten are the flag's own inputs, so 'nobody raised this' is a finding about the book.",
+            "items": {
+              "$ref": "#/components/schemas/DriverResponse"
+            },
+            "title": "Drivers",
+            "type": "array"
           },
           "exposure": {
             "$ref": "#/components/schemas/ExposureResponse"

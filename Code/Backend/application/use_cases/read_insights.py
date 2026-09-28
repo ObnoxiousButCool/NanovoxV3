@@ -70,6 +70,7 @@ from domain.aggregation.isolation import (
 )
 from domain.aggregation.patterns import window_for
 from domain.aggregation.repeat_contact import failure_driven_repeat_rate, repeat_references
+from domain.aggregation.risk_drivers import Driver, risk_drivers
 from domain.aggregation.risk_flag import (
     Exposure,
     RiskAssessment,
@@ -265,6 +266,9 @@ class RiskResult:
     #: five-call floor rather than drawn as a swing.
     weekly_resolved: tuple[WeekShare, ...]
     weekly_quality: tuple[WeekShare, ...]
+    #: Which of the ten indicator families account for the most calls,
+    #: over the same window the flag itself uses.
+    drivers: tuple[Driver, ...]
 
 
 class InsightsReader:
@@ -537,6 +541,7 @@ class GetAccountRisk:
             weekly_unresolved=weekly_shares(calls, window, unresolved),
             weekly_resolved=weekly_shares(calls, window, resolved),
             weekly_quality=weekly_shares(calls, window, good_quality(self._config.quality_bands)),
+            drivers=risk_drivers(calls, window),
         )
 
 

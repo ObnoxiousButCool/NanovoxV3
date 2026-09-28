@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from application.use_cases.read_insights import AccountRisk, RiskResult
     from domain.aggregation.distributions import WeekShare
     from domain.aggregation.indicators import Observation
+    from domain.aggregation.risk_drivers import Driver
     from domain.aggregation.risk_flag import RiskAssessment
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -203,6 +204,61 @@ class WeekShareResponse(CamelModel):
     )
 
 
+class ChangeResponse(CamelModel):
+    """How a driver moved between the first and last part of the window.
+
+    Counts and a noise verdict, never a percentage. At this corpus's volume
+    two calls becoming four is "+100%" and is also a coin flip, so
+    `beyondNoise` is the only field a screen should use to decide whether to
+    say anything happened. It is the same test the exec page's movements
+    carry, for the same reason.
+    """
+
+    now: int = Field(description="Calls in the last part of the window.")
+    prior: int = Field(description="Calls in the first part.")
+    expected: float = Field(
+        description=(
+            "What the later part would have shown if nothing changed except how "
+            "busy it was. Without this scaling every busy period reads as a "
+            "deterioration."
+        )
+    )
+    beyond_noise: bool
+    worse: bool = Field(description="Whether the move is in the bad direction for this family.")
+
+
+class DriverResponse(CamelModel):
+    """One indicator family's share of the book's calls."""
+
+    code: str
+    label: str
+    calls: int
+    call_ids: list[str] = Field(description="So the driver can be argued with.")
+    top_category: str | None = Field(
+        default=None,
+        description=(
+            "What these calls were most often about. Context for the driver, "
+            "never a second measurement of it. Null when none is recorded."
+        ),
+    )
+    top_touchpoint: str | None = None
+    available: bool = Field(
+        description=(
+            "False when v9 carries no field for this family. Such a driver is "
+            "reported with its reason and never as zero — 'we cannot look' and "
+            "'nobody raised it' are different findings."
+        )
+    )
+    unavailable_because: str = ""
+    change: ChangeResponse | None = Field(
+        default=None,
+        description=(
+            "Null when the window is too short to split, or the family cannot be "
+            "computed. Absent is not 'no change'."
+        ),
+    )
+
+
 class RiskScreenResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
@@ -243,6 +299,14 @@ class RiskScreenResponse(CamelModel):
     weekly_unresolved: list[WeekShareResponse] = Field(default_factory=list)
     weekly_resolved: list[WeekShareResponse] = Field(default_factory=list)
     weekly_quality: list[WeekShareResponse] = Field(default_factory=list)
+    drivers: list[DriverResponse] = Field(
+        default_factory=list,
+        description=(
+            "Which of the ten indicator families account for the most calls, most "
+            "first. Includes the families at zero: these ten are the flag's own "
+            "inputs, so 'nobody raised this' is a finding about the book."
+        ),
+    )
     handling_unavailable: str = Field(
         default="",
         description=(
@@ -301,6 +365,7 @@ def build_risk_response(
         weekly_unresolved=[_week(entry) for entry in result.weekly_unresolved],
         weekly_resolved=[_week(entry) for entry in result.weekly_resolved],
         weekly_quality=[_week(entry) for entry in result.weekly_quality],
+        drivers=[_driver(entry) for entry in result.drivers],
         handling_unavailable=HANDLING_UNAVAILABLE,
         exposure=ExposureResponse(
             employers=list(result.exposure.employers),
@@ -308,6 +373,32 @@ def build_risk_response(
             annual_premium=result.exposure.annual_premium,
             premium_incomplete=result.exposure.premium_incomplete,
             caveat=result.exposure.caveat,
+        ),
+    )
+
+
+def _driver(driver: Driver) -> DriverResponse:
+    return DriverResponse(
+        code=driver.family.code,
+        label=driver.family.label,
+        calls=driver.calls,
+        call_ids=list(driver.call_ids),
+        # `category.value` is the workbook's own wording, which `labels.py`
+        # deliberately does not remap.
+        top_category=driver.top_category.value if driver.top_category else None,
+        top_touchpoint=driver.top_touchpoint,
+        available=driver.family.computable,
+        unavailable_because=driver.family.unavailable_because,
+        change=(
+            ChangeResponse(
+                now=driver.change.now,
+                prior=driver.change.prior,
+                expected=round(driver.change.expected, 2),
+                beyond_noise=driver.change.beyond_noise,
+                worse=driver.change.worse,
+            )
+            if driver.change is not None
+            else None
         ),
     )
 

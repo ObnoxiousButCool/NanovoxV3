@@ -951,6 +951,40 @@ export interface components {
          */
         Category: "Coverage & Benefits" | "Claims & EOB" | "Provider Network" | "Billing & Premium" | "Enrollment & ID Cards" | "Life & Beneficiary" | "Broker Conduct";
         /**
+         * ChangeResponse
+         * @description How a driver moved between the first and last part of the window.
+         *
+         *     Counts and a noise verdict, never a percentage. At this corpus's volume
+         *     two calls becoming four is "+100%" and is also a coin flip, so
+         *     `beyondNoise` is the only field a screen should use to decide whether to
+         *     say anything happened. It is the same test the exec page's movements
+         *     carry, for the same reason.
+         */
+        ChangeResponse: {
+            /** Beyondnoise */
+            beyondNoise: boolean;
+            /**
+             * Expected
+             * @description What the later part would have shown if nothing changed except how busy it was. Without this scaling every busy period reads as a deterioration.
+             */
+            expected: number;
+            /**
+             * Now
+             * @description Calls in the last part of the window.
+             */
+            now: number;
+            /**
+             * Prior
+             * @description Calls in the first part.
+             */
+            prior: number;
+            /**
+             * Worse
+             * @description Whether the move is in the bad direction for this family.
+             */
+            worse: boolean;
+        };
+        /**
          * CodedValue
          * @description One coded value and the words for it.
          *
@@ -1110,6 +1144,42 @@ export interface components {
              * @description Mentions where one side was unknown. Not counted as drift: an unknown is not a disagreement, and scoring it as one would manufacture a finding out of a gap.
              */
             unresolved?: string[];
+        };
+        /**
+         * DriverResponse
+         * @description One indicator family's share of the book's calls.
+         */
+        DriverResponse: {
+            /**
+             * Available
+             * @description False when v9 carries no field for this family. Such a driver is reported with its reason and never as zero — 'we cannot look' and 'nobody raised it' are different findings.
+             */
+            available: boolean;
+            /**
+             * Callids
+             * @description So the driver can be argued with.
+             */
+            callIds: string[];
+            /** Calls */
+            calls: number;
+            /** @description Null when the window is too short to split, or the family cannot be computed. Absent is not 'no change'. */
+            change?: components["schemas"]["ChangeResponse"] | null;
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /**
+             * Topcategory
+             * @description What these calls were most often about. Context for the driver, never a second measurement of it. Null when none is recorded.
+             */
+            topCategory?: string | null;
+            /** Toptouchpoint */
+            topTouchpoint?: string | null;
+            /**
+             * Unavailablebecause
+             * @default
+             */
+            unavailableBecause: string;
         };
         /** DynamicKindResponse */
         DynamicKindResponse: {
@@ -1863,6 +1933,11 @@ export interface components {
              * @description How many employers were assessed **before** `flagged` and `minIndicators` narrowed the list. Filters slice, never hide: a reader has to be able to tell a narrow screen from an empty one.
              */
             assessedCount: number;
+            /**
+             * Drivers
+             * @description Which of the ten indicator families account for the most calls, most first. Includes the families at zero: these ten are the flag's own inputs, so 'nobody raised this' is a finding about the book.
+             */
+            drivers?: components["schemas"]["DriverResponse"][];
             exposure: components["schemas"]["ExposureResponse"];
             /** @description Flagged as a share of the *eligible* employers, never of all of them. */
             flaggedShare: components["schemas"]["FigureResponse"];
