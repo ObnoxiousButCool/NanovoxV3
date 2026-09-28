@@ -12,6 +12,23 @@
  * and "issues to act on" come from the findings query, the board and its
  * cards come from the board query.
  *
+ * ## The panels, and the ones that are not here
+ *
+ * Four, in `actions.html`'s order: the tiles, the issues list, the board,
+ * and "Did it work?". Two that used to sit between them are gone — a "By
+ * team" routing panel and an aggregated compliance-exceptions panel. The
+ * prototype has neither, and neither loses anything: the owning team is on
+ * every issue row and every card already, and metric 7 is reported per
+ * agent on `/agents` and per call on `/calls`, where it is attached to
+ * something a reader can open.
+ *
+ * ## Every row leads to steps
+ *
+ * `findings.issues` is keyed by playbook, so a row's `key` is exactly what
+ * `?focus=` takes. That is a reversal of conflict **C9** for this screen,
+ * the same one `/accounts` needed: shaped by the page it mirrors rather
+ * than by whichever endpoint happened to be built first.
+ *
  * ## The lifecycle is configuration, not a constant here
  *
  * The prototype hardcodes seven lanes as a JS array. This reads
@@ -39,9 +56,10 @@ import type { ActionsFindings } from '@/shared/api/insights'
 import { usePlaybook } from '@/shared/api/playbooks'
 import type { IssueKey } from '@/shared/actions/issueHref'
 import { ISSUE_KEYS, issueHref } from '@/shared/actions/issueHref'
+import { IssueCue } from '@/shared/actions/IssueLink'
 import { CallList } from '@/shared/design/drawer/Evidence'
 import { useDrawer } from '@/shared/design/drawer'
-import { Empty, EpistemicChip, FigureValue, Note, Panel } from '@/shared/design/primitives'
+import { DataTable, Empty, EpistemicChip, KpiTile, Note, Panel } from '@/shared/design/primitives'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
 import { ActionBoardView } from '@/app/screens/actions/ActionBoardView'
@@ -49,6 +67,7 @@ import { ActionCardModal } from '@/app/screens/actions/ActionCardModal'
 import { ActionComposer } from '@/app/screens/actions/ActionComposer'
 import { ActionDialog } from '@/app/screens/actions/ActionDialog'
 import { formatDue, severityColor } from '@/app/screens/actions/format'
+import { findLane } from '@/app/screens/actions/lifecycle'
 import '@/app/screens/actions/actionsBoard.css'
 
 type ModalState =
@@ -56,7 +75,10 @@ type ModalState =
   | { kind: 'composer'; issueKey: string | null; employerRef: string | null }
   | null
 
-type ActionItem = ActionsFindings['items'][number]
+type Issue = ActionsFindings['issues'][number]
+
+//: The prototype's own cut of the "where it shows up" table.
+const SHOWN_ACCOUNTS = 8
 
 export function ActionsScreen() {
   const filters = useFilters()
@@ -181,26 +203,11 @@ function ActionsBody({
       ) : null}
 
       <div className="nv-c12">
-        <IssuesToActOn findings={findings} exclude={focus} />
+        <ActionTiles board={board} />
       </div>
 
-      {findings.owners.length > 0 ? (
-        <div className="nv-c6">
-          <OwnerWorkloadPanel owners={findings.owners} />
-        </div>
-      ) : null}
-
-      {findings.controlExceptions.length > 0 ? (
-        <div className="nv-c6">
-          <ControlExceptionsPanel
-            exceptions={findings.controlExceptions}
-            caveat={findings.controlDenominatorCaveat}
-          />
-        </div>
-      ) : null}
-
       <div className="nv-c12">
-        <DidItWorkPanel panel={findings.didItWork} />
+        <IssuesToActOn findings={findings} exclude={focus} employerRef={employerRef} />
       </div>
 
       <div className="nv-c12">
@@ -215,25 +222,9 @@ function ActionsBody({
         />
       </div>
 
-      {measured.length > 0 ? (
-        <div className="nv-c12">
-          <Panel
-            title="What was done, and what changed"
-            sub="Outcomes recorded for actions that reached a closed lane."
-            chip={<EpistemicChip kind="derived" />}
-          >
-            <ul className="nv-movements">
-              {measured.map((action) => (
-                <li key={action.id}>
-                  <span className="nv-nm">{action.title}</span>
-                  <span>{action.actionTaken ?? '–'}</span>
-                  <span>{action.outcome}</span>
-                </li>
-              ))}
-            </ul>
-          </Panel>
-        </div>
-      ) : null}
+      <div className="nv-c12">
+        <DidItWorkPanel panel={findings.didItWork} measured={measured} />
+      </div>
 
       <ActionDialog open={modal !== null} onClose={onCloseModal}>
         {modal?.kind === 'card' && modalAction ? (
@@ -255,9 +246,10 @@ function ActionsBody({
             employerName={
               modal.employerRef ? (employerNames.get(modal.employerRef) ?? modal.employerRef) : null
             }
-            candidateCallIds={
-              findings.items.find((item) => item.signal.code === modal.issueKey)?.callIds ?? []
-            }
+            candidateCallIds={(() => {
+              const issue = findings.issues.find((row) => row.key === modal.issueKey)
+              return issue?.unit === 'calls' ? issue.references : []
+            })()}
             ownerTeams={ownerTeams}
             owners={owners}
             onClose={onCloseModal}
@@ -290,7 +282,6 @@ function FocusPanel({
   onOpenComposer: (issueKey: string | null, employerRef: string | null) => void
 }) {
   const playbook = usePlaybook(issueKey)
-  const { open: openDrawer } = useDrawer()
 
   if (playbook.isPending) {
     return (
@@ -312,7 +303,7 @@ function FocusPanel({
   }
 
   const pb = playbook.data
-  const item = findings.items.find((candidate) => candidate.signal.code === issueKey)
+  const issue = findings.issues.find((candidate) => candidate.key === issueKey)
   const related = boardActions
     .filter(
       (action) =>
@@ -330,7 +321,7 @@ function FocusPanel({
             </span>
             <h2>
               <span className="nv-n" style={{ color: pb.severity === 'high' ? 'var(--critical)' : 'var(--serious)' }}>
-                {item?.calls ?? 0}
+                {issue?.count ?? 0}
               </span>
               {pb.label}
             </h2>
@@ -393,31 +384,7 @@ function FocusPanel({
             )}
           </div>
           <div>
-            <h3>Evidence</h3>
-            {item && item.callIds.length > 0 ? (
-              <>
-                <p>
-                  {item.calls} {item.calls === 1 ? 'call' : 'calls'} in this period.
-                </p>
-                <button
-                  type="button"
-                  className="nv-btn"
-                  onClick={() => {
-                    openDrawer({
-                      title: pb.label,
-                      chip: 'observed',
-                      body: <CallList callIds={item.callIds} />,
-                    })
-                  }}
-                >
-                  See the calls behind it
-                </button>
-              </>
-            ) : (
-              <Empty title="No call evidence in this period">
-                This issue is not signal-based, or nothing fired in the current filters.
-              </Empty>
-            )}
+            <WhereItShowsUp issue={issue} label={pb.label} />
           </div>
         </div>
       </section>
@@ -425,8 +392,189 @@ function FocusPanel({
   )
 }
 
-function IssuesToActOn({ findings, exclude }: { findings: ActionsFindings; exclude: string | null }) {
-  const items = findings.items.filter((item) => item.signal.code !== exclude)
+/**
+ * "Where it shows up" — the accounts an issue landed on.
+ *
+ * `actions.html`'s right-hand column, and the reason the focused view is
+ * worth arriving at: a count tells the reader there is a problem, and this
+ * tells them whose desk it is on. Ranked the prototype's way, most calls
+ * first and then soonest renewal, because two accounts with the same
+ * problem are not equally urgent when one of them renews next month.
+ *
+ * The prototype's Risk column is gone. **D12** removed the four-level band
+ * it showed, and there is no replacement for it here — the flag is a
+ * yes/no that this screen already lists as its own issue.
+ */
+function WhereItShowsUp({ issue, label }: { issue: Issue | undefined; label: string }) {
+  const { open } = useDrawer()
+
+  if (issue === undefined || issue.accounts.length === 0) {
+    return (
+      <>
+        <h3>Where it shows up</h3>
+        <Empty title="Nothing to show for this issue">
+          {issue?.computable === false
+            ? issue.unavailableBecause
+            : 'Nothing fired in the current filters.'}
+        </Empty>
+      </>
+    )
+  }
+
+  const accounts = issue.accounts
+  const shown = accounts.slice(0, SHOWN_ACCOUNTS)
+  const isCalls = issue.unit === 'calls'
+  const counted = issue.count ?? 0
+
+  return (
+    <>
+      <h3>Where it shows up</h3>
+      <p className="nv-lede">
+        {isCalls
+          ? `${String(counted)} ${counted === 1 ? 'call' : 'calls'} across ${String(accounts.length)} ${accounts.length === 1 ? 'account' : 'accounts'}.`
+          : `${String(counted)} ${counted === 1 ? 'account' : 'accounts'}.`}{' '}
+        Select an account for its full picture{isCalls ? ', or a call for the transcript' : ''}.
+      </p>
+      <DataTable
+        caption={`The accounts behind ${label}`}
+        columns={[
+          { key: 'account', header: 'Account' },
+          { key: 'calls', header: 'Calls', numeric: true },
+          { key: 'renews', header: 'Renews' },
+        ]}
+        rows={shown.map((account) => ({
+          key: account.employerRef,
+          href: `/accounts/${account.employerRef}`,
+          cells: [
+            <>
+              <span className="nv-nm">{account.name}</span>
+              <small>
+                {account.brokerRef} · {account.region}
+              </small>
+            </>,
+            account.calls,
+            <>
+              {account.renewalMonth || '–'}
+              <RenewalCountdown months={account.renewalInMonths} />
+            </>,
+          ],
+        }))}
+      />
+      {accounts.length > shown.length ? (
+        <p className="nv-lede">and {accounts.length - shown.length} more.</p>
+      ) : null}
+      {isCalls && issue.references.length > 0 ? (
+        <div className="nv-callchips">
+          {issue.references.map((reference) => (
+            <button
+              key={reference}
+              type="button"
+              className="nv-callchip"
+              onClick={() => {
+                open({
+                  title: `Call ${reference}`,
+                  chip: 'observed',
+                  body: <CallList callIds={[reference]} />,
+                })
+              }}
+            >
+              {reference}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </>
+  )
+}
+
+/**
+ * How many months to the renewal, under the month itself.
+ *
+ * `null` renders nothing rather than a dash: the month above is still
+ * true, and a dash here would suggest the renewal itself was unknown.
+ */
+function RenewalCountdown({ months }: { months: number | null }) {
+  if (months === null) return null
+  return (
+    <small className="nv-figsub">
+      {months === 0 ? 'this month' : `in ${String(months)} month${months === 1 ? '' : 's'}`}
+    </small>
+  )
+}
+
+/**
+ * The four tiles the prototype puts at the top of the page.
+ *
+ * They read the board rather than the findings, because all four are
+ * questions about the work — how much is open, how much is late — and none
+ * of them is a question about the calls. Only the overdue tile offers a
+ * route onward, and only when there is something at the other end of it.
+ */
+function ActionTiles({ board }: { board: ActionBoard }) {
+  const open = board.actions.filter((a) => findLane(board.lanes, a.status)?.open)
+  const overdue = board.actions.filter((a) => a.pastDue)
+  const highOpen = open.filter((a) => a.priority === 'high')
+  const measured = board.actions.filter((a) => a.outcome !== null)
+  const raised = board.actions.length
+
+  return (
+    <div className="nv-bigrow">
+      <KpiTile
+        label="Open actions"
+        value={String(open.length)}
+        meta={
+          <span className="nv-indcount">
+            {raised > 0 ? `${String(Math.round((open.length / raised) * 100))}% of ` : 'of '}
+            {raised} raised
+          </span>
+        }
+        tone={open.length > 0 ? 'warm' : 'plain'}
+      />
+      <KpiTile
+        label="Overdue"
+        value={String(overdue.length)}
+        meta={<span className="nv-indcount">past the due date</span>}
+        tone={overdue.length > 0 ? 'hot' : 'plain'}
+        todo={overdue.length > 0 ? <IssueCue issue="overdue" /> : undefined}
+      />
+      <KpiTile
+        label="High priority open"
+        value={String(highOpen.length)}
+        meta={<span className="nv-indcount">of {open.length} open</span>}
+      />
+      <KpiTile
+        label="Outcome measured"
+        value={String(measured.length)}
+        meta={<span className="nv-indcount">of {raised} actions</span>}
+      />
+    </div>
+  )
+}
+
+/**
+ * "Issues to act on" — the screen's front door.
+ *
+ * Every row is a playbook key, which is what makes every row a link. The
+ * list used to be built from the `items` array, which is keyed by
+ * `SignalType`: eleven of its twelve rows resolved to no playbook and so
+ * rendered as a number with nothing behind it, on a screen whose whole
+ * claim is that a number comes with the steps to fix it.
+ */
+function IssuesToActOn({
+  findings,
+  exclude,
+  employerRef,
+}: {
+  findings: ActionsFindings
+  exclude: string | null
+  employerRef: string | null
+}) {
+  const issues = findings.issues.filter((issue) => issue.key !== exclude)
+  // The prototype's own cut: eight rows, then a disclosure. Long enough to
+  // be the day's work, short enough that the board below it is still on
+  // the screen.
+  const shown = issues.slice(0, 8)
+  const rest = issues.slice(8)
 
   return (
     <Panel
@@ -434,97 +582,100 @@ function IssuesToActOn({ findings, exclude }: { findings: ActionsFindings; exclu
       sub="Most urgent first. Select an issue to see the steps and the evidence."
       chip={<EpistemicChip kind="recommendation" />}
     >
-      {items.length === 0 ? (
-        <Empty title="Nothing to act on">No signal was raised in this scope.</Empty>
+      {issues.length === 0 ? (
+        <Empty title="Nothing to act on">Nothing fired in the current filters.</Empty>
       ) : (
-        <ul className="nv-attn">
-          {items.map((item) => (
-            <AttnRow key={item.signal.code} item={item} />
-          ))}
-        </ul>
+        <>
+          <ul className="nv-attn">
+            {shown.map((issue) => (
+              <AttnRow key={issue.key} issue={issue} employerRef={employerRef} />
+            ))}
+          </ul>
+          {rest.length > 0 ? (
+            <details className="nv-more">
+              <summary>{rest.length} more issues</summary>
+              <ul className="nv-attn">
+                {rest.map((issue) => (
+                  <AttnRow key={issue.key} issue={issue} employerRef={employerRef} />
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </>
       )}
     </Panel>
   )
 }
 
-function AttnRow({ item }: { item: ActionItem }) {
+function AttnRow({ issue, employerRef }: { issue: Issue; employerRef: string | null }) {
   const inner = (
     <>
-      <span className="nv-dot" style={{ background: severityColor(item.severity.code) }} />
+      <span className="nv-dot" style={{ background: severityColor(issue.severity) }} />
       <span>
-        <b>{item.signal.label}</b>
+        <b>{issue.label}</b>
+        <small>{issue.computable ? issue.meaning : issue.unavailableBecause}</small>
       </span>
-      <span className="nv-n">{item.calls}</span>
-      <span className="nv-own">{item.ownerTeam}</span>
+      {/* A key with no count shows no number. An em dash is not a zero and
+          does not read as one, which "0" here would. */}
+      <span className="nv-n">{issue.count === null ? '—' : issue.count}</span>
+      <span className="nv-own">{issue.ownerTeam}</span>
       <span className="nv-go" aria-hidden="true">
         →
       </span>
     </>
   )
-  if (isIssueKey(item.signal.code)) {
+  if (!isIssueKey(issue.key)) {
     return (
       <li>
-        <Link to={issueHref(item.signal.code)}>{inner}</Link>
+        <span className="nv-attn-static">{inner}</span>
       </li>
     )
   }
   return (
     <li>
-      <span className="nv-attn-static">{inner}</span>
+      <Link to={issueHref(issue.key, { employer: employerRef ?? undefined })}>{inner}</Link>
     </li>
   )
 }
 
-function OwnerWorkloadPanel({ owners }: { owners: ActionsFindings['owners'] }) {
-  return (
-    <Panel
-      title="By team"
-      sub="The same items, routed. Teams with critical work first."
-      chip={<EpistemicChip kind="observed" />}
-    >
-      <ul className="nv-movements">
-        {owners.map((owner) => (
-          <li key={owner.ownerTeam}>
-            <span className="nv-nm">{owner.ownerTeam}</span>
-            <span>{owner.calls} calls</span>
-            {owner.critical > 0 ? <span className="nv-worse">{owner.critical} critical</span> : null}
-          </li>
-        ))}
-      </ul>
-    </Panel>
-  )
-}
-
-function ControlExceptionsPanel({
-  exceptions,
-  caveat,
+/**
+ * "Did it work?" — the outcomes recorded, and why they are not an answer.
+ *
+ * One panel, because the prototype has one: its "Did it work?" table is the
+ * outcomes somebody typed, and its tooltip is insight 22's caveat. Two
+ * panels here — a withheld note and an outcomes table under different
+ * headings — let a reader take the table as the measurement, which is the
+ * exact reading insight 22 is withheld to prevent.
+ */
+function DidItWorkPanel({
+  panel,
+  measured,
 }: {
-  exceptions: ActionsFindings['controlExceptions']
-  caveat: string
+  panel: ActionsFindings['didItWork']
+  measured: Action[]
 }) {
   return (
     <Panel
-      title="Compliance control exceptions"
-      sub="Metric 7, by type. Never blended into one compliance rate."
-      chip={<EpistemicChip kind="observed" />}
+      title={panel.question}
+      sub="What was done, and what the owner recorded afterwards."
+      chip={<EpistemicChip kind="inference" />}
     >
-      <ul className="nv-movements">
-        {exceptions.map((exception) => (
-          <li key={exception.exceptionType.code}>
-            <span className="nv-nm">{exception.exceptionType.label}</span>
-            <FigureValue figure={exception.figure} format={(v) => `${String(Math.round(v * 100))}%`} />
-          </li>
-        ))}
-      </ul>
-      <Note>{caveat}</Note>
-    </Panel>
-  )
-}
-
-function DidItWorkPanel({ panel }: { panel: ActionsFindings['didItWork'] }) {
-  return (
-    <Panel title={panel.question} chip={<EpistemicChip kind="inference" />}>
       <Note>{panel.why}</Note>
+      {measured.length === 0 ? (
+        <Empty title="No outcome recorded yet">
+          An action records one when it reaches a closed lane.
+        </Empty>
+      ) : (
+        <ul className="nv-movements">
+          {measured.map((action) => (
+            <li key={action.id}>
+              <span className="nv-nm">{action.title}</span>
+              <span>{action.actionTaken ?? '–'}</span>
+              <span>{action.outcome}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       <Note>{panel.unlockedBy}</Note>
     </Panel>
   )

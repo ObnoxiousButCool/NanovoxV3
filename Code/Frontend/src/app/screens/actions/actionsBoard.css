@@ -954,3 +954,32 @@ dialog.nv-actdialog textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* `details.more` in v2.css — the disclosure under a long issues list.
+   The marker is replaced rather than styled: the platform triangle differs
+   between browsers and the prototype's own caret is the same glyph on all
+   of them. */
+details.nv-more {
+  margin-top: 16px;
+  border-top: 1px solid var(--rule);
+  padding-top: 12px;
+}
+
+details.nv-more > summary {
+  cursor: pointer;
+  font: 600 13.5px/1.3 var(--body);
+  color: var(--brand);
+  list-style: none;
+}
+
+details.nv-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.nv-more > summary::before {
+  content: '▸ ';
+}
+
+details.nv-more[open] > summary::before {
+  content: '▾ ';
+}

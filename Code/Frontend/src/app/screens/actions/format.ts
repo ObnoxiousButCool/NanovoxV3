@@ -110,10 +110,16 @@ export function sourceKindColor(sourceKind: string): string {
 
 /** The Signal Taxonomy's four severities (`SignalSeverity`), coloured. */
 const SEVERITY_COLOR: Record<string, string> = {
+  // The Signal Taxonomy's four, used by the board's cards.
   CRITICAL: 'var(--critical)',
   HIGH: 'var(--critical)',
   MEDIUM: 'var(--serious)',
   LOW: 'var(--warning)',
+  // A playbook's two, used by the issues list. Deliberately the same two
+  // colours as the taxonomy's top and middle rather than a third palette:
+  // red is urgent and orange is important wherever the reader sees them.
+  high: 'var(--critical)',
+  medium: 'var(--serious)',
 }
 
 export function severityColor(code: string): string {

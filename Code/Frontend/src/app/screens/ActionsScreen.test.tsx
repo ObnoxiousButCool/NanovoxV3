@@ -57,6 +57,79 @@ const FINDINGS = {
   scope: SCOPE,
   asOf: '2026-09-21',
   windowWeeks: 12,
+  issues: [
+    {
+      key: 'unresolved',
+      label: 'Unresolved calls',
+      meaning: 'The caller ended the call in the same position they started.',
+      ownerTeam: 'Operations',
+      severity: 'high',
+      unit: 'calls',
+      count: 3,
+      references: ['C-0001', 'C-0002', 'C-0003'],
+      accounts: [
+        {
+          employerRef: 'EMP-1001',
+          name: 'Cedar Point Workforce Partners',
+          region: 'Bay Area',
+          brokerRef: 'BRK-06',
+          renewalMonth: 'Sep',
+          calls: 2,
+          renewalInMonths: 0,
+        },
+        {
+          employerRef: 'EMP-1004',
+          name: 'Drummond Associates',
+          region: 'Inland Empire',
+          brokerRef: 'BRK-03',
+          renewalMonth: 'Jan',
+          calls: 1,
+          renewalInMonths: 4,
+        },
+      ],
+      computable: true,
+      unavailableBecause: null,
+    },
+    {
+      key: 'escalation_missed',
+      label: 'Escalations missed',
+      meaning: 'A supervisor was warranted, and the call ended without one.',
+      ownerTeam: 'Operations',
+      severity: 'high',
+      unit: 'calls',
+      count: 1,
+      references: ['C-0009'],
+      accounts: [],
+      computable: true,
+      unavailableBecause: null,
+    },
+    {
+      key: 'flagged',
+      label: 'Accounts flagged',
+      meaning: 'Accounts metric 10 flags.',
+      ownerTeam: 'Account Management',
+      severity: 'high',
+      unit: 'accounts',
+      count: 2,
+      references: ['EMP-1001', 'EMP-1004'],
+      accounts: [],
+      computable: true,
+      unavailableBecause: null,
+    },
+    {
+      key: 'high_effort',
+      label: 'High member effort',
+      meaning: 'Long calls that also repeated, escalated or ended unresolved.',
+      ownerTeam: 'Operations',
+      severity: 'medium',
+      unit: 'calls',
+      count: null,
+      references: [],
+      accounts: [],
+      computable: false,
+      unavailableBecause: 'Member effort is a derived composite, not a v9 field.',
+    },
+  ],
   items: [
     {
       signal: { code: 'unresolved', label: 'Unresolved calls' },
@@ -275,6 +348,20 @@ function handle(url: string, init?: RequestInit): unknown {
     return created
   }
   if (path.startsWith('/insights/actions')) return FINDINGS
+  // The accounts screen is another file's subject, and this stub does not
+  // model it. A 404 rather than the `{}` below, because `{}` is served as
+  // a 200 and the screen then reads fields off it that a real empty body
+  // would never have — which surfaces as a crash in whichever test
+  // happened to navigate, not as the missing stub it is.
+  if (path.startsWith('/insights/accounts')) {
+    return {
+      title: 'Not stubbed here.',
+      status: 404,
+      code: 'not_found',
+      correlation_id: null,
+      detail: path,
+    }
+  }
   if (path.startsWith('/insights/calls/')) {
     return {
       reference: 'C-0001',
@@ -304,6 +391,30 @@ function serve(): void {
       return Promise.resolve(
         new Response(JSON.stringify(body), {
           status: isProblem ? ((body as { status: number }).status) : status,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    }),
+  )
+}
+
+/**
+ * Serve a different findings body, leaving every other route alone.
+ *
+ * The whole-fetch stub each of these used to write by hand also replaced
+ * the board, the playbook and the calls, which is how a test meant to be
+ * about one empty array ends up asserting against a board that is not
+ * there either.
+ */
+function stubFindings(body: unknown): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: string, init?: RequestInit) => {
+      const path = input.replace('http://api.test/api/v1', '')
+      const isFindings = path.startsWith('/insights/actions') && !path.includes('/board')
+      return Promise.resolve(
+        new Response(JSON.stringify(isFindings ? body : handle(input, init)), {
+          status: init?.method === 'POST' ? 201 : 200,
           headers: { 'Content-Type': 'application/json' },
         }),
       )
@@ -741,15 +852,91 @@ describe('the focused issue view', () => {
     expect(attnList ? within(attnList).queryAllByText('Unresolved calls') : []).toHaveLength(0)
   })
 
-  it('renders a dynamic issue without a link, rather than guessing a route for it', async () => {
+  it('gives every issue row a route to its steps', async () => {
+    // The reason the list is keyed by playbook. Built from the signal
+    // codes, eleven of its twelve rows resolved to nothing and rendered a
+    // number with no steps behind it.
+    renderAt('/actions')
+
+    await waitFor(() => {
+      expect(screen.getByText('Unresolved calls')).toBeInTheDocument()
+    })
+    const rows = document.querySelectorAll('.nv-attn li')
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.querySelector('a')).not.toBeNull()
+    }
+  })
+
+  it('renders a key this build does not ship without a link, rather than a dead one', async () => {
+    stubFindings({
+      ...FINDINGS,
+      issues: [
+        {
+          key: 'tp_denial_letter_eob',
+          label: 'Denial letter EOB',
+          meaning: 'Calls about the denial letter touchpoint.',
+          ownerTeam: 'Claims Operations',
+          severity: 'medium',
+          unit: 'calls',
+          count: 2,
+          references: ['C-0020', 'C-0021'],
+          accounts: [],
+          computable: true,
+          unavailableBecause: null,
+        },
+      ],
+    })
     renderAt('/actions')
 
     await waitFor(() => {
       expect(screen.getByText('Denial letter EOB')).toBeInTheDocument()
     })
-    expect(
-      screen.queryByRole('link', { name: /Denial letter EOB/ }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Denial letter EOB/ })).not.toBeInTheDocument()
+  })
+
+  it('names the accounts an issue shows up on, most calls first', async () => {
+    // A count says there is a problem. This says whose desk it is on,
+    // which is the reason the focused view is worth arriving at.
+    renderAt('/actions?focus=unresolved')
+
+    await waitFor(() => {
+      expect(screen.getByText('Where it shows up')).toBeInTheDocument()
+    })
+    expect(screen.getByText('3 calls across 2 accounts.', { exact: false })).toBeInTheDocument()
+    const names = [...document.querySelectorAll('.nv-focus tbody tr .nv-nm')].map(
+      (cell) => cell.textContent,
+    )
+    expect(names).toEqual(['Cedar Point Workforce Partners', 'Drummond Associates'])
+  })
+
+  it('reads a renewal in the current month as this month, not as a year away', async () => {
+    // The sort key and the countdown are the same number, and a renewal
+    // this month belongs at the top of a list ordered by urgency.
+    renderAt('/actions?focus=unresolved')
+
+    await waitFor(() => {
+      expect(screen.getByText('this month')).toBeInTheDocument()
+    })
+    expect(screen.getByText('in 4 months')).toBeInTheDocument()
+  })
+
+  it('opens an account from the table rather than making the reader search for it', async () => {
+    const user = userEvent.setup()
+    renderAt('/actions?focus=unresolved')
+
+    await waitFor(() => {
+      expect(screen.getByText('Where it shows up')).toBeInTheDocument()
+    })
+    // Scoped to the table: the same name is also an <option> in the
+    // employer filter, and getByText finds that one first.
+    const row = document.querySelector('.nv-focus tbody tr')
+    expect(row?.textContent).toContain('Cedar Point Workforce Partners')
+    await user.click(row as HTMLElement)
+
+    await waitFor(() => {
+      expect(screen.queryByText('Where it shows up')).not.toBeInTheDocument()
+    })
   })
 
   it('says there is no playbook for a stray or held-back key, rather than an empty panel', async () => {
@@ -761,23 +948,67 @@ describe('the focused issue view', () => {
   })
 
   it('says nothing is left to act on rather than showing an empty list silently', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn((input: string, init?: RequestInit) => {
-        const path = input.replace('http://api.test/api/v1', '')
-        const body = path.startsWith('/insights/actions') && !path.includes('/board')
-          ? { ...FINDINGS, items: [] }
-          : handle(input, init)
-        return Promise.resolve(
-          new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }),
-        )
-      }),
-    )
+    stubFindings({ ...FINDINGS, issues: [] })
     renderAt('/actions')
 
     await waitFor(() => {
       expect(screen.getByText('Nothing to act on')).toBeInTheDocument()
     })
+  })
+})
+
+describe('the issues to act on', () => {
+  it('says what each issue means, not only how many there are', async () => {
+    renderAt('/actions')
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('The caller ended the call in the same position they started.'),
+      ).toBeInTheDocument()
+    })
+  })
+
+  it('shows no number for a condition that cannot be observed, rather than a zero', async () => {
+    // "High member effort 0" is a false statement about the corpus. The
+    // field it reads does not exist, so nothing was counted and nothing
+    // was found to be absent either.
+    renderAt('/actions')
+
+    await waitFor(() => {
+      expect(screen.getByText('High member effort')).toBeInTheDocument()
+    })
+    const row = [...document.querySelectorAll('.nv-attn li')].find((li) =>
+      li.textContent?.includes('High member effort'),
+    )
+    expect(row?.querySelector('.nv-n')?.textContent).toBe('—')
+    expect(row?.textContent).toContain('Member effort is a derived composite')
+  })
+
+  it('keeps only the panels actions.html has, in its order', async () => {
+    // Two panels the prototype does not have used to sit between the
+    // issues list and the board. Neither is lost: the owning team is on
+    // every row already, and metric 7 reports per agent and per call.
+    renderAt('/actions')
+
+    await waitFor(() => {
+      expect(screen.getByText('Issues to act on')).toBeInTheDocument()
+    })
+    const headings = [...document.querySelectorAll('.nv-grid h2')].map((h) => h.textContent)
+    expect(headings).toEqual(['Issues to act on', 'Action board', 'Did the fix work?'])
+    expect(screen.queryByText('By team')).not.toBeInTheDocument()
+    expect(screen.queryByText('Compliance control exceptions')).not.toBeInTheDocument()
+  })
+
+  it('puts the tiles above the issues list, where the prototype has them', async () => {
+    renderAt('/actions')
+
+    await waitFor(() => {
+      expect(screen.getByText('Open actions')).toBeInTheDocument()
+    })
+    const tiles = document.querySelector('.nv-grid .nv-bigrow')
+    const issues = document.querySelector('.nv-grid .nv-attn')
+    if (tiles === null || issues === null) throw new Error('the tiles and the issues list must both render')
+    expect(tiles.compareDocumentPosition(issues) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
 

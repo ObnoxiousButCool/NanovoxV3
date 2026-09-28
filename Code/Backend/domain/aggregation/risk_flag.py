@@ -339,11 +339,19 @@ def months_until(renewal_month: str, on_or_after: date) -> int | None:
     `_next_renewal` already makes. A caller that sorts on this must decide
     where unknown goes; it must not become zero, which would read as
     "renewing now" for the accounts we know least about.
+
+    **The current month is 0, not 12.** This counts months between month
+    names rather than reading `_next_renewal`'s date, and the difference
+    only shows in one case: a renewal in the month we are already part-way
+    through. `_next_renewal` is right to call that date past and look to
+    next year, because it bounds a range of days. A sort key is not a
+    range, and "renews this month" belongs at the top of a list ordered by
+    urgency rather than at the bottom of it.
     """
-    renewal = _next_renewal(renewal_month, on_or_after)
-    if renewal is None:
+    month = _month_number(renewal_month)
+    if month is None:
         return None
-    return (renewal.year - on_or_after.year) * 12 + (renewal.month - on_or_after.month)
+    return (month - on_or_after.month) % 12
 
 
 def _next_renewal(renewal_month: str, on_or_after: date) -> date | None:
@@ -353,11 +361,29 @@ def _next_renewal(renewal_month: str, on_or_after: date) -> date | None:
     and is better than defaulting to January and quietly flagging every
     account with an unparseable renewal.
     """
-    try:
-        month = _MONTHS.index(renewal_month.strip().lower()) + 1
-    except ValueError:
+    month = _month_number(renewal_month)
+    if month is None:
         return None
     candidate = date(on_or_after.year, month, 1)
     if candidate < on_or_after:
         candidate = date(on_or_after.year + 1, month, 1)
     return candidate
+
+
+def _month_number(renewal_month: str) -> int | None:
+    """The workbook's renewal month as 1-12, or `None`.
+
+    Reference data writes it short — "Jan", "Sep" — and this used to match
+    on the full name only, so it resolved nothing at all against the real
+    corpus: the fourth condition could not fire and every renewal sorted as
+    unknown. Both forms are accepted now, matched on the first three
+    letters, which is the same reading `account_stakes` already took of the
+    same column.
+    """
+    prefix = renewal_month.strip()[:3].lower()
+    if not prefix:
+        return None
+    for index, name in enumerate(_MONTHS):
+        if name.startswith(prefix):
+            return index + 1
+    return None

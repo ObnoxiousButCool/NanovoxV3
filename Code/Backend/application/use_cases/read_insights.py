@@ -69,6 +69,7 @@ from domain.aggregation.isolation import (
     region_category_matrix,
     systemic_categories,
 )
+from domain.aggregation.issues import Issue, issues_to_act_on
 from domain.aggregation.patterns import window_for
 from domain.aggregation.repeat_contact import failure_driven_repeat_rate, repeat_references
 from domain.aggregation.risk_drivers import Driver, risk_drivers
@@ -108,6 +109,7 @@ from domain.aggregation.trends import (
     weeks_in,
 )
 from domain.aggregation.withheld import DID_IT_WORK, WithheldPanel
+from domain.playbooks import Playbook, PlaybookCatalogue, PlaybookSeverity
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.outcome import Outcome
 
@@ -715,6 +717,21 @@ class DemandView:
 
 
 @dataclass(frozen=True)
+class IssueRow:
+    """One row of the issues-to-act-on list: what fired, and what to do.
+
+    The playbook travels with the count rather than the screen fetching it
+    per key. Fourteen extra round trips to render one panel would be the
+    smaller objection; the real one is that a row whose playbook 404s would
+    render as a number with no steps, which is the state this whole list
+    exists to make impossible.
+    """
+
+    playbook: Playbook
+    issue: Issue
+
+
+@dataclass(frozen=True)
 class ActionsView:
     """Screen 4 — the action centre, read side only.
 
@@ -724,6 +741,11 @@ class ActionsView:
     """
 
     scope: ScopedCorpus
+    #: The issues-to-act-on list, keyed by playbook so every row leads to
+    #: the steps for it. Ordered the way the panel is read: the worst
+    #: first, then the heaviest, then alphabetically so a tie is stable
+    #: between two requests rather than following dictionary order.
+    issues: tuple[IssueRow, ...]
     items: tuple[ActionItem, ...]
     owners: tuple[OwnerWorkload, ...]
     #: Metric 7 by exception type, never blended into one compliance rate —
@@ -758,9 +780,12 @@ class GetDemand:
 
 
 class GetActions:
-    def __init__(self, reader: InsightsReader, config: DashboardConfig) -> None:
+    def __init__(
+        self, reader: InsightsReader, config: DashboardConfig, catalogue: PlaybookCatalogue
+    ) -> None:
         self._reader = reader
         self._config = config
+        self._catalogue = catalogue
 
     async def execute(self, request: InsightsRequest) -> ActionsView:
         scope = await self._reader.scope(request)
@@ -769,6 +794,7 @@ class GetActions:
         items = action_items(calls, window)
         return ActionsView(
             scope=scope,
+            issues=self._issues(scope, calls, window),
             items=items,
             owners=by_owner(items),
             control_exceptions=control_exception_rates(self._config, calls, window),
@@ -776,6 +802,46 @@ class GetActions:
             did_it_work=DID_IT_WORK,
             window=window,
         )
+
+    def _issues(
+        self, scope: ScopedCorpus, calls: tuple[CallContext, ...], window: Window
+    ) -> tuple[IssueRow, ...]:
+        """Join each count to its playbook, drop the empty rows, order them.
+
+        Empty rows are dropped here rather than in the aggregation: the
+        aggregation has to return them so a caller can tell "checked and
+        clear" from "never asked", and this is the one caller that wants
+        the prototype's list, which is the keys with something behind them.
+
+        A key that cannot be counted at all survives the filter. It has no
+        number to be zero, and dropping it would leave the screen silently
+        claiming member effort was checked.
+        """
+        by_key = {playbook.key: playbook for playbook in self._catalogue.playbooks}
+        rows = [
+            IssueRow(playbook=by_key[issue.key], issue=issue)
+            for issue in issues_to_act_on(
+                self._config,
+                scope.corpus.employers,
+                calls,
+                window,
+                _require(self._config, "account_risk_flag", scope.as_of),
+                scope.as_of,
+            )
+            if issue.key in by_key and (issue.count > 0 or not issue.computable)
+        ]
+        return tuple(sorted(rows, key=_issue_order))
+
+
+def _issue_order(row: IssueRow) -> tuple[int, int, str]:
+    """Worst severity first, then the heaviest, then the key.
+
+    An uncountable row sorts last within its severity rather than first:
+    it has no number, and a row with no number at the top of a list ordered
+    by number reads as the largest one.
+    """
+    severity = 0 if row.playbook.severity is PlaybookSeverity.HIGH else 1
+    return (severity, -row.issue.count, row.playbook.key)
 
 
 @dataclass(frozen=True)

@@ -51,6 +51,7 @@ from datetime import date
 from statistics import median
 
 from domain.aggregation.call_tags import EmployerFacts
+from domain.aggregation.risk_flag import months_until
 
 #: Rule P-18's own threshold, quoted rather than chosen. The rule text is
 #: carried alongside so a screen can cite it without a second copy of the
@@ -67,21 +68,6 @@ EMPLOYER_SPONSORED = "ER"
 #: ninety days, expressed in months because `renewal_month` is a month and
 #: pretending to a day's precision it does not have would be false.
 RENEWAL_SOON_MONTHS = 3
-
-_MONTHS = (
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-)
 
 
 @dataclass(frozen=True)
@@ -100,16 +86,13 @@ class Stake:
 def months_to_renewal(renewal_month: str, as_of: date) -> int | None:
     """Whole months from `as_of` to the next occurrence of that month.
 
-    `None` when the workbook's month is not one this understands, rather
-    than a guess — a wrong countdown on a renewal is worse than none.
-    Returns 0 for the current month: the renewal is this month, not
-    "twelve months away", which is what a naive forward search would say.
+    `risk_flag.months_until` under another name, kept as a name here
+    because this module's readers come to it for the renewal note. It is a
+    delegation rather than a second implementation: two answers to "how
+    many months until this renews" in one codebase is how a countdown on
+    one screen disagrees with the sort order on another.
     """
-    try:
-        target = _MONTHS.index(renewal_month[:3].title()) + 1
-    except ValueError:
-        return None
-    return (target - as_of.month) % 12
+    return months_until(renewal_month, as_of)
 
 
 def account_stakes(

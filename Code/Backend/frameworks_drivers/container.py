@@ -193,7 +193,7 @@ class Container:
         return GetDemand(self.insights_reader(), self.dashboard_config)
 
     def get_actions(self) -> GetActions:
-        return GetActions(self.insights_reader(), self.dashboard_config)
+        return GetActions(self.insights_reader(), self.dashboard_config, self.playbook_catalogue)
 
     def get_rules(self) -> GetRules:
         return GetRules(self.insights_reader(), self.dashboard_config)

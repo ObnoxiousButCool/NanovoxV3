@@ -8,11 +8,20 @@ one of those is a live way for this to drift back.
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from domain.aggregation.figure import WithheldReason
 from domain.aggregation.indicators import FAMILIES, observe, observed, unavailable
-from domain.aggregation.risk_flag import Condition, RiskAssessment, assess, exposure, flagged_share
+from domain.aggregation.risk_flag import (
+    Condition,
+    RiskAssessment,
+    assess,
+    exposure,
+    flagged_share,
+    months_until,
+)
 from domain.dashboard_config import DashboardConfig
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
@@ -360,3 +369,29 @@ def test_an_employer_with_no_calls_has_no_indicator_rates(config: DashboardConfi
 
     assert all(o.rate is None for o in observations)
     assert all(o.observed is False for o in observations)
+
+
+class TestTheRenewalMonthAsReferenceDataWritesIt:
+    """The corpus stores "Jan", not "January".
+
+    Every test above uses the long form, which is how this went unnoticed:
+    the fourth condition resolved nothing at all against the real book, and
+    every renewal sorted as unknown.
+    """
+
+    def test_the_short_form_reference_data_uses_resolves(self) -> None:
+        assert months_until("Jan", date(2026, 9, 28)) == 4
+        assert months_until("Nov", date(2026, 9, 28)) == 2
+
+    def test_the_long_form_still_resolves(self) -> None:
+        assert months_until("January", date(2026, 9, 28)) == 4
+        assert months_until("october", date(2026, 9, 28)) == 1
+
+    def test_this_month_is_nearest_rather_than_furthest(self) -> None:
+        """A sort key is not a date range. An account renewing this month
+        belongs at the top of a list ordered by urgency."""
+        assert months_until("Sep", date(2026, 9, 28)) == 0
+
+    def test_a_month_nobody_recorded_stays_unknown(self) -> None:
+        assert months_until("", date(2026, 9, 28)) is None
+        assert months_until("Quartember", date(2026, 9, 28)) is None

@@ -621,6 +621,14 @@
             "$ref": "#/components/schemas/WithheldPanelResponse",
             "description": "Insight 22, withheld until a comparable before and after exist."
           },
+          "issues": {
+            "description": "Every playbook key with something behind it, worst severity first and heaviest within a severity. A key that counted nothing is absent; a key that cannot be counted is present and says so.",
+            "items": {
+              "$ref": "#/components/schemas/IssueResponse"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
           "items": {
             "description": "Every signal raised, worst severity first and heaviest within a severity. A signal nobody raised is absent, not present at zero.",
             "items": {
@@ -649,6 +657,7 @@
           "scope",
           "asOf",
           "windowWeeks",
+          "issues",
           "items",
           "owners",
           "controlExceptions",
@@ -2630,6 +2639,149 @@
         ],
         "title": "IntentType",
         "type": "string"
+      },
+      "IssueAccountResponse": {
+        "description": "One account's share of an issue, for \"where it shows up\".",
+        "properties": {
+          "brokerRef": {
+            "title": "Brokerref",
+            "type": "string"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "employerRef": {
+            "title": "Employerref",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "renewalInMonths": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whole months to the next renewal. Null when the month is unreadable.",
+            "title": "Renewalinmonths"
+          },
+          "renewalMonth": {
+            "title": "Renewalmonth",
+            "type": "string"
+          }
+        },
+        "required": [
+          "employerRef",
+          "name",
+          "region",
+          "brokerRef",
+          "renewalMonth",
+          "calls",
+          "renewalInMonths"
+        ],
+        "title": "IssueAccountResponse",
+        "type": "object"
+      },
+      "IssueResponse": {
+        "description": "One row of the issues-to-act-on list.\n\nKeyed by playbook, not by signal: `key` is exactly what\n`/actions?focus=<key>` takes and what `GET /insights/playbooks/{key}`\nresolves, so a row is never a number the reader cannot act on. The\nmeaning and the suggested owner ride along so the panel needs one\nrequest rather than fourteen.",
+        "properties": {
+          "accounts": {
+            "description": "Where it shows up, most calls first then soonest renewal. A call with no employer is absent here and still present in the count.",
+            "items": {
+              "$ref": "#/components/schemas/IssueAccountResponse"
+            },
+            "title": "Accounts",
+            "type": "array"
+          },
+          "computable": {
+            "title": "Computable",
+            "type": "boolean"
+          },
+          "count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Absent when the condition cannot be observed at all \u2014 never zero for it.",
+            "title": "Count"
+          },
+          "key": {
+            "description": "The playbook key. Also the value of ?focus= on this screen.",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "meaning": {
+            "title": "Meaning",
+            "type": "string"
+          },
+          "ownerTeam": {
+            "description": "The playbook's suggested owner, not a routing decision.",
+            "title": "Ownerteam",
+            "type": "string"
+          },
+          "references": {
+            "description": "The calls or accounts behind the count, in the unit named above.",
+            "items": {
+              "type": "string"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "unavailableBecause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why there is no count, when there is none. Null when there is one.",
+            "title": "Unavailablebecause"
+          },
+          "unit": {
+            "description": "What `references` are: 'calls' or 'accounts'.",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "meaning",
+          "ownerTeam",
+          "severity",
+          "unit",
+          "count",
+          "references",
+          "accounts",
+          "computable",
+          "unavailableBecause"
+        ],
+        "title": "IssueResponse",
+        "type": "object"
       },
       "LabelledFigureResponse": {
         "properties": {

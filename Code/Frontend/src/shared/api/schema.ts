@@ -732,6 +732,11 @@ export interface components {
             /** @description Insight 22, withheld until a comparable before and after exist. */
             didItWork: components["schemas"]["WithheldPanelResponse"];
             /**
+             * Issues
+             * @description Every playbook key with something behind it, worst severity first and heaviest within a severity. A key that counted nothing is absent; a key that cannot be counted is present and says so.
+             */
+            issues: components["schemas"]["IssueResponse"][];
+            /**
              * Items
              * @description Every signal raised, worst severity first and heaviest within a severity. A signal nobody raised is absent, not present at zero.
              */
@@ -1586,6 +1591,84 @@ export interface components {
          * @enum {string}
          */
         IntentType: "expansion" | "market_test" | "cancellation" | "none";
+        /**
+         * IssueAccountResponse
+         * @description One account's share of an issue, for "where it shows up".
+         */
+        IssueAccountResponse: {
+            /** Brokerref */
+            brokerRef: string;
+            /** Calls */
+            calls: number;
+            /** Employerref */
+            employerRef: string;
+            /** Name */
+            name: string;
+            /** Region */
+            region: string;
+            /**
+             * Renewalinmonths
+             * @description Whole months to the next renewal. Null when the month is unreadable.
+             */
+            renewalInMonths: number | null;
+            /** Renewalmonth */
+            renewalMonth: string;
+        };
+        /**
+         * IssueResponse
+         * @description One row of the issues-to-act-on list.
+         *
+         *     Keyed by playbook, not by signal: `key` is exactly what
+         *     `/actions?focus=<key>` takes and what `GET /insights/playbooks/{key}`
+         *     resolves, so a row is never a number the reader cannot act on. The
+         *     meaning and the suggested owner ride along so the panel needs one
+         *     request rather than fourteen.
+         */
+        IssueResponse: {
+            /**
+             * Accounts
+             * @description Where it shows up, most calls first then soonest renewal. A call with no employer is absent here and still present in the count.
+             */
+            accounts: components["schemas"]["IssueAccountResponse"][];
+            /** Computable */
+            computable: boolean;
+            /**
+             * Count
+             * @description Absent when the condition cannot be observed at all — never zero for it.
+             */
+            count: number | null;
+            /**
+             * Key
+             * @description The playbook key. Also the value of ?focus= on this screen.
+             */
+            key: string;
+            /** Label */
+            label: string;
+            /** Meaning */
+            meaning: string;
+            /**
+             * Ownerteam
+             * @description The playbook's suggested owner, not a routing decision.
+             */
+            ownerTeam: string;
+            /**
+             * References
+             * @description The calls or accounts behind the count, in the unit named above.
+             */
+            references: string[];
+            /** Severity */
+            severity: string;
+            /**
+             * Unavailablebecause
+             * @description Why there is no count, when there is none. Null when there is one.
+             */
+            unavailableBecause: string | null;
+            /**
+             * Unit
+             * @description What `references` are: 'calls' or 'accounts'.
+             */
+            unit: string;
+        };
         /** LabelledFigureResponse */
         LabelledFigureResponse: {
             figure: components["schemas"]["FigureResponse"];
