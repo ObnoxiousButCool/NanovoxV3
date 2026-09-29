@@ -3,10 +3,10 @@
  *
  * Follows the v2 prototype's order: needs-attention, the headline counts, a
  * risk-and-follow-through summary row, what moved and what emerged, then
- * what is being done about it. The prototype's four "lenses" are still
- * absent — they are a grouping of figures, not of sentences, and grouping
- * them by hand here would be the invented taxonomy §2A.4 forbids until U1's
- * four are wired through.
+ * what is being done about it. The prototype's four "lenses" (`InsightLenses`)
+ * are wired through and rendered last, below the figures they read — see the
+ * comment at that call site for why the position differs from the
+ * prototype's mid-page placement.
  *
  * ## Three queries, one screen
  *

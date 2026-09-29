@@ -41,6 +41,7 @@ import { Screen } from '@/shared/screens/Screen'
 import { InsightFeed } from '@/shared/insights/Insights'
 import {
   BigRow,
+  DataTable,
   Delta,
   Empty,
   EpistemicChip,
@@ -311,89 +312,83 @@ function RiskBody({
                 : 'No assessed account matches these row filters. Widen them to see the rest.'}
             </Empty>
           ) : (
-            <table className="nv-risktable">
-              <thead>
-                <tr>
-                  <th scope="col">Account</th>
-                  <th scope="col">Flag</th>
-                  <th scope="col">Indicators</th>
-                  <th scope="col">Conditions</th>
-                  <th scope="col">Calls</th>
-                  <th scope="col">Renews</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.assessed.map((account) => {
-                  const fired = account.observations.filter((o) => o.observed)
-                  return (
-                    <tr key={account.employerRef}>
-                      <th scope="row">
-                        <Link to={`/accounts/${encodeURIComponent(account.employerRef)}`}>
-                          {names.get(account.employerRef) ?? account.employerRef}
-                        </Link>
-                      </th>
-                      <td>
-                        {/* A flagged account is the clearest case of a
-                            figure that should lead somewhere: the pill
-                            says what is true, the link says what to do. */}
-                        {account.flagged ? (
-                          <IssueValue issue="flagged" scope={{ employer: account.employerRef }}>
-                            <RiskPill eligible={account.eligible} flagged={account.flagged} />
-                          </IssueValue>
-                        ) : (
-                          <RiskPill eligible={account.eligible} flagged={account.flagged} />
-                        )}
-                      </td>
-                      <td>
-                        {/* A count and the names behind it. Never a level:
-                            the families are informational and do not set the
-                            flag (D2, D12). */}
-                        <span className="nv-indcount">{fired.length} of 10</span>
-                        {fired.length > 0 ? (
-                          <div className="nv-fires">
-                            {fired.map((observation) =>
-                              // Only the families the action view has a
-                              // playbook for become links. The rest stay
-                              // chips rather than routing to a page that
-                              // would shrug at them.
-                              isIssue(observation.code) ? (
-                                <IssueValue
-                                  key={observation.code}
-                                  issue={observation.code}
-                                  scope={{ employer: account.employerRef }}
-                                  tone="warm"
-                                >
-                                  <span className="nv-fire">{observation.label}</span>
-                                </IssueValue>
-                              ) : (
-                                <span key={observation.code} className="nv-fire">
-                                  {observation.label}
-                                </span>
-                              ),
-                            )}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="nv-indcount">
-                        {account.conditionsMet} of {account.conditions.length}
-                      </td>
-                      <td className="nv-indcount">{account.calls}</td>
-                      <td className="nv-indcount">
-                        {account.renewalMonth ?? 'unknown'}
-                        {account.monthsToRenewal === null || account.monthsToRenewal === undefined ? null : (
-                          <span
-                            className={isRenewSoon(account) ? 'nv-renewsoon' : 'nv-renewlater'}
-                          >
-                            {isRenewSoon(account) ? 'in ' : ''}
-                            {account.monthsToRenewal} mo
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <DataTable
+              caption="Accounts assessed for risk"
+              columns={[
+                { key: 'account', header: 'Account' },
+                { key: 'flag', header: 'Flag' },
+                { key: 'indicators', header: 'Indicators' },
+                { key: 'conditions', header: 'Conditions' },
+                { key: 'calls', header: 'Calls', numeric: true },
+                { key: 'renews', header: 'Renews' },
+              ]}
+              rows={data.assessed.map((account) => {
+                const fired = account.observations.filter((o) => o.observed)
+                return {
+                  key: account.employerRef,
+                  // The prototype's `data-href` on the row: the whole row
+                  // navigates, and the links inside it (the flag, the fired
+                  // indicators) still win over the row's own navigation.
+                  href: `/accounts/${encodeURIComponent(account.employerRef)}`,
+                  cells: [
+                    names.get(account.employerRef) ?? account.employerRef,
+                    // A flagged account is the clearest case of a figure
+                    // that should lead somewhere: the pill says what is
+                    // true, the link says what to do.
+                    account.flagged ? (
+                      <IssueValue issue="flagged" scope={{ employer: account.employerRef }}>
+                        <RiskPill eligible={account.eligible} flagged={account.flagged} />
+                      </IssueValue>
+                    ) : (
+                      <RiskPill eligible={account.eligible} flagged={account.flagged} />
+                    ),
+                    <>
+                      {/* A count and the names behind it. Never a level: the
+                          families are informational and do not set the flag
+                          (D2, D12). */}
+                      <span className="nv-indcount">{fired.length} of 10</span>
+                      {fired.length > 0 ? (
+                        <div className="nv-fires">
+                          {fired.map((observation) =>
+                            // Only the families the action view has a
+                            // playbook for become links. The rest stay
+                            // chips rather than routing to a page that
+                            // would shrug at them.
+                            isIssue(observation.code) ? (
+                              <IssueValue
+                                key={observation.code}
+                                issue={observation.code}
+                                scope={{ employer: account.employerRef }}
+                                tone="warm"
+                              >
+                                <span className="nv-fire">{observation.label}</span>
+                              </IssueValue>
+                            ) : (
+                              <span key={observation.code} className="nv-fire">
+                                {observation.label}
+                              </span>
+                            ),
+                          )}
+                        </div>
+                      ) : null}
+                    </>,
+                    <span className="nv-indcount">
+                      {account.conditionsMet} of {account.conditions.length}
+                    </span>,
+                    account.calls,
+                    <span className="nv-indcount">
+                      {account.renewalMonth ?? 'unknown'}
+                      {account.monthsToRenewal === null || account.monthsToRenewal === undefined ? null : (
+                        <span className={isRenewSoon(account) ? 'nv-renewsoon' : 'nv-renewlater'}>
+                          {isRenewSoon(account) ? 'in ' : ''}
+                          {account.monthsToRenewal} mo
+                        </span>
+                      )}
+                    </span>,
+                  ],
+                }
+              })}
+            />
           )}
         </Panel>
       </div>
