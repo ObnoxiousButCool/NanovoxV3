@@ -274,7 +274,21 @@ export function InsightLenses({ data }: { data: GeneratedInsights | undefined })
   return (
     <Panel
       title="What this period means"
-      sub="The same calls read through four lenses. Each insight names what the numbers mean and what to do next."
+      sub={
+        <>
+          Three insights per lens. Select <b>What to do</b> for the steps and the calls behind
+          them.
+        </>
+      }
+      info={
+        <Tooltip>
+          <p>
+            The same calls read through four lenses. Each insight names what the numbers mean and
+            what to do next.
+          </p>
+          <p>Written from the figures on this page; the insight never adds a number of its own.</p>
+        </Tooltip>
+      }
       chip={<AiBadge />}
     >
       {items.length === 0 ? <Unavailable reason={data.reason} /> : null}

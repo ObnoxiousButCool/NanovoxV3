@@ -198,11 +198,20 @@
 }
 
 /* The four-lens grid. All four always render (U1), so the columns do not
-   change shape when the model has nothing to say about one of them. */
+   change shape when the model has nothing to say about one of them.
+   The prototype's own `.lgrid`: two columns of two, not as many as fit —
+   four cards of three insights each read as a 2x2 block, and `auto-fit`
+   would spread them three or four across on a wide screen instead. */
 .nv-lenses {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1320px) {
+  .nv-lenses {
+    grid-template-columns: 1fr;
+  }
 }
 
 .nv-lens {

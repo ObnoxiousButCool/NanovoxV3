@@ -3,10 +3,10 @@
  *
  * Follows the v2 prototype's order: needs-attention, the headline counts, a
  * risk-and-follow-through summary row, what moved and what emerged, then
- * what is being done about it. The prototype's four "lenses" are still
- * absent — they are a grouping of figures, not of sentences, and grouping
- * them by hand here would be the invented taxonomy §2A.4 forbids until U1's
- * four are wired through.
+ * what is being done about it. The prototype's four "lenses" (`InsightLenses`)
+ * are wired through and rendered last, below the figures they read — see the
+ * comment at that call site for why the position differs from the
+ * prototype's mid-page placement.
  *
  * ## Three queries, one screen
  *
@@ -79,6 +79,7 @@ import {
   Note,
   Panel,
   SampleFallback,
+  Tooltip,
   basisFromApi,
 } from '@/shared/design/primitives'
 import type { Figure } from '@/shared/design/primitives'
@@ -368,6 +369,10 @@ function SummaryTilesPanel({
   const openActions = board.actions.filter((action) => findLane(board.lanes, action.status)?.open)
   const overdue = board.actions.filter((action) => action.pastDue)
 
+  // The same figure the gauge's own tooltip quotes back at the reader, so
+  // "measured against all calls this would look fine" is a real number
+  // from this response rather than an illustrative one.
+  const warrantedOfAll = data.escalation.find((entry) => entry.label.startsWith('Escalations warranted'))
   const integrity = data.escalation.find((entry) => entry.label.startsWith('Handled'))
   const integrityFigure = integrity?.figure
   const triggered = integrityFigure?.n ?? 0
@@ -410,7 +415,22 @@ function SummaryTilesPanel({
           }
         />
         <div className={`nv-big nv-gaugetile${missed > 0 ? ' nv-hot' : ''}`}>
-          <span className="nv-k">Escalation integrity</span>
+          <span className="nv-k">
+            Escalation integrity
+            <Tooltip>
+              <p>Escalations handled ÷ escalations warranted.</p>
+              <p>
+                Never ÷ all calls: on that denominator the same evidence reads as{' '}
+                {warrantedOfAll ? (
+                  <FigureValue figure={warrantedOfAll.figure} format={percent} />
+                ) : (
+                  'a much smaller share'
+                )}{' '}
+                and looks fine.
+              </p>
+              <p>Green is 90% and above.</p>
+            </Tooltip>
+          </span>
           <Gauge
             value={gaugeValue}
             label={gaugeValue === null ? '–' : `${String(gaugeValue)}%`}
@@ -574,8 +594,13 @@ function EmergingCard({ item }: { item: EmergingEntry }) {
   return (
     <div className="nv-emrow">
       <div className="nv-emchart">
+        {/* This card only ever shows a rising item (see `EmergingPanel`
+            above), so the most recent bucket — the one being claimed
+            about — is coloured critical red rather than the default
+            brand blue: it is the bar that says "this is what rose". */}
         <MiniBars
           values={item.buckets.map((bucket) => bucket.hits)}
+          color="var(--critical)"
           label={`${item.key} across the window: ${item.buckets.map((bucket) => bucket.hits).join(', ')}`}
         />
       </div>

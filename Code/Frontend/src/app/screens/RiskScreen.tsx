@@ -32,6 +32,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useFilterOptions, useGeneratedInsights, useRisk } from '@/shared/api/insights'
 import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
+import { issueHref } from '@/shared/actions/issueHref'
 import { BarCell, VBars, VLine } from '@/shared/design/charts'
 import type { IssueKey } from '@/shared/actions/issueHref'
 import { ISSUE_KEYS, RENEW_SOON_MONTHS } from '@/shared/actions/issueHref'
@@ -40,6 +41,7 @@ import { Screen } from '@/shared/screens/Screen'
 import { InsightFeed } from '@/shared/insights/Insights'
 import {
   BigRow,
+  DataTable,
   Delta,
   Empty,
   EpistemicChip,
@@ -48,7 +50,21 @@ import {
   Note,
   Panel,
   RiskPill,
+  Tooltip,
 } from '@/shared/design/primitives'
+
+type AssessedAccount = RiskScreenData['assessed'][number]
+
+/** Whether an account's renewal falls inside the shared soon-window — the
+ * same test `/exec`'s needs-attention panel uses, so the two screens cannot
+ * disagree on which accounts are "soon". */
+function isRenewSoon(account: AssessedAccount): boolean {
+  return (
+    account.monthsToRenewal !== null &&
+    account.monthsToRenewal !== undefined &&
+    account.monthsToRenewal <= RENEW_SOON_MONTHS
+  )
+}
 
 const percent = (value: number) => `${String(Math.round(value * 100))}%`
 
@@ -106,6 +122,10 @@ export function RiskScreen() {
       isPending={isPending}
       error={error}
     >
+      {/* The prototype's `.aistrip` sits right under the filter bar, above
+          the KPI tiles — the same reading order this feed keeps here,
+          rather than after every computed panel on the page. */}
+      <InsightFeed data={insights.data} />
       {data === undefined ? null : (
         <RiskBody
           data={data}
@@ -115,7 +135,6 @@ export function RiskScreen() {
           onChange={setRow}
         />
       )}
-      <InsightFeed data={insights.data} />
     </Screen>
   )
 }
@@ -206,6 +225,11 @@ function RiskBody({
             />
             <KpiTile
               label="Escalations missed"
+              info={
+                <Tooltip>
+                  Escalation integrity is handled ÷ warranted, never ÷ all calls.
+                </Tooltip>
+              }
               value={String(data.escalationsMissed)}
               tone={data.escalationsMissed > 0 ? 'hot' : 'plain'}
               meta={
@@ -288,77 +312,83 @@ function RiskBody({
                 : 'No assessed account matches these row filters. Widen them to see the rest.'}
             </Empty>
           ) : (
-            <table className="nv-risktable">
-              <thead>
-                <tr>
-                  <th scope="col">Account</th>
-                  <th scope="col">Flag</th>
-                  <th scope="col">Indicators</th>
-                  <th scope="col">Conditions</th>
-                  <th scope="col">Calls</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.assessed.map((account) => {
-                  const fired = account.observations.filter((o) => o.observed)
-                  return (
-                    <tr key={account.employerRef}>
-                      <th scope="row">
-                        <Link to={`/accounts/${encodeURIComponent(account.employerRef)}`}>
-                          {names.get(account.employerRef) ?? account.employerRef}
-                        </Link>
-                      </th>
-                      <td>
-                        {/* A flagged account is the clearest case of a
-                            figure that should lead somewhere: the pill
-                            says what is true, the link says what to do. */}
-                        {account.flagged ? (
-                          <IssueValue issue="flagged" scope={{ employer: account.employerRef }}>
-                            <RiskPill eligible={account.eligible} flagged={account.flagged} />
-                          </IssueValue>
-                        ) : (
-                          <RiskPill eligible={account.eligible} flagged={account.flagged} />
-                        )}
-                      </td>
-                      <td>
-                        {/* A count and the names behind it. Never a level:
-                            the families are informational and do not set the
-                            flag (D2, D12). */}
-                        <span className="nv-indcount">{fired.length} of 10</span>
-                        {fired.length > 0 ? (
-                          <div className="nv-fires">
-                            {fired.map((observation) =>
-                              // Only the families the action view has a
-                              // playbook for become links. The rest stay
-                              // chips rather than routing to a page that
-                              // would shrug at them.
-                              isIssue(observation.code) ? (
-                                <IssueValue
-                                  key={observation.code}
-                                  issue={observation.code}
-                                  scope={{ employer: account.employerRef }}
-                                  tone="warm"
-                                >
-                                  <span className="nv-fire">{observation.label}</span>
-                                </IssueValue>
-                              ) : (
-                                <span key={observation.code} className="nv-fire">
-                                  {observation.label}
-                                </span>
-                              ),
-                            )}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="nv-indcount">
-                        {account.conditionsMet} of {account.conditions.length}
-                      </td>
-                      <td className="nv-indcount">{account.calls}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            <DataTable
+              caption="Accounts assessed for risk"
+              columns={[
+                { key: 'account', header: 'Account' },
+                { key: 'flag', header: 'Flag' },
+                { key: 'indicators', header: 'Indicators' },
+                { key: 'conditions', header: 'Conditions' },
+                { key: 'calls', header: 'Calls', numeric: true },
+                { key: 'renews', header: 'Renews' },
+              ]}
+              rows={data.assessed.map((account) => {
+                const fired = account.observations.filter((o) => o.observed)
+                return {
+                  key: account.employerRef,
+                  // The prototype's `data-href` on the row: the whole row
+                  // navigates, and the links inside it (the flag, the fired
+                  // indicators) still win over the row's own navigation.
+                  href: `/accounts/${encodeURIComponent(account.employerRef)}`,
+                  cells: [
+                    names.get(account.employerRef) ?? account.employerRef,
+                    // A flagged account is the clearest case of a figure
+                    // that should lead somewhere: the pill says what is
+                    // true, the link says what to do.
+                    account.flagged ? (
+                      <IssueValue issue="flagged" scope={{ employer: account.employerRef }}>
+                        <RiskPill eligible={account.eligible} flagged={account.flagged} />
+                      </IssueValue>
+                    ) : (
+                      <RiskPill eligible={account.eligible} flagged={account.flagged} />
+                    ),
+                    <>
+                      {/* A count and the names behind it. Never a level: the
+                          families are informational and do not set the flag
+                          (D2, D12). */}
+                      <span className="nv-indcount">{fired.length} of 10</span>
+                      {fired.length > 0 ? (
+                        <div className="nv-fires">
+                          {fired.map((observation) =>
+                            // Only the families the action view has a
+                            // playbook for become links. The rest stay
+                            // chips rather than routing to a page that
+                            // would shrug at them.
+                            isIssue(observation.code) ? (
+                              <IssueValue
+                                key={observation.code}
+                                issue={observation.code}
+                                scope={{ employer: account.employerRef }}
+                                tone="warm"
+                              >
+                                <span className="nv-fire">{observation.label}</span>
+                              </IssueValue>
+                            ) : (
+                              <span key={observation.code} className="nv-fire">
+                                {observation.label}
+                              </span>
+                            ),
+                          )}
+                        </div>
+                      ) : null}
+                    </>,
+                    <span className="nv-indcount">
+                      {account.conditionsMet} of {account.conditions.length}
+                    </span>,
+                    account.calls,
+                    <span className="nv-indcount">
+                      {account.renewalMonth ?? 'unknown'}
+                      {account.monthsToRenewal === null || account.monthsToRenewal === undefined ? null : (
+                        <span className={isRenewSoon(account) ? 'nv-renewsoon' : 'nv-renewlater'}>
+                          {isRenewSoon(account) ? 'in ' : ''}
+                          {account.monthsToRenewal} mo
+                        </span>
+                      )}
+                    </span>,
+                  ],
+                }
+              })}
+            />
           )}
         </Panel>
       </div>
@@ -370,8 +400,11 @@ function RiskBody({
 
       {/* The three corpus-shape panels V2 puts on this page. They were on
           /exec or nowhere until conflict C9 was recorded: each screen had
-          been shaped by its endpoint rather than by the page it mirrors. */}
-      <div className="nv-c6">
+          been shaped by its endpoint rather than by the page it mirrors.
+          `index.html`'s own order: "How calls ended" stands full width on
+          its own, then the two weekly charts pair up beside each other —
+          not the other way around. */}
+      <div className="nv-c12">
         <Panel
           title="How calls ended"
           sub={`${String(unresolvedCount)} of ${String(endedTotal)} calls ended unresolved.`}
@@ -394,24 +427,25 @@ function RiskBody({
         >
           <VBars
             ariaLabel="Calls and unresolved calls per week"
+            height={250}
             labels={weeklyUnresolved.map((week) => week.start.slice(5))}
             series={[
               {
                 name: 'Calls',
                 values: weeklyUnresolved.map((week) => week.calls ?? null),
-                color: 'var(--seq-2)',
+                color: 'var(--seq-1)',
               },
               {
                 name: 'Unresolved',
                 values: weeklyUnresolved.map((week) => week.matched ?? null),
-                color: 'var(--serious)',
+                color: 'var(--seq-3)',
               },
             ]}
           />
         </Panel>
       </div>
 
-      <div className="nv-c12">
+      <div className="nv-c6">
         <Panel
           title="Resolved and good-quality calls"
           sub="Shape, not level. A week under five calls is left blank rather than drawn as a swing."
@@ -419,6 +453,7 @@ function RiskBody({
         >
           <VLine
             ariaLabel="Resolved and good-quality shares per week"
+            height={250}
             suffix="%"
             yMax={100}
             labels={weeklyResolved.map((week) => week.start.slice(5))}
@@ -433,7 +468,7 @@ function RiskBody({
                     ? null
                     : Math.round(week.share * 100),
                 ),
-                color: 'var(--good)',
+                color: 'var(--s3)',
               },
               {
                 name: 'Good quality',
@@ -442,7 +477,7 @@ function RiskBody({
                     ? null
                     : Math.round(week.share * 100),
                 ),
-                color: 'var(--seq-3)',
+                color: 'var(--s4)',
               },
             ]}
           />
@@ -497,32 +532,45 @@ function BandCalibrationPanel({
 
 /** The workbook's own order for an outcome — the legend and the bar read
  * left to right in the order a call resolves worse, matching the prototype
- * rather than whatever order the API happens to list them in. */
+ * rather than whatever order the API happens to list them in. Colours are
+ * the prototype's own outcome set (`--s3`/`--s4`/`--seq-2`), not the general
+ * good/warning ramp: `--good` and `--warning` already mean something else
+ * elsewhere on this screen (tile tone), and reusing them here would make
+ * this one bar look like a status readout rather than a distribution. */
 const OUTCOME_COLOR: Record<string, string> = {
-  RESOLVED: 'var(--good)',
-  PARTIALLY_RESOLVED: 'var(--warning)',
-  ESCALATED: 'var(--s1)',
+  RESOLVED: 'var(--s3)',
+  PARTIALLY_RESOLVED: 'var(--s4)',
+  ESCALATED: 'var(--seq-2)',
   UNRESOLVED: 'var(--critical)',
 }
 
 /** "How calls ended" as one bar, segmented by count — the prototype's
  * shape. A segment's width is its own share of the total, so agreement or
- * disagreement with the corpus is visible without adding the numbers up. */
+ * disagreement with the corpus is visible without adding the numbers up.
+ * Unresolved is the only segment with a playbook, so it is the only one
+ * rendered as a link — the rest are plain, exactly as the prototype has it. */
 function OutcomeBar({ outcomes }: { outcomes: NonNullable<RiskScreenData['outcomes']> }) {
+  const total = outcomes.reduce((sum, entry) => sum + entry.calls, 0)
   return (
     <>
       <div className="nv-stackbar">
-        {outcomes.map((entry) => (
-          <div
-            key={entry.outcome.code}
-            style={{
-              flex: Math.max(entry.calls, 0.0001),
-              background: OUTCOME_COLOR[entry.outcome.code] ?? 'var(--ink-3)',
-            }}
-          >
-            {entry.calls}
-          </div>
-        ))}
+        {outcomes.map((entry) => {
+          const color = OUTCOME_COLOR[entry.outcome.code] ?? 'var(--ink-3)'
+          // A slice under 5% of the bar has no room for its own number
+          // without the text overlapping the seam beside it — the
+          // prototype leaves it blank rather than crowd it.
+          const label = total > 0 && entry.calls / total >= 0.05 ? entry.calls : null
+          const style = { flex: Math.max(entry.calls, 0.0001), background: color }
+          return entry.outcome.code === 'UNRESOLVED' ? (
+            <Link key={entry.outcome.code} to={issueHref('unresolved')} style={style}>
+              {label}
+            </Link>
+          ) : (
+            <div key={entry.outcome.code} style={style}>
+              {label}
+            </div>
+          )
+        })}
       </div>
       <ul className="nv-stackbar-legend">
         {outcomes.map((entry) => (
