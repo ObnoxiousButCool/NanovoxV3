@@ -42,6 +42,11 @@ export const ISSUE_KEYS = [
 
 export type IssueKey = (typeof ISSUE_KEYS)[number]
 
+/** How near a renewal has to be to count as "soon" for `renew_soon` — the
+ * prototype's own `NV.RENEW_SOON`. Named once here so the Exec and Risk
+ * screens, which both flag against it, cannot drift apart on the number. */
+export const RENEW_SOON_MONTHS = 4
+
 /**
  * Whether a string names a playbook this build ships.
  *

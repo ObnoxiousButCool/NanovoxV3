@@ -610,6 +610,11 @@ export interface components {
             evidence?: string[];
             /** Flagged */
             flagged: boolean;
+            /**
+             * Monthstorenewal
+             * @description Whole months from `as_of` to the next renewal. Null when the reference data's renewal month could not be read, which sorts and reads as unknown rather than as renewing now.
+             */
+            monthsToRenewal?: number | null;
             /** Observations */
             observations: components["schemas"]["ObservationResponse"][];
             /**
@@ -617,6 +622,11 @@ export interface components {
              * @description Whether there are enough calls to quote this as a figure.
              */
             quotable: boolean;
+            /**
+             * Renewalmonth
+             * @description The employer's renewal month, carried so a screen naming this account does not have to look it up separately. Null only for a caller — the account page — that already states its own employer's renewal at the top level and has no use for a second copy here.
+             */
+            renewalMonth?: string | null;
             /**
              * State
              * @description What the page says, computed from the numbers. Read this rather than recombining the booleans: 'not eligible' is not 'not at risk'.
@@ -730,7 +740,7 @@ export interface components {
              */
             controlExceptions: components["schemas"]["ControlExceptionResponse"][];
             /** @description Insight 22, withheld until a comparable before and after exist. */
-            didItWork: components["schemas"]["WithheldPanelResponse"];
+            didItWork: components["schemas"]["frameworks_drivers__api__v1__insights__actions__WithheldPanelResponse"];
             /**
              * Issues
              * @description Every playbook key with something behind it, worst severity first and heaviest within a severity. A key that counted nothing is absent; a key that cannot be counted is present and says so.
@@ -1060,6 +1070,28 @@ export interface components {
          */
         Category: "Coverage & Benefits" | "Claims & EOB" | "Provider Network" | "Billing & Premium" | "Enrollment & ID Cards" | "Life & Beneficiary" | "Broker Conduct";
         /**
+         * CategoryConcernResponse
+         * @description The call topic carrying the most unresolved calls this period, and how
+         *     its escalations fared there.
+         *
+         *     "Area of concern"'s one figure `trends.movements` cannot already answer:
+         *     a movement is one measure across every call, and this is the same two
+         *     measures broken out by the category driving them. `None` when no
+         *     category had an unresolved call — not a gap, the absence of a finding.
+         */
+        CategoryConcernResponse: {
+            /** Calls */
+            calls: number;
+            /** Category */
+            category: string;
+            /** Escalationshandled */
+            escalationsHandled: number;
+            /** Escalationstriggered */
+            escalationsTriggered: number;
+            /** Unresolved */
+            unresolved: number;
+        };
+        /**
          * ChangeResponse
          * @description How a driver moved between the first and last part of the window.
          *
@@ -1373,6 +1405,8 @@ export interface components {
         };
         /** ExecScorecardResponse */
         ExecScorecardResponse: {
+            /** @description The category with the most unresolved calls this period, and how its escalations fared. Null when no category had an unresolved call. */
+            areaOfConcern?: components["schemas"]["CategoryConcernResponse"] | null;
             /**
              * Asof
              * @description The date every window on this screen ends on.
@@ -2173,11 +2207,28 @@ export interface components {
              * @description How many employers were assessed **before** `flagged` and `minIndicators` narrowed the list. Filters slice, never hide: a reader has to be able to tell a narrow screen from an empty one.
              */
             assessedCount: number;
+            /** @description Insight 9, withheld until a termination/renewal outcome exists per employer. */
+            bandCalibration: components["schemas"]["frameworks_drivers__api__v1__insights__risk__WithheldPanelResponse"];
             /**
              * Drivers
              * @description Which of the ten indicator families account for the most calls, most first. Includes the families at zero: these ten are the flag's own inputs, so 'nobody raised this' is a finding about the book.
              */
             drivers?: components["schemas"]["DriverResponse"][];
+            /**
+             * Escalationsmissed
+             * @description Warranted and not handled — `Escalation.missed`'s own definition.
+             */
+            escalationsMissed: number;
+            /**
+             * Escalationstriggered
+             * @description Metric 6's denominator, over this window.
+             */
+            escalationsTriggered: number;
+            /**
+             * Exitlanguagecalls
+             * @description Calls carrying the retention_risk signal — exit language, verbatim.
+             */
+            exitLanguageCalls: number;
             exposure: components["schemas"]["ExposureResponse"];
             /** @description Flagged as a share of the *eligible* employers, never of all of them. */
             flaggedShare: components["schemas"]["FigureResponse"];
@@ -2585,7 +2636,22 @@ export interface components {
             windowWeeks: number;
         };
         /** WithheldPanelResponse */
-        WithheldPanelResponse: {
+        frameworks_drivers__api__v1__insights__actions__WithheldPanelResponse: {
+            /** Insight */
+            insight: number;
+            /** Question */
+            question: string;
+            /** Unlockedby */
+            unlockedBy: string;
+            /** Why */
+            why: string;
+        };
+        /**
+         * WithheldPanelResponse
+         * @description Insight 9 — withheld unconditionally (plan.md's Phase 8 note): no gate
+         *     unlocks it, only a schema change nobody has made.
+         */
+        frameworks_drivers__api__v1__insights__risk__WithheldPanelResponse: {
             /** Insight */
             insight: number;
             /** Question */
