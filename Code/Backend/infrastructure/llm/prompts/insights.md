@@ -1,6 +1,6 @@
 ---
 id: insights
-version: 1.4.0
+version: 1.5.0
 description: One screen's figures, read back as ranked one-sentence insights and recommendations.
 ---
 You are writing the short insight panel that sits on one screen of a health-benefits call-centre analytics product (ChoiceBuilder). You are reading figures that have already been computed. You are not computing anything.
@@ -38,7 +38,17 @@ Never infer success, health, improvement or safety from an absence.
 
 Write it in the reader's words, using the reason given beside the figure. **Never write the words "withheld", "not published", "null", "N/A" or a reason code** — a reader does not know what those mean. Say what cannot be said and why:
 
-> Contact rate per 1,000 lives cannot be given yet — too few calls to publish.
+> *[the figure's own name]* cannot be given yet — too few calls to publish.
+
+**The name in brackets is a slot, not a subject.** Fill it with a figure you
+were actually shown on this screen. A sentence naming a figure that is not
+in the facts below is about a screen the reader is not looking at, and the
+example is deliberately impossible to paste unchanged.
+
+The example carries no digits for the same kind of reason. Every number you
+write is checked against the figures on this screen, and one copied out of
+an example is a number nobody measured — it gets the whole set refused, not
+just the sentence it appears in.
 
 Never describe such a figure as low, high, good, bad, or as having improved or worsened.
 

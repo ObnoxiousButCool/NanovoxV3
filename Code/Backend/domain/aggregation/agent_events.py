@@ -30,10 +30,10 @@ Two things this module deliberately does not do:
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from statistics import median
 
-from domain.aggregation.call_tags import CallContext, Window
+from domain.aggregation.call_tags import AgentFacts, CallContext, Window
 from domain.aggregation.figure import Figure
 from domain.aggregation.patterns import share
 from domain.dashboard_config import DashboardConfig
@@ -129,6 +129,124 @@ def agent_quality(agent_ref: str, calls: Sequence[CallContext], window: Window) 
         median_score=median(scores) if scores else None,
         lowest=min(scores, default=None),
         highest=max(scores, default=None),
+    )
+
+
+#: The prototype's floor for publishing a band's median score. It has no
+#: workbook source — the Metrics sheet sets minimums per metric and none of
+#: them is "a band" — so it sits here named and commented rather than
+#: inline in the calculation where nobody could argue with it.
+BAND_MIN_SCORED = 5
+
+#: Why the prototype's "hard calls" column cannot be filled. Complexity is
+#: our composite, not a v9 field, and `indicators.py` already refuses to
+#: report the matching effort family as zero for the same reason. A share
+#: of high-complexity calls computed from nothing would read as "this band
+#: handles easy work", which is a claim about people.
+COMPLEXITY_UNAVAILABLE = (
+    "Call complexity is a derived composite, not a v9 field. Stream A's deterministic "
+    "derivations own it and it is not wired to the corpus, so the share of harder calls "
+    "cannot be observed — which is not the same as the calls being easy."
+)
+
+
+@dataclass(frozen=True)
+class BandRow:
+    """One experience band, pooled.
+
+    Grouping is what recovers the sample a single agent lacks: a band
+    pools thirty-odd calls where an agent has three. It is admissible
+    where an employer roll-up is not — the Metrics sheet forbids averaging
+    metric 12 to employer, product line or broker, and a band is none of
+    those — but the floor still applies, and a band under it publishes no
+    score rather than a mean of four.
+    """
+
+    band: str
+    agents: int
+    calls: int
+    events: int
+    scored_calls: int
+    median_score: float | None
+    #: Always `None`. Kept as a field rather than dropped so the response
+    #: can carry the reason beside it — see `COMPLEXITY_UNAVAILABLE`.
+    hard_call_share: float | None = None
+
+
+@dataclass
+class _BandTally:
+    """A band's running totals while `band_rows` walks the calls."""
+
+    agents: int = 0
+    calls: int = 0
+    events: int = 0
+    scores: list[int] = field(default_factory=list)
+
+
+def band_rows(
+    roster: Sequence[AgentFacts],
+    events: Sequence[AgentEvents],
+    calls: Sequence[CallContext],
+    window: Window,
+) -> tuple[BandRow, ...]:
+    """Every band with a call in the window, most events first.
+
+    Bands with nothing in scope are dropped rather than shown at nought:
+    unlike an agent, a band is not a person anybody is accountable for,
+    and an empty row invites a comparison between a band that did well and
+    one that was not on shift.
+    """
+    band_of = {agent.reference: agent.band for agent in roster}
+    events_of = {
+        entry.agent_ref: len(entry.knowledge_errors)
+        + len(entry.escalations_missed)
+        + sum(count for _, count in entry.control_exceptions)
+        for entry in events
+    }
+
+    tallies: dict[str, _BandTally] = {}
+    for agent in roster:
+        tally = tallies.setdefault(agent.band, _BandTally())
+        tally.agents += 1
+        tally.events += events_of.get(agent.reference, 0)
+
+    for call in window.calls_in(tuple(calls)):
+        band = band_of.get(call.agent_ref or "")
+        if band is None:
+            continue
+        tally = tallies[band]
+        tally.calls += 1
+        if call.tags.quality_score is not None:
+            tally.scores.append(call.tags.quality_score)
+
+    rows = [
+        BandRow(
+            band=band,
+            agents=tally.agents,
+            calls=tally.calls,
+            events=tally.events,
+            scored_calls=len(tally.scores),
+            median_score=(median(tally.scores) if len(tally.scores) >= BAND_MIN_SCORED else None),
+        )
+        for band, tally in tallies.items()
+        if tally.calls > 0
+    ]
+    return tuple(sorted(rows, key=lambda row: (-row.events, -row.calls, row.band)))
+
+
+def escalations_refused(calls: Sequence[CallContext], window: Window) -> tuple[str, ...]:
+    """Calls where the caller asked for a supervisor and did not get one.
+
+    The narrowest and least arguable conduct event on the page: not "a
+    supervisor was warranted" — a judgement — but "somebody asked, and was
+    refused", which is a fact about what happened on the call.
+    """
+    return tuple(
+        call.reference
+        for call in window.calls_in(tuple(calls))
+        if call.tags.escalation is not None
+        and call.tags.escalation.requested_by_caller
+        and not call.tags.escalation.handled
     )
 
 

@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { getJson } from '@/shared/api/client'
-import type { components } from '@/shared/api/schema'
+import type { components, operations } from '@/shared/api/schema'
 
 export type FilterOptions = components['schemas']['FilterOptionsResponse']
 
@@ -135,9 +135,20 @@ export function useCallEvidence(reference: string | null) {
 }
 
 export type GeneratedInsights = components['schemas']['GeneratedInsightsResponse']
-/** The screens the endpoint has a fact builder for. Widening this without
- * one on the server is a 422, not an empty panel. */
-export type InsightScreen = 'exec' | 'risk' | 'account'
+/**
+ * The screens the endpoint has a fact builder for.
+ *
+ * Read off the generated client rather than written out, because the two
+ * did drift: the server grew `hierarchy` and `agents` and this union did
+ * not, so a screen asking for its own sentences would not have compiled
+ * against a server that could answer. Widening it on the server widens it
+ * here; narrowing it there breaks the call site rather than a request.
+ */
+export type InsightScreen = NonNullable<
+  NonNullable<
+    operations['read_generated_insights_api_v1_insights_generated_get']['parameters']['query']
+  >['screen']
+>
 export type Insight = components['schemas']['InsightResponse']
 
 /**

@@ -15,10 +15,11 @@ that.
 Three lists that exist nowhere else, and one structural point.
 
 **`regions`** is only derivable by a client re-deriving it from employers.
-**`agentRefs`** and **`touchpoints`** are not returned by any endpoint at
-all. And the **labels** for the coded filters live in `labels.py`,
-server-side; without them a client copies the map, and a copied map drifts
-from the sheet it was copied from.
+**`agents`** is the Agent Roster, so the bar can offer a name rather than
+AGT-01, and **`touchpoints`** is not returned by any endpoint at all. And
+the **labels** for the coded filters live in `labels.py`, server-side;
+without them a client copies the map, and a copied map drifts from the
+sheet it was copied from.
 
 The structural point is cost and coupling. Scraping a filter bar's options
 out of `/insights/hierarchy` means computing a whole screen — the drill
@@ -90,6 +91,12 @@ class BrokerOptionResponse(CamelModel):
     region: str
 
 
+class AgentOptionResponse(CamelModel):
+    ref: str
+    name: str = Field(description="The roster's name, or the reference for an agent not on it.")
+    band: str = Field(description="Empty for an agent who took a call and is not on the roster.")
+
+
 class EmployerOptionResponse(CamelModel):
     ref: str
     name: str
@@ -107,10 +114,11 @@ class FilterOptionsResponse(CamelModel):
     employers: list[EmployerOptionResponse] = Field(
         description="From reference data. Every employer, including those with no calls."
     )
-    agent_refs: list[str] = Field(
+    agents: list[AgentOptionResponse] = Field(
         description=(
-            "Observed on calls, not reference data, so this grows as more calls are "
-            "analysed. References only — agent names are not available to this layer."
+            "The Agent Roster, so the filter can offer a name rather than AGT-01. An "
+            "agent who took a call and is not on the roster keeps a row under their "
+            "reference — dropping them would remove a filter for calls that exist."
         )
     )
     touchpoints: list[str] = Field(
@@ -179,7 +187,10 @@ async def read_filter_options(
             )
             for employer in options.employers
         ],
-        agent_refs=list(options.agent_refs),
+        agents=[
+            AgentOptionResponse(ref=agent.reference, name=agent.name, band=agent.band)
+            for agent in options.agents
+        ],
         touchpoints=list(options.touchpoints),
         signals=[coded(signal) for signal in SignalType],
         signal_severities=[coded(severity) for severity in SignalSeverity],

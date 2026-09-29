@@ -28,9 +28,13 @@ Generated is obvious. **Rejected is the one worth explaining:** if the model
 states a number no fact supports, it will very likely do so again for the
 same figures, and re-asking bills for the privilege of being told the same
 thing. Caching the refusal makes a broken prompt cost one call per fact set
-rather than one per page load — and because the prompt version is part of
-the key, fixing the prompt invalidates the entry by itself. Nobody has to
-remember to clear it.
+rather than one per page load.
+
+**The prompt version is part of the key, and it is a declared version
+rather than a hash of the file.** So editing the prompt does not invalidate
+anything on its own: the `version:` in its front matter has to be bumped
+with the edit, and a prompt fixed without one is served the cached refusal
+it was fixed to stop. Bump it in the same commit as the wording.
 
 A provider *failure* is never cached. That is infrastructure, not an answer:
 the key says nothing about whether the network is up, and a cached outage

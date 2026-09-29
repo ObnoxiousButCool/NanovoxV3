@@ -40,6 +40,7 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import Field
 
 from application.use_cases.generate_insights import GenerateInsightsRequest
+from application.use_cases.read_insights import AgentsView, HierarchyView
 from domain.aggregation.exec_scorecard import SCORECARD_METRICS
 from domain.insights.facts import Fact, FactSet
 from domain.insights.generated import GeneratedInsights, Lens, UnavailableReason
@@ -49,7 +50,9 @@ from frameworks_drivers.api.dependencies import (
     GenerateInsightsDep,
     GetAccountDetailDep,
     GetAccountRiskDep,
+    GetAgentsDep,
     GetExecScorecardDep,
+    GetHierarchyDep,
     InsightProviderDep,
 )
 from frameworks_drivers.api.v1.insights.accounts import (
@@ -76,7 +79,7 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 #: screen because what counts as a fact is: a generic one would have to
 #: guess whether a number is a rate, a count or a population, and guessing
 #: wrong means the model is shown "12" where the screen shows "12%".
-Screen = Literal["exec", "risk", "account"]
+Screen = Literal["exec", "risk", "account", "hierarchy", "agents"]
 
 #: How many sentences an account page shows at most.
 ACCOUNT_INSIGHTS = 2
@@ -299,6 +302,130 @@ def risk_facts(response: RiskScreenResponse) -> FactSet:
     )
 
 
+def hierarchy_facts(view: HierarchyView) -> FactSet:
+    """Isolated or systemic, flattened into what a sentence may say.
+
+    Counts only, which is what the screen publishes: the page's own note is
+    that a region holds about sixteen calls in batch 1, too few for a rate,
+    so there is no rate here for a sentence to quote.
+
+    The heatmap is not here. Any sentence worth writing about a matrix is a
+    comparison between cells, and a comparison is a number nobody computed
+    — the guardrail would refuse it, so offering the cells would only buy
+    rejected answers. `systemic` is here instead: it is the reading of the
+    matrix the screen itself offers, already computed.
+    """
+    adverse = [row for row in view.brokers if row.adverse_mentions]
+    facts = [
+        _count("complaints_about_us", "Complaints attributed to us", view.complaints.ours),
+        _count("complaints_total", "Complaints made", view.complaints.total),
+        _count("brokers_named_adversely", "Brokers named adversely", len(adverse)),
+        _count(
+            "adverse_mentions",
+            "Calls naming a broker adversely",
+            sum(row.adverse_mentions for row in view.brokers),
+        ),
+        _count(
+            "brokers_meeting_the_pattern_test",
+            "Brokers meeting the pattern test",
+            sum(1 for row in view.brokers if row.pattern_fires),
+        ),
+        _count("brokers_in_scope", "Brokers holding an account in scope", len(view.brokers)),
+        _count(
+            "regions_with_a_flagged_account",
+            "Regions with a flagged account",
+            sum(1 for row in view.regions if row.flagged),
+        ),
+        _count("regions", "Regions", len(view.regions)),
+        _count(
+            "categories_in_every_region",
+            "Call topics present in every region",
+            len(view.systemic),
+        ),
+    ]
+    # Every region, because the region table is the largest thing on the
+    # page and a sentence about it will reach for a number in it. Offering
+    # only the top row left the model quoting a figure nobody published,
+    # and the guardrail rejected the whole surface rather than show it.
+    for row in view.regions:
+        facts.append(_count(f"calls_{_slug(row.region)}", f"Calls from {row.region}", row.calls))
+        facts.append(
+            _count(
+                f"unresolved_{_slug(row.region)}",
+                f"Unresolved calls from {row.region}",
+                row.unresolved,
+            )
+        )
+        facts.append(
+            _count(
+                f"flagged_{_slug(row.region)}",
+                f"Flagged accounts in {row.region}",
+                row.flagged,
+            )
+        )
+        facts.append(
+            _count(f"accounts_{_slug(row.region)}", f"Accounts in {row.region}", row.accounts)
+        )
+    return FactSet(
+        subject="the isolated-or-systemic screen",
+        facts=tuple(facts),
+        context_numbers=frozenset(
+            {str(round(view.window.weeks)), *view.scope.as_of.isoformat().split("-")}
+        ),
+    )
+
+
+def agents_facts(view: AgentsView) -> FactSet:
+    """Agent conduct, flattened into what a sentence may say.
+
+    Events, never scores. The page's whole framing is that an event can be
+    attributed to a person at any volume and an average cannot, so the
+    per-agent quality range is deliberately absent from the facts: a
+    sentence quoting it would be doing the thing the screen refuses.
+
+    The band medians are absent for the same reason one step removed. They
+    are publishable figures, but a sentence about them is a comparison
+    between bands, and that number is not computed anywhere.
+    """
+    exceptions = sum(count for entry in view.agents for _, count in entry.events.control_exceptions)
+    rules = sum(len(entry.events.knowledge_errors) for entry in view.agents)
+    missed = sum(len(entry.events.escalations_missed) for entry in view.agents)
+    minimum = view.min_calls_for_a_rate or 0
+    facts = [
+        _count("compliance_exceptions", "Compliance exceptions", exceptions),
+        _count("rules_stated_wrongly", "Rules stated wrongly", rules),
+        _count(
+            "agents_stating_a_rule_wrongly",
+            "Agents who stated a rule wrongly",
+            sum(1 for entry in view.agents if entry.events.knowledge_errors),
+        ),
+        _count("escalations_missed", "Escalations missed", missed),
+        _count(
+            "escalations_refused",
+            "Calls where the caller asked for a supervisor and did not get one",
+            len(view.escalations_refused),
+        ),
+        _count("agents_on_the_roster", "Agents on the roster", len(view.roster)),
+        _count(
+            "agents_with_enough_calls",
+            f"Agents with the {minimum} calls a rate needs",
+            sum(1 for entry in view.agents if len(entry.events.calls) >= minimum) if minimum else 0,
+        ),
+        _count(
+            "busiest_agent_calls",
+            "Calls taken by the busiest agent",
+            max((len(entry.events.calls) for entry in view.agents), default=0),
+        ),
+    ]
+    return FactSet(
+        subject="the agent conduct screen",
+        facts=tuple(facts),
+        context_numbers=frozenset(
+            {str(minimum), str(round(view.window.weeks)), *view.scope.as_of.isoformat().split("-")}
+        ),
+    )
+
+
 def _per_thousand(key: str, label: str, entry: WindowedFigureResponse) -> Fact:
     """A rate per 1,000 lives, printed as the account page prints it.
 
@@ -412,6 +539,8 @@ async def read_generated_insights(
     exec_use_case: GetExecScorecardDep,
     risk_use_case: GetAccountRiskDep,
     account_use_case: GetAccountDetailDep,
+    hierarchy_use_case: GetHierarchyDep,
+    agents_use_case: GetAgentsDep,
     config: DashboardConfigDep,
     query: InsightsQueryDep,
     screen: Annotated[Screen, Query(description="Which screen's figures to read.")] = "exec",
@@ -466,6 +595,10 @@ async def read_generated_insights(
             # page and most of its counts are already on tiles, so a longer
             # list is padding by construction.
             per_screen_limit = min(limit, ACCOUNT_INSIGHTS)
+        case "hierarchy":
+            facts = hierarchy_facts(await hierarchy_use_case.execute(query.to_request()))
+        case "agents":
+            facts = agents_facts(await agents_use_case.execute(query.to_request()))
         case "risk":
             # `RiskQuery()` with nothing set, deliberately: its two filters
             # select rows, and the figures below are computed over every

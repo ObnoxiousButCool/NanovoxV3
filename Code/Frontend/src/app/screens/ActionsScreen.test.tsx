@@ -40,7 +40,7 @@ const OPTIONS = {
   regions: [],
   brokers: [],
   employers: [{ ref: 'EMP-1001', name: 'Cedar Point Workforce Partners' }],
-  agentRefs: [],
+  agents: [],
   touchpoints: [],
   signals: [],
   complaintTargets: [],

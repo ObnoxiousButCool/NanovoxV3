@@ -68,6 +68,7 @@ export function ExecScreen() {
     <Screen
       title="Executive overview"
       lede="What the calls in scope say, with every figure carrying its sample and its origin."
+      compactFilters
       scope={data?.scope}
       isPending={isPending}
       error={error}

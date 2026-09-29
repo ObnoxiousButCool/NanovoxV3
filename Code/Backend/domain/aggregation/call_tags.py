@@ -198,6 +198,39 @@ class CallerFacts:
 
 
 @dataclass(frozen=True)
+class AgentFacts:
+    """The Agent Roster fields a screen may show.
+
+    `expected_score` is here to be *printed*, never to be scored against.
+    The roster was written before the calls and the corpus was generated
+    from it, so an agent matching their expected score is the data
+    agreeing with itself — the same circularity the employers' stored churn
+    profile carries, and the reason the agents page says so in words beside
+    the number.
+
+    That field is named here only as "the churn profile" and never spelled
+    out: `test_no_circular_scoring` scans the tree for the literal name and
+    fails on any file outside storage, prose included. Naming it to explain
+    an analogy would mean widening the allowlist, which is a worse trade
+    than a sentence that reads slightly longer.
+
+    `dominant_pattern` is deliberately absent for the same reason and one
+    more: unlike an expected score, it has no honest use on a screen at
+    all. It is the instruction the generator followed, so any finding
+    drawn from it would be a description of the fixture.
+    """
+
+    reference: str
+    name: str
+    band: str
+    #: The roster's own figure. Present so a page can show what was
+    #: expected beside what happened, and labelled as design input
+    #: wherever it appears.
+    expected_score: float | None = None
+    score_variance: float | None = None
+
+
+@dataclass(frozen=True)
 class BrokerFacts:
     """The broker fields a figure may use.
 

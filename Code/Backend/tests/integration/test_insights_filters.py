@@ -1,7 +1,7 @@
 """The filter options endpoint.
 
 Employers and brokers are also reachable from `/insights/hierarchy`, so the
-lists this adds are `regions`, `agentRefs`, `touchpoints` and the labels —
+lists this adds are `regions`, `agents`, `touchpoints` and the labels —
 and one guarantee that matters more than any of them.
 
 **Applying the current filters to the options is a one-way door.** Narrow to
@@ -60,13 +60,17 @@ async def test_reference_lists_include_parties_with_no_calls(
 async def test_observed_lists_come_from_the_calls(
     client: TestClient, session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
-    """Agents and touchpoints have no reference sheet, so they are what the
-    corpus contains — and are empty when it contains nothing."""
+    """Touchpoints have no reference sheet, so they are what the corpus
+    contains — and are empty when it contains nothing.
+
+    Agents are no longer in that group: the roster is reference data like
+    the employers beside it, so the list stands whether or not anybody
+    called. What an empty corpus empties is `touchpoints`.
+    """
     await seed(session_factory, days=[])
 
     body = client.get(FILTERS, params={"asOf": AS_OF}).json()
 
-    assert body["agentRefs"] == []
     assert body["touchpoints"] == []
 
 
@@ -74,11 +78,17 @@ async def test_observed_lists_come_from_the_calls(
 async def test_an_agent_seen_on_a_call_is_offered(
     client: TestClient, session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
+    """Under their reference when the roster does not know them.
+
+    Dropping such an agent would remove a filter for calls that exist, so
+    the reference stands in for the name rather than the row vanishing.
+    """
     await seed(session_factory, days=[20])
 
     body = client.get(FILTERS, params={"asOf": AS_OF}).json()
 
-    assert body["agentRefs"] == ["AG-01"]
+    assert {agent["ref"] for agent in body["agents"]} >= {"AG-01"}
+    assert next(a for a in body["agents"] if a["ref"] == "AG-01")["name"] == "AG-01"
 
 
 @pytest.mark.asyncio

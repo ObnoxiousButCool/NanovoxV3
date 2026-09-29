@@ -750,6 +750,21 @@ export interface components {
             /** Windowweeks */
             windowWeeks: number;
         };
+        /** AgentOptionResponse */
+        AgentOptionResponse: {
+            /**
+             * Band
+             * @description Empty for an agent who took a call and is not on the roster.
+             */
+            band: string;
+            /**
+             * Name
+             * @description The roster's name, or the reference for an agent not on it.
+             */
+            name: string;
+            /** Ref */
+            ref: string;
+        };
         /**
          * AgentQualityResponse
          * @description Metric 12 as a range, never as a ranking position.
@@ -793,20 +808,61 @@ export interface components {
             knowledgeErrors: string[];
             quality: components["schemas"]["AgentQualityResponse"];
         };
+        /**
+         * AgentRosterResponse
+         * @description One agent as the Agent Roster has them.
+         */
+        AgentRosterResponse: {
+            /** Agentref */
+            agentRef: string;
+            /** Band */
+            band: string;
+            /**
+             * Expectedscore
+             * @description Design input, not a measurement: the roster was written before the calls and the corpus was generated from it. For display beside what happened, never to score against.
+             */
+            expectedScore?: number | null;
+            /** Name */
+            name: string;
+            /** Scorevariance */
+            scoreVariance?: number | null;
+        };
         /** AgentsResponse */
         AgentsResponse: {
             /**
              * Agents
-             * @description Agents with calls in the window, by reference.
+             * @description Every agent on the roster or with a call in the window, by reference.
              */
             agents: components["schemas"]["AgentResponse"][];
             /** Asof */
             asOf: string;
             /**
+             * Bands
+             * @description Bands with a call in the window, most events first.
+             */
+            bands: components["schemas"]["BandRowResponse"][];
+            /** Complexityunavailable */
+            complexityUnavailable: string;
+            /**
+             * Escalationsrefused
+             * @description Calls where the caller asked for a supervisor and did not get one. Narrower than 'warranted', which is a judgement: this is what happened.
+             */
+            escalationsRefused: string[];
+            /**
+             * Mincallsforarate
+             * @description The minimum an agent needs before a rate is published for them. Null if the metric stops carrying one, in which case there is no coverage bar to draw.
+             */
+            minCallsForARate?: number | null;
+            /**
              * Qualitywindowweeks
              * @description Null: a quality score is a property of the call, not of a period, so the Metrics sheet gives metric 12 no window.
              */
             qualityWindowWeeks?: number | null;
+            /**
+             * Roster
+             * @description The Agent Roster: who each reference is, and what band they are in.
+             */
+            roster: components["schemas"]["AgentRosterResponse"][];
             scope: components["schemas"]["ScopeResponse"];
             /**
              * Windowweeks
@@ -829,6 +885,36 @@ export interface components {
             attributedTo: components["schemas"]["CodedValue"];
             /** Calls */
             calls: number;
+        };
+        /**
+         * BandRowResponse
+         * @description One experience band, pooled.
+         *
+         *     Admissible where an employer roll-up is not: the Metrics sheet forbids
+         *     averaging metric 12 to employer, product line or broker, and a band is
+         *     none of those. The floor still applies.
+         */
+        BandRowResponse: {
+            /** Agents */
+            agents: number;
+            /** Band */
+            band: string;
+            /** Calls */
+            calls: number;
+            /** Events */
+            events: number;
+            /**
+             * Hardcallshare
+             * @description Always null. Complexity is a derived composite and is not wired to the corpus; see `complexityUnavailable` for the sentence to show instead.
+             */
+            hardCallShare?: number | null;
+            /**
+             * Medianscore
+             * @description Null under the floor — never a mean of four calls.
+             */
+            medianScore?: number | null;
+            /** Scoredcalls */
+            scoredCalls: number;
         };
         /** BrokerFrictionResponse */
         BrokerFrictionResponse: {
@@ -1453,10 +1539,10 @@ export interface components {
          */
         FilterOptionsResponse: {
             /**
-             * Agentrefs
-             * @description Observed on calls, not reference data, so this grows as more calls are analysed. References only — agent names are not available to this layer.
+             * Agents
+             * @description The Agent Roster, so the filter can offer a name rather than AGT-01. An agent who took a call and is not on the roster keeps a row under their reference — dropping them would remove a filter for calls that exist.
              */
-            agentRefs: string[];
+            agents: components["schemas"]["AgentOptionResponse"][];
             /**
              * Brokers
              * @description From reference data. Every broker, including those with no calls.
@@ -3317,7 +3403,7 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Which screen's figures to read. */
-                screen?: "exec" | "risk" | "account";
+                screen?: "exec" | "risk" | "account" | "hierarchy" | "agents";
                 /** @description How many sentences at most. */
                 limit?: number;
                 /** @description Required when `screen` is `account`; ignored otherwise. */

@@ -174,13 +174,32 @@ async def test_the_risk_screen_is_shown_its_own_figures(
 async def test_an_unknown_screen_is_refused_rather_than_guessed(
     client: TestClient, session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
+    """`hierarchy` used to stand in for an unknown screen here. It is a
+    known one now, so the example has to be a name nobody will ever add —
+    a screen with no fact builder must 422 rather than be answered from
+    whichever builder looked closest."""
     await seed(session_factory, calls_per_employer={"EMP-1001": 40})
 
     response = client.get(
-        "/api/v1/insights/generated", params={"asOf": AS_OF, "screen": "hierarchy"}
+        "/api/v1/insights/generated", params={"asOf": AS_OF, "screen": "not-a-screen"}
     )
 
     assert response.status_code == 422
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("screen", ["hierarchy", "agents"])
+async def test_a_screen_with_a_fact_builder_is_answered(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession], screen: str
+) -> None:
+    """Both of these are surfaces the prototype carries. The point is that
+    the endpoint reaches its own builder — whether the model then writes
+    anything is the provider's business and is tested elsewhere."""
+    await seed(session_factory, calls_per_employer={"EMP-1001": 40})
+
+    response = client.get("/api/v1/insights/generated", params={"asOf": AS_OF, "screen": screen})
+
+    assert response.status_code == 200
 
 
 @pytest.mark.anyio

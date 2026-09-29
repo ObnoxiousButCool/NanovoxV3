@@ -47,6 +47,7 @@ from sqlalchemy.orm import selectinload
 
 from application.ports.insights_source import CorpusQuery, CorpusSlice, InsightsSource
 from domain.aggregation.call_tags import (
+    AgentFacts,
     BrokerFacts,
     CallContext,
     CallerFacts,
@@ -72,6 +73,7 @@ from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
 from domain.value_objects.signal_type import SignalType
 from infrastructure.persistence.tables import (
+    AgentRow,
     BrokerRow,
     CallExtractionRow,
     CallRow,
@@ -105,6 +107,7 @@ class SqlInsightsSource(InsightsSource):
     async def load(self, query: CorpusQuery) -> CorpusSlice:
         async with self._session_factory() as session:
             employers, brokers = await self._reference_data(session)
+            agents = await self._agents(session)
             callers = await self._callers(session)
             rules = await self._rules(session)
             calls, undated, unanalysed, unavailable = await self._calls(session, query)
@@ -114,6 +117,7 @@ class SqlInsightsSource(InsightsSource):
             calls=calls,
             employers=employers,
             brokers=brokers,
+            agents=agents,
             callers=callers,
             rules=rules,
             undated=undated,
@@ -177,6 +181,32 @@ class SqlInsightsSource(InsightsSource):
             for row in broker_rows
         )
         return employers, brokers
+
+    async def _agents(self, session: AsyncSession) -> tuple[AgentFacts, ...]:
+        """The whole Agent Roster, whether or not they took a call.
+
+        The coverage bar counts against the roster's own minimum, so an
+        agent with nothing in the window is a row reading nought of thirty
+        — a row that vanished instead would make a quiet agent and an
+        absent one look the same.
+
+        `dominant_pattern` is not read. It is the instruction the corpus
+        generator followed, so anything computed from it would describe
+        the fixture rather than the calls.
+        """
+        rows = (
+            (await session.execute(select(AgentRow).order_by(AgentRow.reference))).scalars().all()
+        )
+        return tuple(
+            AgentFacts(
+                reference=row.reference,
+                name=row.name,
+                band=row.band,
+                expected_score=row.expected_score,
+                score_variance=row.score_variance,
+            )
+            for row in rows
+        )
 
     async def _callers(self, session: AsyncSession) -> tuple[CallerFacts, ...]:
         """Every member and employer contact, so a row can name who rang.

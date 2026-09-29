@@ -21,7 +21,7 @@ const OPTIONS = {
   employers: [
     { ref: 'EMP-01', name: 'Northwind Traders', region: 'West', brokerRef: 'BRK-01' },
   ],
-  agentRefs: ['AG-01'],
+  agents: [{ ref: 'AG-01', name: 'Dana Vale', band: 'Senior' }],
   touchpoints: ['enrolment_meeting'],
   signals: [{ code: 'billing_defect', label: 'Billing defect' }],
   signalSeverities: [],

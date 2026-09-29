@@ -68,7 +68,25 @@ const PLURALS: Partial<Record<MultiKey, string>> = {
   productLine: 'lines',
 }
 
-export function FilterBar({ callsInScope }: { callsInScope?: number }) {
+export function FilterBar({
+  callsInScope,
+  compact = false,
+}: {
+  callsInScope?: number
+  /**
+   * `filterBar({ compact: true })` in `nv2.js` — period, region and Reset,
+   * with no broker, employer or Advanced.
+   *
+   * Two screens ask for it and both have the same reason: they are not
+   * about an account. Narrowing an agent page by employer would leave a
+   * conduct figure resting on whichever two calls that employer happened
+   * to make, and the executive overview is a book-wide summary that a
+   * single broker turns into something else. The advanced filters do not
+   * disappear from the URL — a link carrying one still applies, and the
+   * chip row below still shows it — they are simply not offered here.
+   */
+  compact?: boolean
+}) {
   const filters = useFilters()
   const { data, isPending, isError } = useFilterOptions(filters.apiSearch)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -85,7 +103,10 @@ export function FilterBar({ callsInScope }: { callsInScope?: number }) {
       value: employer.ref,
       label: employer.name,
     })),
-    agent: data?.agentRefs.map((ref) => ({ value: ref, label: ref })),
+    // The roster's name, falling back to the reference for an agent who
+    // took a call and is not on it. A dropdown of AGT-01 … AGT-20 is a
+    // list nobody can pick from.
+    agent: data?.agents.map((agent) => ({ value: agent.ref, label: agent.name })),
     touchpoint: data?.touchpoints.map((point) => ({ value: point, label: point })),
     signal: data?.signals.map((signal) => ({ value: signal.code, label: signal.label })),
     complaintTarget: data?.complaintTargets.map((target) => ({
@@ -173,8 +194,8 @@ export function FilterBar({ callsInScope }: { callsInScope?: number }) {
           }}
         />
         {select('region')}
-        {select('broker')}
-        {select('employer')}
+        {compact ? null : select('broker')}
+        {compact ? null : select('employer')}
 
         <div className="nv-fbtns">
           <button
@@ -185,22 +206,24 @@ export function FilterBar({ callsInScope }: { callsInScope?: number }) {
           >
             Reset all
           </button>
-          <button
-            type="button"
-            className="nv-btn"
-            aria-expanded={advancedOpen}
-            onClick={() => {
-              setAdvancedOpen((open) => !open)
-            }}
-          >
-            Advanced filters
-            {advancedCount > 0 ? <span className="nv-advn">{advancedCount}</span> : null}
-            <span aria-hidden="true"> {advancedOpen ? '▴' : '▾'}</span>
-          </button>
+          {compact ? null : (
+            <button
+              type="button"
+              className="nv-btn"
+              aria-expanded={advancedOpen}
+              onClick={() => {
+                setAdvancedOpen((open) => !open)
+              }}
+            >
+              Advanced filters
+              {advancedCount > 0 ? <span className="nv-advn">{advancedCount}</span> : null}
+              <span aria-hidden="true"> {advancedOpen ? '▴' : '▾'}</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {advancedOpen ? (
+      {advancedOpen && !compact ? (
         <div className="nv-filters nv-advpanel">
           {select('category')}
           {select('productLine')}

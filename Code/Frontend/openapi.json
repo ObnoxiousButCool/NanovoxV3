@@ -667,6 +667,31 @@
         "title": "ActionsResponse",
         "type": "object"
       },
+      "AgentOptionResponse": {
+        "properties": {
+          "band": {
+            "description": "Empty for an agent who took a call and is not on the roster.",
+            "title": "Band",
+            "type": "string"
+          },
+          "name": {
+            "description": "The roster's name, or the reference for an agent not on it.",
+            "title": "Name",
+            "type": "string"
+          },
+          "ref": {
+            "title": "Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref",
+          "name",
+          "band"
+        ],
+        "title": "AgentOptionResponse",
+        "type": "object"
+      },
       "AgentQualityResponse": {
         "description": "Metric 12 as a range, never as a ranking position.",
         "properties": {
@@ -779,10 +804,57 @@
         "title": "AgentResponse",
         "type": "object"
       },
+      "AgentRosterResponse": {
+        "description": "One agent as the Agent Roster has them.",
+        "properties": {
+          "agentRef": {
+            "title": "Agentref",
+            "type": "string"
+          },
+          "band": {
+            "title": "Band",
+            "type": "string"
+          },
+          "expectedScore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Design input, not a measurement: the roster was written before the calls and the corpus was generated from it. For display beside what happened, never to score against.",
+            "title": "Expectedscore"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "scoreVariance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scorevariance"
+          }
+        },
+        "required": [
+          "agentRef",
+          "name",
+          "band"
+        ],
+        "title": "AgentRosterResponse",
+        "type": "object"
+      },
       "AgentsResponse": {
         "properties": {
           "agents": {
-            "description": "Agents with calls in the window, by reference.",
+            "description": "Every agent on the roster or with a call in the window, by reference.",
             "items": {
               "$ref": "#/components/schemas/AgentResponse"
             },
@@ -792,6 +864,38 @@
           "asOf": {
             "title": "Asof",
             "type": "string"
+          },
+          "bands": {
+            "description": "Bands with a call in the window, most events first.",
+            "items": {
+              "$ref": "#/components/schemas/BandRowResponse"
+            },
+            "title": "Bands",
+            "type": "array"
+          },
+          "complexityUnavailable": {
+            "title": "Complexityunavailable",
+            "type": "string"
+          },
+          "escalationsRefused": {
+            "description": "Calls where the caller asked for a supervisor and did not get one. Narrower than 'warranted', which is a judgement: this is what happened.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Escalationsrefused",
+            "type": "array"
+          },
+          "minCallsForARate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The minimum an agent needs before a rate is published for them. Null if the metric stops carrying one, in which case there is no coverage bar to draw.",
+            "title": "Mincallsforarate"
           },
           "qualityWindowWeeks": {
             "anyOf": [
@@ -804,6 +908,14 @@
             ],
             "description": "Null: a quality score is a property of the call, not of a period, so the Metrics sheet gives metric 12 no window.",
             "title": "Qualitywindowweeks"
+          },
+          "roster": {
+            "description": "The Agent Roster: who each reference is, and what band they are in.",
+            "items": {
+              "$ref": "#/components/schemas/AgentRosterResponse"
+            },
+            "title": "Roster",
+            "type": "array"
           },
           "scope": {
             "$ref": "#/components/schemas/ScopeResponse"
@@ -818,7 +930,11 @@
           "scope",
           "asOf",
           "windowWeeks",
-          "agents"
+          "agents",
+          "roster",
+          "bands",
+          "escalationsRefused",
+          "complexityUnavailable"
         ],
         "title": "AgentsResponse",
         "type": "object"
@@ -860,6 +976,64 @@
           "calls"
         ],
         "title": "AttributionCountResponse",
+        "type": "object"
+      },
+      "BandRowResponse": {
+        "description": "One experience band, pooled.\n\nAdmissible where an employer roll-up is not: the Metrics sheet forbids\naveraging metric 12 to employer, product line or broker, and a band is\nnone of those. The floor still applies.",
+        "properties": {
+          "agents": {
+            "title": "Agents",
+            "type": "integer"
+          },
+          "band": {
+            "title": "Band",
+            "type": "string"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "events": {
+            "title": "Events",
+            "type": "integer"
+          },
+          "hardCallShare": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Always null. Complexity is a derived composite and is not wired to the corpus; see `complexityUnavailable` for the sentence to show instead.",
+            "title": "Hardcallshare"
+          },
+          "medianScore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null under the floor \u2014 never a mean of four calls.",
+            "title": "Medianscore"
+          },
+          "scoredCalls": {
+            "title": "Scoredcalls",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "band",
+          "agents",
+          "calls",
+          "events",
+          "scoredCalls"
+        ],
+        "title": "BandRowResponse",
         "type": "object"
       },
       "BrokerFrictionResponse": {
@@ -2251,12 +2425,12 @@
       "FilterOptionsResponse": {
         "description": "Every value the filter bar can offer, by where it came from.",
         "properties": {
-          "agentRefs": {
-            "description": "Observed on calls, not reference data, so this grows as more calls are analysed. References only \u2014 agent names are not available to this layer.",
+          "agents": {
+            "description": "The Agent Roster, so the filter can offer a name rather than AGT-01. An agent who took a call and is not on the roster keeps a row under their reference \u2014 dropping them would remove a filter for calls that exist.",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/AgentOptionResponse"
             },
-            "title": "Agentrefs",
+            "title": "Agents",
             "type": "array"
           },
           "brokers": {
@@ -2357,7 +2531,7 @@
           "regions",
           "brokers",
           "employers",
-          "agentRefs",
+          "agents",
           "touchpoints",
           "signals",
           "signalSeverities",
@@ -8458,7 +8632,9 @@
               "enum": [
                 "exec",
                 "risk",
-                "account"
+                "account",
+                "hierarchy",
+                "agents"
               ],
               "title": "Screen",
               "type": "string"

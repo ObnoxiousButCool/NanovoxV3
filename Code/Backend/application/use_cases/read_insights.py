@@ -35,16 +35,26 @@ from domain.aggregation.account_profile import AccountProfile, account_profile
 from domain.aggregation.account_stakes import Stake, account_stakes, months_to_renewal
 from domain.aggregation.actions import ActionItem, OwnerWorkload, action_items, by_owner
 from domain.aggregation.agent_events import (
+    COMPLEXITY_UNAVAILABLE,
     CONTROL_DENOMINATOR_CAVEAT,
     AgentEvents,
     AgentQuality,
+    BandRow,
     agent_events,
     agent_quality,
+    band_rows,
     control_exception_rates,
+    escalations_refused,
 )
 from domain.aggregation.broker_drift import Drift, drift
 from domain.aggregation.broker_friction import BrokerFriction, ranked_book_friction
-from domain.aggregation.call_tags import BrokerFacts, CallContext, EmployerFacts, Window
+from domain.aggregation.call_tags import (
+    AgentFacts,
+    BrokerFacts,
+    CallContext,
+    EmployerFacts,
+    Window,
+)
 from domain.aggregation.contact_rate import PeerComparison, employer_contact_rate, peer_comparison
 from domain.aggregation.demand import (
     SelfInflictedDemand,
@@ -906,6 +916,22 @@ class AgentsView:
 
     scope: ScopedCorpus
     agents: tuple[AgentView, ...]
+    #: Every agent on the roster, whether or not they took a call in this
+    #: window. The coverage bar counts against the roster's own minimum, so
+    #: a quiet agent is a row at nought rather than a row that vanished.
+    roster: tuple[AgentFacts, ...]
+    #: Grouped, which recovers the sample one agent lacks.
+    bands: tuple[BandRow, ...]
+    #: The narrowest conduct event on the page: asked for a supervisor, and
+    #: refused. Not "warranted", which is a judgement.
+    escalations_refused: tuple[str, ...]
+    #: The roster's own minimum for an agent-level rate, from the metric
+    #: that publishes one. Shown as a coverage bar rather than left implicit
+    #: in a withheld figure nobody can size. `None` if the metric stops
+    #: carrying a minimum, in which case there is no bar to draw — not a
+    #: bar that is always full.
+    min_calls_for_a_rate: int | None
+    complexity_unavailable: str
     window: Window
     #: Null when the quality metric is not windowed, which it is not: a
     #: score is a property of the call, and `agent_quality_score` carries
@@ -952,16 +978,29 @@ class GetAgents:
         quality = self._config.metric("agent_quality_score")
 
         calls = scope.filtered.calls
-        refs = sorted({call.agent_ref for call in calls if call.agent_ref is not None})
+        # The roster, not the agents who happened to call: a coverage bar
+        # counts towards a minimum, and an agent with nothing in the window
+        # is at nought of it rather than absent from the page.
+        roster = scope.corpus.agents
+        refs = sorted(
+            {agent.reference for agent in roster}
+            | {call.agent_ref for call in calls if call.agent_ref is not None}
+        )
+        views = tuple(
+            AgentView(
+                events=agent_events(self._config, ref, calls, events_window),
+                quality=agent_quality(ref, calls, events_window),
+            )
+            for ref in refs
+        )
         return AgentsView(
             scope=scope,
-            agents=tuple(
-                AgentView(
-                    events=agent_events(self._config, ref, calls, events_window),
-                    quality=agent_quality(ref, calls, events_window),
-                )
-                for ref in refs
-            ),
+            agents=views,
+            roster=roster,
+            bands=band_rows(roster, [view.events for view in views], calls, events_window),
+            escalations_refused=escalations_refused(calls, events_window),
+            min_calls_for_a_rate=self._config.metric("knowledge_failure_rate").min_n,
+            complexity_unavailable=COMPLEXITY_UNAVAILABLE,
             window=events_window,
             quality_window_weeks=quality.window_weeks,
         )
@@ -1015,16 +1054,31 @@ class FilterOptions:
     regions: tuple[str, ...]
     brokers: tuple[BrokerFacts, ...]
     employers: tuple[EmployerFacts, ...]
-    #: References only. Agent *names* live on the transcript entity, which
-    #: the aggregation layer deliberately cannot reach, so inventing a
-    #: display name here would mean inventing it.
-    agent_refs: tuple[str, ...]
+    #: The Agent Roster, so the filter can offer a name. This used to be
+    #: references only, on the reasoning that agent names live on the
+    #: transcript entity and the aggregation layer cannot reach it. That is
+    #: no longer where they live: the roster is reference data like the
+    #: employers and brokers beside it, and the corpus now carries it.
+    #:
+    #: An agent who took a call and is not on the roster keeps a row with
+    #: their reference as the name, because dropping them would remove a
+    #: filter for calls that exist.
+    agents: tuple[AgentFacts, ...]
     touchpoints: tuple[str, ...]
     #: The first and last dated call available. The period control needs it
     #: to offer weeks and months at all — a client cannot name a week of a
     #: corpus whose extent it does not know.
     available_from: date | None = None
     available_until: date | None = None
+
+
+def _agent_options(corpus: CorpusSlice) -> tuple[AgentFacts, ...]:
+    """The roster, plus anyone who took a call and is not on it."""
+    known = {agent.reference: agent for agent in corpus.agents}
+    for reference in {call.agent_ref for call in corpus.calls if call.agent_ref}:
+        if reference not in known:
+            known[reference] = AgentFacts(reference=reference, name=reference, band="")
+    return tuple(sorted(known.values(), key=lambda agent: agent.name))
 
 
 class GetFilterOptions:
@@ -1050,7 +1104,7 @@ class GetFilterOptions:
             regions=tuple(sorted(regions)),
             brokers=tuple(sorted(corpus.brokers, key=lambda broker: broker.agency)),
             employers=tuple(sorted(corpus.employers, key=lambda employer: employer.name)),
-            agent_refs=tuple(sorted({call.agent_ref for call in corpus.calls if call.agent_ref})),
+            agents=_agent_options(corpus),
             touchpoints=tuple(
                 sorted({call.tags.touchpoint for call in corpus.calls if call.tags.touchpoint})
             ),

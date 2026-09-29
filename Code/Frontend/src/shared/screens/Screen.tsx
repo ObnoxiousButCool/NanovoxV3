@@ -36,10 +36,13 @@ export function Screen({
   scope,
   isPending,
   error,
+  compactFilters = false,
   children,
 }: {
   title: string
   lede: string
+  /** `filterBar({ compact: true })` in the prototype. See `FilterBar`. */
+  compactFilters?: boolean
   /** Undefined until the first response lands. */
   scope?: Scope | undefined
   isPending: boolean
@@ -57,7 +60,11 @@ export function Screen({
           same as an absent prop, so the count is only passed once there is
           one. Before the first response the bar shows the filter count
           instead, which is true rather than a zero standing in for unknown. */}
-      {scope === undefined ? <FilterBar /> : <FilterBar callsInScope={scope.matched} />}
+      {scope === undefined ? (
+        <FilterBar compact={compactFilters} />
+      ) : (
+        <FilterBar callsInScope={scope.matched} compact={compactFilters} />
+      )}
 
       {(scope?.caveats ?? []).map((caveat) => (
         // Verbatim, and every one of them. These are generated from the

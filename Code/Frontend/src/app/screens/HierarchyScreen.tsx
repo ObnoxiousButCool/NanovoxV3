@@ -39,7 +39,7 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
-import { useFilterOptions, useHierarchy } from '@/shared/api/insights'
+import { useFilterOptions, useGeneratedInsights, useHierarchy } from '@/shared/api/insights'
 import type { Hierarchy } from '@/shared/api/insights'
 import { useFilters } from '@/shared/filters/useFilters'
 import type { Filters } from '@/shared/filters/useFilters'
@@ -47,6 +47,7 @@ import { Screen } from '@/shared/screens/Screen'
 import { Heatmap } from '@/shared/design/charts'
 import type { HeatmapCell } from '@/shared/design/charts'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
+import { InsightStrip } from '@/shared/insights/Insights'
 import { Empty, EpistemicChip, KpiTile, Panel, Tooltip } from '@/shared/design/primitives'
 
 type RegionRow = Hierarchy['regions'][number]
@@ -59,6 +60,10 @@ export function HierarchyScreen() {
   const filters = useFilters()
   const { data, isPending, error } = useHierarchy(filters.apiSearch)
   const options = useFilterOptions(filters.apiSearch)
+  // `hierarchy.html` opens with the strip. It is its own query so the
+  // figures never wait on a model: the page paints, and the sentences
+  // arrive after.
+  const insights = useGeneratedInsights('hierarchy', filters.apiSearch)
   const brokerNames = new Map(
     (options.data?.brokers ?? []).map((broker) => [broker.ref, broker.agency]),
   )
@@ -72,7 +77,12 @@ export function HierarchyScreen() {
       error={error}
     >
       {data === undefined ? null : (
-        <HierarchyBody data={data} brokerNames={brokerNames} filters={filters} />
+        <HierarchyBody
+          data={data}
+          brokerNames={brokerNames}
+          filters={filters}
+          insights={insights}
+        />
       )}
     </Screen>
   )
@@ -82,10 +92,12 @@ function HierarchyBody({
   data,
   brokerNames,
   filters,
+  insights,
 }: {
   data: Hierarchy
   brokerNames: Map<string, string>
   filters: Filters
+  insights: ReturnType<typeof useGeneratedInsights>
 }) {
   // The union of every category any region recorded. The server already
   // sends every category in every row for exactly this reason — the
@@ -103,6 +115,10 @@ function HierarchyBody({
 
   return (
     <div className="nv-grid">
+      <div className="nv-c12">
+        <InsightStrip data={insights.data} pending={insights.isFetching} />
+      </div>
+
       <div className="nv-c12">
         <HierarchyTiles data={data} />
       </div>

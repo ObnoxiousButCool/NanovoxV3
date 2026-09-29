@@ -383,7 +383,7 @@ const OPTIONS = {
     { ref: 'EMP-1001', name: 'Cedar Point Workforce Partners', region: 'Bay Area' },
     { ref: 'EMP-1002', name: 'Park Mechanical', region: 'Bay Area' },
   ],
-  agentRefs: [],
+  agents: [],
   touchpoints: [],
   signals: [],
   complaintTargets: [],
@@ -435,6 +435,34 @@ const AGENTS = {
       },
     },
   ],
+  roster: [
+    { agentRef: 'AGT-01', name: 'Sarah Whitlock', band: 'Senior', expectedScore: 88, scoreVariance: 7 },
+    { agentRef: 'AGT-02', name: 'Ryan Castellano', band: 'Developing', expectedScore: 61, scoreVariance: 14 },
+  ],
+  bands: [
+    {
+      band: 'Senior',
+      agents: 1,
+      calls: 3,
+      events: 3,
+      scoredCalls: 1,
+      medianScore: null,
+      hardCallShare: null,
+    },
+    {
+      band: 'Developing',
+      agents: 1,
+      calls: 1,
+      events: 0,
+      scoredCalls: 1,
+      medianScore: 88,
+      hardCallShare: null,
+    },
+  ],
+  escalationsRefused: ['C-9'],
+  minCallsForARate: 30,
+  complexityUnavailable:
+    'Call complexity is a derived composite, not a v9 field, so the share of harder calls cannot be observed.',
 }
 
 /** The shape a deployment with no model configured serves (U2). */
@@ -1014,7 +1042,19 @@ describe('/agents', () => {
     const issues = screen.getByText('Issues by agent').closest('section')
 
     expect(issues).not.toBeNull()
-    expect(within(issues as HTMLElement).getByText('AGT-01')).toBeInTheDocument()
+    expect(within(issues as HTMLElement).getByText('Sarah Whitlock')).toBeInTheDocument()
+  })
+
+  it('names the agent and their band rather than a reference', async () => {
+    // The roster carries the name. A page about conduct that can only say
+    // AGT-01 is one nobody can act on.
+    renderAt('/agents')
+    await screen.findByText('Issues by agent')
+
+    const issues = screen.getByText('Issues by agent').closest('section')
+
+    expect(within(issues as HTMLElement).getByText('Senior')).toBeInTheDocument()
+    expect(within(issues as HTMLElement).queryByText('AGT-01')).not.toBeInTheDocument()
   })
 
   it('leaves an agent with no events out of the issues table', async () => {
@@ -1024,36 +1064,78 @@ describe('/agents', () => {
     const issues = screen.getByText('Issues by agent').closest('section')
 
     expect(issues).not.toBeNull()
-    expect(within(issues as HTMLElement).queryByText('AGT-02')).not.toBeInTheDocument()
+    expect(within(issues as HTMLElement).queryByText('Ryan Castellano')).not.toBeInTheDocument()
   })
 
-  it('withholds a median instead of printing a dash that reads as zero', async () => {
+  it('counts the agents who cleared the bar, not the ones with any scored call', async () => {
+    // Counting scored calls produced a tile reading "2 of 2 have a score"
+    // over a meta line saying the busiest agent had 3 of 30 — a tile
+    // disagreeing with itself.
     renderAt('/agents')
-    await screen.findByText('The roster')
 
-    const roster = screen.getByText('The roster').closest('section')
-
-    expect(roster).not.toBeNull()
-    expect(
-      within(roster as HTMLElement).getByText(/Too few scored calls/),
-    ).toBeInTheDocument()
-    expect(within(roster as HTMLElement).getByText('88')).toBeInTheDocument()
+    expect(await screen.findByText('0 of 2')).toBeInTheDocument()
+    expect(screen.getByText('busiest has 3 of 30 calls')).toBeInTheDocument()
   })
 
-  it('says how many agents could be scored, not just who was', async () => {
+  it('shows every agent on the roster, including one with nothing against them', async () => {
+    // A coverage bar counts towards a minimum, so an agent with nothing in
+    // the window is a row at nought of thirty rather than a row missing.
     renderAt('/agents')
+    await screen.findByText(/Full roster/)
 
-    expect(await screen.findByText('1 of 2')).toBeInTheDocument()
+    const roster = screen.getByText(/Full roster/).closest('section')
+
+    expect(within(roster as HTMLElement).getByText('Ryan Castellano')).toBeInTheDocument()
+    expect(within(roster as HTMLElement).getByText('1/30')).toBeInTheDocument()
+  })
+
+  it('labels the expected score as what the roster set beforehand', async () => {
+    // The corpus was generated from it, so an agent matching it is the
+    // data agreeing with itself.
+    renderAt('/agents')
+    await screen.findByText(/Full roster/)
+
+    expect(screen.getByText(/written before the calls/i)).toBeInTheDocument()
+    expect(screen.getByText('88 ± 7')).toBeInTheDocument()
+  })
+
+  it('leaves the difficulty column unmeasured rather than at zero', async () => {
+    // A share of high-complexity calls computed from a field that does not
+    // exist would read as "this band handles easy work".
+    renderAt('/agents')
+    await screen.findByText('By experience level')
+
+    const bands = screen.getByText('By experience level').closest('section')
+
+    expect(within(bands as HTMLElement).getAllByText('not measured').length).toBe(2)
+    expect(within(bands as HTMLElement).queryByText('0%')).not.toBeInTheDocument()
+  })
+
+  it('publishes a band median only where the band cleared the floor', async () => {
+    renderAt('/agents')
+    await screen.findByText('By experience level')
+
+    const bands = screen.getByText('By experience level').closest('section')
+    const rows = [...(bands as HTMLElement).querySelectorAll('tbody tr')]
+
+    expect(rows[0]?.textContent).toContain('Senior')
+    expect(rows[0]?.querySelector('td:last-child')?.textContent).toBe('–')
+    expect(rows[1]?.querySelector('td:last-child')?.textContent).toBe('88')
   })
 
   it('points the rule question at /rules rather than answering it here', async () => {
-    // "Coach the agent or fix the rule?" needs the rule behind each error;
-    // this endpoint carries calls. C5 gives that question its own page.
+    // "Coach the agent or fix the rule?" needs schema field 8 joined to the
+    // agent who took the call, which D7 forbids. It is not a plumbing gap.
     renderAt('/agents')
 
     const link = await screen.findByRole('link', { name: /rules we fail to explain/i })
 
     expect(link).toHaveAttribute('href', '/rules')
+    // The panel body names the decision, so a reader sees why the answer
+    // is absent without opening the tooltip — which also names it, hence
+    // scoping this to the panel rather than the page.
+    const panel = screen.getByText('Coach the agent, or fix the rule?').closest('section')
+    expect(within(panel as HTMLElement).getByText(/D7 is open/)).toBeInTheDocument()
   })
 })
 

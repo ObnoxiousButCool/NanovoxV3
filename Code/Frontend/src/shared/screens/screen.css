@@ -445,6 +445,38 @@ a.nv-fire:hover {
   background: var(--brand-soft);
 }
 
+/* --- How far an agent is from carrying a rate ------------------------- */
+
+/* `.cov` in agents.html, which defines it inline. A coverage bar, not a
+   score: the fill says how much of the minimum an agent has reached, and
+   the number beside it is there so the bar never has to be read alone. */
+.nv-cov {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 110px;
+}
+
+.nv-cov-track {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.nv-cov-fill {
+  display: block;
+  height: 100%;
+  background: var(--seq-2);
+}
+
+.nv-cov-n {
+  font: 500 12px/1 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
 /* --- Small shared bits ------------------------------------------------ */
 
 /* `.nd` in v2.css — a count that is nought, or a column with nothing in

@@ -20,11 +20,30 @@ property of the call, not of a period — so `quality_window_weeks` is null.
 The events beside it *are* counts over a period and carry the knowledge
 failure rate's window, stated rather than assumed.
 
-## Agents with no calls in the window are absent
+## The whole roster is here, including the agents who took no calls
 
-Unlike the employer tree, where a quiet account is a finding, an agent who
-took no calls in the window has nothing to report and no baseline to be
-missing from. The list is built from the calls themselves.
+`agents.html` draws a coverage bar per agent against the roster's own
+minimum for an agent-level rate. A bar counts *towards* something, so an
+agent with nothing in the window is a row reading nought of thirty rather
+than a row that is not there — the reader can see that nobody is close,
+which is the page's main finding at batch-1 volume.
+
+## The roster's expected score is design input, and is labelled as such
+
+It was written before the calls and the corpus was generated from it, so
+an agent matching their expected score is the data agreeing with itself.
+It travels for display beside what happened and is never scored against.
+`dominant_pattern` does not travel at all: unlike a number, it has no
+honest use on a screen, being the instruction the generator followed.
+
+## Why there is no "coach the agent, or fix the rule?" here
+
+The prototype's panel asks how many distinct agents got each rule wrong,
+and answers it from schema field 8 — which **D7 forbids attributing to an
+agent anywhere**, this module included. The `knowledge_error` signal is
+the agent-conduct event and carries no rule id, so the join the panel
+needs does not exist on either field without resolving D7 in code. It is
+rolled up by rule and by touchpoint on `/rules` instead.
 """
 
 from __future__ import annotations
@@ -63,6 +82,48 @@ class AgentQualityResponse(CamelModel):
     )
 
 
+class AgentRosterResponse(CamelModel):
+    """One agent as the Agent Roster has them."""
+
+    agent_ref: str
+    name: str
+    band: str
+    expected_score: float | None = Field(
+        default=None,
+        description=(
+            "Design input, not a measurement: the roster was written before the calls "
+            "and the corpus was generated from it. For display beside what happened, "
+            "never to score against."
+        ),
+    )
+    score_variance: float | None = None
+
+
+class BandRowResponse(CamelModel):
+    """One experience band, pooled.
+
+    Admissible where an employer roll-up is not: the Metrics sheet forbids
+    averaging metric 12 to employer, product line or broker, and a band is
+    none of those. The floor still applies.
+    """
+
+    band: str
+    agents: int
+    calls: int
+    events: int
+    scored_calls: int
+    median_score: float | None = Field(
+        default=None, description="Null under the floor — never a mean of four calls."
+    )
+    hard_call_share: float | None = Field(
+        default=None,
+        description=(
+            "Always null. Complexity is a derived composite and is not wired to the "
+            "corpus; see `complexityUnavailable` for the sentence to show instead."
+        ),
+    )
+
+
 class AgentResponse(CamelModel):
     agent_ref: str
     calls: list[str]
@@ -89,8 +150,28 @@ class AgentsResponse(CamelModel):
         ),
     )
     agents: list[AgentResponse] = Field(
-        description="Agents with calls in the window, by reference."
+        description="Every agent on the roster or with a call in the window, by reference."
     )
+    roster: list[AgentRosterResponse] = Field(
+        description="The Agent Roster: who each reference is, and what band they are in."
+    )
+    bands: list[BandRowResponse] = Field(
+        description="Bands with a call in the window, most events first."
+    )
+    escalations_refused: list[str] = Field(
+        description=(
+            "Calls where the caller asked for a supervisor and did not get one. Narrower "
+            "than 'warranted', which is a judgement: this is what happened."
+        )
+    )
+    min_calls_for_a_rate: int | None = Field(
+        default=None,
+        description=(
+            "The minimum an agent needs before a rate is published for them. Null if the "
+            "metric stops carrying one, in which case there is no coverage bar to draw."
+        ),
+    )
+    complexity_unavailable: str
 
 
 @router.get(
@@ -114,6 +195,31 @@ async def read_agents(
         as_of=view.scope.as_of.isoformat(),
         window_weeks=round(view.window.weeks),
         quality_window_weeks=view.quality_window_weeks,
+        roster=[
+            AgentRosterResponse(
+                agent_ref=agent.reference,
+                name=agent.name,
+                band=agent.band,
+                expected_score=agent.expected_score,
+                score_variance=agent.score_variance,
+            )
+            for agent in view.roster
+        ],
+        bands=[
+            BandRowResponse(
+                band=row.band,
+                agents=row.agents,
+                calls=row.calls,
+                events=row.events,
+                scored_calls=row.scored_calls,
+                median_score=row.median_score,
+                hard_call_share=row.hard_call_share,
+            )
+            for row in view.bands
+        ],
+        escalations_refused=list(view.escalations_refused),
+        min_calls_for_a_rate=view.min_calls_for_a_rate,
+        complexity_unavailable=view.complexity_unavailable,
         agents=[
             AgentResponse(
                 agent_ref=entry.events.agent_ref,
