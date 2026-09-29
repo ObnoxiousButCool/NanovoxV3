@@ -40,7 +40,7 @@
 import type { ReactNode } from 'react'
 
 import type { components } from '@/shared/api/schema'
-import { Note } from '@/shared/design/primitives'
+import { Named, Note } from '@/shared/design/primitives'
 import { DrawerPanel } from '@/shared/design/drawer/DrawerPanel'
 
 type Analysis = components['schemas']['CallAnalysisResponse']
@@ -52,7 +52,21 @@ type Coded = components['schemas']['CodedValue']
 type Evidenced = components['schemas']['EvidencedItem']
 type Run = components['schemas']['LayerRunResponse']
 
-export function CallAnalysis({ analysis }: { analysis: Analysis }) {
+export function CallAnalysis({
+  analysis,
+  callerName,
+}: {
+  analysis: Analysis
+  /**
+   * The caller's name, from the same response's header fields.
+   *
+   * Passed in rather than added to the L1 panel: L1's own output is the
+   * reference it resolved, and a name is reference data the layer never
+   * saw. The panel would otherwise print the member id bare, which is the
+   * one identifier here that points outside the business.
+   */
+  callerName?: string | null | undefined
+}) {
   return (
     <section className="nv-layers">
       <h4>What we made of this call</h4>
@@ -65,7 +79,7 @@ export function CallAnalysis({ analysis }: { analysis: Analysis }) {
         absentBecause={analysis.l1.notRunBecause}
         openByDefault
       >
-        <L1Body panel={analysis.l1} />
+        <L1Body panel={analysis.l1} callerName={callerName} />
       </DrawerPanel>
 
       <DrawerPanel
@@ -122,11 +136,17 @@ function Provenance({ run }: { run: Run }) {
   )
 }
 
-function L1Body({ panel }: { panel: L1 }) {
+function L1Body({
+  panel,
+  callerName,
+}: {
+  panel: L1
+  callerName?: string | null | undefined
+}) {
   return (
     <dl className="nv-facts">
       <Fact label="Caller">
-        <code>{panel.callerRef}</code>
+        <Named name={callerName} reference={panel.callerRef} mask />
       </Fact>
       <Fact label="Control exceptions">
         {(panel.controlExceptions ?? []).length === 0 ? (

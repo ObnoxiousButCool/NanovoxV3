@@ -117,12 +117,12 @@ export function CallEvidence({ callId }: { callId: string }) {
       <dl className="nv-callfacts">
         <div>
           <dt>Caller</dt>
-          {/* Name in front, reference in brackets. This carried the
-              reference alone until Ranjit asked for names across the
-              application on 2026-09-29; the CSV export still does not,
-              and `calls.py` settles that separately. */}
+          {/* The caller's name, and `mask` keeps their reference off the
+              screen: member and contact references are the one identifier
+              here that points at a person outside the business. The agent
+              and the employer below keep theirs in brackets. */}
           <dd>
-            <Named name={data.callerName} reference={data.callerRef} />{' '}
+            <Named name={data.callerName} reference={data.callerRef} mask />{' '}
             {data.callerType.toLowerCase()}
           </dd>
         </div>
@@ -153,7 +153,7 @@ export function CallEvidence({ callId }: { callId: string }) {
         </div>
       </dl>
 
-      <CallAnalysis analysis={data.analysis} />
+      <CallAnalysis analysis={data.analysis} callerName={data.callerName} />
 
       <DrawerPanel
         accent="conversation"

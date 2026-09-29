@@ -7,15 +7,23 @@
  * brackets to go missing, and the reference is what makes the name
  * checkable.
  *
- * ## The reference never leaves
+ * ## The reference stays, except on a caller
  *
- * It is what a support ticket, a filter parameter and the export all speak,
- * and two members can share a name. So the name is put in front of it
- * rather than in place of it, and when reference data does not know the
- * person the reference stands alone — **never a blank, and never a
- * name-shaped placeholder**. A row reading "Unknown" would say we could not
- * identify the caller; the truth is that the sheets do not carry them,
- * which is a gap in reference data rather than an anonymous call.
+ * For an agent or an employer the reference is what a support ticket, a
+ * filter parameter and the export all speak, and two people can share a
+ * name — so the name goes in front of it rather than in place of it.
+ *
+ * **A caller is different: `mask` drops their reference from the screen.**
+ * Ranjit asked for the member id masked on 2026-09-29. Member and contact
+ * references are the one identifier on these screens that points at a
+ * person outside the business rather than at a colleague or an account.
+ *
+ * The exception is a caller reference data does not know. There the
+ * reference is shown, because the alternative is a row identifying nobody
+ * at all — **never a blank, and never a name-shaped placeholder**. A row
+ * reading "Unknown" would say we could not identify the caller; the truth
+ * is that the sheets do not carry them, which is a gap in reference data
+ * rather than an anonymous call.
  *
  * ## Why names are shown here at all
  *
@@ -30,23 +38,33 @@
 export function Named({
   name,
   reference,
+  mask = false,
   fallback = 'Not recorded',
 }: {
   name?: string | null | undefined
   reference?: string | null | undefined
+  /**
+   * Keep the reference off the screen once the name is known. Set on
+   * callers, whose reference points at a member or a contact.
+   */
+  mask?: boolean
   /** Shown when there is neither a name nor a reference. */
   fallback?: string
 }) {
-  if (reference === null || reference === undefined || reference === '') {
-    return name === null || name === undefined || name === '' ? (
-      <span className="nv-none">{fallback}</span>
+  const named = name !== null && name !== undefined && name !== ''
+  const referenced = reference !== null && reference !== undefined && reference !== ''
+
+  if (!named) {
+    // Masked or not, a caller with no name falls back to the reference:
+    // the alternative identifies nobody, and the reference is all that is
+    // left to tie the row to a call.
+    return referenced ? (
+      <span className="nv-ref">{reference}</span>
     ) : (
-      <>{name}</>
+      <span className="nv-none">{fallback}</span>
     )
   }
-  if (name === null || name === undefined || name === '') {
-    return <span className="nv-ref">{reference}</span>
-  }
+  if (mask || !referenced) return <>{name}</>
   return (
     <>
       {name} <span className="nv-ref">({reference})</span>

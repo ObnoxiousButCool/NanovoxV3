@@ -136,7 +136,7 @@ function CallLine({ call, onOpen }: { call: CallRow; onOpen: () => void }) {
         {/* The reference where reference data names nobody: a gap in the
             Member and Contact sheets, not an anonymous caller, and the
             reference is still how the reader looks them up. */}
-        <Named name={call.callerName} reference={call.callerRef} fallback="not recorded" />
+        <Named name={call.callerName} reference={call.callerRef} mask fallback="not recorded" />
         <small>{call.callerKind ?? 'unknown caller type'}</small>
       </td>
       <td>

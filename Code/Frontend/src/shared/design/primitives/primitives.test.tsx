@@ -287,6 +287,25 @@ describe('Named', () => {
     expect(container.textContent).toContain('CB-7700205')
   })
 
+  it('keeps a caller’s reference off the screen once the name is known', () => {
+    // Member and contact references are the one identifier on these screens
+    // pointing at a person outside the business.
+    const { container } = render(
+      <Named name="Leon Castellano" reference="CB-7700205" mask />,
+    )
+
+    expect(screen.getByText('Leon Castellano')).toBeInTheDocument()
+    expect(container.textContent).not.toContain('CB-7700205')
+  })
+
+  it('still shows a masked reference when the sheets have no name', () => {
+    // Masking to a blank would leave a row identifying nobody at all. The
+    // reference is the only thing left tying it to a call.
+    render(<Named name={null} reference="CB-9999999" mask />)
+
+    expect(screen.getByText('CB-9999999')).toBeInTheDocument()
+  })
+
   it('says so when there is neither', () => {
     render(<Named name={null} reference={null} fallback="Not resolved" />)
 
