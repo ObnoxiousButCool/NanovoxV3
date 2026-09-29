@@ -23,7 +23,7 @@
  * publishing a figure without the sentence that qualifies it.
  */
 
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { FilterBar } from '@/shared/filters/FilterBar'
 import { Note } from '@/shared/design/primitives'
@@ -37,34 +37,65 @@ export function Screen({
   isPending,
   error,
   compactFilters = false,
+  stickyHead = false,
   children,
 }: {
   title: string
   lede: string
   /** `filterBar({ compact: true })` in the prototype. See `FilterBar`. */
   compactFilters?: boolean
+  /** Prototype-style sticky, collapsing page head, enabled only by Exec. */
+  stickyHead?: boolean
   /** Undefined until the first response lands. */
   scope?: Scope | undefined
   isPending: boolean
   error: unknown
   children: ReactNode
 }) {
-  return (
-    <div className="nv-screen">
+  const [headStuck, setHeadStuck] = useState(false)
+
+  useEffect(() => {
+    if (!stickyHead) return
+    let stuck = false
+    const update = () => {
+      const next = stuck
+        ? window.scrollY > 40
+        : window.scrollY > 180 &&
+          document.documentElement.scrollHeight - window.innerHeight > 420
+      if (next !== stuck) {
+        stuck = next
+        setHeadStuck(next)
+      }
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [stickyHead])
+
+  const pageHead = (
+    <>
       <header className="nv-pagehead">
         <h1>{title}</h1>
         <p className="nv-lede">{lede}</p>
       </header>
 
-      {/* `exactOptionalPropertyTypes` means an explicit undefined is not the
-          same as an absent prop, so the count is only passed once there is
-          one. Before the first response the bar shows the filter count
-          instead, which is true rather than a zero standing in for unknown. */}
       {scope === undefined ? (
         <FilterBar compact={compactFilters} />
       ) : (
         <FilterBar callsInScope={scope.matched} compact={compactFilters} />
       )}
+    </>
+  )
+
+  return (
+    <div className={`nv-screen${stickyHead ? ' nv-screen-has-stickyhead' : ''}`}>
+      {stickyHead ? (
+        <div className={`nv-stickyhead${headStuck ? ' nv-stuck' : ''}`}>{pageHead}</div>
+      ) : pageHead}
 
       {(scope?.caveats ?? []).map((caveat) => (
         // Verbatim, and every one of them. These are generated from the

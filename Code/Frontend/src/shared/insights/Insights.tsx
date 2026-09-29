@@ -28,7 +28,7 @@
  * remembers to add.
  */
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { IssueCue } from '@/shared/actions/IssueLink'
 import { isIssueKey } from '@/shared/actions/issueHref'
@@ -94,19 +94,23 @@ function InsightBody({ insight, expanded }: { insight: Insight; expanded: boolea
   return (
     <>
       <p className="nv-ai-sentence">{insight.sentence}</p>
-      {expanded ? (
-        <div className="nv-ai-detail">
-          <p className="nv-ai-read">
-            <span>Read from</span> {insight.factKeys.join(', ')}
-          </p>
-          {/* The link is dropped rather than guessed when the key is not one
-              the registry knows: a dead "what to do" is worse than none. */}
-          {issue !== null && issue !== undefined && isIssueKey(issue) ? (
-            <IssueCue issue={issue} />
-          ) : null}
-        </div>
-      ) : null}
+      {expanded ? <InsightEvidence insight={insight} issue={issue} /> : null}
     </>
+  )
+}
+
+function InsightEvidence({ insight, issue = insight.issueKey }: { insight: Insight; issue?: Insight['issueKey'] }) {
+  return (
+    <div className="nv-ai-detail">
+      <p className="nv-ai-read">
+        <span>Read from</span> {insight.factKeys.join(', ')}
+      </p>
+      {/* The link is dropped rather than guessed when the key is not one
+          the registry knows: a dead "what to do" is worse than none. */}
+      {issue !== null && issue !== undefined && isIssueKey(issue) ? (
+        <IssueCue issue={issue} />
+      ) : null}
+    </div>
   )
 }
 
@@ -200,14 +204,37 @@ export function InsightStrip({
 }
 
 /** The full feed: every sentence, each expandable to what it read. */
-export function InsightFeed({ data }: { data: GeneratedInsights | undefined }) {
+export function InsightFeed({
+  data,
+  title = 'What this looks like',
+  badgeLabel,
+  callCount,
+}: {
+  data: GeneratedInsights | undefined
+  title?: string
+  badgeLabel?: string
+  callCount?: number
+}) {
   const [open, setOpen] = useState<string | null>(null)
+  const initialised = useRef(false)
+
+  useEffect(() => {
+    if (!badgeLabel || !data || initialised.current) return
+    initialised.current = true
+    setOpen(data.insights[0]?.key ?? null)
+  }, [badgeLabel, data])
 
   if (!data) return null
   const items = data.insights
 
   return (
-    <Panel title="What this looks like" chip={<AiBadge />}>
+    <div className={badgeLabel ? 'nv-exec-feed' : undefined}>
+    <Panel title={title} chip={badgeLabel ? <AiBadge label={badgeLabel} /> : <AiBadge />}>
+      {callCount === undefined ? null : (
+        <p className="nv-ai-feed-meta">
+          Generated from {String(callCount)} calls in this period · updates with your filters
+        </p>
+      )}
       {items.length === 0 ? (
         <Unavailable reason={data.reason} />
       ) : (
@@ -215,22 +242,45 @@ export function InsightFeed({ data }: { data: GeneratedInsights | undefined }) {
           {items.map((insight) => {
             const expanded = open === insight.key
             return (
-              <li key={insight.key}>
-                <button
-                  type="button"
-                  aria-expanded={expanded}
-                  // Named for what opening it reveals. Without this the
-                  // button's name is the two chips inside it, which says
-                  // nothing to a screen reader about what it does.
-                  aria-label={`What this insight read: ${insight.sentence}`}
-                  onClick={() => {
-                    setOpen(expanded ? null : insight.key)
-                  }}
-                >
-                  <KindChip insight={insight} />
-                  <span className="nv-ai-order">{insight.severity.label}</span>
-                </button>
-                <InsightBody insight={insight} expanded={expanded} />
+              <li
+                key={insight.key}
+                className={`nv-ai-item nv-ai-lvl-${insight.severity.code.toLowerCase()}`}
+              >
+                {badgeLabel ? (
+                  <>
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      aria-label={`What this insight read: ${insight.sentence}`}
+                      onClick={() => {
+                        setOpen(expanded ? null : insight.key)
+                      }}
+                    >
+                      <span className="nv-ai-sentence">{insight.sentence}</span>
+                      <span className="nv-ai-meta">
+                        <KindChip insight={insight} />
+                        <span className="nv-ai-order">{insight.severity.label}</span>
+                        <span className="nv-ai-more">{expanded ? 'Hide evidence' : 'Evidence'}</span>
+                      </span>
+                    </button>
+                    {expanded ? <InsightEvidence insight={insight} /> : null}
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      aria-expanded={expanded}
+                      aria-label={`What this insight read: ${insight.sentence}`}
+                      onClick={() => {
+                        setOpen(expanded ? null : insight.key)
+                      }}
+                    >
+                      <KindChip insight={insight} />
+                      <span className="nv-ai-order">{insight.severity.label}</span>
+                    </button>
+                    <InsightBody insight={insight} expanded={expanded} />
+                  </>
+                )}
               </li>
             )
           })}
@@ -243,6 +293,7 @@ export function InsightFeed({ data }: { data: GeneratedInsights | undefined }) {
         </p>
       ) : null}
     </Panel>
+    </div>
   )
 }
 
@@ -300,7 +351,7 @@ export function InsightLenses({ data }: { data: GeneratedInsights | undefined })
         {data.lenses.map((lens) => {
           const mine = items.filter((insight) => insight.lens.code === lens.code)
           return (
-            <article key={lens.code} className="nv-lens">
+            <article key={lens.code} className="nv-lens" data-lens={lens.code.toLowerCase()}>
               <header>
                 <h3>{lens.label}</h3>
                 <p>{LENS_SUB[lens.code]}</p>
@@ -312,7 +363,10 @@ export function InsightLenses({ data }: { data: GeneratedInsights | undefined })
               ) : (
                 <ol>
                   {mine.map((insight) => (
-                    <li key={insight.key}>
+                    <li
+                      key={insight.key}
+                      className={`nv-ai-lvl-${insight.severity.code.toLowerCase()}`}
+                    >
                       <KindChip insight={insight} />
                       <InsightBody insight={insight} expanded />
                     </li>

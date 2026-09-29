@@ -61,7 +61,7 @@ import { useExec, useFilterOptions, useGeneratedInsights, useRisk } from '@/shar
 import type { ExecScorecard, RiskScreen as RiskScreenData } from '@/shared/api/insights'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
-import { InsightLenses, InsightStrip } from '@/shared/insights/Insights'
+import { InsightFeed, InsightLenses } from '@/shared/insights/Insights'
 import { IssueCue } from '@/shared/actions/IssueLink'
 import { RENEW_SOON_MONTHS } from '@/shared/actions/issueHref'
 import { Gauge, MiniBars, VLine } from '@/shared/design/charts'
@@ -78,7 +78,6 @@ import {
   KpiTile,
   Note,
   Panel,
-  SampleFallback,
   Tooltip,
   basisFromApi,
 } from '@/shared/design/primitives'
@@ -112,22 +111,21 @@ export function ExecScreen() {
   )
 
   return (
-    <Screen
-      title="Executive overview"
-      lede="What the calls in scope say, with every figure carrying its sample and its origin."
-      compactFilters
-      scope={data?.scope}
-      isPending={isPending || risk.isPending || board.isPending}
-      error={error ?? risk.error ?? board.error}
-    >
-      <InsightStrip data={insights.data} />
-      {data === undefined || risk.data === undefined || board.data === undefined ? null : (
-        <ExecBody data={data} risk={risk.data} board={board.data} names={names} />
-      )}
-      {/* The prototype puts the grid below the figures it reads, which
-          is also the order that keeps the numbers first on the page. */}
-      <InsightLenses data={insights.data} />
-    </Screen>
+    <div className="nv-exec">
+      <Screen
+        title="Executive overview"
+        lede="The period in one page: what needs attention now, what the calls mean, what is emerging, and what is being done."
+        compactFilters
+        stickyHead
+        scope={data?.scope}
+        isPending={isPending || risk.isPending || board.isPending}
+        error={error ?? risk.error ?? board.error}
+      >
+        {data === undefined || risk.data === undefined || board.data === undefined ? null : (
+          <ExecBody data={data} risk={risk.data} board={board.data} names={names} insights={insights.data} />
+        )}
+      </Screen>
+    </div>
   )
 }
 
@@ -136,124 +134,40 @@ function ExecBody({
   risk,
   board,
   names,
+  insights,
 }: {
   data: ExecScorecard
   risk: RiskScreenData
   board: ActionBoard
   names: Map<string, string>
+  insights: Parameters<typeof InsightFeed>[0]['data']
 }) {
   const { trends } = data
 
   return (
     <div className="nv-withai">
       <div className="nv-feedcol">
+        <InsightFeed
+          data={insights}
+          title="Attention insights"
+          badgeLabel="Needs attention now"
+          callCount={data.calls}
+        />
         <NeedsAttentionPanel risk={risk} names={names} />
       </div>
       <div className="nv-maincol nv-grid">
-      <div className="nv-c12">
-        <Panel
-          title="The window"
-          sub={`${String(data.calls)} calls in scope, as at ${data.asOf}.`}
-        >
-          <BigRow>
-            {data.metrics.map((metric) => (
-              <KpiTile
-                key={metric.key}
-                label={metric.name}
-                value={<FigureValue figure={metric.figure} format={percent} />}
-                meta={
-                  <>
-                    <FigureSample figure={metric.figure} />
-                    {/* Each metric's own window, from `dashboard.yaml`. Two
-                        metrics on one row can be 4 weeks and 12 weeks (D11),
-                        and a reader comparing them needs to know which. */}
-                    {metric.windowWeeks === null || metric.windowWeeks === undefined ? null : (
-                      <span className="nv-indcount"> · {metric.windowWeeks}wk</span>
-                    )}
-                  </>
-                }
-              />
-            ))}
-          </BigRow>
-        </Panel>
-      </div>
-
       <div className="nv-c12">
         <SummaryTilesPanel data={data} risk={risk} board={board} />
       </div>
 
       <WellAndConcernPanels movements={trends.movements} windowWeeks={trends.windowWeeks} concern={data.areaOfConcern ?? null} />
 
-      <div className="nv-c6">
-        <Panel
-          title="What moved"
-          sub={`Against ${trends.priorStart} to ${trends.priorEnd}.`}
-          chip={<EpistemicChip kind="observed" />}
-        >
-          {trends.movements.length === 0 ? (
-            <Empty>No measure had both a current and a prior period to compare.</Empty>
-          ) : (
-            <ul className="nv-movements">
-              {trends.movements.map((movement) => (
-                <li key={movement.label} className={movement.beyondNoise ? 'nv-real' : 'nv-noise'}>
-                  <b>{movement.label}</b>
-                  <span className="nv-indcount">
-                    {movement.prior} → {movement.now}
-                  </span>
-                  {movement.beyondNoise ? (
-                    <span className={movement.worse ? 'nv-worse' : 'nv-better'}>
-                      {movement.worse ? 'worse' : 'better'}
-                    </span>
-                  ) : (
-                    // Said, not hidden. Call volume moved too, and the
-                    // expected value is what the reader needs to see the
-                    // difference is the volume rather than the behaviour.
-                    <span className="nv-noise-tag">
-                      within noise — {movement.callsPrior} calls then,{' '}
-                      {movement.callsNow} now, so about {Math.round(movement.expected)} was
-                      expected
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
-      </div>
-
-      <div className="nv-c6">
-        <Panel
-          title="Routed to the right place"
-          chip={<BasisChip figure={data.intentRouted} />}
-        >
-          <BigRow>
-            <KpiTile
-              label="Intent routed"
-              value={<FigureValue figure={data.intentRouted} format={percent} />}
-              meta={<FigureSample figure={data.intentRouted} />}
-            />
-          </BigRow>
-        </Panel>
+      <div className="nv-c12 nv-exec-lenses">
+        <InsightLenses data={insights} />
       </div>
 
       <div className="nv-c12">
-        <Panel
-          title="Calls by week"
-          sub="A blank week is a week the corpus says nothing about, not a week of no calls."
-          chip={<EpistemicChip kind="observed" />}
-        >
-          <VLine
-            ariaLabel="Calls per week across the window"
-            labels={trends.weeks.map((week) => week.start.slice(5))}
-            series={[
-              {
-                name: 'Calls',
-                values: trends.weeks.map((week) => week.calls ?? null),
-                color: 'var(--seq-2)',
-              },
-            ]}
-          />
-        </Panel>
+        <SupportingMeasures data={data} />
       </div>
 
       <div className="nv-c12">
@@ -288,7 +202,7 @@ function NeedsAttentionPanel({
 
   return (
     <Panel
-      title="Needs attention now"
+      title="Flagged accounts"
       sub={
         <>
           {flagged.length} of {risk.assessedCount} accounts are flagged for risk, and{' '}
@@ -483,39 +397,89 @@ function WellAndConcernPanels({
   const best = bestImprovement(movements)
 
   return (
-    <>
-      <div className="nv-c6">
-        <Panel title="What went well" chip={<EpistemicChip kind="derived" />}>
-          {best === undefined ? (
-            <Empty title="Nothing to report">
-              No measure improved beyond noise in the last {windowWeeks} weeks.
-            </Empty>
-          ) : (
-            <p>
-              <b>{best.label}</b> fell from {best.prior} to {best.now} in the last{' '}
-              {windowWeeks} weeks.
-            </p>
-          )}
-        </Panel>
+    <section className="nv-panel nv-wellbad" aria-label="What went well and area of concern">
+      <div>
+        <h3><span className="nv-exec-icon nv-good-icon" aria-hidden="true">✓</span>What went well</h3>
+        {best === undefined ? (
+          <p>No measure improved beyond noise in the last {windowWeeks} weeks.</p>
+        ) : (
+          <p><b>{best.label}</b> fell from {best.prior} to {best.now} in the last {windowWeeks} weeks.</p>
+        )}
       </div>
-      <div className="nv-c6">
-        <Panel title="Area of concern" chip={<EpistemicChip kind="derived" />}>
-          {concern === null || concern === undefined ? (
-            <Empty title="Nothing to flag">
-              No category carried an unresolved call in this scope.
-            </Empty>
-          ) : (
-            <p>
-              <b>{concern.category}</b> carries the most unresolved calls (
-              {concern.unresolved}){' '}
-              {concern.escalationsTriggered > concern.escalationsHandled
-                ? `, and only ${String(concern.escalationsHandled)} of ${String(concern.escalationsTriggered)} escalations there were handled.`
-                : '.'}
-            </p>
-          )}
-        </Panel>
+      <div>
+        <h3><span className="nv-exec-icon nv-concern-icon" aria-hidden="true">!</span>Area of concern</h3>
+        {concern === null || concern === undefined ? (
+          <p>No category carried an unresolved call in this scope.</p>
+        ) : (
+          <p>
+            <b>{concern.category}</b> carries the most unresolved calls ({concern.unresolved}){' '}
+            {concern.escalationsTriggered > concern.escalationsHandled
+              ? `, and only ${String(concern.escalationsHandled)} of ${String(concern.escalationsTriggered)} escalations there were handled.`
+              : '.'}
+          </p>
+        )}
       </div>
-    </>
+    </section>
+  )
+}
+
+/** Production measures that have no top-level counterpart in the prototype. */
+function SupportingMeasures({ data }: { data: ExecScorecard }) {
+  const { trends } = data
+  return (
+    <details className="nv-exec-support">
+      <summary>More measured results</summary>
+      <div className="nv-exec-support-body">
+        <h3>The window</h3>
+        <p>{data.calls} calls in scope, as at {data.asOf}.</p>
+        <div className="nv-exec-measures">
+          {data.metrics.map((metric) => (
+            <div key={metric.key}>
+              <span>{metric.name}</span>
+              <b><FigureValue figure={metric.figure} format={percent} /></b>
+              <small>
+                <FigureSample figure={metric.figure} />
+                {metric.windowWeeks === null || metric.windowWeeks === undefined ? null : ` · ${String(metric.windowWeeks)}wk`}
+              </small>
+            </div>
+          ))}
+        </div>
+        <h3>What moved</h3>
+        <p>Against {trends.priorStart} to {trends.priorEnd}.</p>
+        {trends.movements.length === 0 ? (
+          <p>No measure had both a current and a prior period to compare.</p>
+        ) : (
+          <ul className="nv-movements">
+            {trends.movements.map((movement) => (
+              <li key={movement.label} className={movement.beyondNoise ? 'nv-real' : 'nv-noise'}>
+                <b>{movement.label}</b>
+                <span className="nv-indcount">{movement.prior} → {movement.now}</span>
+                {movement.beyondNoise ? (
+                  <span className={movement.worse ? 'nv-worse' : 'nv-better'}>{movement.worse ? 'worse' : 'better'}</span>
+                ) : (
+                  <span className="nv-noise-tag">
+                    within noise — {movement.callsPrior} calls then, {movement.callsNow} now,
+                    so about {Math.round(movement.expected)} was expected
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <h3>Routed to the right place</h3>
+        <p>
+          Intent routed: <FigureValue figure={data.intentRouted} format={percent} />{' '}
+          <FigureSample figure={data.intentRouted} /> <BasisChip figure={data.intentRouted} />
+        </p>
+        <h3>Calls by week</h3>
+        <p>A blank week is a week the corpus says nothing about, not a week of no calls.</p>
+        <VLine
+          ariaLabel="Calls per week across the window"
+          labels={trends.weeks.map((week) => week.start.slice(5))}
+          series={[{ name: 'Calls', values: trends.weeks.map((week) => week.calls ?? null), color: 'var(--seq-2)' }]}
+        />
+      </div>
+    </details>
   )
 }
 
@@ -632,12 +596,6 @@ function ActionProgressPanel({ board }: { board: ActionBoard }) {
   const measured = board.actions.filter((action) => action.outcome !== null)
   const hasActions = board.actions.length > 0
 
-  // A believable spread across whatever lanes this board defines, shown
-  // only inside `SampleFallback` when the board is genuinely empty — never
-  // a claim about this account's own actions.
-  const sampleSpread = [3, 2, 4, 1, 3, 2]
-  const sampleCounts = new Map(board.lanes.map((lane, index) => [lane.code, sampleSpread[index % sampleSpread.length] ?? 1]))
-
   return (
     <Panel
       title="What is being done"
@@ -653,13 +611,7 @@ function ActionProgressPanel({ board }: { board: ActionBoard }) {
       }
       chip={<EpistemicChip kind="observed" />}
     >
-      {hasActions ? (
-        <ActionBar lanes={board.lanes} counts={counts} colors={colors} />
-      ) : (
-        <SampleFallback>
-          <ActionBar lanes={board.lanes} counts={sampleCounts} colors={colors} />
-        </SampleFallback>
-      )}
+      <ActionBar lanes={board.lanes} counts={counts} colors={colors} />
       <Note>{board.trustNote}</Note>
       <p className="nv-cta">
         <Link to="/actions">Open the action board →</Link>{' '}
@@ -669,8 +621,7 @@ function ActionProgressPanel({ board }: { board: ActionBoard }) {
   )
 }
 
-/** The colored status bar plus its legend — the real counts, or, wrapped in
- * `SampleFallback` by the caller, an illustrative spread. */
+/** The colored status bar plus its legend, using the board's actual counts. */
 function ActionBar({
   lanes,
   counts,
