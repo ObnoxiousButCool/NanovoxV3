@@ -91,6 +91,13 @@ class CallRowResponse(CamelModel):
         default=None,
         description="'member' or 'employer contact'. They carry different authority.",
     )
+    agent_name: str | None = Field(
+        default=None,
+        description=(
+            "From the Agent Roster. Null for an agent the roster does not know, "
+            "which is why the reference travels with it rather than being replaced."
+        ),
+    )
     broker_ref: str | None = None
     broker_agency: str | None = None
     region: str | None = None
@@ -149,8 +156,18 @@ class CallEvidenceResponse(CamelModel):
     reference: str
     caller_type: str
     caller_ref: str
+    caller_name: str | None = Field(
+        default=None,
+        description=(
+            "Who rang, from the Member or Contact sheet. Null where the reference "
+            "matches nobody -- a gap in reference data, not an anonymous caller, "
+            "which is why the reference is sent as well and never replaced by it."
+        ),
+    )
     agent_ref: str
+    agent_name: str | None = None
     employer_ref: str | None = None
+    employer_name: str | None = None
     resolution_status: str
     resolution_reason: str | None = None
     turns: list[TurnResponse] = Field(default_factory=list)
@@ -410,6 +427,7 @@ def _row_response(row: CallRowView) -> CallRowResponse:
         employer_name=row.employer_name,
         caller_ref=row.caller_ref,
         caller_name=row.caller_name,
+        agent_name=row.agent_name,
         caller_kind=row.caller_kind,
         broker_ref=row.broker_ref,
         broker_agency=row.broker_agency,
@@ -437,8 +455,11 @@ def _evidence_response(evidence: CallEvidence) -> CallEvidenceResponse:
         reference=evidence.reference,
         caller_type=evidence.caller_type,
         caller_ref=evidence.caller_ref,
+        caller_name=evidence.caller_name,
         agent_ref=evidence.agent_ref,
+        agent_name=evidence.agent_name,
         employer_ref=evidence.employer_ref,
+        employer_name=evidence.employer_name,
         resolution_status=evidence.resolution_status,
         resolution_reason=evidence.resolution_reason,
         turns=[

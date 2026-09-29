@@ -721,3 +721,28 @@ async def test_the_computed_fields_travel_with_the_layer_that_saves_them(
 
     assert l4["rootCauseOwner"]["label"] == "Choice"
     assert l4["preventable"] == "Yes"
+
+
+@pytest.mark.asyncio
+async def test_the_evidence_response_names_the_people_and_keeps_the_references(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Names across the application, asked for 2026-09-29.
+
+    The reference is kept beside every name rather than replaced by it: it
+    is what a support ticket quotes and a filter takes, and two members can
+    share a name. The CSV export is deliberately unchanged — `calls.py`
+    settles that separately, because a file leaves the application.
+    """
+    await seed_with_turns(session_factory, turns=(("CALLER", "Hello."),))
+
+    body = client.get("/api/v1/insights/calls/C-9001").json()
+
+    assert body["callerRef"] == "MEM-9"
+    assert body["agentRef"] == "AG-09"
+    # Present as fields whether or not reference data knows them, so the
+    # client never has to guess whether a missing key means "no name" or
+    # "this build is older than the field".
+    assert "callerName" in body
+    assert "agentName" in body
+    assert "employerName" in body

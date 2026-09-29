@@ -50,11 +50,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from domain.errors import NotFoundError
+from domain.value_objects.caller_type import CallerType
 
 if TYPE_CHECKING:
     from application.ports.call_extraction_repository import CallExtractionRepository
     from application.ports.call_repository import CallRepository
+    from application.ports.reference_lookup import ReferenceLookup
     from domain.entities.call_extraction import CallExtraction
+    from domain.entities.ingested_call import IngestedCall
 
 
 @dataclass(frozen=True)
@@ -77,6 +80,13 @@ class CallEvidence:
     employer_ref: str | None
     resolution_status: str
     resolution_reason: str | None
+    #: Who rang, from the Member or Contact sheet. `None` where the
+    #: reference matches nobody -- a gap in reference data, not an
+    #: anonymous caller, which is why the reference travels with it.
+    caller_name: str | None
+    #: The agent who took it, from the Agent Roster.
+    agent_name: str | None
+    employer_name: str | None
     turns: tuple[Turn, ...]
     #: True when the call has no turns to show.
     #:
@@ -101,9 +111,29 @@ class CallEvidence:
 class ReadCallEvidence:
     """One call by reference, or a 404 that names it."""
 
-    def __init__(self, calls: CallRepository, extractions: CallExtractionRepository) -> None:
+    def __init__(
+        self,
+        calls: CallRepository,
+        extractions: CallExtractionRepository,
+        reference: ReferenceLookup,
+    ) -> None:
         self._calls = calls
         self._extractions = extractions
+        self._reference = reference
+
+    async def _caller_name(self, call: IngestedCall) -> str | None:
+        """The caller's own name, from whichever sheet knows them.
+
+        A member and an employer contact are different people with
+        different authority, and `caller_type` is what says which sheet to
+        ask -- looking in both and taking the first hit would quietly
+        resolve a member reference against a contact of the same shape.
+        """
+        if call.caller_type is CallerType.MEMBER:
+            member = await self._reference.find_member(call.caller_ref)
+            return member.name if member is not None else None
+        contact = await self._reference.find_employer_contact(call.caller_ref)
+        return contact.name if contact is not None else None
 
     async def execute(self, reference: str) -> CallEvidence:
         call = await self._calls.get(reference)
@@ -116,6 +146,12 @@ class ReadCallEvidence:
                 detail=f"reference={reference}",
             )
         extraction = await self._extractions.get(reference)
+        agent = await self._reference.find_agent(call.agent_ref)
+        employer = (
+            await self._reference.find_employer(call.employer_ref)
+            if call.employer_ref is not None
+            else None
+        )
         transcript = call.transcript
         turns = (
             tuple(
@@ -133,6 +169,9 @@ class ReadCallEvidence:
             employer_ref=call.employer_ref,
             resolution_status=call.resolution_status.value,
             resolution_reason=call.resolution_reason,
+            caller_name=await self._caller_name(call),
+            agent_name=agent.name if agent is not None else None,
+            employer_name=employer.name if employer is not None else None,
             turns=turns,
             transcript_missing=not turns,
             analysis=extraction,

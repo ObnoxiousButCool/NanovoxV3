@@ -29,7 +29,7 @@ import { useCalls } from '@/shared/api/insights'
 import type { CallRow, CallsPage } from '@/shared/api/insights'
 import { useDrawer } from '@/shared/design/drawer'
 import { CallEvidence } from '@/shared/design/drawer/Evidence'
-import { Empty, Note, Panel } from '@/shared/design/primitives'
+import { Empty, Named, Note, Panel } from '@/shared/design/primitives'
 import { getConfig } from '@/shared/config/env'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
@@ -376,7 +376,9 @@ function Row({
       </th>
       <td className="nv-indcount">{row.occurredOn}</td>
       <td>{row.employerName ?? row.employerRef ?? '—'}</td>
-      <td className="nv-indcount">{row.agentRef ?? '—'}</td>
+      <td>
+        <Named name={row.agentName} reference={row.agentRef} fallback="—" />
+      </td>
       <td>{row.category ?? '—'}</td>
       <td>{row.outcome ?? '—'}</td>
       <td className="nv-indcount">

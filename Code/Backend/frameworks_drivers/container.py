@@ -187,7 +187,11 @@ class Container:
         return ListCalls(self.insights_reader())
 
     def read_call_evidence(self) -> ReadCallEvidence:
-        return ReadCallEvidence(self.call_repository, self.call_extraction_repository)
+        return ReadCallEvidence(
+            self.call_repository,
+            self.call_extraction_repository,
+            self.reference_lookup,
+        )
 
     def get_demand(self) -> GetDemand:
         return GetDemand(self.insights_reader(), self.dashboard_config)

@@ -1048,14 +1048,23 @@ export interface components {
         };
         /** CallEvidenceResponse */
         CallEvidenceResponse: {
+            /** Agentname */
+            agentName?: string | null;
             /** Agentref */
             agentRef: string;
             /** @description What the pipeline made of this call, in five panels: L1, L2, L3, L4 and the values derived in code afterwards. Always present — a call nothing has run on gets five panels saying so, because that is the answer to what we know about it, and a null would render as a section that failed to load. */
             analysis: components["schemas"]["CallAnalysisResponse"];
+            /**
+             * Callername
+             * @description Who rang, from the Member or Contact sheet. Null where the reference matches nobody -- a gap in reference data, not an anonymous caller, which is why the reference is sent as well and never replaced by it.
+             */
+            callerName?: string | null;
             /** Callerref */
             callerRef: string;
             /** Callertype */
             callerType: string;
+            /** Employername */
+            employerName?: string | null;
             /** Employerref */
             employerRef?: string | null;
             /** Reference */
@@ -1077,6 +1086,11 @@ export interface components {
          * @description One row of the workbench.
          */
         CallRowResponse: {
+            /**
+             * Agentname
+             * @description From the Agent Roster. Null for an agent the roster does not know, which is why the reference travels with it rather than being replaced.
+             */
+            agentName?: string | null;
             /** Agentref */
             agentRef?: string | null;
             /**

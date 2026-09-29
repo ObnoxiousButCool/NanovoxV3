@@ -30,7 +30,7 @@
  */
 
 import { useCallEvidence } from '@/shared/api/insights'
-import { Empty, Note } from '@/shared/design/primitives'
+import { Empty, Named, Note } from '@/shared/design/primitives'
 import { CallAnalysis } from '@/shared/design/drawer/CallAnalysis'
 import { DrawerPanel } from '@/shared/design/drawer/DrawerPanel'
 import { useDrawer } from '@/shared/design/drawer/drawerContext'
@@ -117,19 +117,30 @@ export function CallEvidence({ callId }: { callId: string }) {
       <dl className="nv-callfacts">
         <div>
           <dt>Caller</dt>
-          {/* The reference, never a member's name. The workbench export
-              makes the same choice for the same reason. */}
+          {/* Name in front, reference in brackets. This carried the
+              reference alone until Ranjit asked for names across the
+              application on 2026-09-29; the CSV export still does not,
+              and `calls.py` settles that separately. */}
           <dd>
-            {data.callerRef} ({data.callerType.toLowerCase()})
+            <Named name={data.callerName} reference={data.callerRef} />{' '}
+            {data.callerType.toLowerCase()}
           </dd>
         </div>
         <div>
           <dt>Agent</dt>
-          <dd>{data.agentRef}</dd>
+          <dd>
+            <Named name={data.agentName} reference={data.agentRef} />
+          </dd>
         </div>
         <div>
           <dt>Employer</dt>
-          <dd>{data.employerRef ?? 'Not resolved'}</dd>
+          <dd>
+            <Named
+              name={data.employerName}
+              reference={data.employerRef}
+              fallback="Not resolved"
+            />
+          </dd>
         </div>
         <div>
           <dt>Record</dt>

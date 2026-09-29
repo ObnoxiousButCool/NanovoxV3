@@ -12,20 +12,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
-import {
-  DataTable,
-  Delta,
-  Empty,
-  EpistemicChip,
-  basisFromApi,
-  FigureValue,
-  KpiTile,
-  MAX_COLUMNS,
-  Quote,
-  RiskPill,
-  Tooltip,
-  Withheld,
-} from '@/shared/design/primitives'
+import { DataTable, Delta, Empty, EpistemicChip, FigureValue, KpiTile, MAX_COLUMNS, Named, Quote, RiskPill, Tooltip, Withheld, basisFromApi } from '@/shared/design/primitives'
 import type { Column, Figure, Row } from '@/shared/design/primitives'
 
 function figure(over: Partial<Figure> = {}): Figure {
@@ -272,5 +259,37 @@ describe('Quote', () => {
     render(<Quote source="C-0042">I might look elsewhere at renewal.</Quote>)
 
     expect(screen.getByText('C-0042')).toBeInTheDocument()
+  })
+})
+
+describe('Named', () => {
+  it('puts the name in front and the reference in brackets', () => {
+    render(<Named name="Jerome Arellano" reference="CB-7700205" />)
+
+    expect(screen.getByText(/Jerome Arellano/)).toBeInTheDocument()
+    expect(screen.getByText('(CB-7700205)')).toBeInTheDocument()
+  })
+
+  it('keeps the reference when the sheets do not know the person', () => {
+    // Not a blank and not "Unknown": a name-shaped placeholder would say we
+    // could not identify the caller, where the truth is that reference data
+    // does not carry them. The reference still identifies the call.
+    render(<Named name={null} reference="CB-9999999" />)
+
+    expect(screen.getByText('CB-9999999')).toBeInTheDocument()
+  })
+
+  it('never drops the reference in favour of the name', () => {
+    // The reference is what a ticket quotes and a filter takes, and two
+    // members can share a name.
+    const { container } = render(<Named name="Jerome Arellano" reference="CB-7700205" />)
+
+    expect(container.textContent).toContain('CB-7700205')
+  })
+
+  it('says so when there is neither', () => {
+    render(<Named name={null} reference={null} fallback="Not resolved" />)
+
+    expect(screen.getByText('Not resolved')).toBeInTheDocument()
   })
 })

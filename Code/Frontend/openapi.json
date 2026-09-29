@@ -1318,6 +1318,17 @@
       },
       "CallEvidenceResponse": {
         "properties": {
+          "agentName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentname"
+          },
           "agentRef": {
             "title": "Agentref",
             "type": "string"
@@ -1326,6 +1337,18 @@
             "$ref": "#/components/schemas/CallAnalysisResponse",
             "description": "What the pipeline made of this call, in five panels: L1, L2, L3, L4 and the values derived in code afterwards. Always present \u2014 a call nothing has run on gets five panels saying so, because that is the answer to what we know about it, and a null would render as a section that failed to load."
           },
+          "callerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who rang, from the Member or Contact sheet. Null where the reference matches nobody -- a gap in reference data, not an anonymous caller, which is why the reference is sent as well and never replaced by it.",
+            "title": "Callername"
+          },
           "callerRef": {
             "title": "Callerref",
             "type": "string"
@@ -1333,6 +1356,17 @@
           "callerType": {
             "title": "Callertype",
             "type": "string"
+          },
+          "employerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employername"
           },
           "employerRef": {
             "anyOf": [
@@ -1392,6 +1426,18 @@
       "CallRowResponse": {
         "description": "One row of the workbench.",
         "properties": {
+          "agentName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the Agent Roster. Null for an agent the roster does not know, which is why the reference travels with it rather than being replaced.",
+            "title": "Agentname"
+          },
           "agentRef": {
             "anyOf": [
               {

@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from application.ports.insights_source import CorpusSlice
     from application.use_cases.read_insights import InsightsReader, ScopedCorpus
     from domain.aggregation.call_tags import (
+        AgentFacts,
         BrokerFacts,
         CallContext,
         CallerFacts,
@@ -96,6 +97,10 @@ class CallRowView:
     broker_agency: str | None
     region: str | None
     agent_ref: str | None
+    #: From the Agent Roster. `None` for an agent the roster does not know,
+    #: which is a gap in reference data rather than an unattributed call --
+    #: the reference is kept beside it for exactly that case.
+    agent_name: str | None
     category: str | None
     product_lines: tuple[str, ...]
     touchpoint: str | None
@@ -281,6 +286,7 @@ def _row(call: CallContext, corpus: CorpusSlice) -> CallRowView:
         broker_agency=broker.agency if broker is not None else None,
         region=employer.region if employer is not None else None,
         agent_ref=call.agent_ref,
+        agent_name=_agent_name(corpus.agents, call.agent_ref),
         category=tags.category.value if tags.category is not None else None,
         product_lines=tuple(line.value for line in tags.product_lines),
         touchpoint=tags.touchpoint,
@@ -300,6 +306,12 @@ def _row(call: CallContext, corpus: CorpusSlice) -> CallRowView:
         knowledge_failure=tags.knowledge_failure is not None and tags.knowledge_failure.present,
         intents=tuple(statement.type.value for statement in tags.intent),
     )
+
+
+def _agent_name(agents: Sequence[AgentFacts], ref: str | None) -> str | None:
+    if ref is None:
+        return None
+    return next((agent.name for agent in agents if agent.reference == ref), None)
 
 
 def _caller(callers: Sequence[CallerFacts], ref: str | None) -> CallerFacts | None:

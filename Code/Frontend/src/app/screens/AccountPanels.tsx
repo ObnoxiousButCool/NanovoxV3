@@ -31,17 +31,7 @@ import { CallEvidence } from '@/shared/design/drawer/Evidence'
 import { useDrawer } from '@/shared/design/drawer'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { BarCell } from '@/shared/design/charts'
-import {
-  BigRow,
-  DataTable,
-  Empty,
-  EpistemicChip,
-  KpiTile,
-  Note,
-  Panel,
-  Tooltip,
-  Withheld,
-} from '@/shared/design/primitives'
+import { BigRow, DataTable, Empty, EpistemicChip, KpiTile, Named, Note, Panel, Tooltip, Withheld } from '@/shared/design/primitives'
 import type { Column, Row } from '@/shared/design/primitives'
 
 /** One page of calls, as the prototype shows. The workbench has the rest. */
@@ -146,7 +136,7 @@ function CallLine({ call, onOpen }: { call: CallRow; onOpen: () => void }) {
         {/* The reference where reference data names nobody: a gap in the
             Member and Contact sheets, not an anonymous caller, and the
             reference is still how the reader looks them up. */}
-        {call.callerName ?? call.callerRef ?? 'not recorded'}
+        <Named name={call.callerName} reference={call.callerRef} fallback="not recorded" />
         <small>{call.callerKind ?? 'unknown caller type'}</small>
       </td>
       <td>
