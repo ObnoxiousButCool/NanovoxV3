@@ -572,7 +572,7 @@ function EmergingPanel({ emerging }: { emerging: EmergingEntry[] }) {
               {easing.map((item) => (
                 <li key={`${item.kind}:${item.key}`}>
                   <span>
-                    <b>{item.key}</b>
+                    <b>{item.label}</b>
                     <small>
                       {item.kind} · {item.buckets.map((bucket) => bucket.hits).join(' → ')}
                     </small>
@@ -601,12 +601,12 @@ function EmergingCard({ item }: { item: EmergingEntry }) {
         <MiniBars
           values={item.buckets.map((bucket) => bucket.hits)}
           color="var(--critical)"
-          label={`${item.key} across the window: ${item.buckets.map((bucket) => bucket.hits).join(', ')}`}
+          label={`${item.label} across the window: ${item.buckets.map((bucket) => bucket.hits).join(', ')}`}
         />
       </div>
       <div className="nv-emtext">
         <div className="nv-emtop">
-          <b>{item.key}</b>
+          <b>{item.label}</b>
           <span className="nv-kind">{item.kind}</span>
           <span className="nv-worse">+{item.delta}</span>
         </div>

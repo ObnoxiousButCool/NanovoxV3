@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from domain.value_objects.call_source import CallSource
@@ -26,6 +26,7 @@ from infrastructure.persistence.tables import (
     CallTurnRow,
     EmployerRow,
     MemberRow,
+    SignalRow,
 )
 
 # `_employer` is private to that module, but importing it beats restating the
@@ -173,6 +174,248 @@ async def test_a_call_with_no_transcript_says_so(
     assert body["turns"] == []
 
 
+# --- The tags a call's evidence carries, from the same reader every other
+# figure reads, not from `CallRepository` (which only ever sees identity and
+# the transcript) --------------------------------------------------------
+
+
+async def seed_a_tagged_call(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    reference: str = "C-9101",
+    **extraction: object,
+) -> None:
+    """One call, extracted, with whatever L3/L4 fields a test needs.
+
+    Separate from `seed_with_turns`: that helper's `CallExtractionRow` is
+    fixed, and several existing tests depend on its exact shape. This one
+    exists so a test can set `knowledge_failure_present=True` without
+    touching a fixture other tests already rely on.
+    """
+    async with session_factory() as session, session.begin():
+        broker = BrokerRow(
+            reference="BRK-91",
+            name="Broker",
+            agency="Agency",
+            region="West",
+            groups_in_book=2,
+            signal_profile="neutral",
+        )
+        session.add(broker)
+        await session.flush()
+        employer = _employer("EMP-91", broker.id)
+        session.add(employer)
+        await session.flush()
+        call = CallRow(
+            reference=reference,
+            source=CallSource.CORPUS_PDF.value,
+            occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+            aht_seconds=400,
+            caller_type="MEMBER",
+            caller_ref="MEM-91",
+            agent_ref="AG-91",
+            agent_name="Alex",
+            resolution_status="RESOLVED",
+            employer_id=employer.id,
+        )
+        session.add(call)
+        await session.flush()
+        fields: dict[str, object] = {
+            "outcome": Outcome.RESOLVED.value,
+            "category": Category.CLAIMS_AND_EOB.value,
+            "complaint_present": False,
+            "escalation_triggered": False,
+            "knowledge_failure_present": False,
+        }
+        fields.update(extraction)
+        session.add(CallExtractionRow(call_id=call.id, **fields))
+
+
+@pytest.mark.asyncio
+async def test_the_evidence_response_carries_the_signals_this_call_raised(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Severity and owner come from the taxonomy, not from the call.
+
+    `severity_of`/`owner_team_of` are fixed per type — a call only decides
+    which types fired — so this checks the pairing is real, not a made-up
+    value sitting beside the signal.
+    """
+    async with session_factory() as session, session.begin():
+        broker = BrokerRow(
+            reference="BRK-92",
+            name="Broker",
+            agency="Agency",
+            region="West",
+            groups_in_book=2,
+            signal_profile="neutral",
+        )
+        session.add(broker)
+        await session.flush()
+        employer = _employer("EMP-92", broker.id)
+        session.add(employer)
+        await session.flush()
+        call = CallRow(
+            reference="C-9102",
+            source=CallSource.CORPUS_PDF.value,
+            occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+            aht_seconds=400,
+            caller_type="MEMBER",
+            caller_ref="MEM-92",
+            agent_ref="AG-92",
+            agent_name="Alex",
+            resolution_status="RESOLVED",
+            employer_id=employer.id,
+        )
+        session.add(call)
+        await session.flush()
+        session.add(
+            CallExtractionRow(
+                call_id=call.id,
+                outcome=Outcome.RESOLVED.value,
+                category=Category.CLAIMS_AND_EOB.value,
+                complaint_present=False,
+                escalation_triggered=False,
+                knowledge_failure_present=False,
+            )
+        )
+        session.add(SignalRow(call_id=call.id, type="retention_risk", quote="q", turn_seq=1))
+
+    body = client.get("/api/v1/insights/calls/C-9102").json()
+
+    assert body["signals"] == [
+        {
+            "signal": {"code": "retention_risk", "label": "Retention risk"},
+            "severity": {"code": "CRITICAL", "label": "Critical"},
+            "ownerTeam": "Account Management",
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_the_evidence_response_carries_a_knowledge_failure_when_present(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed_a_tagged_call(
+        session_factory,
+        reference="C-9103",
+        knowledge_failure_present=True,
+        knowledge_failure_rule_id="P-014",
+        knowledge_failure_correct_statement=(
+            "COBRA election runs 60 days from the later of the notice or the loss date."
+        ),
+    )
+
+    body = client.get("/api/v1/insights/calls/C-9103").json()
+
+    assert body["knowledgeFailure"] == {
+        "ruleId": "P-014",
+        "correctStatement": (
+            "COBRA election runs 60 days from the later of the notice or the loss date."
+        ),
+    }
+
+
+@pytest.mark.asyncio
+async def test_the_evidence_response_has_no_knowledge_failure_when_absent(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Never a stand-in for `present=False` — absent means absent."""
+    await seed_a_tagged_call(session_factory, reference="C-9104")
+
+    body = client.get("/api/v1/insights/calls/C-9104").json()
+
+    assert body["knowledgeFailure"] is None
+
+
+@pytest.mark.asyncio
+async def test_the_evidence_response_carries_a_process_gap_when_present(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed_a_tagged_call(
+        session_factory,
+        reference="C-9105",
+        process_gap_present=True,
+        process_gap_gap_type="unclear_document",
+        process_gap_touchpoint="denial_letter_eob",
+        process_gap_proposed_change="State the appeal deadline on the first page.",
+        process_gap_raised_by="AGENT",
+        process_gap_status="UNVALIDATED",
+    )
+
+    body = client.get("/api/v1/insights/calls/C-9105").json()
+
+    assert body["processGap"] == {
+        "proposedChange": "State the appeal deadline on the first page.",
+        # The Touchpoints-sheet reference, in words — the same
+        # `touchpoint_label` the calls table and the risk screen's drivers
+        # panel use, so a reference nobody wrote a workbook label for still
+        # shows the sheet's own words.
+        "touchpoint": "Denial letter / EOB",
+        "raisedBy": {"code": "AGENT", "label": "Agent"},
+        "status": {"code": "UNVALIDATED", "label": "Not yet validated"},
+    }
+
+
+@pytest.mark.asyncio
+async def test_the_evidence_response_carries_control_exceptions(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed_a_tagged_call(
+        session_factory,
+        reference="C-9106",
+        control_exceptions=["no_recording_disclosure"],
+    )
+
+    body = client.get("/api/v1/insights/calls/C-9106").json()
+
+    assert body["controlExceptions"] == [
+        {"code": "no_recording_disclosure", "label": "No recording disclosure"}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_the_evidence_response_states_why_rules_in_play_is_unavailable(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """The prototype's "Rules in play" quotes rule text; the Rules sheets
+    carry no text to quote, only metadata — said, not rendered as an empty
+    section beside a full one."""
+    await seed(session_factory, calls_per_employer={"EMP-01": 1})
+
+    body = client.get("/api/v1/insights/calls/C-0001").json()
+
+    assert body["rulesUnavailable"]
+    assert "rulebook" in body["rulesUnavailable"]
+
+
+@pytest.mark.asyncio
+async def test_the_evidence_response_has_no_tags_before_extraction_reaches_it(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """A call can be ingested without being tagged yet — that is not an
+    error, and the tag-carrying fields are simply empty, not a 500."""
+    await seed_with_turns(
+        session_factory,
+        turns=(("CALLER", "Hello."),),
+        reference="C-9107",
+    )
+    async with session_factory() as session, session.begin():
+        # `seed_with_turns` always writes an extraction row; delete it to
+        # model a call `RunExtractionOverCorpus` has not reached yet.
+        call_id = (
+            await session.execute(select(CallRow.id).where(CallRow.reference == "C-9107"))
+        ).scalar_one()
+        await session.execute(delete(CallExtractionRow).where(CallExtractionRow.call_id == call_id))
+
+    body = client.get("/api/v1/insights/calls/C-9107").json()
+
+    assert body["signals"] == []
+    assert body["knowledgeFailure"] is None
+    assert body["processGap"] is None
+    assert body["controlExceptions"] == []
+
+
 # --- The workbench ---------------------------------------------------------
 
 
@@ -236,6 +479,77 @@ async def test_the_page_says_what_it_is_a_page_of(
 
     assert body["total"] == 2
     assert body["considered"] == 6
+
+
+@pytest.mark.asyncio
+async def test_the_headline_aggregates_cover_every_matching_call_not_only_the_page(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """The prototype's tiles read the whole filtered corpus client-side; this
+    one pages server-side, so the count has to be taken before the slice or
+    narrowing the page size would make "unresolved" look like it dropped.
+    """
+    async with session_factory() as session, session.begin():
+        broker = BrokerRow(
+            reference="BRK-93",
+            name="Broker",
+            agency="Agency",
+            region="West",
+            groups_in_book=2,
+            signal_profile="neutral",
+        )
+        session.add(broker)
+        await session.flush()
+        employer = _employer("EMP-93", broker.id)
+        session.add(employer)
+        await session.flush()
+        # Three calls: one resolved and scored, one unresolved with a missed
+        # escalation, one unresolved with an unscored quality field. Only
+        # the first two land on a one-per-page first page.
+        rows = (
+            ("C-9301", Outcome.RESOLVED.value, False, False, 80),
+            ("C-9302", Outcome.UNRESOLVED.value, True, False, 40),
+            ("C-9303", Outcome.UNRESOLVED.value, False, False, None),
+        )
+        for reference, outcome, triggered, handled, score in rows:
+            call = CallRow(
+                reference=reference,
+                source=CallSource.CORPUS_PDF.value,
+                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+                aht_seconds=400,
+                caller_type="MEMBER",
+                caller_ref="MEM-93",
+                agent_ref="AG-93",
+                agent_name="Alex",
+                resolution_status="RESOLVED",
+                employer_id=employer.id,
+            )
+            session.add(call)
+            await session.flush()
+            session.add(
+                CallExtractionRow(
+                    call_id=call.id,
+                    outcome=outcome,
+                    category=Category.CLAIMS_AND_EOB.value,
+                    complaint_present=False,
+                    escalation_triggered=triggered,
+                    escalation_handled=handled,
+                    knowledge_failure_present=False,
+                    quality_score=score,
+                )
+            )
+
+    body = client.get(
+        "/api/v1/insights/calls",
+        params={"asOf": AS_OF, "sort": "date", "order": "asc", "perPage": 1, "page": 1},
+    ).json()
+
+    assert len(body["rows"]) == 1
+    assert body["total"] == 3
+    assert body["unresolvedCount"] == 2
+    assert body["escalationsMissedCount"] == 1
+    # (80 + 40) / 2 — the unscored third call is excluded, not counted as 0.
+    assert body["averageQuality"] == 60
 
 
 @pytest.mark.asyncio

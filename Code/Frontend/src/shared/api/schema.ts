@@ -1034,14 +1034,28 @@ export interface components {
             callerRef: string;
             /** Callertype */
             callerType: string;
+            /** Controlexceptions */
+            controlExceptions?: components["schemas"]["CodedValue"][];
             /** Employerref */
             employerRef?: string | null;
+            knowledgeFailure?: components["schemas"]["KnowledgeFailureResponse"] | null;
+            processGap?: components["schemas"]["ProcessGapResponse"] | null;
             /** Reference */
             reference: string;
             /** Resolutionreason */
             resolutionReason?: string | null;
             /** Resolutionstatus */
             resolutionStatus: string;
+            /**
+             * Rulesunavailable
+             * @description Why the prototype's 'Rules in play' (every rule_ref the call cites, quoted from the rulebook) has no counterpart here. Said rather than rendered as an empty section beside a full one.
+             */
+            rulesUnavailable: string;
+            /**
+             * Signals
+             * @description Empty when extraction has not reached this call, never a stand-in for 'none fired'.
+             */
+            signals?: components["schemas"]["SignalRaisedResponse"][];
             /**
              * Transcriptmissing
              * @description True when the call is stored without a transcript. Distinct from an empty conversation, which is not a thing that happens.
@@ -1100,8 +1114,7 @@ export interface components {
             knowledgeFailure: boolean;
             /** Occurredon */
             occurredOn: string;
-            /** Outcome */
-            outcome?: string | null;
+            outcome?: components["schemas"]["CodedValue"] | null;
             /** Productlines */
             productLines?: string[];
             /**
@@ -1115,7 +1128,10 @@ export interface components {
             region?: string | null;
             /** Signals */
             signals?: string[];
-            /** Touchpoint */
+            /**
+             * Touchpoint
+             * @description Words, not the Touchpoints-sheet reference — see `touchpoint_label`.
+             */
             touchpoint?: string | null;
         };
         /**
@@ -1126,10 +1142,20 @@ export interface components {
         /** CallsPageResponse */
         CallsPageResponse: {
             /**
+             * Averagequality
+             * @description Null when no matching call carries a recorded score, never zero.
+             */
+            averageQuality?: number | null;
+            /**
              * Considered
              * @description Calls in the corpus before filters and search. Filters slice, never hide: a reader must be able to tell a narrow result from an empty corpus.
              */
             considered: number;
+            /**
+             * Escalationsmissedcount
+             * @description Warranted and not handled, over every matching call.
+             */
+            escalationsMissedCount: number;
             /**
              * Omittedcolumns
              * @description Columns the prototype's export has that this one does not, and why. Stated rather than left as blank columns, which would read as 'no value for this call' instead of 'we do not publish this'.
@@ -1149,6 +1175,11 @@ export interface components {
              * @description Rows matching the filters and search, before paging.
              */
             total: number;
+            /**
+             * Unresolvedcount
+             * @description Over every matching call, not only the page shown.
+             */
+            unresolvedCount: number;
         };
         /**
          * Category
@@ -1461,6 +1492,11 @@ export interface components {
              * @description category | touchpoint | signal | product_line
              */
             kind: string;
+            /**
+             * Label
+             * @description The words for `key`. Categories arrive from the workbook as prose already; touchpoints, signals and product lines are coded values and this is what `labels.py` says a reader should see for them.
+             */
+            label: string;
             /** Rising */
             rising: boolean;
         };
@@ -1857,6 +1893,18 @@ export interface components {
              */
             unit: string;
         };
+        /**
+         * KnowledgeFailureResponse
+         * @description Schema field 8: the rule cited, and the statement it should have
+         *     followed — never a correction, because D7 is open and this is not an
+         *     agent-conduct finding (see `KnowledgeFailure`'s own docstring).
+         */
+        KnowledgeFailureResponse: {
+            /** Correctstatement */
+            correctStatement?: string | null;
+            /** Ruleid */
+            ruleId: string;
+        };
         /** LabelledFigureResponse */
         LabelledFigureResponse: {
             figure: components["schemas"]["FigureResponse"];
@@ -2188,6 +2236,21 @@ export interface components {
             why: string;
         };
         /**
+         * ProcessGapResponse
+         * @description Schema field 15, with the lifecycle status the sheet requires.
+         */
+        ProcessGapResponse: {
+            /** Proposedchange */
+            proposedChange: string;
+            raisedBy?: components["schemas"]["CodedValue"] | null;
+            status: components["schemas"]["CodedValue"];
+            /**
+             * Touchpoint
+             * @description Words, not the Touchpoints-sheet reference — see `touchpoint_label`.
+             */
+            touchpoint?: string | null;
+        };
+        /**
          * ProductLine
          * @enum {string}
          */
@@ -2491,6 +2554,16 @@ export interface components {
             loggedProcessDefect: components["schemas"]["FigureResponse"];
             /** @description Calls meeting ANY component, over distinct calls. Not the sum of the three — a call can be both a repeat and a process defect. */
             total: components["schemas"]["FigureResponse"];
+        };
+        /**
+         * SignalRaisedResponse
+         * @description One signal, plus the severity and owner the taxonomy fixes per type.
+         */
+        SignalRaisedResponse: {
+            /** Ownerteam */
+            ownerTeam: string;
+            severity: components["schemas"]["CodedValue"];
+            signal: components["schemas"]["CodedValue"];
         };
         /**
          * SignalType

@@ -37,6 +37,7 @@ from typing import TYPE_CHECKING
 
 from application.use_cases.read_insights import InsightsRequest
 from domain.errors import ValidationError
+from domain.value_objects.outcome import Outcome
 
 if TYPE_CHECKING:
     from application.ports.insights_source import CorpusSlice
@@ -149,6 +150,15 @@ class CallsPage:
     #: filter bar's count and the corpus caveats through the shared frame
     #: rather than through a second, nearly-identical set of fields.
     scope: ScopedCorpus
+    #: The prototype's headline tiles, over every matching row rather than
+    #: the page shown — a reader who narrows the page size to 25 should not
+    #: see "unresolved" drop because the rest fell off the current page.
+    unresolved_count: int = 0
+    escalations_missed_count: int = 0
+    #: `None` when no matching call carries a recorded score, never zero —
+    #: the same "not recorded is not a score of zero" rule `quality_score`
+    #: itself already follows.
+    average_quality: float | None = None
 
     @property
     def pages(self) -> int:
@@ -213,7 +223,20 @@ class ListCalls:
             page=query.page,
             per_page=query.per_page,
             scope=scope,
+            unresolved_count=sum(1 for row in ordered if row.outcome == Outcome.UNRESOLVED.value),
+            escalations_missed_count=sum(
+                1 for row in ordered if row.escalation_triggered and not row.escalation_handled
+            ),
+            average_quality=_average_quality(ordered),
         )
+
+
+def _average_quality(rows: Sequence[CallRowView]) -> float | None:
+    """The mean of every recorded score. `None`, not zero, over no scores."""
+    scored = [row.quality_score for row in rows if row.quality_score is not None]
+    if not scored:
+        return None
+    return sum(scored) / len(scored)
 
 
 def _search(rows: Sequence[CallRowView], q: str) -> tuple[CallRowView, ...]:

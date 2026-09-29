@@ -55,9 +55,11 @@ from application.use_cases.list_calls import (
     CallsQuery,
     Sort,
 )
+from domain.value_objects.outcome import Outcome
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import ListCallsDep, ReadCallEvidenceDep
 from frameworks_drivers.api.v1.insights.envelope import ScopeResponse
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded, touchpoint_label
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 if TYPE_CHECKING:
@@ -93,8 +95,11 @@ class CallRowResponse(CamelModel):
     agent_ref: str | None = None
     category: str | None = None
     product_lines: list[str] = Field(default_factory=list)
-    touchpoint: str | None = None
-    outcome: str | None = None
+    touchpoint: str | None = Field(
+        default=None,
+        description="Words, not the Touchpoints-sheet reference — see `touchpoint_label`.",
+    )
+    outcome: CodedValue | None = None
     quality_score: int | None = Field(
         default=None,
         description="Null means not recorded, never a score of zero.",
@@ -133,12 +138,50 @@ class CallsPageResponse(CamelModel):
             "'no value for this call' instead of 'we do not publish this'."
         ),
     )
+    unresolved_count: int = Field(description="Over every matching call, not only the page shown.")
+    escalations_missed_count: int = Field(
+        description="Warranted and not handled, over every matching call."
+    )
+    average_quality: float | None = Field(
+        default=None,
+        description="Null when no matching call carries a recorded score, never zero.",
+    )
 
 
 class TurnResponse(CamelModel):
     sequence: int
     role: str
     text: str
+
+
+class SignalRaisedResponse(CamelModel):
+    """One signal, plus the severity and owner the taxonomy fixes per type."""
+
+    signal: CodedValue
+    severity: CodedValue
+    owner_team: str
+
+
+class KnowledgeFailureResponse(CamelModel):
+    """Schema field 8: the rule cited, and the statement it should have
+    followed — never a correction, because D7 is open and this is not an
+    agent-conduct finding (see `KnowledgeFailure`'s own docstring).
+    """
+
+    rule_id: str
+    correct_statement: str | None = None
+
+
+class ProcessGapResponse(CamelModel):
+    """Schema field 15, with the lifecycle status the sheet requires."""
+
+    proposed_change: str
+    touchpoint: str | None = Field(
+        default=None,
+        description="Words, not the Touchpoints-sheet reference — see `touchpoint_label`.",
+    )
+    raised_by: CodedValue | None = None
+    status: CodedValue
 
 
 class CallEvidenceResponse(CamelModel):
@@ -156,7 +199,35 @@ class CallEvidenceResponse(CamelModel):
             "empty conversation, which is not a thing that happens."
         )
     )
+    signals: list[SignalRaisedResponse] = Field(
+        default_factory=list,
+        description=(
+            "Empty when extraction has not reached this call, never a stand-in for 'none fired'."
+        ),
+    )
+    knowledge_failure: KnowledgeFailureResponse | None = None
+    process_gap: ProcessGapResponse | None = None
+    control_exceptions: list[CodedValue] = Field(default_factory=list)
+    rules_unavailable: str = Field(
+        description=(
+            "Why the prototype's 'Rules in play' (every rule_ref the call cites, "
+            "quoted from the rulebook) has no counterpart here. Said rather than "
+            "rendered as an empty section beside a full one."
+        )
+    )
 
+
+#: Why "Rules in play" has no counterpart in the evidence drawer. `rule_ref`
+#: exists only as ground-truth data for scoring the extraction model against
+#: (`domain.entities.ground_truth`) — it is not part of a call's own tags in
+#: the live corpus, and the Rules sheets carry no quotable rule text, only
+#: metadata (layer, area, confidence). Absent rather than invented.
+RULES_UNAVAILABLE = (
+    "The prototype also quotes every rule_ref this call cites, in full, from the "
+    "rulebook. A cited rule is only recorded here when it names a knowledge "
+    "failure (below), and even then the Rules sheets carry no rule text to "
+    "quote — only which layer, area and confidence grade it has."
+)
 
 #: Why each prototype column is absent. Shipped to the client so the gap is
 #: visible where the export is offered, not only in this docstring.
@@ -386,6 +457,9 @@ def _page_response(page: CallsPage, query: InsightsQueryDep) -> CallsPageRespons
         pages=page.pages,
         considered=len(page.scope.corpus.calls),
         omitted_columns=list(OMITTED_COLUMNS),
+        unresolved_count=page.unresolved_count,
+        escalations_missed_count=page.escalations_missed_count,
+        average_quality=page.average_quality,
     )
 
 
@@ -404,8 +478,8 @@ def _row_response(row: CallRowView) -> CallRowResponse:
         agent_ref=row.agent_ref,
         category=row.category,
         product_lines=list(row.product_lines),
-        touchpoint=row.touchpoint,
-        outcome=row.outcome,
+        touchpoint=touchpoint_label(row.touchpoint) if row.touchpoint is not None else None,
+        outcome=coded(Outcome(row.outcome)) if row.outcome is not None else None,
         quality_score=row.quality_score,
         aht_seconds=row.aht_seconds,
         complaint=row.complaint,
@@ -433,4 +507,41 @@ def _evidence_response(evidence: CallEvidence) -> CallEvidenceResponse:
             for turn in evidence.turns
         ],
         transcript_missing=evidence.transcript_missing,
+        signals=[
+            SignalRaisedResponse(
+                signal=coded(signal.signal_type),
+                severity=coded(signal.severity),
+                owner_team=signal.owner_team,
+            )
+            for signal in evidence.signals
+        ],
+        knowledge_failure=(
+            KnowledgeFailureResponse(
+                rule_id=evidence.knowledge_failure.rule_id,
+                correct_statement=evidence.knowledge_failure.correct_statement,
+            )
+            if evidence.knowledge_failure is not None
+            and evidence.knowledge_failure.rule_id is not None
+            else None
+        ),
+        process_gap=(
+            ProcessGapResponse(
+                proposed_change=evidence.process_gap.proposed_change,
+                touchpoint=(
+                    touchpoint_label(evidence.process_gap.touchpoint)
+                    if evidence.process_gap.touchpoint is not None
+                    else None
+                ),
+                raised_by=coded(evidence.process_gap.raised_by)
+                if evidence.process_gap.raised_by is not None
+                else None,
+                status=coded(evidence.process_gap.status),
+            )
+            if evidence.process_gap is not None
+            and evidence.process_gap.proposed_change is not None
+            and evidence.process_gap.status is not None
+            else None
+        ),
+        control_exceptions=[coded(item) for item in evidence.control_exceptions],
+        rules_unavailable=RULES_UNAVAILABLE,
     )

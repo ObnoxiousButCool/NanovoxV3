@@ -29,7 +29,8 @@ import { useCalls } from '@/shared/api/insights'
 import type { CallRow, CallsPage } from '@/shared/api/insights'
 import { useDrawer } from '@/shared/design/drawer'
 import { CallEvidence } from '@/shared/design/drawer/Evidence'
-import { Empty, Note, Panel } from '@/shared/design/primitives'
+import { BigRow, Empty, EpistemicChip, KpiTile, Note, Panel } from '@/shared/design/primitives'
+import { OUTCOME_COLOR } from '@/shared/design/outcome'
 import { getConfig } from '@/shared/config/env'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
@@ -200,6 +201,10 @@ function CallsBody({
   return (
     <div className="nv-grid">
       <div className="nv-c12">
+        <CallsTilesPanel data={data} />
+      </div>
+
+      <div className="nv-c12">
         <Panel
           title="Calls"
           sub={
@@ -262,48 +267,50 @@ function CallsBody({
                 : `All ${String(data.considered)} calls in scope were excluded by the filters or the search.`}
             </Empty>
           ) : (
-            <table className="nv-risktable nv-callstable">
-              <thead>
-                <tr>
-                  <th scope="col">
-                    <input
-                      type="checkbox"
-                      aria-label="Select every call on this page"
-                      checked={allOnPageSelected}
-                      onChange={toggleAllOnPage}
-                    />
-                  </th>
-                  <th scope="col">Call</th>
-                  {SORTABLE.map((column) => (
-                    <th key={column.key} scope="col" aria-sort={ariaSort(column.key, sort, order)}>
-                      <button type="button" className="nv-sortbtn" onClick={() => { onSort(column.key) }}>
-                        {column.label}
-                        <span aria-hidden="true">
-                          {sort === column.key ? (order === 'desc' ? ' ▾' : ' ▴') : ''}
-                        </span>
-                      </button>
+            <div className="nv-tblwrap">
+              <table className="nv-risktable nv-callstable">
+                <thead>
+                  <tr>
+                    <th scope="col">
+                      <input
+                        type="checkbox"
+                        aria-label="Select every call on this page"
+                        checked={allOnPageSelected}
+                        onChange={toggleAllOnPage}
+                      />
                     </th>
+                    <th scope="col">Call</th>
+                    {SORTABLE.map((column) => (
+                      <th key={column.key} scope="col" aria-sort={ariaSort(column.key, sort, order)}>
+                        <button type="button" className="nv-sortbtn" onClick={() => { onSort(column.key) }}>
+                          {column.label}
+                          <span aria-hidden="true">
+                            {sort === column.key ? (order === 'desc' ? ' ▾' : ' ▴') : ''}
+                          </span>
+                        </button>
+                      </th>
+                    ))}
+                    <th scope="col">Flags</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <Row
+                      key={row.reference}
+                      row={row}
+                      checked={selected.has(row.reference)}
+                      onToggle={() => {
+                        const next = new Set(selected)
+                        if (next.has(row.reference)) next.delete(row.reference)
+                        else next.add(row.reference)
+                        onSelect(next)
+                      }}
+                      onOpen={() => { onOpen(row.reference) }}
+                    />
                   ))}
-                  <th scope="col">Flags</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <Row
-                    key={row.reference}
-                    row={row}
-                    checked={selected.has(row.reference)}
-                    onToggle={() => {
-                      const next = new Set(selected)
-                      if (next.has(row.reference)) next.delete(row.reference)
-                      else next.add(row.reference)
-                      onSelect(next)
-                    }}
-                    onOpen={() => { onOpen(row.reference) }}
-                  />
-                ))}
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
           )}
 
           <div className="nv-fbtns nv-pager">
@@ -348,6 +355,40 @@ function CallsBody({
   )
 }
 
+/**
+ * The prototype's four headline tiles, above the toolbar. Over every call
+ * the filters and search admit — `data.total` and the three aggregates
+ * below it — never only the page on screen, so narrowing the page size
+ * cannot make "unresolved" look like it dropped.
+ */
+function CallsTilesPanel({ data }: { data: CallsPage }) {
+  return (
+    <Panel title="Every call in scope, at a glance" chip={<EpistemicChip kind="observed" />}>
+      <BigRow>
+        <KpiTile label="Calls in view" value={String(data.total)} />
+        <KpiTile
+          label="Unresolved"
+          value={String(data.unresolvedCount)}
+          tone={data.unresolvedCount > 0 ? 'warm' : 'plain'}
+        />
+        <KpiTile
+          label="Escalations missed"
+          value={String(data.escalationsMissedCount)}
+          tone={data.escalationsMissedCount > 0 ? 'hot' : 'plain'}
+        />
+        <KpiTile
+          label="Average quality"
+          value={
+            data.averageQuality === null || data.averageQuality === undefined
+              ? 'Not recorded'
+              : String(Math.round(data.averageQuality))
+          }
+        />
+      </BigRow>
+    </Panel>
+  )
+}
+
 function Row({
   row,
   checked,
@@ -359,8 +400,31 @@ function Row({
   onToggle: () => void
   onOpen: () => void
 }) {
+  const topic = [(row.productLines ?? []).join(', ') || null, row.touchpoint].filter(
+    (part) => part !== null && part !== undefined && part !== '',
+  )
+  const account = [row.brokerAgency, row.region].filter(
+    (part) => part !== null && part !== undefined && part !== '',
+  )
+
   return (
-    <tr>
+    <tr
+      className="nv-clickable"
+      tabIndex={0}
+      // The prototype's `data-call` row (`nv2.js`'s `wireRows`): the whole
+      // row opens the call, and the checkbox — the one interactive thing
+      // inside it — still wins over the row's own click.
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest('input')) return
+        onOpen()
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
+    >
       <td>
         <input
           type="checkbox"
@@ -369,16 +433,24 @@ function Row({
           onChange={onToggle}
         />
       </td>
-      <th scope="row">
-        <button type="button" className="nv-linkbtn" onClick={onOpen}>
-          {row.reference}
-        </button>
-      </th>
+      <th scope="row">{row.reference}</th>
       <td className="nv-indcount">{row.occurredOn}</td>
-      <td>{row.employerName ?? row.employerRef ?? '—'}</td>
+      <td>
+        {row.employerName ?? row.employerRef ?? '—'}
+        {account.length > 0 ? <small>{account.join(' · ')}</small> : null}
+      </td>
       <td className="nv-indcount">{row.agentRef ?? '—'}</td>
-      <td>{row.category ?? '—'}</td>
-      <td>{row.outcome ?? '—'}</td>
+      <td>
+        {row.category ?? '—'}
+        {topic.length > 0 ? <small>{topic.join(' · ')}</small> : null}
+      </td>
+      <td>
+        {row.outcome ? (
+          <span style={{ color: OUTCOME_COLOR[row.outcome.code] }}>{row.outcome.label}</span>
+        ) : (
+          '—'
+        )}
+      </td>
       <td className="nv-indcount">
         {/* Null is not zero. A call with no score recorded is not a call
             that scored nothing. */}

@@ -1281,6 +1281,13 @@
             "title": "Callertype",
             "type": "string"
           },
+          "controlExceptions": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Controlexceptions",
+            "type": "array"
+          },
           "employerRef": {
             "anyOf": [
               {
@@ -1291,6 +1298,26 @@
               }
             ],
             "title": "Employerref"
+          },
+          "knowledgeFailure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KnowledgeFailureResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "processGap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProcessGapResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "reference": {
             "title": "Reference",
@@ -1311,6 +1338,19 @@
             "title": "Resolutionstatus",
             "type": "string"
           },
+          "rulesUnavailable": {
+            "description": "Why the prototype's 'Rules in play' (every rule_ref the call cites, quoted from the rulebook) has no counterpart here. Said rather than rendered as an empty section beside a full one.",
+            "title": "Rulesunavailable",
+            "type": "string"
+          },
+          "signals": {
+            "description": "Empty when extraction has not reached this call, never a stand-in for 'none fired'.",
+            "items": {
+              "$ref": "#/components/schemas/SignalRaisedResponse"
+            },
+            "title": "Signals",
+            "type": "array"
+          },
           "transcriptMissing": {
             "description": "True when the call is stored without a transcript. Distinct from an empty conversation, which is not a thing that happens.",
             "title": "Transcriptmissing",
@@ -1330,7 +1370,8 @@
           "callerRef",
           "agentRef",
           "resolutionStatus",
-          "transcriptMissing"
+          "transcriptMissing",
+          "rulesUnavailable"
         ],
         "title": "CallEvidenceResponse",
         "type": "object"
@@ -1499,13 +1540,12 @@
           "outcome": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/CodedValue"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Outcome"
+            ]
           },
           "productLines": {
             "items": {
@@ -1557,6 +1597,7 @@
                 "type": "null"
               }
             ],
+            "description": "Words, not the Touchpoints-sheet reference \u2014 see `touchpoint_label`.",
             "title": "Touchpoint"
           }
         },
@@ -1582,9 +1623,26 @@
       },
       "CallsPageResponse": {
         "properties": {
+          "averageQuality": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when no matching call carries a recorded score, never zero.",
+            "title": "Averagequality"
+          },
           "considered": {
             "description": "Calls in the corpus before filters and search. Filters slice, never hide: a reader must be able to tell a narrow result from an empty corpus.",
             "title": "Considered",
+            "type": "integer"
+          },
+          "escalationsMissedCount": {
+            "description": "Warranted and not handled, over every matching call.",
+            "title": "Escalationsmissedcount",
             "type": "integer"
           },
           "omittedColumns": {
@@ -1621,6 +1679,11 @@
             "description": "Rows matching the filters and search, before paging.",
             "title": "Total",
             "type": "integer"
+          },
+          "unresolvedCount": {
+            "description": "Over every matching call, not only the page shown.",
+            "title": "Unresolvedcount",
+            "type": "integer"
           }
         },
         "required": [
@@ -1630,7 +1693,9 @@
           "page",
           "perPage",
           "pages",
-          "considered"
+          "considered",
+          "unresolvedCount",
+          "escalationsMissedCount"
         ],
         "title": "CallsPageResponse",
         "type": "object"
@@ -2246,6 +2311,11 @@
             "title": "Kind",
             "type": "string"
           },
+          "label": {
+            "description": "The words for `key`. Categories arrive from the workbook as prose already; touchpoints, signals and product lines are coded values and this is what `labels.py` says a reader should see for them.",
+            "title": "Label",
+            "type": "string"
+          },
           "rising": {
             "title": "Rising",
             "type": "boolean"
@@ -2254,6 +2324,7 @@
         "required": [
           "kind",
           "key",
+          "label",
           "buckets",
           "delta",
           "rising"
@@ -3134,6 +3205,31 @@
         "title": "IssueResponse",
         "type": "object"
       },
+      "KnowledgeFailureResponse": {
+        "description": "Schema field 8: the rule cited, and the statement it should have\nfollowed \u2014 never a correction, because D7 is open and this is not an\nagent-conduct finding (see `KnowledgeFailure`'s own docstring).",
+        "properties": {
+          "correctStatement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correctstatement"
+          },
+          "ruleId": {
+            "title": "Ruleid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ruleId"
+        ],
+        "title": "KnowledgeFailureResponse",
+        "type": "object"
+      },
       "LabelledFigureResponse": {
         "properties": {
           "figure": {
@@ -3749,6 +3845,46 @@
           "reviewed"
         ],
         "title": "PlaybookResponse",
+        "type": "object"
+      },
+      "ProcessGapResponse": {
+        "description": "Schema field 15, with the lifecycle status the sheet requires.",
+        "properties": {
+          "proposedChange": {
+            "title": "Proposedchange",
+            "type": "string"
+          },
+          "raisedBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/CodedValue"
+          },
+          "touchpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Words, not the Touchpoints-sheet reference \u2014 see `touchpoint_label`.",
+            "title": "Touchpoint"
+          }
+        },
+        "required": [
+          "proposedChange",
+          "status"
+        ],
+        "title": "ProcessGapResponse",
         "type": "object"
       },
       "ProductLine": {
@@ -4383,6 +4519,28 @@
           "total"
         ],
         "title": "SelfInflictedResponse",
+        "type": "object"
+      },
+      "SignalRaisedResponse": {
+        "description": "One signal, plus the severity and owner the taxonomy fixes per type.",
+        "properties": {
+          "ownerTeam": {
+            "title": "Ownerteam",
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/CodedValue"
+          },
+          "signal": {
+            "$ref": "#/components/schemas/CodedValue"
+          }
+        },
+        "required": [
+          "signal",
+          "severity",
+          "ownerTeam"
+        ],
+        "title": "SignalRaisedResponse",
         "type": "object"
       },
       "SignalType": {

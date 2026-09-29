@@ -58,6 +58,8 @@ from domain.insights.generated import (
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.process_gap import ProcessGapStatus, RaisedBy
+from domain.value_objects.product_line import ProductLine
 from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
 from domain.value_objects.signal_severity import SignalSeverity
@@ -167,7 +169,62 @@ LABELS: dict[Enum, str] = {
     ComplaintAttribution.BROKER: "Broker",
     ComplaintAttribution.CARRIER: "Carrier",
     ComplaintAttribution.PROVIDER: "Provider",
+    # --- Who raised a process gap (schema field 15) ---
+    RaisedBy.AGENT: "Agent",
+    RaisedBy.CALLER: "Caller",
+    # --- A process gap's own lifecycle: "a tag without one is a note." ---
+    ProcessGapStatus.UNVALIDATED: "Not yet validated",
+    ProcessGapStatus.VALIDATED: "Validated",
+    ProcessGapStatus.ACTIONED: "Actioned",
+    ProcessGapStatus.REJECTED: "Rejected",
+    # --- Call Tag Schema field 3. Multi-valued; a call can touch several. ---
+    ProductLine.DENTAL: "Dental",
+    ProductLine.VISION: "Vision",
+    ProductLine.LIFE: "Life",
+    ProductLine.CHIRO: "Chiro",
+    ProductLine.PROGRAM: "Program",
 }
+
+#: The Touchpoints sheet's own reference column — a slug, not prose, unlike
+#: `Category`. Written out rather than derived for the same reason as
+#: everything else in this module: a naive `replace("_", " ").title()` would
+#: turn "denial_letter_eob" into "Denial Letter Eob".
+#:
+#: Not an `Enum`, so it cannot join `LABELLED_ENUMS`'s completeness check —
+#: `call.tags.touchpoint` is free text an extraction produces, not a closed
+#: set this application defines, and a call can legitimately name a
+#: touchpoint the workbook's twelve rows do not cover. `touchpoint_label`
+#: below is the fallback for exactly that case.
+TOUCHPOINT_LABELS: dict[str, str] = {
+    "enrolment_meeting": "Enrolment meeting",
+    "enrolment_material": "Enrolment material",
+    "enrolment_form": "Enrolment form",
+    "welcome_pack": "Welcome pack",
+    "id_card_mailer": "ID card mailer",
+    "denial_letter_eob": "Denial letter / EOB",
+    "invoice_statement": "Invoice / statement",
+    "employer_portal": "Employer portal",
+    "renewal_pack": "Renewal pack",
+    "broker_material": "Broker material",
+    "agent_conversation": "Agent conversation",
+    "cobra_notice": "COBRA notice",
+}
+
+
+def touchpoint_label(reference: str) -> str:
+    """A touchpoint's words, from the sheet where this application knows
+    them and a plain reformatting where it does not.
+
+    The fallback lower-cases then capitalises rather than title-casing —
+    still a guess, but a smaller one than the naive derivation this
+    module's docstring warns against, and only reached for a value nobody
+    has written out yet.
+    """
+    known = TOUCHPOINT_LABELS.get(reference)
+    if known is not None:
+        return known
+    return reference.replace("_", " ").capitalize()
+
 
 #: The enums this module is responsible for. The completeness test walks
 #: these, so adding one here without its members fails loudly rather than
@@ -186,6 +243,9 @@ LABELLED_ENUMS: tuple[type[Enum], ...] = (
     Severity,
     InsightsStatus,
     Lens,
+    ProcessGapStatus,
+    ProductLine,
+    RaisedBy,
     UnavailableReason,
 )
 

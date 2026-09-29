@@ -34,6 +34,7 @@ import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { issueHref } from '@/shared/actions/issueHref'
 import { BarCell, VBars, VLine } from '@/shared/design/charts'
+import { OUTCOME_COLOR } from '@/shared/design/outcome'
 import type { IssueKey } from '@/shared/actions/issueHref'
 import { ISSUE_KEYS, RENEW_SOON_MONTHS } from '@/shared/actions/issueHref'
 import { useFilters } from '@/shared/filters/useFilters'
@@ -528,20 +529,6 @@ function BandCalibrationPanel({
       <Note>{panel.unlockedBy}</Note>
     </Panel>
   )
-}
-
-/** The workbook's own order for an outcome — the legend and the bar read
- * left to right in the order a call resolves worse, matching the prototype
- * rather than whatever order the API happens to list them in. Colours are
- * the prototype's own outcome set (`--s3`/`--s4`/`--seq-2`), not the general
- * good/warning ramp: `--good` and `--warning` already mean something else
- * elsewhere on this screen (tile tone), and reusing them here would make
- * this one bar look like a status readout rather than a distribution. */
-const OUTCOME_COLOR: Record<string, string> = {
-  RESOLVED: 'var(--s3)',
-  PARTIALLY_RESOLVED: 'var(--s4)',
-  ESCALATED: 'var(--seq-2)',
-  UNRESOLVED: 'var(--critical)',
 }
 
 /** "How calls ended" as one bar, segmented by count — the prototype's

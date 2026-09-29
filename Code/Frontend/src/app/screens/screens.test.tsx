@@ -365,7 +365,7 @@ function callRow(reference: string, over: Record<string, unknown> = {}) {
     category: 'Claims & EOB',
     productLines: ['dental'],
     touchpoint: null,
-    outcome: 'RESOLVED',
+    outcome: { code: 'RESOLVED', label: 'Resolved' },
     // Null is not zero: a call with no score recorded did not score nothing.
     qualityScore: null,
     ahtSeconds: 400,
@@ -392,6 +392,11 @@ const CALLS = {
   omittedColumns: [
     'Handling (archetype) — not one of the sixteen schema fields (C8a).',
   ],
+  unresolvedCount: 0,
+  escalationsMissedCount: 0,
+  // Distinct from any single row's own score shown on screen, so a test
+  // asserting on one cannot be satisfied by the other.
+  averageQuality: 82,
 }
 
 const OPTIONS = {
@@ -723,6 +728,7 @@ const EXEC_RICH = {
       {
         kind: 'category',
         key: 'Coverage & Benefits',
+        label: 'Coverage & Benefits',
         buckets: [bucket(1), bucket(2), bucket(5)],
         delta: 4,
         rising: true,
@@ -730,6 +736,7 @@ const EXEC_RICH = {
       {
         kind: 'signal',
         key: 'retention_risk',
+        label: 'Retention risk',
         buckets: [bucket(0), bucket(1), bucket(3)],
         delta: 3,
         rising: true,
@@ -737,6 +744,7 @@ const EXEC_RICH = {
       {
         kind: 'touchpoint',
         key: 'denial_letter_eob',
+        label: 'Denial letter / EOB',
         buckets: [bucket(1), bucket(1), bucket(2)],
         delta: 1,
         rising: true,
@@ -744,6 +752,7 @@ const EXEC_RICH = {
       {
         kind: 'product_line',
         key: 'dental',
+        label: 'Dental',
         buckets: [bucket(5), bucket(3), bucket(1)],
         delta: -4,
         rising: false,
@@ -751,6 +760,7 @@ const EXEC_RICH = {
       {
         kind: 'category',
         key: 'Broker Conduct',
+        label: 'Broker Conduct',
         buckets: [bucket(3), bucket(2), bucket(1)],
         delta: -2,
         rising: false,
@@ -931,15 +941,17 @@ describe('/exec, with accounts, escalations and an action board', () => {
     // The three risen furthest: Coverage & Benefits (+4), retention_risk
     // (+3), denial_letter_eob (+1). The fourth-largest rise does not exist
     // in this fixture — the two falling items must not appear as cards.
+    // Shown by their words, never their raw codes (a naive
+    // `replace('_',' ')` is exactly the bug this guards against).
     const panel = screen.getByText('Emerging issues').closest('.nv-panel') as HTMLElement
     expect(within(panel).getByText('Coverage & Benefits')).toBeInTheDocument()
-    expect(within(panel).getByText('retention_risk')).toBeInTheDocument()
-    expect(within(panel).getByText('denial_letter_eob')).toBeInTheDocument()
+    expect(within(panel).getByText('Retention risk')).toBeInTheDocument()
+    expect(within(panel).getByText('Denial letter / EOB')).toBeInTheDocument()
     // Each rising card carries its own chart.
     expect(within(panel).getAllByRole('img').length).toBeGreaterThanOrEqual(3)
     // Easing: the two falling items, dental first (furthest fallen).
     expect(within(panel).getByText('Easing')).toBeInTheDocument()
-    expect(within(panel).getByText('dental')).toBeInTheDocument()
+    expect(within(panel).getByText('Dental')).toBeInTheDocument()
     expect(within(panel).getByText('Broker Conduct')).toBeInTheDocument()
   })
 
@@ -1296,10 +1308,13 @@ describe('/calls', () => {
     await waitFor(() => {
       expect(screen.getByText('Not recorded')).toBeInTheDocument()
     })
-    expect(screen.getByText('78')).toBeInTheDocument()
+    const score = screen.getByText('78')
+    expect(score).toBeInTheDocument()
     // The failure this guards: an unscored call reading as the worst call
-    // in the corpus.
-    expect(screen.queryByText('0')).not.toBeInTheDocument()
+    // in the corpus. Scoped to the table — the headline tiles legitimately
+    // show a real zero for unresolved calls and escalations missed.
+    const table = score.closest('table') as HTMLElement
+    expect(within(table).queryByText('0')).not.toBeInTheDocument()
   })
 
   it('says what the export does not carry, where the export is offered', async () => {
@@ -1351,6 +1366,40 @@ describe('/calls', () => {
     await user.click(screen.getByLabelText('Select every call on this page'))
 
     expect(screen.getByRole('link', { name: /download 2 selected/i })).toBeInTheDocument()
+  })
+
+  it("shows the prototype's headline tiles over every matching call", async () => {
+    renderAt('/calls')
+
+    await waitFor(() => {
+      expect(screen.getByText('Every call in scope, at a glance')).toBeInTheDocument()
+    })
+    const tiles = screen
+      .getByText('Every call in scope, at a glance')
+      .closest('.nv-panel') as HTMLElement
+    expect(within(tiles).getByText('Calls in view')).toBeInTheDocument()
+    expect(within(tiles).getByText('2')).toBeInTheDocument()
+    expect(within(tiles).getByText('Unresolved')).toBeInTheDocument()
+    expect(within(tiles).getByText('Escalations missed')).toBeInTheDocument()
+    expect(within(tiles).getByText('Average quality')).toBeInTheDocument()
+    expect(within(tiles).getByText('82')).toBeInTheDocument()
+  })
+
+  it('opens a call from anywhere in its row, not only the reference cell', async () => {
+    const user = userEvent.setup()
+    renderAt('/calls')
+
+    await waitFor(() => {
+      expect(screen.getByText('C-0001')).toBeInTheDocument()
+    })
+    // The prototype's own row (`nv2.js`'s `data-call`): the checkbox stays a
+    // checkbox, and clicking anywhere else in the row opens the call.
+    const row = screen.getByText('C-0001').closest('tr') as HTMLElement
+    const employerCell = within(row).getByText('Cedar Point Workforce Partners')
+
+    await user.click(employerCell)
+
+    expect(await screen.findByText('Call C-0001')).toBeInTheDocument()
   })
 })
 
