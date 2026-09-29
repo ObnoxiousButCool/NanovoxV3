@@ -2050,3 +2050,64 @@ describe('a book-wide action on an account page', () => {
     expect(screen.queryByText(/Across the book:/)).not.toBeInTheDocument()
   })
 })
+
+describe('the account picker order', () => {
+  /** A flagged account with no indicators, and an unflagged one with three. */
+  const RISK_ORDER = {
+    ...RISK,
+    assessed: [
+      {
+        ...ASSESSED,
+        employerRef: 'EMP-1002',
+        calls: 9,
+        flagged: false,
+        observations: observationsWithNObserved(3),
+        monthsToRenewal: 6,
+      },
+      {
+        ...ASSESSED,
+        employerRef: 'EMP-1001',
+        calls: 3,
+        flagged: true,
+        observations: THIN_FAMILIES,
+        monthsToRenewal: 0,
+      },
+    ],
+    assessedCount: 2,
+    ineligible: [],
+    ineligibleCount: 0,
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(input.includes('/insights/risk') ? RISK_ORDER : routeFor(input)),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+  })
+
+  it('puts a flagged account above an unflagged one with more indicators', async () => {
+    // D12's order, amended 2026-09-29. The flag is the one scoring system;
+    // the ten families are informational and gated from five calls, so a
+    // flagged account can score nought without one having been checked —
+    // and under the old key it sank below every unflagged account.
+    renderAt('/accounts')
+
+    const picker = await screen.findByLabelText('Accounts')
+    const names = within(picker)
+      .getAllByRole('button')
+      .map((button) => button.textContent ?? '')
+
+    const flagged = names.findIndex((name) => name.includes('Cedar Point'))
+    const unflagged = names.findIndex((name) => name.includes('Park Mechanical'))
+    expect(flagged).toBeGreaterThanOrEqual(0)
+    expect(unflagged).toBeGreaterThanOrEqual(0)
+    expect(flagged).toBeLessThan(unflagged)
+  })
+})

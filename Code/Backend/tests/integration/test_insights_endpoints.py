@@ -493,3 +493,125 @@ async def test_area_of_concern_is_null_when_nothing_is_unresolved(
     body = client.get("/api/v1/insights/exec", params={"asOf": AS_OF}).json()
 
     assert body["areaOfConcern"] is None
+
+
+# --- D12's order, amended 2026-09-29: the flag first -------------------------
+
+
+async def _flagged_and_quiet(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    """Two accounts that rank in opposite orders under the two keys.
+
+    `EMP-FLAG` has three calls: enough for metric 10's eligibility floor of
+    three, under the indicator families' floor of five. Two of the four
+    conditions fire, so it is flagged with nought indicators observed —
+    Junipero's shape exactly.
+
+    `EMP-QUIET` has eight unresolved calls: over the family floor, so the
+    unresolved family is observed, and no condition of metric 10's fires.
+    Unflagged, with an indicator count.
+
+    Under the old key the quiet account came first.
+    """
+    async with session_factory() as session, session.begin():
+        broker = BrokerRow(
+            reference="BRK-01",
+            name="Broker",
+            agency="Agency",
+            region="West",
+            groups_in_book=4,
+            signal_profile="neutral",
+        )
+        session.add(broker)
+        await session.flush()
+
+        flagged = _employer("EMP-FLAG", broker.id)
+        # Renewal next month, so the fourth condition's window is open over
+        # these calls -- `_next_renewal` rolls a month already begun forward
+        # to next year, which would put them a year early.
+        flagged.renewal_month = "October"
+        session.add(flagged)
+        quiet = _employer("EMP-QUIET", broker.id)
+        session.add(quiet)
+        await session.flush()
+
+        for index in range(3):
+            call = CallRow(
+                reference=f"F-{index:04d}",
+                source=CallSource.CORPUS_PDF.value,
+                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+                aht_seconds=400,
+                caller_type="MEMBER",
+                caller_ref="MEM-F",
+                agent_ref="AG-01",
+                agent_name="Alex",
+                resolution_status="UNRESOLVED",
+                employer_id=flagged.id,
+            )
+            session.add(call)
+            await session.flush()
+            session.add(
+                CallExtractionRow(
+                    call_id=call.id,
+                    outcome=Outcome.UNRESOLVED.value,
+                    category=Category.CLAIMS_AND_EOB.value,
+                    complaint_present=True,
+                    complaint_attributed_to="CHOICE",
+                    intent=[{"type": "market_test", "quote": "We are shopping.", "turn_seq": 1}],
+                    escalation_triggered=False,
+                    knowledge_failure_present=False,
+                )
+            )
+
+        for index in range(8):
+            call = CallRow(
+                reference=f"Q-{index:04d}",
+                source=CallSource.CORPUS_PDF.value,
+                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+                aht_seconds=400,
+                caller_type="MEMBER",
+                caller_ref=f"MEM-Q{index}",
+                agent_ref="AG-01",
+                agent_name="Alex",
+                resolution_status="UNRESOLVED",
+                employer_id=quiet.id,
+            )
+            session.add(call)
+            await session.flush()
+            session.add(
+                CallExtractionRow(
+                    call_id=call.id,
+                    outcome=Outcome.UNRESOLVED.value,
+                    category=Category.CLAIMS_AND_EOB.value,
+                    complaint_present=False,
+                    escalation_triggered=False,
+                    knowledge_failure_present=False,
+                )
+            )
+
+
+@pytest.mark.asyncio
+async def test_a_flagged_account_ranks_above_an_unflagged_one_with_more_indicators(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """D12 made the flag the one scoring system and the ten families
+    informational. Ranking on the count first put the informational system
+    back in front, and it buried the accounts this screen exists to surface:
+    the flag is eligible from three calls and the families are gated from
+    five, so a flagged account can score nought without one family having
+    been checked.
+    """
+    await _flagged_and_quiet(session_factory)
+
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
+
+    order = [account["employerRef"] for account in body["assessed"]]
+    assert order[0] == "EMP-FLAG", "a flagged account must not sit below an unflagged one"
+
+    flagged = body["assessed"][0]
+    quiet = body["assessed"][1]
+    assert flagged["flagged"] is True
+    assert quiet["flagged"] is False
+    # And the reason the old key got it wrong: the flagged account has fewer.
+    assert sum(1 for o in flagged["observations"] if o["observed"]) < sum(
+        1 for o in quiet["observations"] if o["observed"]
+    )

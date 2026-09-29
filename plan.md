@@ -651,8 +651,15 @@ metric 10, which at batch-1 volume is the common case rather than the edge.
 
 What this settles, so the screens have an answer without coming back:
 
-- The risk list sorts by **indicator count, then soonest renewal** — the
-  prototype's own order, without naming the result a band.
+- The risk list sorts by **the flag first, then indicator count, then soonest
+  renewal**. *(Amended 2026-09-29 by Ranjit. It was indicator count then
+  renewal — the prototype's own order — and that buried the accounts this
+  screen exists to surface: an account can be flagged on metric 10's own
+  conditions and score nought indicators, because the flag is eligible from
+  three calls and the families are gated from five. Junipero Restaurant Group
+  was flagged, renewing that month, and below every unflagged account on the
+  page. The flag is what D12 made the one scoring system; sorting by the
+  informational count ahead of it put the second system back in front.)*
 - The risk filter offers **`flagged=true|false`** and **`minIndicators=N`**. It
   does not offer `band=High`. This is a URL contract and is expensive to move
   after the screens ship, which is why it is settled here rather than in a

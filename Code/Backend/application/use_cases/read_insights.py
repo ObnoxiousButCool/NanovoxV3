@@ -572,6 +572,19 @@ class GetAccountRisk:
             # here rather than on each screen so every client agrees, and the
             # order is a ruling rather than a component's taste.
             #
+            # D12's order, amended 2026-09-29: **the flag first**, then the
+            # indicator count, then soonest renewal.
+            #
+            # The flag leads because D12 made it the one scoring system and
+            # the ten families informational. Ranking on the count first put
+            # the informational system back in front, and it buried exactly
+            # the accounts this screen exists to surface: the flag is
+            # eligible from three calls and the families are gated from five,
+            # so an account can be flagged on metric 10's own conditions and
+            # score nought families without one of them having been checked.
+            # Junipero was flagged, renewing that month, and below every
+            # unflagged account on the page.
+            #
             # An unreadable renewal month sorts last instead of first: `None`
             # would otherwise read as "renewing now" and put the accounts we
             # know least about at the top of a page about risk.
@@ -579,6 +592,7 @@ class GetAccountRisk:
                 sorted(
                     assessed,
                     key=lambda entry: (
+                        not entry.assessment.flagged,
                         -entry.indicator_count,
                         entry.months_to_renewal if entry.months_to_renewal is not None else 99,
                         entry.assessment.employer_ref,

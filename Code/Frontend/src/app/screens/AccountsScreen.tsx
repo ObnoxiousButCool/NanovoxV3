@@ -50,6 +50,8 @@ interface RiskState {
   flagged: boolean
   indicators: number
   calls: number
+  /** Months until renewal, or null when the month could not be read. */
+  monthsToRenewal: number | null
   /**
    * Whether the ten families could be tested against this account at all.
    *
@@ -80,6 +82,23 @@ function IndicatorCount({ state }: { state: RiskState }) {
     )
   }
   return <i>{state.indicators}</i>
+}
+
+/** An account nobody could assess is not unflagged; it sorts below both. */
+function rank(flagged: boolean | undefined): number {
+  if (flagged === undefined) return -1
+  return flagged ? 1 : 0
+}
+
+/**
+ * Months to renewal, with the unknown ones last.
+ *
+ * `null` would otherwise read as "renewing now" and put the accounts we know
+ * least about at the top — the same reasoning, and the same 99, as the
+ * server's own key.
+ */
+function renewal(state: RiskState | undefined): number {
+  return state?.monthsToRenewal ?? 99
 }
 
 function PickerRow({
@@ -145,6 +164,7 @@ export function AccountsScreen() {
         // ten are. `every` over an empty list is true, which is the right
         // answer: no families is not the same as families nobody could test.
         assessed: row.observations.every((observation) => observation.assessable),
+        monthsToRenewal: row.monthsToRenewal ?? null,
       })
     }
     return map
@@ -152,13 +172,25 @@ export function AccountsScreen() {
 
   const ordered = useMemo(() => {
     const employers = options.data?.employers ?? []
-    // Most indicators first, then soonest renewal, then name — the
-    // prototype's own order, and the same one the risk table uses, so an
-    // account does not move between two screens that both rank it.
+    // D12's order, amended 2026-09-29: the flag first, then the indicator
+    // count, then soonest renewal, then name. The same key the server sorts
+    // `assessed` by, because an account must not move between two screens
+    // that both rank it — and this list cannot simply follow the server's
+    // order, since it holds every employer including the ones the risk
+    // response never mentions.
+    //
+    // The renewal tiebreak is new here. The comment claimed it before and
+    // the code never applied it, so the two screens already disagreed
+    // whenever an indicator count tied.
     return [...employers].sort((a, b) => {
-      const left = states.get(a.ref)?.indicators ?? -1
-      const right = states.get(b.ref)?.indicators ?? -1
-      return right - left || a.name.localeCompare(b.name)
+      const left = states.get(a.ref)
+      const right = states.get(b.ref)
+      return (
+        rank(right?.flagged) - rank(left?.flagged) ||
+        (right?.indicators ?? -1) - (left?.indicators ?? -1) ||
+        renewal(left) - renewal(right) ||
+        a.name.localeCompare(b.name)
+      )
     })
   }, [options.data, states])
 
