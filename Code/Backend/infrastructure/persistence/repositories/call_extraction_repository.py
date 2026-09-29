@@ -8,6 +8,7 @@ it in place or insert a new one.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -32,6 +33,7 @@ from domain.value_objects.impact_scope import ImpactScope, ImpactScopeBucket
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.intent_type import IntentType
 from domain.value_objects.knowledge_failure import KnowledgeFailure
+from domain.value_objects.layer_run import LayerRun
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.polarity import Polarity
 from domain.value_objects.preventable import Preventable
@@ -297,6 +299,15 @@ def _to_domain(
 
     return CallExtraction(
         call_reference=call_reference,
+        l2_run=_run(row.l2_provider, row.l2_model, row.l2_prompt_version, row.l2_completed_at),
+        l3_run=_run(
+            row.l3_provider,
+            row.l3_model,
+            row.l3_prompt_version,
+            row.l3_completed_at,
+            rubric_version=row.rubric_version,
+        ),
+        l4_run=_run(row.l4_provider, row.l4_model, row.l4_prompt_version, row.l4_completed_at),
         control_exceptions=(
             frozenset(ControlExceptionType(item) for item in row.control_exceptions)
             if row.control_exceptions is not None
@@ -382,4 +393,31 @@ def _to_domain(
             RootCauseOwner(row.root_cause_owner) if row.root_cause_owner is not None else None
         ),
         preventable=(Preventable(row.preventable) if row.preventable is not None else None),
+    )
+
+
+def _run(
+    provider: str | None,
+    model: str | None,
+    prompt_version: str | None,
+    completed_at: datetime | None,
+    *,
+    rubric_version: str | None = None,
+) -> LayerRun | None:
+    """A layer's provenance, or `None` if that layer has not run.
+
+    All four columns are written in one statement, so in practice they are
+    all set or all null. The check is on `completed_at` alone anyway: it is
+    the one that answers the question being asked, and a row half-written
+    by some future partial save should read as "not run" rather than as a
+    run with blanks where the model name goes.
+    """
+    if completed_at is None or provider is None or model is None or prompt_version is None:
+        return None
+    return LayerRun(
+        provider=provider,
+        model=model,
+        prompt_version=prompt_version,
+        completed_at=completed_at,
+        rubric_version=rubric_version,
     )

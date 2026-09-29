@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '@/app/App'
 import { createQueryClient } from '@/app/queryClient'
 import { DrawerProvider } from '@/shared/design/drawer'
+import { unrunAnalysis } from '@/shared/design/drawer/analysisFixture'
 import { ThemeProvider } from '@/shared/design/ThemeProvider'
 
 const SCOPE = {
@@ -508,6 +509,7 @@ const EVIDENCE = {
   resolutionStatus: 'RESOLVED',
   resolutionReason: null,
   transcriptMissing: false,
+  analysis: unrunAnalysis('CB-7700001'),
   turns: [{ seq: 0, speaker: 'AGENT', text: 'Choice Administrators, how can I help?' }],
 }
 

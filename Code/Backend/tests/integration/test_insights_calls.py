@@ -19,6 +19,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from domain.value_objects.call_source import CallSource
 from domain.value_objects.category import Category
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.polarity import Polarity
+from domain.value_objects.preventable import Preventable
+from domain.value_objects.root_cause_owner import RootCauseOwner
+from domain.value_objects.score import ScoreStatus
+from domain.value_objects.signal_type import SignalType
+from domain.value_objects.tier import Tier
 from infrastructure.persistence.tables import (
     BrokerRow,
     CallExtractionRow,
@@ -26,6 +32,8 @@ from infrastructure.persistence.tables import (
     CallTurnRow,
     EmployerRow,
     MemberRow,
+    ScoreMarkerRow,
+    SignalRow,
 )
 
 # `_employer` is private to that module, but importing it beats restating the
@@ -84,6 +92,16 @@ async def seed_with_turns(
                 complaint_present=False,
                 escalation_triggered=False,
                 knowledge_failure_present=False,
+                # Provenance, because a real `save_l2` writes it in the same
+                # statement as the tags and the panels read it to answer
+                # "did this layer run". A row with tags and no provenance is
+                # a state the pipeline cannot produce, and a fixture in that
+                # state would have every L2 assertion below testing the
+                # not-run path by accident.
+                l2_provider="openai",
+                l2_model="gpt-test",
+                l2_prompt_version="1.0.0",
+                l2_completed_at=datetime(2026, 9, 20, 10, 5, tzinfo=timezone.utc),
             )
         )
 
@@ -475,3 +493,231 @@ async def test_a_caller_reference_nobody_recognises_keeps_the_reference(
 
     assert row["callerName"] is None
     assert row["callerRef"] == "MEM-1"
+
+
+# --- The five panels of a call's analysis ----------------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_call_carries_four_panels_even_when_nothing_has_run(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Four panels, one per layer — and none of them optional.
+
+    A null `analysis` would render as a section that failed to load. "The
+    pipeline has not run on this call" is a different statement and the true
+    one, and it is the answer to the question the reader opened the drawer
+    to ask.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 1})
+    reference = await _one_reference(session_factory)
+
+    body = client.get(f"/api/v1/insights/calls/{reference}").json()
+
+    analysis = body["analysis"]
+    assert set(analysis) == {"l1", "l2", "l3", "l4"}
+    for name, panel in analysis.items():
+        assert panel["ran"] is False, f"{name} claims to have run"
+        assert panel["notRunBecause"], f"{name} is empty without saying why"
+
+
+@pytest.mark.asyncio
+async def test_l1_reads_as_run_from_l2_rather_than_from_its_own_findings(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """L1 is pure and recomputed, not stored, and it is written in the same
+    transaction as L2 — so it ran exactly when L2 did.
+
+    Inferring it from `controlExceptions` instead would report a call that
+    broke no controls as a call nobody checked, which is the same mistake
+    as reading a withheld figure as a zero.
+    """
+    await seed_with_turns(session_factory, turns=(("CALLER", "Hello."),))
+
+    analysis = client.get("/api/v1/insights/calls/C-9001").json()["analysis"]
+
+    assert analysis["l1"]["ran"] is True
+    assert analysis["l1"]["controlExceptions"] == []
+    assert analysis["l1"]["callerRef"] == "MEM-9"
+
+
+@pytest.mark.asyncio
+async def test_a_layer_that_has_not_run_is_not_reported_as_a_clean_call(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """L3 and L4 are not pipeline-critical (plan §7): either can be absent
+    while L1 and L2 stand. An absent L4 must not read as "no signals"."""
+    await seed_with_turns(session_factory, turns=(("CALLER", "Hello."),))
+
+    analysis = client.get("/api/v1/insights/calls/C-9001").json()["analysis"]
+
+    assert analysis["l2"]["ran"] is True
+    assert analysis["l3"]["ran"] is False
+    assert analysis["l4"]["ran"] is False
+    assert analysis["l4"]["signals"] == []
+    # The list being empty is not the finding; the sentence is.
+    assert "has not run" in analysis["l4"]["notRunBecause"]
+    # And the other panels are explicitly said to still stand, because a
+    # reader who sees one panel fail will otherwise distrust all five.
+    assert "still stand" in analysis["l4"]["notRunBecause"]
+
+
+@pytest.mark.asyncio
+async def test_a_layer_carries_the_model_that_produced_it(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Plan §7: provenance on every analysis. The columns have been written
+    since Phase 4; until now nothing read them back."""
+    await seed_with_turns(session_factory, turns=(("CALLER", "Hello."),))
+
+    run = client.get("/api/v1/insights/calls/C-9001").json()["analysis"]["l2"]["run"]
+
+    assert run["provider"] == "openai"
+    assert run["model"] == "gpt-test"
+    assert run["promptVersion"] == "1.0.0"
+
+
+@pytest.mark.asyncio
+async def test_the_knowledge_failure_panel_names_no_agent(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """**D7.** Schema field 8 is organisational — the rule stated wrongly —
+    and may never be attributed to the agent who took the call. The agent's
+    reference is on the response because the call has one; what must not
+    happen is field 8 arriving inside the same object, where a client could
+    join the two without deciding to.
+
+    D7 is open with Karim. Nothing in code settles it, so this test guards
+    the shape rather than the wording.
+    """
+    await seed_with_turns(session_factory, turns=(("CALLER", "Hello."),))
+
+    body = client.get("/api/v1/insights/calls/C-9001").json()
+
+    assert body["agentRef"] == "AG-09"
+    assert "agentRef" not in body["analysis"]["l3"]
+    assert "agent" not in str(body["analysis"]["l3"]).lower()
+
+
+async def _one_reference(session_factory: async_sessionmaker[AsyncSession]) -> str:
+    async with session_factory() as session:
+        return (await session.execute(select(CallRow.reference))).scalars().first() or ""
+
+
+async def _analyse_fully(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    """Fill in L3, L4 and the derived values on the seeded call.
+
+    Two signals of different severity, deliberately stored worst-last, so
+    the ordering assertion below cannot pass by accident of insertion order.
+    """
+    async with session_factory() as session, session.begin():
+        call_id = (
+            await session.execute(select(CallRow.id).where(CallRow.reference == "C-9001"))
+        ).scalar_one()
+        row = (
+            await session.execute(
+                select(CallExtractionRow).where(CallExtractionRow.call_id == call_id)
+            )
+        ).scalar_one()
+        row.quality_score = 74
+        row.quality_status = ScoreStatus.PROVISIONAL.value
+        row.quality_tier = Tier.AVERAGE.value
+        row.rubric_version = "2.1.0"
+        row.knowledge_failure_present = True
+        row.knowledge_failure_rule_id = "P-18"
+        row.knowledge_failure_correct_statement = (
+            "Employer-sponsored dental: minimum 2 enrolled AND 70% participation."
+        )
+        row.l3_provider = "openai"
+        row.l3_model = "gpt-test"
+        row.l3_prompt_version = "1.1.0"
+        row.l3_completed_at = datetime(2026, 9, 20, 10, 6, tzinfo=timezone.utc)
+        row.escalation_handled = False
+        row.root_cause_owner = RootCauseOwner.CHOICE.value
+        row.preventable = Preventable.YES.value
+        row.l4_provider = "openai"
+        row.l4_model = "gpt-test"
+        row.l4_prompt_version = "1.2.0"
+        row.l4_completed_at = datetime(2026, 9, 20, 10, 7, tzinfo=timezone.utc)
+        session.add(
+            ScoreMarkerRow(
+                call_id=call_id,
+                dimension="Ownership",
+                polarity=Polarity.NEGATIVE.value,
+                description="Left the caller to chase it.",
+                quote="You'll need to call the carrier yourself.",
+                turn_seq=1,
+                verification_status="accepted",
+            )
+        )
+        session.add(
+            SignalRow(
+                call_id=call_id,
+                type=SignalType.MEMBER_COMMUNICATION_GAP.value,
+                quote="Nobody told me the plan had changed.",
+                turn_seq=0,
+            )
+        )
+        session.add(
+            SignalRow(
+                call_id=call_id,
+                type=SignalType.RETENTION_RISK.value,
+                quote="We are looking at other carriers.",
+                turn_seq=1,
+            )
+        )
+
+
+@pytest.mark.asyncio
+async def test_signals_arrive_worst_first(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Severity is fixed per type by the Signal Taxonomy sheet, and the
+    drawer shows the list in the order it arrives. Sorting on the client
+    would mean the wire order meant nothing and two clients could rank the
+    same call differently."""
+    await seed_with_turns(session_factory, turns=(("CALLER", "Hello."),))
+    await _analyse_fully(session_factory)
+
+    signals = client.get("/api/v1/insights/calls/C-9001").json()["analysis"]["l4"]["signals"]
+
+    assert [signal["severity"]["code"] for signal in signals] == ["CRITICAL", "MEDIUM"]
+    assert signals[0]["type"]["label"] == "Retention risk"
+    # The quote travels with it. A signal with no line behind it is an
+    # assertion, and every one of these survived evidence checking.
+    assert signals[0]["quote"] == "We are looking at other carriers."
+
+
+@pytest.mark.asyncio
+async def test_a_provisional_score_says_so_rather_than_reading_as_a_low_one(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """PROVISIONAL means "not final", which a reader will otherwise take as
+    a grade. The label carries the distinction, not the number."""
+    await seed_with_turns(session_factory, turns=(("CALLER", "Hello."),))
+    await _analyse_fully(session_factory)
+
+    l3 = client.get("/api/v1/insights/calls/C-9001").json()["analysis"]["l3"]
+
+    assert l3["qualityScore"] == 74
+    assert l3["qualityStatus"]["label"] == "Provisional — not final"
+    assert l3["run"]["rubricVersion"] == "2.1.0"
+    assert l3["markers"][0]["polarity"]["label"] == "Fell short"
+
+
+@pytest.mark.asyncio
+async def test_the_computed_fields_travel_with_the_layer_that_saves_them(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Schema fields 17-18 are computed in code and never sent to a model,
+    but they are written in the same transaction as L4 and have no run,
+    prompt or provenance of their own. So they sit on L4's panel, with the
+    distinction stated on the field rather than by a panel that would read
+    as a fifth layer."""
+    await seed_with_turns(session_factory, turns=(("CALLER", "Hello."),))
+    await _analyse_fully(session_factory)
+
+    l4 = client.get("/api/v1/insights/calls/C-9001").json()["analysis"]["l4"]
+
+    assert l4["rootCauseOwner"]["label"] == "Choice"
+    assert l4["preventable"] == "Yes"

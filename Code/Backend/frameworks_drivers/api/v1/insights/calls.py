@@ -57,6 +57,10 @@ from application.use_cases.list_calls import (
 )
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import ListCallsDep, ReadCallEvidenceDep
+from frameworks_drivers.api.v1.insights.call_analysis import (
+    CallAnalysisResponse,
+    analysis_response,
+)
 from frameworks_drivers.api.v1.insights.envelope import ScopeResponse
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
@@ -154,6 +158,15 @@ class CallEvidenceResponse(CamelModel):
         description=(
             "True when the call is stored without a transcript. Distinct from an "
             "empty conversation, which is not a thing that happens."
+        )
+    )
+    analysis: CallAnalysisResponse = Field(
+        description=(
+            "What the pipeline made of this call, in five panels: L1, L2, L3, L4 "
+            "and the values derived in code afterwards. Always present — a call "
+            "nothing has run on gets five panels saying so, because that is the "
+            "answer to what we know about it, and a null would render as a section "
+            "that failed to load."
         )
     )
 
@@ -433,4 +446,5 @@ def _evidence_response(evidence: CallEvidence) -> CallEvidenceResponse:
             for turn in evidence.turns
         ],
         transcript_missing=evidence.transcript_missing,
+        analysis=analysis_response(evidence.analysis, caller_ref=evidence.caller_ref),
     )

@@ -24,6 +24,24 @@ see different turns than from another, which is the opposite of evidence.
 workbench does not search transcripts; the same reasoning applies to
 anything that would let a phrase be located across member conversations
 without opening a call.
+
+## The analysis beside the transcript
+
+The call's own pipeline output travels with it, grouped the way plan §7
+groups it: L1, L2, L3, L4, and then the values computed in code after the
+layers have run. **Five panels, four layers.** The Call Tag Schema's
+"Emitted by" column names four and nothing beyond L4 exists in the
+workbook (`domain/layers.py` is the source of truth and deliberately has
+four members). The fifth panel is not a fifth layer and is not labelled as
+one: it holds what §7 lists under "Deterministic, not LLM" — values no
+model ever saw, derived from the layers' output.
+
+Every panel carries whether its layer **ran**, separately from what it
+found. L3 and L4 are not pipeline-critical: either can fail on a single
+call and be recorded unavailable while the rest of the analysis stands. A
+panel that rendered "no signals" for a layer that never ran would be
+reporting a clean call, which is the same "withheld is not zero" mistake
+the figures make impossible everywhere else on the product.
 """
 
 from __future__ import annotations
@@ -34,7 +52,9 @@ from typing import TYPE_CHECKING
 from domain.errors import NotFoundError
 
 if TYPE_CHECKING:
+    from application.ports.call_extraction_repository import CallExtractionRepository
     from application.ports.call_repository import CallRepository
+    from domain.entities.call_extraction import CallExtraction
 
 
 @dataclass(frozen=True)
@@ -67,6 +87,10 @@ class CallEvidence:
     #: read, and a drawer rendering nothing with no explanation reads as a
     #: loading failure rather than as a call stored without a transcript.
     transcript_missing: bool
+    #: The pipeline's output for this call, or `None` when nothing has run
+    #: on it at all. Not flattened into this dataclass: the grouping by
+    #: layer is the point, and `CallExtraction` already carries it.
+    analysis: CallExtraction | None = None
 
     @property
     def text(self) -> str:
@@ -77,8 +101,9 @@ class CallEvidence:
 class ReadCallEvidence:
     """One call by reference, or a 404 that names it."""
 
-    def __init__(self, calls: CallRepository) -> None:
+    def __init__(self, calls: CallRepository, extractions: CallExtractionRepository) -> None:
         self._calls = calls
+        self._extractions = extractions
 
     async def execute(self, reference: str) -> CallEvidence:
         call = await self._calls.get(reference)
@@ -90,6 +115,7 @@ class ReadCallEvidence:
                 "No such call in this corpus.",
                 detail=f"reference={reference}",
             )
+        extraction = await self._extractions.get(reference)
         transcript = call.transcript
         turns = (
             tuple(
@@ -109,4 +135,5 @@ class ReadCallEvidence:
             resolution_reason=call.resolution_reason,
             turns=turns,
             transcript_missing=not turns,
+            analysis=extraction,
         )

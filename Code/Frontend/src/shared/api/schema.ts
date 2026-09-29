@@ -1026,10 +1026,22 @@ export interface components {
             /** Start */
             start: string;
         };
+        /**
+         * CallAnalysisResponse
+         * @description Four panels for one call.
+         */
+        CallAnalysisResponse: {
+            l1: components["schemas"]["L1PanelResponse"];
+            l2: components["schemas"]["L2PanelResponse"];
+            l3: components["schemas"]["L3PanelResponse"];
+            l4: components["schemas"]["L4PanelResponse"];
+        };
         /** CallEvidenceResponse */
         CallEvidenceResponse: {
             /** Agentref */
             agentRef: string;
+            /** @description What the pipeline made of this call, in five panels: L1, L2, L3, L4 and the values derived in code afterwards. Always present — a call nothing has run on gets five panels saying so, because that is the answer to what we know about it, and a null would render as a section that failed to load. */
+            analysis: components["schemas"]["CallAnalysisResponse"];
             /** Callerref */
             callerRef: string;
             /** Callertype */
@@ -1489,6 +1501,24 @@ export interface components {
             /** Region */
             region: string;
         };
+        /**
+         * EvidencedItem
+         * @description Something a layer found, with the line it found it on.
+         *
+         *     Every quote here survived evidence checking against the transcript: an
+         *     item whose quote could not be located is rejected and never stored
+         *     (plan §7, "Evidence validation, every LLM layer"). `turnSeq` indexes
+         *     the `turns` on the same response, so the drawer can point at the line.
+         */
+        EvidencedItem: {
+            /** Quote */
+            quote: string;
+            /** @description Signals only. Fixed per type by the Signal Taxonomy sheet. */
+            severity?: components["schemas"]["CodedValue"] | null;
+            /** Turnseq */
+            turnSeq: number;
+            type: components["schemas"]["CodedValue"];
+        };
         /** ExecScorecardResponse */
         ExecScorecardResponse: {
             /** @description The category with the most unresolved calls this period, and how its escalations fared. Null when no category had an unresolved call. */
@@ -1857,6 +1887,138 @@ export interface components {
              */
             unit: string;
         };
+        /**
+         * L1PanelResponse
+         * @description Deterministic extraction. Code, no model — the same transcript gives
+         *     the same answer every time, which is why it has no provenance.
+         */
+        L1PanelResponse: {
+            /** Callerref */
+            callerRef: string;
+            /**
+             * Controlexceptions
+             * @description Schema field 7. Never carries missing_benefit_disclosure: metric 7 is deterministic and a greeting check cannot prove that one.
+             */
+            controlExceptions?: components["schemas"]["CodedValue"][];
+            /** Notrunbecause */
+            notRunBecause?: string | null;
+            /** Ran */
+            ran: boolean;
+        };
+        /**
+         * L2PanelResponse
+         * @description Classification. What the call was about, and how it ended.
+         */
+        L2PanelResponse: {
+            /**
+             * Brokermatchesemployerofrecord
+             * @description Whether the broker named aloud is the employer's broker of record. Null when no broker was named, or when the employer has none on file.
+             */
+            brokerMatchesEmployerOfRecord?: boolean | null;
+            /** Brokernamedaloud */
+            brokerNamedAloud?: boolean | null;
+            /** Brokerref */
+            brokerRef?: string | null;
+            brokerSentiment?: components["schemas"]["CodedValue"] | null;
+            /**
+             * Category
+             * @description The workbook's own wording, so it is not re-labelled.
+             */
+            category?: string | null;
+            complaintAttributedTo?: components["schemas"]["CodedValue"] | null;
+            /** Complaintpresent */
+            complaintPresent?: boolean | null;
+            /** Escalationrequestedbycaller */
+            escalationRequestedByCaller?: boolean | null;
+            /** Escalationtriggered */
+            escalationTriggered?: boolean | null;
+            impactScope?: components["schemas"]["CodedValue"] | null;
+            /**
+             * Impactscopecount
+             * @description The N the caller stated. Null for the two buckets that are one person by definition. This is the caller's claim, never our count.
+             */
+            impactScopeCount?: number | null;
+            /** Intent */
+            intent?: components["schemas"]["EvidencedItem"][];
+            /** Notrunbecause */
+            notRunBecause?: string | null;
+            outcome?: components["schemas"]["CodedValue"] | null;
+            /** Primaryissue */
+            primaryIssue?: string | null;
+            /** Productlines */
+            productLines?: components["schemas"]["CodedValue"][];
+            /** Ran */
+            ran: boolean;
+            run?: components["schemas"]["LayerRunResponse"] | null;
+            /** Secondaryissues */
+            secondaryIssues?: string[];
+            /** Summary */
+            summary?: string | null;
+            /** Touchpoint */
+            touchpoint?: string | null;
+        };
+        /**
+         * L3PanelResponse
+         * @description Quality and knowledge.
+         */
+        L3PanelResponse: {
+            /** Knowledgefailurecorrectstatement */
+            knowledgeFailureCorrectStatement?: string | null;
+            /** Knowledgefailurepresent */
+            knowledgeFailurePresent?: boolean | null;
+            /** Knowledgefailureruleid */
+            knowledgeFailureRuleId?: string | null;
+            /**
+             * Markers
+             * @description Markers that survived evidence checking. A score with no marker trail is not auditable, so the trail travels with the score.
+             */
+            markers?: components["schemas"]["MarkerResponse"][];
+            /** Notrunbecause */
+            notRunBecause?: string | null;
+            /** Qualityscore */
+            qualityScore?: number | null;
+            qualityStatus?: components["schemas"]["CodedValue"] | null;
+            qualityTier?: components["schemas"]["CodedValue"] | null;
+            /** Ran */
+            ran: boolean;
+            run?: components["schemas"]["LayerRunResponse"] | null;
+        };
+        /**
+         * L4PanelResponse
+         * @description Signals and gaps.
+         */
+        L4PanelResponse: {
+            /** Escalationhandled */
+            escalationHandled?: boolean | null;
+            escalationTriggerType?: components["schemas"]["CodedValue"] | null;
+            /** Notrunbecause */
+            notRunBecause?: string | null;
+            /**
+             * Preventable
+             * @description Call Tag Schema field 18. Computed in code, like field 17. Yes, Partly or No — already the words a reader wants, so it carries no label.
+             */
+            preventable?: string | null;
+            /** Processgappresent */
+            processGapPresent?: boolean | null;
+            /** Processgapproposedchange */
+            processGapProposedChange?: string | null;
+            processGapRaisedBy?: components["schemas"]["CodedValue"] | null;
+            processGapStatus?: components["schemas"]["CodedValue"] | null;
+            /** Processgaptouchpoint */
+            processGapTouchpoint?: string | null;
+            /** Processgaptype */
+            processGapType?: string | null;
+            /** Ran */
+            ran: boolean;
+            /** @description Call Tag Schema field 17. Computed in code from complaint and signals, never asked of a model. */
+            rootCauseOwner?: components["schemas"]["CodedValue"] | null;
+            run?: components["schemas"]["LayerRunResponse"] | null;
+            /**
+             * Signals
+             * @description Distinct types, worst severity first. Five instances of one problem is one problem; three different problems is an account coming apart.
+             */
+            signals?: components["schemas"]["EvidencedItem"][];
+        };
         /** LabelledFigureResponse */
         LabelledFigureResponse: {
             figure: components["schemas"]["FigureResponse"];
@@ -1880,6 +2042,28 @@ export interface components {
              */
             requires: string[];
         };
+        /**
+         * LayerRunResponse
+         * @description Which model produced a layer's output, and when (plan §7).
+         */
+        LayerRunResponse: {
+            /**
+             * Completedat
+             * Format: date-time
+             */
+            completedAt: string;
+            /** Model */
+            model: string;
+            /** Promptversion */
+            promptVersion: string;
+            /** Provider */
+            provider: string;
+            /**
+             * Rubricversion
+             * @description L3 only. Null on layers that score nothing.
+             */
+            rubricVersion?: string | null;
+        };
         /** ListProvidersResponse */
         ListProvidersResponse: {
             /** Default */
@@ -1896,6 +2080,21 @@ export interface components {
             at: string;
             /** Text */
             text: string;
+        };
+        /**
+         * MarkerResponse
+         * @description One rubric observation behind a quality score.
+         */
+        MarkerResponse: {
+            /** Description */
+            description: string;
+            /** Dimension */
+            dimension: string;
+            polarity: components["schemas"]["CodedValue"];
+            /** Quote */
+            quote: string;
+            /** Turnseq */
+            turnSeq: number;
         };
         /** MatrixRowResponse */
         MatrixRowResponse: {
