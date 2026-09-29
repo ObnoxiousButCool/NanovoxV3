@@ -362,6 +362,9 @@ function callRow(reference: string, over: Record<string, unknown> = {}) {
     brokerAgency: 'Whitfield Benefits',
     region: 'Orange County',
     agentRef: 'AG-03',
+    callerRef: 'MBR-01',
+    callerName: 'Jordan Lee',
+    callerKind: 'member',
     category: 'Claims & EOB',
     productLines: ['dental'],
     touchpoint: null,
@@ -371,7 +374,7 @@ function callRow(reference: string, over: Record<string, unknown> = {}) {
     ahtSeconds: 400,
     complaint: false,
     complaintAgainst: null,
-    signals: [],
+    signals: ['member_communication_gap'],
     escalationTriggered: false,
     escalationHandled: false,
     controlExceptions: [],
@@ -408,7 +411,7 @@ const OPTIONS = {
   ],
   agents: [],
   touchpoints: [],
-  signals: [],
+  signals: [{ code: 'member_communication_gap', label: 'Member communication gap' }],
   complaintTargets: [],
   outcomes: [],
   categories: [],
@@ -1305,9 +1308,9 @@ describe('/calls', () => {
     renderAt('/calls')
 
     await waitFor(() => {
-      expect(screen.getByText('Not recorded')).toBeInTheDocument()
+      expect(screen.getByText(/Quality not recorded/)).toBeInTheDocument()
     })
-    const score = screen.getByText('78')
+    const score = screen.getByText(/quality 78 · talk/)
     expect(score).toBeInTheDocument()
     // The failure this guards: an unscored call reading as the worst call
     // in the corpus. Scoped to the table — the headline tiles legitimately
@@ -1367,21 +1370,34 @@ describe('/calls', () => {
     expect(screen.getByRole('link', { name: /download 2 selected/i })).toBeInTheDocument()
   })
 
-  it("shows the prototype's headline tiles over every matching call", async () => {
+  it("shows the prototype's bare headline strip over every matching call", async () => {
     renderAt('/calls')
 
     await waitFor(() => {
-      expect(screen.getByText('Every call in scope, at a glance')).toBeInTheDocument()
+      expect(screen.getByText('Calls in view')).toBeInTheDocument()
     })
-    const tiles = screen
-      .getByText('Every call in scope, at a glance')
-      .closest('.nv-panel') as HTMLElement
+    const tiles = screen.getByText('Calls in view').closest('.nv-bigrow') as HTMLElement
+    expect(screen.queryByText('Every call in scope, at a glance')).not.toBeInTheDocument()
     expect(within(tiles).getByText('Calls in view')).toBeInTheDocument()
     expect(within(tiles).getByText('2')).toBeInTheDocument()
     expect(within(tiles).getByText('Unresolved')).toBeInTheDocument()
     expect(within(tiles).getByText('Escalations missed')).toBeInTheDocument()
     expect(within(tiles).getByText('Average quality')).toBeInTheDocument()
     expect(within(tiles).getByText('82')).toBeInTheDocument()
+  })
+
+  it('uses the list row caller and talk-time floor, and the filter API signal label', async () => {
+    renderAt('/calls')
+
+    await screen.findByText('C-0001')
+    const row = screen.getByText('C-0001').closest('tr') as HTMLElement
+    expect(within(row).getByText('Jordan Lee')).toBeInTheDocument()
+    expect(within(row).getByText('member · agent AG-03')).toBeInTheDocument()
+    expect(within(row).getByText('Quality not recorded · talk-only AHT ≥6m 40s')).toBeInTheDocument()
+    expect(within(row).getByText('Member communication gap')).toHaveClass('nv-call-signal')
+    expect(within(row).queryByText('member_communication_gap')).not.toBeInTheDocument()
+    expect(within(row).queryByText('Indicators')).not.toBeInTheDocument()
+    expect(within(row).queryByText('Agent Smith')).not.toBeInTheDocument()
   })
 
   it('opens a call from anywhere in its row, not only the reference cell', async () => {

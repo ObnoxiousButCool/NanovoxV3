@@ -25,30 +25,34 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { useCalls } from '@/shared/api/insights'
+import { useCalls, useFilterOptions } from '@/shared/api/insights'
 import type { CallRow, CallsPage } from '@/shared/api/insights'
 import { useDrawer } from '@/shared/design/drawer'
 import { CallEvidence } from '@/shared/design/drawer/Evidence'
-import { BigRow, Empty, EpistemicChip, KpiTile, Note, Panel } from '@/shared/design/primitives'
+import { BigRow, Empty, KpiTile, Note } from '@/shared/design/primitives'
 import { OUTCOME_COLOR } from '@/shared/design/outcome'
 import { getConfig } from '@/shared/config/env'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
+import './calls.css'
 
 const PAGE_SIZES = [25, 50, 100]
 
-/** The six sortable columns the API accepts, and their headings. */
+/** Sort fields available from the Calls list endpoint. */
 const SORTABLE: { key: string; label: string }[] = [
-  { key: 'date', label: 'Date' },
-  { key: 'employer', label: 'Employer' },
-  { key: 'agent', label: 'Agent' },
+  { key: 'date', label: 'Call' },
+  { key: 'employer', label: 'Account' },
+  { key: 'agent', label: 'Caller' },
   { key: 'category', label: 'Topic' },
-  { key: 'outcome', label: 'Outcome' },
-  { key: 'quality', label: 'Quality' },
 ]
 
 export function CallsScreen() {
   const filters = useFilters()
+  const { data: filterOptions } = useFilterOptions(filters.apiSearch)
+  const signalLabels = useMemo(
+    () => new Map((filterOptions?.signals ?? []).map(({ code, label }) => [code, label])),
+    [filterOptions?.signals],
+  )
   const [params, setParams] = useSearchParams()
   const { open } = useDrawer()
 
@@ -124,41 +128,45 @@ export function CallsScreen() {
   }
 
   return (
-    <Screen
-      title="All calls"
-      lede="Every call the filters admit, with the transcript behind each one."
-      scope={data?.scope}
-      isPending={isPending}
-      error={error}
-    >
-      {data === undefined ? null : (
-        <CallsBody
-          data={data}
-          q={q}
-          sort={sort}
-          order={order}
-          page={page}
-          perPage={perPage}
-          selected={selected}
-          onWrite={write}
-          onSort={toggleSort}
-          onSelect={setSelected}
-          onOpen={(reference) => {
-            open({
-              title: `Call ${reference}`,
-              chip: 'observed',
-              body: <CallEvidence callId={reference} />,
-            })
-          }}
-          downloadUrl={downloadUrl}
-        />
-      )}
-    </Screen>
+    <div className="nv-calls">
+      <Screen
+        title="All calls"
+        lede="Every call the filters admit, with the transcript behind each one."
+        scope={data?.scope}
+        isPending={isPending}
+        error={error}
+      >
+        {data === undefined ? null : (
+          <CallsBody
+            data={data}
+            signalLabels={signalLabels}
+            q={q}
+            sort={sort}
+            order={order}
+            page={page}
+            perPage={perPage}
+            selected={selected}
+            onWrite={write}
+            onSort={toggleSort}
+            onSelect={setSelected}
+            onOpen={(reference) => {
+              open({
+                title: `Call ${reference}`,
+                chip: 'observed',
+                body: <CallEvidence callId={reference} />,
+              })
+            }}
+            downloadUrl={downloadUrl}
+          />
+        )}
+      </Screen>
+    </div>
   )
 }
 
 function CallsBody({
   data,
+  signalLabels,
   q,
   sort,
   order,
@@ -172,6 +180,7 @@ function CallsBody({
   downloadUrl,
 }: {
   data: CallsPage
+  signalLabels: Map<string, string>
   q: string
   sort: string
   order: string
@@ -198,6 +207,9 @@ function CallsBody({
     onSelect(next)
   }
 
+  const firstRow = data.total === 0 ? 0 : (data.page - 1) * data.perPage + 1
+  const lastRow = firstRow + rows.length - 1
+
   return (
     <div className="nv-grid">
       <div className="nv-c12">
@@ -205,60 +217,42 @@ function CallsBody({
       </div>
 
       <div className="nv-c12">
-        <Panel
-          title="Calls"
-          sub={
-            <>
-              {data.total} of {data.considered} calls match. Page {data.page} of{' '}
-              {data.pages}.
-            </>
-          }
-          actions={
-            <div className="nv-rowfilters">
-              <label>
-                <span>Search</span>
+        <section className="nv-panel nv-calls-panel" aria-label="Calls">
+          <div className="nv-calls-toolbar">
+            <div className="nv-calls-query">
+              <label className="nv-calls-search">
+                <span className="nv-sr-only">Search calls</span>
                 <input
                   type="search"
                   value={q}
-                  placeholder="Reference, employer, topic…"
+                  placeholder="Search call, account, caller, agent, broker"
                   onChange={(event) => {
                     onWrite('q', event.target.value || null)
                   }}
                 />
               </label>
-              <label>
-                <span>Per page</span>
-                <select
-                  value={String(perPage)}
-                  onChange={(event) => {
-                    onWrite('perPage', event.target.value)
-                  }}
-                >
-                  {PAGE_SIZES.map((size) => (
-                    <option key={size} value={String(size)}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <span className="nv-calls-count">
+                {rows.length === 0
+                  ? 'No calls match'
+                  : `Showing ${String(firstRow)}–${String(lastRow)} of ${String(data.total)} matching calls`}
+              </span>
             </div>
-          }
-        >
-          <div className="nv-fbtns nv-dlrow">
-            <a className="nv-btn" href={downloadUrl([])} download>
-              ⤓ Download {data.total} matching calls (CSV)
-            </a>
-            {selected.size > 0 ? (
-              <a className="nv-btn" href={downloadUrl([...selected])} download>
-                ⤓ Download {selected.size} selected
+            <div className="nv-fbtns nv-calls-downloads">
+              <a className="nv-btn" href={downloadUrl([])} download>
+                ⤓ Download {data.total} matching calls (CSV)
               </a>
-            ) : null}
-            <Note>
+              {selected.size > 0 ? (
+                <a className="nv-btn" href={downloadUrl([...selected])} download>
+                  ⤓ Download {selected.size} selected
+                </a>
+              ) : null}
+            </div>
+          </div>
+          <Note>
               The file is built by the server from the same query as this table, so a
               column can never appear in one and not the other. Selecting rows narrows it;
               it never adds a call the filters exclude.
-            </Note>
-          </div>
+          </Note>
 
           {rows.length === 0 ? (
             <Empty title="No call matches">
@@ -271,7 +265,7 @@ function CallsBody({
               <table className="nv-risktable nv-callstable">
                 <thead>
                   <tr>
-                    <th scope="col">
+                    <th scope="col" className="nv-call-check">
                       <input
                         type="checkbox"
                         aria-label="Select every call on this page"
@@ -279,10 +273,14 @@ function CallsBody({
                         onChange={toggleAllOnPage}
                       />
                     </th>
-                    <th scope="col">Call</th>
                     {SORTABLE.map((column) => (
                       <th key={column.key} scope="col" aria-sort={ariaSort(column.key, sort, order)}>
-                        <button type="button" className="nv-sortbtn" onClick={() => { onSort(column.key) }}>
+                        <button
+                          type="button"
+                          className="nv-sortbtn"
+                          title={column.key === 'agent' ? 'Sorts by agent reference' : undefined}
+                          onClick={() => { onSort(column.key) }}
+                        >
                           {column.label}
                           <span aria-hidden="true">
                             {sort === column.key ? (order === 'desc' ? ' ▾' : ' ▴') : ''}
@@ -290,7 +288,25 @@ function CallsBody({
                         </button>
                       </th>
                     ))}
-                    <th scope="col">Flags</th>
+                    <th
+                      scope="col"
+                      aria-sort={sort === 'outcome' || sort === 'quality' ? ariaSort(sort, sort, order) : 'none'}
+                    >
+                      <div className="nv-call-outcome-heading">
+                        <button type="button" className="nv-sortbtn" onClick={() => { onSort('outcome') }}>
+                          Outcome{sort === 'outcome' ? (order === 'desc' ? ' ▾' : ' ▴') : ''}
+                        </button>
+                        <button
+                          type="button"
+                          className="nv-sortbtn nv-call-quality-sort"
+                          aria-label="Sort by quality"
+                          onClick={() => { onSort('quality') }}
+                        >
+                          quality{sort === 'quality' ? (order === 'desc' ? ' ▾' : ' ▴') : ' ↕'}
+                        </button>
+                      </div>
+                    </th>
+                    <th scope="col">Signals</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -298,6 +314,7 @@ function CallsBody({
                     <Row
                       key={row.reference}
                       row={row}
+                      signalLabels={signalLabels}
                       checked={selected.has(row.reference)}
                       onToggle={() => {
                         const next = new Set(selected)
@@ -313,33 +330,45 @@ function CallsBody({
             </div>
           )}
 
-          <div className="nv-fbtns nv-pager">
-            <button
-              type="button"
-              className="nv-btn"
-              disabled={page <= 1}
-              onClick={() => { onWrite('page', String(page - 1)) }}
-            >
-              ← Previous
-            </button>
-            <span className="nv-indcount">
-              Page {data.page} of {data.pages}
-            </span>
-            <button
-              type="button"
-              className="nv-btn"
-              disabled={page >= data.pages}
-              onClick={() => { onWrite('page', String(page + 1)) }}
-            >
-              Next →
-            </button>
+          <div className="nv-calls-pager">
+            <label className="nv-calls-perpage">
+              <span>Rows per page</span>
+              <select
+                value={String(perPage)}
+                onChange={(event) => { onWrite('perPage', event.target.value) }}
+              >
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={String(size)}>{size}</option>
+                ))}
+              </select>
+            </label>
+            <div className="nv-calls-page-nav">
+              <button
+                type="button"
+                className="nv-btn"
+                disabled={page <= 1}
+                onClick={() => { onWrite('page', String(page - 1)) }}
+              >
+                ← Previous
+              </button>
+              <span className="nv-indcount">Page {data.page} of {data.pages}</span>
+              <button
+                type="button"
+                className="nv-btn"
+                disabled={page >= data.pages}
+                onClick={() => { onWrite('page', String(page + 1)) }}
+              >
+                Next →
+              </button>
+            </div>
           </div>
-        </Panel>
+        </section>
       </div>
 
       {(data.omittedColumns ?? []).length > 0 ? (
         <div className="nv-c12">
-          <Panel title="What the export does not carry">
+          <details className="nv-calls-export">
+            <summary>What the export does not carry</summary>
             {/* Said where the export is offered, not only in a docstring.
                 A column absent from a file is a question somebody will
                 otherwise ask by email. */}
@@ -348,7 +377,7 @@ function CallsBody({
                 <li key={note}>{note}</li>
               ))}
             </ul>
-          </Panel>
+          </details>
         </div>
       ) : null}
     </div>
@@ -356,24 +385,25 @@ function CallsBody({
 }
 
 /**
- * The prototype's four headline tiles, above the toolbar. Over every call
+ * The prototype's bare four-tile strip, above the toolbar. Over every call
  * the filters and search admit — `data.total` and the three aggregates
  * below it — never only the page on screen, so narrowing the page size
  * cannot make "unresolved" look like it dropped.
  */
 function CallsTilesPanel({ data }: { data: CallsPage }) {
   return (
-    <Panel title="Every call in scope, at a glance" chip={<EpistemicChip kind="observed" />}>
       <BigRow>
-        <KpiTile label="Calls in view" value={String(data.total)} />
+        <KpiTile label="Calls in view" value={String(data.total)} meta={`of ${String(data.considered)} calls in corpus`} />
         <KpiTile
           label="Unresolved"
           value={String(data.unresolvedCount)}
+          meta="across all matches"
           tone={data.unresolvedCount > 0 ? 'warm' : 'plain'}
         />
         <KpiTile
           label="Escalations missed"
           value={String(data.escalationsMissedCount)}
+          meta="warranted, not handled"
           tone={data.escalationsMissedCount > 0 ? 'hot' : 'plain'}
         />
         <KpiTile
@@ -383,33 +413,59 @@ function CallsTilesPanel({ data }: { data: CallsPage }) {
               ? 'Not recorded'
               : String(Math.round(data.averageQuality))
           }
+          meta="recorded scores only"
         />
       </BigRow>
-    </Panel>
   )
 }
 
 function Row({
   row,
+  signalLabels,
   checked,
   onToggle,
   onOpen,
 }: {
   row: CallRow
+  signalLabels: Map<string, string>
   checked: boolean
   onToggle: () => void
   onOpen: () => void
 }) {
-  const topic = [(row.productLines ?? []).join(', ') || null, row.touchpoint].filter(
-    (part) => part !== null && part !== undefined && part !== '',
-  )
   const account = [row.brokerAgency, row.region].filter(
     (part) => part !== null && part !== undefined && part !== '',
   )
+  const callerContext = [row.callerKind, row.agentRef ? `agent ${row.agentRef}` : null].filter(
+    (part) => part !== null && part !== undefined && part !== '',
+  )
+  const callerName = row.callerName?.trim()
+  const callerLabel = callerName || (row.callerRef ? 'Caller not found' : 'Caller not recorded')
+  const callerDetails = [
+    !callerName && row.callerRef ? `Reference ${row.callerRef}` : null,
+    ...callerContext,
+  ].filter((part): part is string => part !== null)
+  const accountLabel = row.employerName ?? row.employerRef ?? 'Account not recorded'
+  const secondaryAccount = account.length > 0 ? account.join(' · ') : 'Broker / region not recorded'
+  const topicLabel = row.category ?? 'Topic not recorded'
+  const topicDetails = [
+    (row.productLines ?? []).filter(Boolean).join(', ') || null,
+    row.touchpoint,
+  ].filter((part) => part !== null && part !== undefined && part !== '')
+  const quality = row.qualityScore == null ? 'Quality not recorded' : `quality ${String(row.qualityScore)}`
+  const talkTime = row.ahtSeconds == null
+    ? 'Talk-only AHT not recorded'
+    : `talk-only AHT ≥${formatDuration(row.ahtSeconds)}`
+  const signals = row.signals
+  const indicators = [
+    row.complaint ? 'Complaint' : null,
+    row.escalationTriggered && !row.escalationHandled ? 'Escalation missed' : null,
+    row.knowledgeFailure ? 'Knowledge failure' : null,
+    ...((row.controlExceptions ?? []).length > 0 ? ['Control exception'] : []),
+  ].filter((label): label is string => label !== null)
 
   return (
     <tr
-      className="nv-clickable"
+      className={`nv-clickable${checked ? ' nv-selected' : ''}`}
       tabIndex={0}
       // The prototype's `data-call` row (`nv2.js`'s `wireRows`): the whole
       // row opens the call, and the checkbox — the one interactive thing
@@ -425,7 +481,7 @@ function Row({
         }
       }}
     >
-      <td>
+      <td className="nv-call-check">
         <input
           type="checkbox"
           aria-label={`Select call ${row.reference}`}
@@ -433,40 +489,59 @@ function Row({
           onChange={onToggle}
         />
       </td>
-      <th scope="row">{row.reference}</th>
-      <td className="nv-indcount">{row.occurredOn}</td>
       <td>
-        {row.employerName ?? row.employerRef ?? '—'}
-        {account.length > 0 ? <small>{account.join(' · ')}</small> : null}
+        <span className="nv-call-primary nv-call-mono">{row.reference}</span>
+        <small className="nv-call-secondary">{row.occurredOn}</small>
       </td>
-      <td className="nv-indcount">{row.agentRef ?? '—'}</td>
       <td>
-        {row.category ?? '—'}
-        {topic.length > 0 ? <small>{topic.join(' · ')}</small> : null}
+        <span className="nv-call-primary">{accountLabel}</span>
+        <small className="nv-call-secondary">{secondaryAccount}</small>
+      </td>
+      <td>
+        <span className="nv-call-primary">{callerLabel}</span>
+        <small className="nv-call-secondary">
+          {callerDetails.length > 0
+            ? callerDetails.join(' · ')
+            : callerName
+              ? 'Caller type / agent not recorded'
+              : 'Caller details not recorded'}
+        </small>
+      </td>
+      <td>
+        <span className="nv-call-primary">{topicLabel}</span>
+        <small className="nv-call-secondary">
+          {topicDetails.length > 0 ? topicDetails.join(' · ') : 'Product line / touchpoint not recorded'}
+        </small>
       </td>
       <td>
         {row.outcome ? (
-          <span style={{ color: OUTCOME_COLOR[row.outcome.code] }}>{row.outcome.label}</span>
+          <span className="nv-call-primary" style={{ color: OUTCOME_COLOR[row.outcome.code] }}>{row.outcome.label}</span>
         ) : (
-          '—'
+          <span className="nv-call-primary">Outcome not recorded</span>
         )}
-      </td>
-      <td className="nv-indcount">
-        {/* Null is not zero. A call with no score recorded is not a call
-            that scored nothing. */}
-        {row.qualityScore ?? 'Not recorded'}
+        <small className="nv-call-secondary">
+          {quality} · {talkTime}
+        </small>
       </td>
       <td>
-        <div className="nv-fires">
-          {row.complaint ? <span className="nv-fire">Complaint</span> : null}
-          {row.escalationTriggered && !row.escalationHandled ? (
-            <span className="nv-fire">Escalation missed</span>
-          ) : null}
-          {row.knowledgeFailure ? <span className="nv-fire">Knowledge failure</span> : null}
-          {(row.controlExceptions ?? []).length > 0 ? (
-            <span className="nv-fire">Control exception</span>
-          ) : null}
-        </div>
+        {signals === undefined ? (
+          <span className="nv-call-empty">Signal data unavailable</span>
+        ) : signals.length === 0 ? (
+          <span className="nv-call-empty">No signals raised</span>
+        ) : (
+          <div className="nv-call-signals" aria-label="Signals">
+            {signals.map((signal, index) => (
+              <span className="nv-call-signal" key={`${signal}-${String(index)}`}>
+                {signalLabels.get(signal) ?? signal}
+              </span>
+            ))}
+          </div>
+        )}
+        {indicators.length > 0 ? (
+          <div className="nv-call-indicators">
+            {indicators.map((indicator) => <span className="nv-call-indicator" key={indicator}>{indicator}</span>)}
+          </div>
+        ) : null}
       </td>
     </tr>
   )
@@ -479,4 +554,14 @@ function ariaSort(
 ): 'ascending' | 'descending' | 'none' {
   if (sort !== key) return 'none'
   return order === 'desc' ? 'descending' : 'ascending'
+}
+
+function formatDuration(seconds: number): string {
+  const totalSeconds = Math.floor(Math.abs(seconds))
+  const minutes = Math.floor(totalSeconds / 60)
+  const remainder = totalSeconds % 60
+  const sign = seconds < 0 ? '−' : ''
+  if (minutes === 0) return `${sign}${String(remainder)}s`
+  if (remainder === 0) return `${sign}${String(minutes)}m`
+  return `${sign}${String(minutes)}m ${String(remainder)}s`
 }
