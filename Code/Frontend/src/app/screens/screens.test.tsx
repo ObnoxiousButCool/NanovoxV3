@@ -268,6 +268,39 @@ const HIERARCHY = {
     { region: 'Bay Area', counts: { 'Claims & EOB': 3, 'Billing & Premium': 0 } },
     { region: 'Orange County', counts: { 'Claims & EOB': 0, 'Billing & Premium': 1 } },
   ],
+  complaints: { ours: 3, total: 5 },
+  regions: [
+    { region: 'Bay Area', accounts: 16, flagged: 2, calls: 3, unresolved: 1 },
+    { region: 'Orange County', accounts: 16, flagged: 0, calls: 1, unresolved: 0 },
+  ],
+  brokers: [
+    {
+      brokerRef: 'BRK-02',
+      agency: 'Marsh & Vale',
+      name: 'Dana Vale',
+      region: 'Bay Area',
+      groupsInBook: 12,
+      calls: 3,
+      adverseMentions: 1,
+      adverseEmployers: 1,
+      patternFires: false,
+      patternReached: 'Below: 1 adverse mention(s) from 1 employer(s); needs 3 from 2.',
+      flaggedAccounts: 2,
+    },
+    {
+      brokerRef: 'BRK-09',
+      agency: 'Trent & Associates',
+      name: 'Ray Trent',
+      region: 'Orange County',
+      groupsInBook: 4,
+      calls: 1,
+      adverseMentions: 0,
+      adverseEmployers: 0,
+      patternFires: false,
+      patternReached: 'Below: 0 adverse mention(s) from 0 employer(s); needs 3 from 2.',
+      flaggedAccounts: 0,
+    },
+  ],
   rankedBrokers: [
     {
       brokerRef: 'BRK-02',
@@ -679,36 +712,119 @@ describe('/accounts/:ref', () => {
 })
 
 describe('/hierarchy', () => {
-  it('publishes no rate for a broker the server sent none for', async () => {
+  it('asks the page question from the prototype, not the rail label', async () => {
+    // The rail says "Isolated or systemic?" and the page asks "Is it
+    // isolated or systemic?". Both are the prototype's, and the App test
+    // no longer assumes they are the same string.
     renderAt('/hierarchy')
 
     await waitFor(() => {
-      expect(screen.getByText('Not published')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Is it isolated or systemic?' }),
+      ).toBeInTheDocument()
     })
-    // Null is not a rate of zero, and this is the one screen where a real
-    // zero does render — so the two must stay distinguishable.
-    expect(screen.queryByText('0.00')).not.toBeInTheDocument()
   })
 
   it('says what a pattern test reached when it did not fire', async () => {
+    // §9 asks for the test shown fired and unfired with what it reached.
+    // The two numbers the test takes are in the cell, the threshold is in
+    // the panel's (i), and the sentence is the cell's title — down thirty
+    // rows it would be the page's longest text and the same words each
+    // time, which is what the prototype avoids by not printing it.
     renderAt('/hierarchy')
 
     await waitFor(() => {
-      expect(screen.getByText(/below: 1 adverse mention/i)).toBeInTheDocument()
+      expect(screen.getByText('Marsh & Vale')).toBeInTheDocument()
     })
+    const cell = [...document.querySelectorAll('td[title]')].find((td) =>
+      td.getAttribute('title')?.includes('adverse mention'),
+    )
+    expect(cell?.getAttribute('title')).toMatch(/below: 1 adverse mention/i)
+    expect(cell?.textContent).toContain('1 employer')
     expect(screen.queryByText('Fires')).not.toBeInTheDocument()
+  })
+
+  it('shows no per-broker rate at all', async () => {
+    // A three-group broker has about ten calls. The prototype says plainly
+    // why it divides by nothing, and a rate appearing here would be the
+    // one number this table exists to refuse.
+    renderAt('/hierarchy')
+
+    await waitFor(() => {
+      expect(screen.getByText('Marsh & Vale')).toBeInTheDocument()
+    })
+    const headers = [...document.querySelectorAll('table th[scope="col"]')].map(
+      (cell) => cell.textContent,
+    )
+    expect(headers).not.toContain('Per 100 lives')
+    expect(screen.queryByText('Not published')).not.toBeInTheDocument()
+  })
+
+  it('counts every account in a region, not every account that called', async () => {
+    // A region where two of sixteen accounts rang is not a two-account
+    // region, and a table that said so would make the quiet ones vanish.
+    renderAt('/hierarchy')
+
+    await waitFor(() => {
+      expect(screen.getByText('By region')).toBeInTheDocument()
+    })
+    const row = [...document.querySelectorAll('tbody tr')].find((tr) =>
+      tr.textContent?.startsWith('Bay Area'),
+    )
+    expect([...(row?.querySelectorAll('td') ?? [])].map((cell) => cell.textContent)).toEqual([
+      '16',
+      '2',
+      '3',
+      '1',
+    ])
+  })
+
+  it('narrows every page from a region row rather than navigating away', async () => {
+    const user = userEvent.setup()
+    renderAt('/hierarchy')
+
+    await waitFor(() => {
+      expect(screen.getByText('By region')).toBeInTheDocument()
+    })
+    const row = [...document.querySelectorAll('tbody tr')].find((tr) =>
+      tr.textContent?.startsWith('Bay Area'),
+    )
+    await user.click(row as HTMLElement)
+
+    // Re-queried rather than re-read: React replaces the node, so the
+    // reference above can be detached by the time the filter lands.
+    await waitFor(() => {
+      const pressed = [...document.querySelectorAll('tbody tr[aria-pressed="true"]')].map(
+        (tr) => tr.textContent,
+      )
+      expect(pressed.some((text) => text?.startsWith('Bay Area'))).toBe(true)
+    })
+    // Still on the same screen: this writes a filter, it does not route.
+    expect(screen.getByText('By region')).toBeInTheDocument()
   })
 
   it('draws the heatmap over the union of categories, so rows line up', async () => {
     renderAt('/hierarchy')
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Calls by region and category')).toBeInTheDocument()
+      expect(screen.getByLabelText('Calls by region and topic')).toBeInTheDocument()
     })
     // Both regions, both categories — a ragged matrix would break the
     // dark-column reading the panel tells the reader to use.
     expect(screen.getAllByText('Bay Area').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Orange County').length).toBeGreaterThan(0)
+  })
+
+  it('reads the complaint tile against complaints, not against calls', async () => {
+    // A different figure from the complaint rate, which divides by
+    // everyone who rang. Reading one as the other overstates or
+    // understates the load by the size of the quiet majority.
+    renderAt('/hierarchy')
+
+    await waitFor(() => {
+      expect(screen.getByText('Complaints about us')).toBeInTheDocument()
+    })
+    expect(screen.getByText('of 5 complaints')).toBeInTheDocument()
   })
 })
 

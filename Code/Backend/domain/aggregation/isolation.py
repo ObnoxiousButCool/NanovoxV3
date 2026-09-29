@@ -23,18 +23,27 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from domain.aggregation.broker_friction import PatternTest, pattern_test
-from domain.aggregation.call_tags import CallContext, EmployerFacts, Window
+from domain.aggregation.broker_friction import PatternTest, adverse_mentions, pattern_test
+from domain.aggregation.call_tags import BrokerFacts, CallContext, EmployerFacts, Window
+from domain.aggregation.risk_flag import assess
 from domain.dashboard_config import DashboardConfig
 from domain.value_objects.category import Category
+from domain.value_objects.complaint_attribution import ComplaintAttribution
+from domain.value_objects.outcome import Outcome
 
 __all__ = [
+    "BrokerRow",
+    "ComplaintOwnership",
     "EmployerNode",
     "PatternTest",
     "RegionNode",
+    "RegionRow",
+    "broker_rows",
+    "complaint_ownership",
     "drill_tree",
     "pattern_test",
     "region_category_matrix",
+    "region_rows",
 ]
 
 
@@ -166,3 +175,197 @@ def broker_pattern(
 ) -> PatternTest:
     """The pattern test, as this screen asks for it — fired and unfired alike."""
     return pattern_test(config, broker_ref, calls, window)
+
+
+@dataclass(frozen=True)
+class RegionRow:
+    """One region, as the "By region" table counts it.
+
+    `accounts` is every employer reference data puts in the region, not
+    every employer that called. A region where four of sixteen accounts
+    rang is not a four-account region, and a table that said so would make
+    the quiet ones disappear — the same rule `drill_tree` already keeps.
+    """
+
+    region: str
+    accounts: int
+    flagged: int
+    calls: int
+    unresolved: int
+
+
+@dataclass(frozen=True)
+class BrokerRow:
+    """One broker, as the "By broker" table counts it.
+
+    Reference fields travel with the counts because the table shows them
+    side by side and the point of that is the comparison: `groups_in_book`
+    comes from the Broker Master sheet and never from a count of calls, so
+    the denominator beside the numerator is not built out of it.
+
+    No rate. A three-group broker has roughly ten calls, and the prototype
+    says plainly why it shows none: there is not enough there to divide.
+    `broker_friction` publishes one where a book is big enough, and that is
+    a different table answering a different question.
+    """
+
+    broker_ref: str
+    agency: str
+    name: str
+    region: str
+    groups_in_book: int
+    calls: int
+    adverse_mentions: int
+    adverse_employers: int
+    pattern_fires: bool
+    #: What the test reached, fired or not. §9 asks for the pattern test
+    #: "shown fired **and** unfired with what it reached" — a table that
+    #: only showed the firing ones would leave a reader unable to tell a
+    #: broker one mention short from one nobody has ever named.
+    pattern_reached: str
+    flagged_accounts: int
+
+
+def region_rows(
+    config: DashboardConfig,
+    employers: Sequence[EmployerFacts],
+    calls: Sequence[CallContext],
+    window: Window,
+    risk_window: Window,
+) -> tuple[RegionRow, ...]:
+    """Every region, most flagged accounts first then most calls.
+
+    Two windows, because there are two questions. Calls are counted over
+    the window the screen asked for; `flagged` is metric 10, which
+    `dashboard.yaml` defines over its own. Assessing the flag over the
+    screen's period would restate the metric without saying so — **D11**, a
+    period is not a window.
+    """
+    in_window = window.calls_in(tuple(calls))
+    region_of = {employer.reference: employer.region for employer in employers}
+
+    rows: dict[str, dict[str, int]] = {
+        region: {"accounts": 0, "flagged": 0, "calls": 0, "unresolved": 0}
+        for region in sorted(set(region_of.values()))
+    }
+    for employer in employers:
+        row = rows[employer.region]
+        row["accounts"] += 1
+        if assess(config, employer, calls, risk_window).flagged:
+            row["flagged"] += 1
+    for call in in_window:
+        region = region_of.get(call.employer_ref or "")
+        if region is None:
+            continue
+        rows[region]["calls"] += 1
+        if call.tags.outcome is Outcome.UNRESOLVED:
+            rows[region]["unresolved"] += 1
+
+    return tuple(
+        sorted(
+            (RegionRow(region=region, **counts) for region, counts in rows.items()),
+            key=lambda row: (-row.flagged, -row.calls, row.region),
+        )
+    )
+
+
+def broker_rows(
+    config: DashboardConfig,
+    brokers: Sequence[BrokerFacts],
+    employers: Sequence[EmployerFacts],
+    calls: Sequence[CallContext],
+    window: Window,
+    risk_window: Window,
+) -> tuple[BrokerRow, ...]:
+    """Every broker holding an account in scope, worst first.
+
+    **No ranking floor.** `ranked_book_friction` keeps one, and is right
+    to: it publishes a per-100-lives rate, and a three-group agency can top
+    a rate table on a single call. This table publishes counts and no rate
+    at all, so the floor would only hide the finding the pattern test
+    exists to make — three adverse mentions across two employers, which a
+    small broker can reach as readily as a large one.
+
+    Ordered by adverse mentions, then flagged accounts, then calls: the
+    prototype's own order, and it puts the channel question first.
+    """
+    in_window = window.calls_in(tuple(calls))
+    mine = {broker.reference: [] for broker in brokers}  # type: dict[str, list[EmployerFacts]]
+    for employer in employers:
+        if employer.broker_ref in mine:
+            mine[employer.broker_ref].append(employer)
+
+    rows: list[BrokerRow] = []
+    for broker in brokers:
+        book = mine[broker.reference]
+        if not book:
+            continue
+        pattern = pattern_test(config, broker.reference, calls, window)
+        adverse = adverse_mentions(broker.reference, in_window, window)
+        rows.append(
+            BrokerRow(
+                broker_ref=broker.reference,
+                agency=broker.agency,
+                name=broker.name,
+                region=broker.region,
+                groups_in_book=broker.groups_in_book,
+                calls=sum(1 for call in in_window if call.broker_of_record_ref == broker.reference),
+                adverse_mentions=len(adverse),
+                adverse_employers=len(
+                    {call.employer_ref for call in adverse if call.employer_ref is not None}
+                ),
+                pattern_fires=pattern.fires,
+                pattern_reached=pattern.reached(config),
+                flagged_accounts=sum(
+                    1 for employer in book if assess(config, employer, calls, risk_window).flagged
+                ),
+            )
+        )
+
+    return tuple(
+        sorted(
+            rows,
+            key=lambda row: (
+                -row.adverse_mentions,
+                -row.flagged_accounts,
+                -row.calls,
+                row.broker_ref,
+            ),
+        )
+    )
+
+
+@dataclass(frozen=True)
+class ComplaintOwnership:
+    """How many of the complaints made are about us.
+
+    Two counts and not a share. The denominator is complaints, not calls,
+    which makes this a different figure from `complaint_attributed_to_choice`
+    — that one asks how often a caller complained about us out of everyone
+    who rang, and this asks how much of the complaint load is ours to fix.
+    Both are true and they are not interchangeable.
+
+    `total` less `ours` is always some other party's — a carrier, a broker,
+    an employer — and never an unattributed remainder: `Complaint` refuses
+    to exist present and unattributed, so there is no third bucket for a
+    reader of these two numbers to wonder about.
+    """
+
+    ours: int
+    total: int
+
+
+def complaint_ownership(calls: Sequence[CallContext], window: Window) -> ComplaintOwnership:
+    """Complaints about us, against complaints made."""
+    complaints = [
+        call
+        for call in window.calls_in(tuple(calls))
+        if call.tags.complaint is not None and call.tags.complaint.present
+    ]
+    ours = sum(
+        1
+        for call in complaints
+        if call.tags.complaint is not None
+        and call.tags.complaint.attributed_to is ComplaintAttribution.CHOICE
+    )
+    return ComplaintOwnership(ours=ours, total=len(complaints))

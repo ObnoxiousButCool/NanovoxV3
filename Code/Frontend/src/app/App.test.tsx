@@ -44,18 +44,26 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Executive overview' })).toBeInTheDocument()
   })
 
-  it.each(NAV_ITEMS.map((item) => [item.to, item.label] as const))(
+  it.each(NAV_ITEMS.map((item) => [item.to] as const))(
     'renders a real screen at %s, never a placeholder',
-    (to, label) => {
+    (to) => {
       // This replaces an assertion that a placeholder said "not built yet".
       // Its own comment predicted this day: it "stops testing anything the
       // day the last screen lands", and `/agents` was the last one. The
       // property worth keeping is the reason the placeholder existed — a
       // rail entry must never lead somewhere that renders as "no data" —
-      // so this now walks every entry and asserts the opposite.
+      // so this walks every entry and asserts the opposite.
+      //
+      // It no longer asserts the page heading equals the rail label. The
+      // two are allowed to differ and `/hierarchy` is where they do: the
+      // rail says "Isolated or systemic?" where the page asks "Is it
+      // isolated or systemic?", which is the prototype's own pairing. Each
+      // screen's own heading is asserted in `screens.test.tsx`, against
+      // that screen rather than against the rail.
       renderApp(to)
 
-      expect(screen.getByRole('heading', { name: label })).toBeInTheDocument()
+      const [heading] = screen.getAllByRole('heading', { level: 1 })
+      expect(heading?.textContent?.trim()).toBeTruthy()
       expect(screen.queryByText(/not built yet/i)).not.toBeInTheDocument()
     },
   )

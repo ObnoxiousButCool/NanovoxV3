@@ -64,9 +64,15 @@ from domain.aggregation.exec_scorecard import ExecScorecard, exec_scorecard
 from domain.aggregation.filters import AppliedFilter
 from domain.aggregation.indicators import observe
 from domain.aggregation.isolation import (
+    BrokerRow,
+    ComplaintOwnership,
     RegionNode,
+    RegionRow,
+    broker_rows,
+    complaint_ownership,
     drill_tree,
     region_category_matrix,
+    region_rows,
     systemic_categories,
 )
 from domain.aggregation.issues import Issue, issues_to_act_on
@@ -600,6 +606,14 @@ class HierarchyView:
     tree: tuple[RegionNode, ...]
     matrix: tuple[tuple[str, tuple[tuple[Category, int], ...]], ...]
     systemic: tuple[Category, ...]
+    #: The two tables the screen is read through. Both count; neither
+    #: divides. `ranked_brokers` below is the one that publishes a rate,
+    #: over the books big enough to carry one, and is a different question.
+    regions: tuple[RegionRow, ...]
+    brokers: tuple[BrokerRow, ...]
+    #: How much of the complaint load is ours, as two counts over the
+    #: complaints made rather than a share over everyone who rang.
+    complaints: ComplaintOwnership
     #: Only brokers whose book clears the ranking floor. The rest still have
     #: rows on their own account pages; what the floor stops is a
     #: three-group agency topping a league table on one call.
@@ -666,11 +680,18 @@ class GetHierarchy:
         calls = scope.filtered.calls
         employers = scope.corpus.employers
         matrix = region_category_matrix(employers, calls, window)
+        # Metric 10 over metric 10's window, never over this screen's.
+        risk_window = _require(self._config, "account_risk_flag", scope.as_of)
         return HierarchyView(
             scope=scope,
             tree=drill_tree(employers, calls, window),
             matrix=matrix,
             systemic=systemic_categories(matrix),
+            regions=region_rows(self._config, employers, calls, window, risk_window),
+            brokers=broker_rows(
+                self._config, scope.corpus.brokers, employers, calls, window, risk_window
+            ),
+            complaints=complaint_ownership(calls, window),
             ranked_brokers=ranked_book_friction(self._config, scope.corpus.brokers, calls, window),
             window=window,
         )

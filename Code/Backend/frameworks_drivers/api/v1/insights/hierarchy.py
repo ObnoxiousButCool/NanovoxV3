@@ -18,6 +18,15 @@ That is the one place on these screens where a zero may be printed plainly.
 information; dropping them would make a quiet region look like a small one,
 which is the filters-slice-never-hide practice applied to a hierarchy.
 
+## Two broker tables, and why
+
+`brokers` is the screen's own table: every broker holding an account in
+scope, counts only, no rate at all. `rankedBrokers` is the friction
+ranking, which does publish a per-100-lives rate and therefore keeps a
+floor in lives under it. Merging them would force one of the two to accept
+the other's population — either a rate on ten calls, or a small broker
+meeting the pattern test and never appearing.
+
 ## The ranking floor is not a filter on the data
 
 `ranked_brokers` holds only brokers whose book clears the ranking floor in
@@ -71,6 +80,66 @@ class MatrixRowResponse(CamelModel):
     )
 
 
+class RegionRowResponse(CamelModel):
+    """One region, as the "By region" table counts it."""
+
+    region: str
+    accounts: int = Field(
+        description=(
+            "Every employer reference data puts in the region, not every one that "
+            "called. A region where four of sixteen accounts rang is not a "
+            "four-account region."
+        )
+    )
+    flagged: int = Field(description="Metric 10, assessed over metric 10's own window.")
+    calls: int
+    unresolved: int
+
+
+class BrokerRowResponse(CamelModel):
+    """One broker, as the "By broker" table counts it.
+
+    Counts only, and no rate: a three-group broker has roughly ten calls,
+    and there is not enough there to divide. `rankedBrokers` publishes a
+    rate over the books big enough to carry one, and answers a different
+    question with a different population.
+    """
+
+    broker_ref: str
+    agency: str
+    name: str
+    region: str
+    groups_in_book: int = Field(
+        description=(
+            "From the Broker Master sheet, never a count of calls — so the "
+            "denominator beside the numerator is not built out of it."
+        )
+    )
+    calls: int
+    adverse_mentions: int
+    adverse_employers: int = Field(
+        description="Distinct employers behind those mentions. The pattern test needs both."
+    )
+    pattern_fires: bool
+    pattern_reached: str = Field(
+        description="What the pattern test reached, computed from the numbers, fired or not."
+    )
+    flagged_accounts: int
+
+
+class ComplaintOwnershipResponse(CamelModel):
+    """How much of the complaint load is ours.
+
+    Two counts over the complaints made, not a share over everyone who
+    rang — a different figure from the complaint rate, and they are not
+    interchangeable. Every present complaint carries a party, so the
+    remainder is another party's and never unattributed.
+    """
+
+    ours: int
+    total: int
+
+
 class PatternTestResponse(CamelModel):
     """Trigger rule 2, reported whether or not it fired."""
 
@@ -110,6 +179,17 @@ class HierarchyResponse(CamelModel):
             "threshold — it names the columns worth reading first, nothing more."
         )
     )
+    regions: list[RegionRowResponse] = Field(
+        description="Most flagged accounts first, then most calls."
+    )
+    brokers: list[BrokerRowResponse] = Field(
+        description=(
+            "Every broker holding an account in scope, most adverse mentions first. "
+            "No ranking floor: this table publishes no rate, so a floor would only "
+            "hide the small broker the pattern test exists to find."
+        )
+    )
+    complaints: ComplaintOwnershipResponse
     ranked_brokers: list[BrokerFrictionResponse] = Field(
         description="Only books clearing the ranking floor in lives, worst count first."
     )
@@ -167,6 +247,35 @@ async def read_hierarchy(
             for region, row in view.matrix
         ],
         systemic=[category.value for category in view.systemic],
+        regions=[
+            RegionRowResponse(
+                region=row.region,
+                accounts=row.accounts,
+                flagged=row.flagged,
+                calls=row.calls,
+                unresolved=row.unresolved,
+            )
+            for row in view.regions
+        ],
+        brokers=[
+            BrokerRowResponse(
+                broker_ref=row.broker_ref,
+                agency=row.agency,
+                name=row.name,
+                region=row.region,
+                groups_in_book=row.groups_in_book,
+                calls=row.calls,
+                adverse_mentions=row.adverse_mentions,
+                adverse_employers=row.adverse_employers,
+                pattern_fires=row.pattern_fires,
+                pattern_reached=row.pattern_reached,
+                flagged_accounts=row.flagged_accounts,
+            )
+            for row in view.brokers
+        ],
+        complaints=ComplaintOwnershipResponse(
+            ours=view.complaints.ours, total=view.complaints.total
+        ),
         ranked_brokers=[
             BrokerFrictionResponse(
                 broker_ref=row.broker_ref,

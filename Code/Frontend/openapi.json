@@ -973,6 +973,73 @@
         "title": "BrokerOptionResponse",
         "type": "object"
       },
+      "BrokerRowResponse": {
+        "description": "One broker, as the \"By broker\" table counts it.\n\nCounts only, and no rate: a three-group broker has roughly ten calls,\nand there is not enough there to divide. `rankedBrokers` publishes a\nrate over the books big enough to carry one, and answers a different\nquestion with a different population.",
+        "properties": {
+          "adverseEmployers": {
+            "description": "Distinct employers behind those mentions. The pattern test needs both.",
+            "title": "Adverseemployers",
+            "type": "integer"
+          },
+          "adverseMentions": {
+            "title": "Adversementions",
+            "type": "integer"
+          },
+          "agency": {
+            "title": "Agency",
+            "type": "string"
+          },
+          "brokerRef": {
+            "title": "Brokerref",
+            "type": "string"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "flaggedAccounts": {
+            "title": "Flaggedaccounts",
+            "type": "integer"
+          },
+          "groupsInBook": {
+            "description": "From the Broker Master sheet, never a count of calls \u2014 so the denominator beside the numerator is not built out of it.",
+            "title": "Groupsinbook",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "patternFires": {
+            "title": "Patternfires",
+            "type": "boolean"
+          },
+          "patternReached": {
+            "description": "What the pattern test reached, computed from the numbers, fired or not.",
+            "title": "Patternreached",
+            "type": "string"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          }
+        },
+        "required": [
+          "brokerRef",
+          "agency",
+          "name",
+          "region",
+          "groupsInBook",
+          "calls",
+          "adverseMentions",
+          "adverseEmployers",
+          "patternFires",
+          "patternReached",
+          "flaggedAccounts"
+        ],
+        "title": "BrokerRowResponse",
+        "type": "object"
+      },
       "BucketResponse": {
         "properties": {
           "calls": {
@@ -1451,6 +1518,25 @@
         ],
         "title": "ComplaintAttribution",
         "type": "string"
+      },
+      "ComplaintOwnershipResponse": {
+        "description": "How much of the complaint load is ours.\n\nTwo counts over the complaints made, not a share over everyone who\nrang \u2014 a different figure from the complaint rate, and they are not\ninterchangeable. Every present complaint carries a party, so the\nremainder is another party's and never unattributed.",
+        "properties": {
+          "ours": {
+            "title": "Ours",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ours",
+          "total"
+        ],
+        "title": "ComplaintOwnershipResponse",
+        "type": "object"
       },
       "ComponentHealthResponse": {
         "properties": {
@@ -2427,6 +2513,17 @@
             "title": "Asof",
             "type": "string"
           },
+          "brokers": {
+            "description": "Every broker holding an account in scope, most adverse mentions first. No ranking floor: this table publishes no rate, so a floor would only hide the small broker the pattern test exists to find.",
+            "items": {
+              "$ref": "#/components/schemas/BrokerRowResponse"
+            },
+            "title": "Brokers",
+            "type": "array"
+          },
+          "complaints": {
+            "$ref": "#/components/schemas/ComplaintOwnershipResponse"
+          },
           "matrix": {
             "items": {
               "$ref": "#/components/schemas/MatrixRowResponse"
@@ -2440,6 +2537,14 @@
               "$ref": "#/components/schemas/BrokerFrictionResponse"
             },
             "title": "Rankedbrokers",
+            "type": "array"
+          },
+          "regions": {
+            "description": "Most flagged accounts first, then most calls.",
+            "items": {
+              "$ref": "#/components/schemas/RegionRowResponse"
+            },
+            "title": "Regions",
             "type": "array"
           },
           "scope": {
@@ -2473,6 +2578,9 @@
           "tree",
           "matrix",
           "systemic",
+          "regions",
+          "brokers",
+          "complaints",
           "rankedBrokers"
         ],
         "title": "HierarchyResponse",
@@ -3565,6 +3673,42 @@
           "brokers"
         ],
         "title": "RegionNodeResponse",
+        "type": "object"
+      },
+      "RegionRowResponse": {
+        "description": "One region, as the \"By region\" table counts it.",
+        "properties": {
+          "accounts": {
+            "description": "Every employer reference data puts in the region, not every one that called. A region where four of sixteen accounts rang is not a four-account region.",
+            "title": "Accounts",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "flagged": {
+            "description": "Metric 10, assessed over metric 10's own window.",
+            "title": "Flagged",
+            "type": "integer"
+          },
+          "region": {
+            "title": "Region",
+            "type": "string"
+          },
+          "unresolved": {
+            "title": "Unresolved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "region",
+          "accounts",
+          "flagged",
+          "calls",
+          "unresolved"
+        ],
+        "title": "RegionRowResponse",
         "type": "object"
       },
       "RiskScreenResponse": {

@@ -874,6 +874,48 @@ export interface components {
             /** Region */
             region: string;
         };
+        /**
+         * BrokerRowResponse
+         * @description One broker, as the "By broker" table counts it.
+         *
+         *     Counts only, and no rate: a three-group broker has roughly ten calls,
+         *     and there is not enough there to divide. `rankedBrokers` publishes a
+         *     rate over the books big enough to carry one, and answers a different
+         *     question with a different population.
+         */
+        BrokerRowResponse: {
+            /**
+             * Adverseemployers
+             * @description Distinct employers behind those mentions. The pattern test needs both.
+             */
+            adverseEmployers: number;
+            /** Adversementions */
+            adverseMentions: number;
+            /** Agency */
+            agency: string;
+            /** Brokerref */
+            brokerRef: string;
+            /** Calls */
+            calls: number;
+            /** Flaggedaccounts */
+            flaggedAccounts: number;
+            /**
+             * Groupsinbook
+             * @description From the Broker Master sheet, never a count of calls — so the denominator beside the numerator is not built out of it.
+             */
+            groupsInBook: number;
+            /** Name */
+            name: string;
+            /** Patternfires */
+            patternFires: boolean;
+            /**
+             * Patternreached
+             * @description What the pattern test reached, computed from the numbers, fired or not.
+             */
+            patternReached: string;
+            /** Region */
+            region: string;
+        };
         /** BucketResponse */
         BucketResponse: {
             /**
@@ -1075,6 +1117,21 @@ export interface components {
          * @enum {string}
          */
         ComplaintAttribution: "CHOICE" | "BROKER" | "CARRIER" | "PROVIDER";
+        /**
+         * ComplaintOwnershipResponse
+         * @description How much of the complaint load is ours.
+         *
+         *     Two counts over the complaints made, not a share over everyone who
+         *     rang — a different figure from the complaint rate, and they are not
+         *     interchangeable. Every present complaint carries a party, so the
+         *     remainder is another party's and never unattributed.
+         */
+        ComplaintOwnershipResponse: {
+            /** Ours */
+            ours: number;
+            /** Total */
+            total: number;
+        };
         /** ComponentHealthResponse */
         ComponentHealthResponse: {
             /** Detail */
@@ -1500,6 +1557,12 @@ export interface components {
         HierarchyResponse: {
             /** Asof */
             asOf: string;
+            /**
+             * Brokers
+             * @description Every broker holding an account in scope, most adverse mentions first. No ranking floor: this table publishes no rate, so a floor would only hide the small broker the pattern test exists to find.
+             */
+            brokers: components["schemas"]["BrokerRowResponse"][];
+            complaints: components["schemas"]["ComplaintOwnershipResponse"];
             /** Matrix */
             matrix: components["schemas"]["MatrixRowResponse"][];
             /**
@@ -1507,6 +1570,11 @@ export interface components {
              * @description Only books clearing the ranking floor in lives, worst count first.
              */
             rankedBrokers: components["schemas"]["BrokerFrictionResponse"][];
+            /**
+             * Regions
+             * @description Most flagged accounts first, then most calls.
+             */
+            regions: components["schemas"]["RegionRowResponse"][];
             scope: components["schemas"]["ScopeResponse"];
             /**
              * Systemic
@@ -2068,6 +2136,28 @@ export interface components {
             calls: number;
             /** Region */
             region: string;
+        };
+        /**
+         * RegionRowResponse
+         * @description One region, as the "By region" table counts it.
+         */
+        RegionRowResponse: {
+            /**
+             * Accounts
+             * @description Every employer reference data puts in the region, not every one that called. A region where four of sixteen accounts rang is not a four-account region.
+             */
+            accounts: number;
+            /** Calls */
+            calls: number;
+            /**
+             * Flagged
+             * @description Metric 10, assessed over metric 10's own window.
+             */
+            flagged: number;
+            /** Region */
+            region: string;
+            /** Unresolved */
+            unresolved: number;
         };
         /** RiskScreenResponse */
         RiskScreenResponse: {
