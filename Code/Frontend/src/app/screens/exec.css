@@ -14,7 +14,10 @@
   gap: 24px;
 }
 
-@media (max-width: 1100px) {
+/* The prototype's own breakpoint for `.emgrid` — matched here rather than
+   left at a round number, so the rising list and the Easing sidebar
+   collapse to one column at the same width the lens grid below does. */
+@media (max-width: 1320px) {
   .nv-emgrid {
     grid-template-columns: 1fr;
   }
