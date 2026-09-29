@@ -55,6 +55,7 @@ from domain.aggregation.call_tags import (
     EmployerFacts,
     Window,
 )
+from domain.aggregation.concern import CategoryConcern, worst_category
 from domain.aggregation.contact_rate import PeerComparison, employer_contact_rate, peer_comparison
 from domain.aggregation.demand import (
     SelfInflictedDemand,
@@ -124,10 +125,11 @@ from domain.aggregation.trends import (
     weekly_series,
     weeks_in,
 )
-from domain.aggregation.withheld import DID_IT_WORK, WithheldPanel
+from domain.aggregation.withheld import BAND_CALIBRATION, DID_IT_WORK, WithheldPanel
 from domain.playbooks import Playbook, PlaybookCatalogue, PlaybookSeverity
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.signal_type import SignalType
 
 if TYPE_CHECKING:
     from datetime import date
@@ -228,6 +230,11 @@ class ExecResult:
     scope: ScopedCorpus
     scorecard: ExecScorecard
     trends: ExecTrends
+    #: The category carrying the most unresolved calls this period, and how
+    #: its escalations fared — "Area of concern"'s one figure `trends`
+    #: cannot already answer. `None` when no category had an unresolved
+    #: call, which is not a gap to fill but the absence of a finding.
+    area_of_concern: CategoryConcern | None
 
 
 @dataclass(frozen=True)
@@ -288,6 +295,23 @@ class RiskResult:
     #: Which of the ten indicator families account for the most calls,
     #: over the same window the flag itself uses.
     drivers: tuple[Driver, ...]
+    #: Metric 6's own denominator (escalation integrity's "warranted"), over
+    #: this window rather than exec's rolling one — the same counts, a
+    #: different period.
+    escalations_triggered: int
+    #: Warranted and not handled — `Escalation.missed`'s own definition,
+    #: counted rather than re-derived so this and the escalation-integrity
+    #: figure can never silently disagree about what "missed" means.
+    escalations_missed: int
+    #: Calls carrying `retention_risk` — the prototype's "exit language,
+    #: verbatim". A signal, not a keyword search: the taxonomy already
+    #: decided what counts as exit language, so this counts its own tag
+    #: rather than re-reading transcript text.
+    exit_language_calls: int
+    #: Insight 9, withheld unconditionally (plan.md §8's Phase 8 note) —
+    #: no gate that unlocks it, only a schema change (a termination/renewal
+    #: outcome per employer) nobody has made.
+    band_calibration: WithheldPanel
 
 
 class InsightsReader:
@@ -495,6 +519,7 @@ class GetExecScorecard:
             scope=scope,
             scorecard=exec_scorecard(self._config, scope.filtered.calls, scope.as_of),
             trends=_exec_trends(scope.filtered.calls, scope.as_of),
+            area_of_concern=worst_category(scope.filtered.calls),
         )
 
 
@@ -531,6 +556,16 @@ class GetAccountRisk:
             for assessment, employer in zip(assessments, scope.corpus.employers, strict=True)
             if assessment.eligible
         )
+        windowed = window.calls_in(tuple(calls))
+        triggered = [
+            call for call in windowed if call.tags.escalation and call.tags.escalation.triggered
+        ]
+        missed = [
+            call for call in triggered if call.tags.escalation and call.tags.escalation.missed
+        ]
+        exit_language = [
+            call for call in windowed if SignalType.RETENTION_RISK in call.tags.signals
+        ]
         return RiskResult(
             scope=scope,
             # D12's order: most indicators first, then soonest renewal. Sorted
@@ -561,6 +596,10 @@ class GetAccountRisk:
             weekly_resolved=weekly_shares(calls, window, resolved),
             weekly_quality=weekly_shares(calls, window, good_quality(self._config.quality_bands)),
             drivers=risk_drivers(calls, window),
+            escalations_triggered=len(triggered),
+            escalations_missed=len(missed),
+            exit_language_calls=len(exit_language),
+            band_calibration=BAND_CALIBRATION,
         )
 
 

@@ -1,0 +1,211 @@
+/* `/exec` — the curated emerging cards, the easing sidebar, and the action
+ * status bar the v2 prototype's `exec.html` carries. Ported from `.emgrid` /
+ * `.emrow` / `.emchart` / `.emtext` / `.easing` / `.stages` / `.splitkey` in
+ * `Prototype/v2/v2.css`, renamed onto this codebase's `nv-` prefix. Class
+ * names differ; the shapes are the prototype's own.
+ *
+ * The needs-attention list reuses `.nv-attn` from `/actions`'
+ * `actionsBoard.css` rather than a second copy of the same row shape — this
+ * file imports it for that reason. */
+
+.nv-emgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(220px, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 1100px) {
+  .nv-emgrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nv-emrow {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+  align-items: start;
+}
+
+.nv-emrow:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.nv-emchart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.nv-emtop {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.nv-emtop b {
+  font-size: 15px;
+}
+
+.nv-kind {
+  font: 600 11px/1 var(--body);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  padding: 3px 6px;
+}
+
+.nv-emtext p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.nv-easing {
+  background: var(--surface-2);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  align-self: start;
+}
+
+.nv-easing h3 {
+  font: 600 15px/1.2 var(--display);
+  margin: 0;
+}
+
+.nv-easing ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nv-easing li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 0;
+  border-top: 1px solid var(--rule);
+  font-size: 14px;
+}
+
+.nv-easing li:first-child {
+  border-top: 0;
+}
+
+.nv-easing li small {
+  display: block;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+/* The action-status bar. Its own class rather than reusing `/actions`'
+ * `.nv-stages`: that one is a set of filter buttons, and a bar with no
+ * click handler here should not carry button semantics it does not use. */
+.nv-actionbar {
+  display: flex;
+  gap: 2px;
+  height: 34px;
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 4px 0 8px;
+}
+
+.nv-actionbar span {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 600 13px/1 var(--body);
+  min-width: 0;
+}
+
+.nv-lanekey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.nv-lanekey li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.nv-lanekey i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+}
+
+/* The escalation-integrity tile: a gauge in place of a `.nv-v` number. */
+.nv-gaugetile {
+  align-items: center;
+  text-align: center;
+}
+
+.nv-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  align-items: center;
+  margin: 12px 0 0;
+  font-size: 14px;
+}
+
+.nv-cta a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nv-cta a:hover {
+  text-decoration: underline;
+}
+
+/* --- The two-panel layout, ported from the prototype's `.withai` --------
+ *
+ * `exec.html` runs a narrow, independently-scrollable feed column (the
+ * needs-attention list) beside a wide main column, rather than stacking
+ * everything full width. Renamed onto this codebase's `nv-` prefix, same
+ * as the rest of this file; the shape is the prototype's own
+ * (`.withai` / `.feedcol` / `.maincol` in `Prototype/v2/v2.css`). */
+
+.nv-withai {
+  display: grid;
+  grid-template-columns: minmax(290px, 330px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.nv-withai > .nv-feedcol {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.nv-withai > .nv-maincol {
+  min-width: 0;
+}
+
+@media (max-width: 1180px) {
+  .nv-withai {
+    grid-template-columns: 1fr;
+  }
+  .nv-withai > .nv-feedcol {
+    position: static;
+    max-height: none;
+  }
+}

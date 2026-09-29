@@ -131,6 +131,23 @@ class EmergingResponse(CamelModel):
     rising: bool
 
 
+class CategoryConcernResponse(CamelModel):
+    """The call topic carrying the most unresolved calls this period, and how
+    its escalations fared there.
+
+    "Area of concern"'s one figure `trends.movements` cannot already answer:
+    a movement is one measure across every call, and this is the same two
+    measures broken out by the category driving them. `None` when no
+    category had an unresolved call — not a gap, the absence of a finding.
+    """
+
+    category: str
+    calls: int
+    unresolved: int
+    escalations_triggered: int
+    escalations_handled: int
+
+
 class TrendsResponse(CamelModel):
     """Movement and emerging issues, over the same filtered calls as the scorecard.
 
@@ -183,6 +200,13 @@ class ExecScorecardResponse(CamelModel):
             "Always withheld on v9 data: whether commercial intent reached anyone who "
             "could act on it is not a field. Zero would claim we checked."
         )
+    )
+    area_of_concern: CategoryConcernResponse | None = Field(
+        default=None,
+        description=(
+            "The category with the most unresolved calls this period, and how its "
+            "escalations fared. Null when no category had an unresolved call."
+        ),
     )
 
 
@@ -254,6 +278,17 @@ def build_exec_response(
         ],
         trends=_trends(result.trends),
         intent_routed=FigureResponse.of(card.intent_routed),
+        area_of_concern=(
+            CategoryConcernResponse(
+                category=result.area_of_concern.category,
+                calls=result.area_of_concern.calls,
+                unresolved=result.area_of_concern.unresolved,
+                escalations_triggered=result.area_of_concern.escalations_triggered,
+                escalations_handled=result.area_of_concern.escalations_handled,
+            )
+            if result.area_of_concern is not None
+            else None
+        ),
     )
 
 

@@ -155,7 +155,10 @@
   font-family: var(--mono);
   font-size: 13px;
   color: var(--ink-2);
-  white-space: nowrap;
+  /* Wraps rather than clips: at the withai layout's narrower tile width
+     (see exec.css) a line like "25% of 16 assessed - 277 lives" no longer
+     always fits on one line, and a wrapped line is legible where a clipped
+     one silently drops its last word. */
 }
 
 /* --- What moved, and what is emerging -------------------------------- */
@@ -707,4 +710,49 @@ details.nv-more[open] > summary::before {
   font-weight: 400;
   color: var(--ink-3);
   margin-top: 2px;
+}
+
+/* One bar, segmented by count rather than drawn as separate bars — the
+   prototype's "How calls ended" shape. A segment's width is its own share
+   of the total, so the bar is a distribution at a glance, not a table a
+   reader has to add up. */
+.nv-stackbar {
+  display: flex;
+  gap: 2px;
+  height: 34px;
+  border-radius: var(--r);
+  overflow: hidden;
+  margin: 4px 0 8px;
+}
+
+.nv-stackbar > div {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 600 13px/1 var(--body);
+  min-width: 0;
+}
+
+.nv-stackbar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.nv-stackbar-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nv-stackbar-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
 }

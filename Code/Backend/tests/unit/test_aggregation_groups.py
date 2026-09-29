@@ -612,10 +612,11 @@ def test_every_withheld_panel_says_what_would_unlock_it() -> None:
 
 
 def test_the_withheld_panels_cover_the_insights_section_9_marks_withheld() -> None:
-    """6, 17 and 25 are §9's WITHHELD list; 22 is withheld too and is missing
-    from the §8 summary, which is a documentation error raised separately.
+    """9 and 25 are §9's WITHHELD list (6 and 17 moved to BUILD once
+    `root_cause_owner` shipped); 22 is withheld too and is missing from the
+    §8 summary, which is a documentation error raised separately.
     """
-    assert {panel.insight for panel in WITHHELD_PANELS} == {6, 17, 22, 25}
+    assert {panel.insight for panel in WITHHELD_PANELS} == {9, 22, 25}
 
 
 # --- Remaining branches, each a real case ----------------------------------

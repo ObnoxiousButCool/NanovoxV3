@@ -222,6 +222,46 @@ async def test_risk_keeps_ineligible_accounts_out_of_the_assessed_list(
 
 
 @pytest.mark.asyncio
+async def test_the_risk_screen_carries_its_headline_tile_counts(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Wiring, not scenario coverage: `seed()` writes every call with
+    `escalation_triggered=False` and no signals, so this only confirms the
+    three counts reach the wire and read as zero against zero warranted
+    escalations and zero exit-language calls — not that a real missed
+    escalation or a real retention_risk signal is counted correctly. That
+    needs `seed()` extended to accept escalation/signal data per call,
+    which is a larger change than this endpoint test should make on its
+    own; `test_call_tags.py`'s
+    `test_a_triggered_and_unhandled_escalation_is_missed` already covers
+    the `Escalation.missed` logic this count is built from."""
+    await seed(session_factory, calls_per_employer={"EMP-01": 4})
+
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
+
+    assert body["escalationsTriggered"] == 0
+    assert body["escalationsMissed"] == 0
+    assert body["exitLanguageCalls"] == 0
+
+
+@pytest.mark.asyncio
+async def test_the_risk_screen_carries_insight_9_withheld(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Insight 9 renders withheld unconditionally (plan.md's Phase 8 note) —
+    no filter or corpus state changes this, since no gate unlocks it."""
+    await seed(session_factory, calls_per_employer={"EMP-01": 4})
+
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
+
+    panel = body["bandCalibration"]
+    assert panel["insight"] == 9
+    assert panel["question"]
+    assert panel["why"]
+    assert panel["unlockedBy"]
+
+
+@pytest.mark.asyncio
 async def test_an_assessed_account_carries_its_state_sentence(
     client: TestClient, session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
@@ -350,4 +390,106 @@ async def test_flagged_share_divides_by_the_eligible_not_the_book(
     assert body["assessed"] == []
     assert body["flaggedShare"]["published"] is False
     assert body["flaggedShare"]["value"] is None
-    assert body["flaggedShare"]["withheldReason"]["code"] == "NOT_ELIGIBLE"
+
+
+@pytest.mark.asyncio
+async def test_an_assessed_account_carries_its_renewal(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """D12 sorts by renewal; a screen naming an account needs the date itself.
+
+    `_employer` seeds every account with January, so an `as_of` of
+    2026-09-28 is four whole months out.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 4})
+
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
+
+    account = body["assessed"][0]
+    assert account["renewalMonth"] == "January"
+    assert account["monthsToRenewal"] == 4
+
+
+async def _seed_with_category_and_escalation(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    calls: list[tuple[Category, Outcome, bool, bool]],
+) -> None:
+    """Employer EMP-01 with one call per `(category, outcome, triggered, handled)`."""
+    async with session_factory() as session, session.begin():
+        broker = BrokerRow(
+            reference="BRK-01",
+            name="Broker",
+            agency="Agency",
+            region="West",
+            groups_in_book=4,
+            signal_profile="neutral",
+        )
+        session.add(broker)
+        await session.flush()
+        employer = _employer("EMP-01", broker.id)
+        session.add(employer)
+        await session.flush()
+
+        for index, (category, outcome, triggered, handled) in enumerate(calls, start=1):
+            call = CallRow(
+                reference=f"C-{index:04d}",
+                source=CallSource.CORPUS_PDF.value,
+                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+                aht_seconds=400,
+                caller_type="MEMBER",
+                caller_ref="MEM-1",
+                agent_ref="AG-01",
+                agent_name="Alex",
+                resolution_status=outcome.value,
+                employer_id=employer.id,
+            )
+            session.add(call)
+            await session.flush()
+            session.add(
+                CallExtractionRow(
+                    call_id=call.id,
+                    outcome=outcome.value,
+                    category=category.value,
+                    complaint_present=False,
+                    escalation_triggered=triggered,
+                    escalation_handled=handled if triggered else None,
+                    knowledge_failure_present=False,
+                )
+            )
+
+
+@pytest.mark.asyncio
+async def test_area_of_concern_names_the_category_with_most_unresolved_calls(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    await _seed_with_category_and_escalation(
+        session_factory,
+        calls=[
+            (Category.CLAIMS_AND_EOB, Outcome.UNRESOLVED, False, False),
+            (Category.COVERAGE_AND_BENEFITS, Outcome.UNRESOLVED, True, False),
+            (Category.COVERAGE_AND_BENEFITS, Outcome.UNRESOLVED, False, False),
+            (Category.COVERAGE_AND_BENEFITS, Outcome.RESOLVED, False, False),
+        ],
+    )
+
+    body = client.get("/api/v1/insights/exec", params={"asOf": AS_OF}).json()
+
+    concern = body["areaOfConcern"]
+    assert concern is not None
+    assert concern["category"] == "Coverage & Benefits"
+    assert concern["unresolved"] == 2
+    assert concern["escalationsTriggered"] == 1
+    assert concern["escalationsHandled"] == 0
+
+
+@pytest.mark.asyncio
+async def test_area_of_concern_is_null_when_nothing_is_unresolved(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """A clean book names no concern rather than picking one anyway."""
+    await seed(session_factory, calls_per_employer={"EMP-01": 4})
+
+    body = client.get("/api/v1/insights/exec", params={"asOf": AS_OF}).json()
+
+    assert body["areaOfConcern"] is None

@@ -9,6 +9,7 @@ data/
 __pycache__/
 *.pyc
 .venv/
+.venv-linux/
 venv/
 *.egg-info/
 .mypy_cache/

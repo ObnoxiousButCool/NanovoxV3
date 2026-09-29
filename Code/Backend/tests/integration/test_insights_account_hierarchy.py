@@ -70,7 +70,14 @@ class TestAccount:
     async def test_risk_reads_the_same_as_on_the_risk_screen(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
     ) -> None:
-        """One shape, so 'ineligible' cannot mean two things."""
+        """One shape, so 'ineligible' cannot mean two things.
+
+        `renewalMonth`/`monthsToRenewal` are the one deliberate exception —
+        `AccountRiskResponse`'s own docstring: null on the account page,
+        which already states its own employer's renewal at the top level
+        and has no use for a second copy. Comparing those two would fail
+        the account page for doing exactly what it is documented to do.
+        """
         await seed(session_factory, calls_per_employer={"EMP-01": 4})
 
         account = client.get("/api/v1/insights/accounts/EMP-01", params={"asOf": AS_OF}).json()[
@@ -78,7 +85,12 @@ class TestAccount:
         ]
         screen = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()["assessed"][0]
 
-        assert account == screen
+        assert account["renewalMonth"] is None
+        assert account["monthsToRenewal"] is None
+        omit = {"renewalMonth", "monthsToRenewal"}
+        assert {k: v for k, v in account.items() if k not in omit} == {
+            k: v for k, v in screen.items() if k not in omit
+        }
 
     async def test_an_ineligible_account_still_has_a_page(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
