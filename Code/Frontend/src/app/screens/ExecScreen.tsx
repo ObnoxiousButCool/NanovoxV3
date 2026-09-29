@@ -384,80 +384,79 @@ function SummaryTilesPanel({
   const missed = handled === null ? 0 : triggered - handled
 
   return (
-    <Panel
-      title="Risk and follow-through, at a glance"
-      chip={<EpistemicChip kind="observed" />}
-    >
-      <BigRow>
-        <KpiTile
-          label="Accounts flagged"
-          tone={flagged.length > 0 ? 'warm' : 'plain'}
-          value={String(flagged.length)}
-          meta={
-            <>
-              <span className="nv-indcount">
-                <FigureValue figure={risk.flaggedShare} format={percent} /> of{' '}
-                {risk.assessedCount} assessed · {risk.exposure.lives} lives
-              </span>
-              {flagged.length > 0 ? <IssueCue issue="flagged" /> : null}
-            </>
-          }
+    // The prototype renders these four tiles bare, with no enclosing panel
+    // or title — they sit directly beside "Needs attention now" (`exec.html`'s
+    // own layout). `BigRow` already carries its own border, so no wrapper
+    // is needed to match that.
+    <BigRow>
+      <KpiTile
+        label="Accounts flagged"
+        tone={flagged.length > 0 ? 'warm' : 'plain'}
+        value={String(flagged.length)}
+        meta={
+          <>
+            <span className="nv-indcount">
+              <FigureValue figure={risk.flaggedShare} format={percent} /> of{' '}
+              {risk.assessedCount} assessed · {risk.exposure.lives} lives
+            </span>
+            {flagged.length > 0 ? <IssueCue issue="flagged" /> : null}
+          </>
+        }
+      />
+      <KpiTile
+        label="Flagged & renewing soon"
+        tone={renewingSoon.length > 0 ? 'hot' : 'plain'}
+        value={String(renewingSoon.length)}
+        meta={
+          <>
+            <span className="nv-indcount">renewal within {RENEW_SOON_MONTHS} months</span>
+            {renewingSoon.length > 0 ? <IssueCue issue="renew_soon" /> : null}
+          </>
+        }
+      />
+      <div className={`nv-big nv-gaugetile${missed > 0 ? ' nv-hot' : ''}`}>
+        <span className="nv-k">
+          Escalation integrity
+          <Tooltip>
+            <p>Escalations handled ÷ escalations warranted.</p>
+            <p>
+              Never ÷ all calls: on that denominator the same evidence reads as{' '}
+              {warrantedOfAll ? (
+                <FigureValue figure={warrantedOfAll.figure} format={percent} />
+              ) : (
+                'a much smaller share'
+              )}{' '}
+              and looks fine.
+            </p>
+            <p>Green is 90% and above.</p>
+          </Tooltip>
+        </span>
+        <Gauge
+          value={gaugeValue}
+          label={gaugeValue === null ? '–' : `${String(gaugeValue)}%`}
+          ariaLabel="Escalations handled, of escalations that were warranted"
         />
-        <KpiTile
-          label="Flagged & renewing soon"
-          tone={renewingSoon.length > 0 ? 'hot' : 'plain'}
-          value={String(renewingSoon.length)}
-          meta={
-            <>
-              <span className="nv-indcount">renewal within {RENEW_SOON_MONTHS} months</span>
-              {renewingSoon.length > 0 ? <IssueCue issue="renew_soon" /> : null}
-            </>
-          }
-        />
-        <div className={`nv-big nv-gaugetile${missed > 0 ? ' nv-hot' : ''}`}>
-          <span className="nv-k">
-            Escalation integrity
-            <Tooltip>
-              <p>Escalations handled ÷ escalations warranted.</p>
-              <p>
-                Never ÷ all calls: on that denominator the same evidence reads as{' '}
-                {warrantedOfAll ? (
-                  <FigureValue figure={warrantedOfAll.figure} format={percent} />
-                ) : (
-                  'a much smaller share'
-                )}{' '}
-                and looks fine.
-              </p>
-              <p>Green is 90% and above.</p>
-            </Tooltip>
-          </span>
-          <Gauge
-            value={gaugeValue}
-            label={gaugeValue === null ? '–' : `${String(gaugeValue)}%`}
-            ariaLabel="Escalations handled, of escalations that were warranted"
-          />
-          <span className="nv-m">
-            {handled === null
-              ? 'Too few escalations to publish a rate'
-              : `${String(handled)} of ${String(triggered)} handled`}
-          </span>
-          {missed > 0 ? <IssueCue issue="escalation_missed" /> : null}
-        </div>
-        <KpiTile
-          label="Overdue actions"
-          tone={overdue.length > 0 ? 'hot' : 'plain'}
-          value={String(overdue.length)}
-          meta={
-            <>
-              <span className="nv-indcount">
-                {openActions.length} of {board.actions.length} still open
-              </span>
-              {overdue.length > 0 ? <IssueCue issue="overdue" /> : null}
-            </>
-          }
-        />
-      </BigRow>
-    </Panel>
+        <span className="nv-m">
+          {handled === null
+            ? 'Too few escalations to publish a rate'
+            : `${String(handled)} of ${String(triggered)} handled`}
+        </span>
+        {missed > 0 ? <IssueCue issue="escalation_missed" /> : null}
+      </div>
+      <KpiTile
+        label="Overdue actions"
+        tone={overdue.length > 0 ? 'hot' : 'plain'}
+        value={String(overdue.length)}
+        meta={
+          <>
+            <span className="nv-indcount">
+              {openActions.length} of {board.actions.length} still open
+            </span>
+            {overdue.length > 0 ? <IssueCue issue="overdue" /> : null}
+          </>
+        }
+      />
+    </BigRow>
   )
 }
 

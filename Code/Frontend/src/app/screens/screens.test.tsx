@@ -899,9 +899,8 @@ describe('/exec, with accounts, escalations and an action board', () => {
     renderAt('/exec')
 
     await waitFor(() => {
-      expect(screen.getByText('Risk and follow-through, at a glance')).toBeInTheDocument()
+      expect(screen.getByText('Accounts flagged')).toBeInTheDocument()
     })
-    expect(screen.getByText('Accounts flagged')).toBeInTheDocument()
     // Two flagged accounts, out of three assessed.
     const tiles = screen.getByText('Accounts flagged').closest('.nv-big')
     expect(tiles).not.toBeNull()
