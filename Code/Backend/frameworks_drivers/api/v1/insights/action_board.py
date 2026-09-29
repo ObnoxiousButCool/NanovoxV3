@@ -1,6 +1,7 @@
 """The action centre's write side (Revised plan Phase 4, D6).
 
-- `GET /insights/actions/board` — every persisted action, with the lanes
+- `GET /insights/actions/board` — every persisted action, with the lanes.
+  `?employer=` scopes it to one account and adds each card's share of it
 - `POST /insights/actions` — raise one, from a playbook or by hand
 - `GET /insights/actions/{id}` — one action
 - `PATCH /insights/actions/{id}` — move, assign, tick, log, record
@@ -24,9 +25,9 @@ them is how a finding acquires a fake status.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 from pydantic import Field
 
 from application.use_cases.manage_actions import CreateActionRequest
@@ -103,6 +104,32 @@ class ActionResponse(CamelModel):
     action_taken: str | None
     outcome: str | None
     measurement_window: MeasurementWindowBody | None
+    label: str | None = Field(
+        default=None,
+        description=(
+            "The action's name with no count in it — the playbook's own label, "
+            "which `title` was composed from before '— N calls' was appended. Sent "
+            "on the board only. A screen showing its own figure beside the card's "
+            "needs the name without a number in it, and the alternative is the "
+            "client cutting the count back off prose the server wrote."
+        ),
+    )
+    calls_on_account: int | None = Field(
+        default=None,
+        description=(
+            "How many of this action's cited calls belong to the account the board "
+            "was scoped to. Null on the unscoped board, where there is no account to "
+            "count against — never nought, which would read as a card touching none "
+            "of an account's calls. "
+            "**The card's own figures stay corpus-wide.** `title` counts every call "
+            "that raised the signal, because that is the piece of work: one card, one "
+            "owner team, worked once. Re-counting it per account would describe a "
+            "different job from the one on the board and make the same card disagree "
+            "with itself between two screens. This travels beside that number so an "
+            "account page can show both rather than presenting the book's figure as "
+            "the account's."
+        ),
+    )
 
 
 class ActionBoardResponse(CamelModel):
@@ -152,8 +179,22 @@ class UpdateActionBody(CamelModel):
     status_code=status.HTTP_200_OK,
     summary="Every action being worked, with the board's lanes",
 )
-async def read_board(use_case: ListActionsDep) -> ActionBoardResponse:
-    board = await use_case.execute()
+async def read_board(
+    use_case: ListActionsDep,
+    employer: Annotated[
+        str | None,
+        Query(
+            description=(
+                "Scope the board to one employer: the actions naming it, plus the "
+                "actions citing one of its calls. Omitted, the whole board comes "
+                "back. The join is here rather than on the client because "
+                "membership by cited call cannot be computed from the board alone "
+                "without sending every action's whole call list."
+            )
+        ),
+    ] = None,
+) -> ActionBoardResponse:
+    board = await use_case.execute(employer)
     return ActionBoardResponse(
         lanes=[
             LaneResponse(
@@ -164,7 +205,16 @@ async def read_board(use_case: ListActionsDep) -> ActionBoardResponse:
             )
             for state in board.lifecycle.states
         ],
-        actions=[_action(a, board.lifecycle, board.today) for a in board.actions],
+        actions=[
+            _action(
+                action,
+                board.lifecycle,
+                board.today,
+                calls_on_account=board.calls_on_account.get(action.id),
+                label=board.labels.get(action.id),
+            )
+            for action in board.actions
+        ],
         trust_note=board.trust_note,
     )
 
@@ -237,9 +287,18 @@ async def update_action(
     return _action(updated, context.lifecycle, context.today)
 
 
-def _action(action: Action, lifecycle: Lifecycle, today: date) -> ActionResponse:
+def _action(
+    action: Action,
+    lifecycle: Lifecycle,
+    today: date,
+    *,
+    calls_on_account: int | None = None,
+    label: str | None = None,
+) -> ActionResponse:
     measurement = action.measurement
     return ActionResponse(
+        calls_on_account=calls_on_account,
+        label=label,
         id=action.id,
         reference=action.reference,
         title=action.title,

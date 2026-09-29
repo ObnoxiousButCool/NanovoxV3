@@ -29,10 +29,29 @@ export type UpdateActionBody = components['schemas']['UpdateActionBody']
  * the next fetch, not a frontend rebuild. */
 const BOARD_KEY = ['insights', 'actionBoard'] as const
 
-export function useActionBoard() {
+/**
+ * The board, or one account's share of it.
+ *
+ * `employerRef` is sent to the server rather than filtered here. An action
+ * belongs to an account either by naming it or by citing one of its calls,
+ * and the second half is a join the client cannot do: the board's actions
+ * carry call ids, not employers, and one seeded action cites 179 calls.
+ * Filtering here was the bug — it matched on the employer reference alone,
+ * which every seeded signal-wide action leaves null, so an account board
+ * came back empty and the page reported that nothing had needed an action.
+ *
+ * The account's key extends the board's, so the mutations below still
+ * invalidate it: react-query matches a query key by prefix.
+ */
+export function useActionBoard(employerRef?: string) {
   return useQuery({
-    queryKey: BOARD_KEY,
-    queryFn: () => getJson<ActionBoard>('/insights/actions/board'),
+    queryKey: employerRef === undefined ? BOARD_KEY : [...BOARD_KEY, employerRef],
+    queryFn: () =>
+      getJson<ActionBoard>(
+        employerRef === undefined
+          ? '/insights/actions/board'
+          : `/insights/actions/board?employer=${encodeURIComponent(employerRef)}`,
+      ),
   })
 }
 

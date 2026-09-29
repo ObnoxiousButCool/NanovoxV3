@@ -88,16 +88,33 @@ class ObservationResponse(CamelModel):
     available: bool = Field(
         description="False when v9 has no field for this family. Not the same as no hits."
     )
+    assessable: bool = Field(
+        default=True,
+        description=(
+            "False when the employer has too few calls for any family to be tested, "
+            "so `observed` is false for every one of the ten whatever their hits. "
+            "Distinct from `available`, which is about the v9 schema rather than "
+            "about this account: read together they separate 'we cannot look at "
+            "all', 'we cannot look here' and 'we looked and found nothing'. A count "
+            "of observed families is not a finding until this is true."
+        ),
+    )
     call_ids: list[str] = Field(
         default_factory=list,
         description=(
             "The calls this family was observed on, so the reader can open them. "
             "The envelope's rule — every figure travels with the call ids behind "
             "it — applies to an indicator as much as to a rate: a family reported "
-            "on three calls that names none of them cannot be argued with."
+            "on three calls that names none of them cannot be argued with. Carried "
+            "on an unassessable family too: those calls are real, and a page saying "
+            "'2 of 3 calls, not assessed' is true where 'not observed' is not."
         ),
     )
     unavailable_because: str = ""
+    unassessable_because: str = Field(
+        default="",
+        description="Why the families were not tested. Empty when `assessable`.",
+    )
 
 
 class AccountRiskResponse(CamelModel):
@@ -515,6 +532,8 @@ def account_risk_response(
                 rate=observation.rate,
                 available=observation.family.computable,
                 unavailable_because=observation.family.unavailable_because,
+                assessable=observation.assessable,
+                unassessable_because=observation.unassessable_because,
             )
             for observation in observations
         ],

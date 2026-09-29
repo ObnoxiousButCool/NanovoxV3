@@ -24,6 +24,7 @@
 import { useMemo } from 'react'
 
 import { useActionBoard } from '@/shared/api/actionBoard'
+import type { Action } from '@/shared/api/actionBoard'
 import { useCalls } from '@/shared/api/insights'
 import type { AccountProfile, CallRow } from '@/shared/api/insights'
 import { CallEvidence } from '@/shared/design/drawer/Evidence'
@@ -183,30 +184,49 @@ const ACTION_COLUMNS: Column[] = [
   { key: 'outcome', header: 'Outcome' },
 ]
 
-export function AccountActions({
-  employerRef,
-  callRefs,
-}: {
-  employerRef: string
-  /** This account's calls, so an action citing one is found too. */
-  callRefs: readonly string[]
-}) {
-  const { data, isPending, error } = useActionBoard()
+/**
+ * One card's heading on an account page: `Revenue opportunity — 4 / 39 calls`.
+ *
+ * The card's stored title already reads "Revenue opportunity — 39 calls",
+ * because a seeded action counts every call that raised its signal: one
+ * card, one owner team, worked once. Under a heading reading "Actions for
+ * this account" that number is read as the account's, and 179 on an account
+ * with 18 calls is out by an order of magnitude.
+ *
+ * So the count becomes a ratio in the same place the title carried it,
+ * rather than a second line repeating the denominator. The name comes from
+ * the server as `label` — cutting "— 39 calls" back off the title here
+ * would be string surgery on prose the server wrote, and it would mangle a
+ * hand-raised action whose own title ended in the same shape.
+ *
+ * Falls back to the title whenever either piece is missing: an unscoped
+ * board sends no share, and there is no ratio to state without one.
+ */
+function CardHeading({ action }: { action: Action }) {
+  const share = action.callsOnAccount
+  if (share === null || share === undefined || action.label === null || action.label === undefined) {
+    return <>{action.title}</>
+  }
+  const cited = action.callIds.length
+  return (
+    <span title="Calls on this account, of the calls behind this action">
+      {action.label} — {share} / {cited} {cited === 1 ? 'call' : 'calls'}
+    </span>
+  )
+}
 
-  const mine = useMemo(() => {
-    const cited = new Set(callRefs)
-    return (data?.actions ?? []).filter(
-      (action) =>
-        action.employerRef === employerRef ||
-        action.callIds.some((reference) => cited.has(reference)),
-    )
-  }, [data, employerRef, callRefs])
+export function AccountActions({ employerRef }: { employerRef: string }) {
+  // Scoped by the server. It was scoped here, against `risk.evidence` --
+  // the calls behind metric 10's *fired conditions*, not the account's
+  // calls -- so an account with nothing flagged matched nothing at all and
+  // the panel below reported that none of its calls had needed an action.
+  const { data, isPending, error } = useActionBoard(employerRef)
 
-  const rows: Row[] = mine.map((action) => ({
+  const rows: Row[] = (data?.actions ?? []).map((action) => ({
     key: String(action.id),
     cells: [
       <>
-        {action.title}
+        <CardHeading action={action} />
         <small>{action.evidence}</small>
       </>,
       <>
@@ -229,6 +249,7 @@ export function AccountActions({
       // A recommendation, not an observation: C3a rules that a suggestion
       // must never be readable as something the corpus measured.
       chip={<EpistemicChip kind="recommendation" />}
+      sub="Book-wide actions touching this account, and how much of each is its own."
     >
       {error ? (
         <Note>{error.message}</Note>

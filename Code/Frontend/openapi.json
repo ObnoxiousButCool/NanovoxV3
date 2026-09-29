@@ -439,6 +439,18 @@
             "title": "Callids",
             "type": "array"
           },
+          "callsOnAccount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many of this action's cited calls belong to the account the board was scoped to. Null on the unscoped board, where there is no account to count against \u2014 never nought, which would read as a card touching none of an account's calls. **The card's own figures stay corpus-wide.** `title` counts every call that raised the signal, because that is the piece of work: one card, one owner team, worked once. Re-counting it per account would describe a different job from the one on the board and make the same card disagree with itself between two screens. This travels beside that number so an account page can show both rather than presenting the book's figure as the account's.",
+            "title": "Callsonaccount"
+          },
           "createdAt": {
             "format": "date-time",
             "title": "Createdat",
@@ -485,6 +497,18 @@
               }
             ],
             "title": "Issuekey"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The action's name with no count in it \u2014 the playbook's own label, which `title` was composed from before '\u2014 N calls' was appended. Sent on the board only. A screen showing its own figure beside the card's needs the name without a number in it, and the alternative is the client cutting the count back off prose the server wrote.",
+            "title": "Label"
           },
           "log": {
             "description": "Oldest first. Append-only.",
@@ -4020,13 +4044,19 @@
       "ObservationResponse": {
         "description": "One indicator family's standing. Informational \u2014 it does not set the flag.",
         "properties": {
+          "assessable": {
+            "default": true,
+            "description": "False when the employer has too few calls for any family to be tested, so `observed` is false for every one of the ten whatever their hits. Distinct from `available`, which is about the v9 schema rather than about this account: read together they separate 'we cannot look at all', 'we cannot look here' and 'we looked and found nothing'. A count of observed families is not a finding until this is true.",
+            "title": "Assessable",
+            "type": "boolean"
+          },
           "available": {
             "description": "False when v9 has no field for this family. Not the same as no hits.",
             "title": "Available",
             "type": "boolean"
           },
           "callIds": {
-            "description": "The calls this family was observed on, so the reader can open them. The envelope's rule \u2014 every figure travels with the call ids behind it \u2014 applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with.",
+            "description": "The calls this family was observed on, so the reader can open them. The envelope's rule \u2014 every figure travels with the call ids behind it \u2014 applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with. Carried on an unassessable family too: those calls are real, and a page saying '2 of 3 calls, not assessed' is true where 'not observed' is not.",
             "items": {
               "type": "string"
             },
@@ -4064,6 +4094,12 @@
             ],
             "description": "Null when the family cannot be computed, never zero.",
             "title": "Rate"
+          },
+          "unassessableBecause": {
+            "default": "",
+            "description": "Why the families were not tested. Empty when `assessable`.",
+            "title": "Unassessablebecause",
+            "type": "string"
           },
           "unavailableBecause": {
             "default": "",
@@ -6579,6 +6615,26 @@
     "/api/v1/insights/actions/board": {
       "get": {
         "operationId": "read_board_api_v1_insights_actions_board_get",
+        "parameters": [
+          {
+            "description": "Scope the board to one employer: the actions naming it, plus the actions citing one of its calls. Omitted, the whole board comes back. The join is here rather than on the client because membership by cited call cannot be computed from the board alone without sending every action's whole call list.",
+            "in": "query",
+            "name": "employer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Scope the board to one employer: the actions naming it, plus the actions citing one of its calls. Omitted, the whole board comes back. The join is here rather than on the client because membership by cited call cannot be computed from the board alone without sending every action's whole call list.",
+              "title": "Employer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -6589,6 +6645,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Every action being worked, with the board's lanes",

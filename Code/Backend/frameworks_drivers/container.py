@@ -246,7 +246,10 @@ class Container:
 
     def list_actions(self) -> ListActions:
         return ListActions(
-            actions=self.action_repository, lifecycle=self.action_lifecycle, clock=self.clock
+            actions=self.action_repository,
+            lifecycle=self.action_lifecycle,
+            catalogue=self.playbook_catalogue,
+            clock=self.clock,
         )
 
     def seed_actions(self) -> SeedActions:

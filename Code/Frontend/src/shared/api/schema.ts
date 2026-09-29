@@ -676,6 +676,11 @@ export interface components {
             /** Callids */
             callIds: string[];
             /**
+             * Callsonaccount
+             * @description How many of this action's cited calls belong to the account the board was scoped to. Null on the unscoped board, where there is no account to count against — never nought, which would read as a card touching none of an account's calls. **The card's own figures stay corpus-wide.** `title` counts every call that raised the signal, because that is the piece of work: one card, one owner team, worked once. Re-counting it per account would describe a different job from the one on the board and make the same card disagree with itself between two screens. This travels beside that number so an account page can show both rather than presenting the book's figure as the account's.
+             */
+            callsOnAccount?: number | null;
+            /**
              * Createdat
              * Format: date-time
              */
@@ -690,6 +695,11 @@ export interface components {
             id: number;
             /** Issuekey */
             issueKey: string | null;
+            /**
+             * Label
+             * @description The action's name with no count in it — the playbook's own label, which `title` was composed from before '— N calls' was appended. Sent on the board only. A screen showing its own figure beside the card's needs the name without a number in it, and the alternative is the client cutting the count back off prose the server wrote.
+             */
+            label?: string | null;
             /**
              * Log
              * @description Oldest first. Append-only.
@@ -2192,13 +2202,19 @@ export interface components {
          */
         ObservationResponse: {
             /**
+             * Assessable
+             * @description False when the employer has too few calls for any family to be tested, so `observed` is false for every one of the ten whatever their hits. Distinct from `available`, which is about the v9 schema rather than about this account: read together they separate 'we cannot look at all', 'we cannot look here' and 'we looked and found nothing'. A count of observed families is not a finding until this is true.
+             * @default true
+             */
+            assessable: boolean;
+            /**
              * Available
              * @description False when v9 has no field for this family. Not the same as no hits.
              */
             available: boolean;
             /**
              * Callids
-             * @description The calls this family was observed on, so the reader can open them. The envelope's rule — every figure travels with the call ids behind it — applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with.
+             * @description The calls this family was observed on, so the reader can open them. The envelope's rule — every figure travels with the call ids behind it — applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with. Carried on an unassessable family too: those calls are real, and a page saying '2 of 3 calls, not assessed' is true where 'not observed' is not.
              */
             callIds?: string[];
             /** Code */
@@ -2216,6 +2232,12 @@ export interface components {
              * @description Null when the family cannot be computed, never zero.
              */
             rate?: number | null;
+            /**
+             * Unassessablebecause
+             * @description Why the families were not tested. Empty when `assessable`.
+             * @default
+             */
+            unassessableBecause: string;
             /**
              * Unavailablebecause
              * @default
@@ -3163,7 +3185,10 @@ export interface operations {
     };
     read_board_api_v1_insights_actions_board_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Scope the board to one employer: the actions naming it, plus the actions citing one of its calls. Omitted, the whole board comes back. The join is here rather than on the client because membership by cited call cannot be computed from the board alone without sending every action's whole call list. */
+                employer?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3177,6 +3202,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionBoardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

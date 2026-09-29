@@ -67,12 +67,28 @@ class Family:
 
 @dataclass(frozen=True)
 class Observation:
-    """One family's standing for one employer."""
+    """One family's standing for one employer.
+
+    **`observed=False` has two causes and they are not the same statement.**
+    Either the family was tested against this employer and did not clear its
+    gates, or the employer has too few calls for any family to be tested at
+    all. The first is a finding about the account; the second is a fact
+    about how much we have of it. `assessable` is what tells them apart, and
+    without it a count of nought reads as "nothing here" in both cases --
+    the withheld-is-not-zero mistake, one level down.
+    """
 
     family: Family
     call_ids: tuple[str, ...]
     employer_calls: int
     observed: bool
+    #: False when the employer is under `IndicatorGates.min_employer_calls`,
+    #: so no family could fire whatever its hits. The hits are still carried:
+    #: they are real calls, and a page saying "2 of 3 calls, not assessed" is
+    #: both true and useful, where "not observed" would be false.
+    assessable: bool = True
+    #: Why not, in a reader's words. Empty when `assessable`.
+    unassessable_because: str = ""
 
     @property
     def hits(self) -> int:
@@ -170,12 +186,33 @@ def observe(
         call for call in window.calls_in(tuple(calls)) if call.employer_ref == employer.reference
     ]
     repeat_refs = {pair.first.reference for pair in repeats(mine)}
+    assessable = config.indicators.assessable(len(mine))
+    # Written once, with the floor in it, rather than left to each caller to
+    # phrase: the number is config and a page that hard-coded "five" would
+    # go quietly wrong the day it is calibrated.
+    unassessable_because = (
+        ""
+        if assessable
+        else (
+            f"This account has {len(mine)} "
+            f"{'call' if len(mine) == 1 else 'calls'} in the window and the ten "
+            f"families are assessed from {config.indicators.min_employer_calls}. They "
+            "were not checked, which is not the same as none being present."
+        )
+    )
 
     observations: list[Observation] = []
     for family in FAMILIES:
         if not family.computable:
             observations.append(
-                Observation(family=family, call_ids=(), employer_calls=len(mine), observed=False)
+                Observation(
+                    family=family,
+                    call_ids=(),
+                    employer_calls=len(mine),
+                    observed=False,
+                    assessable=assessable,
+                    unassessable_because=unassessable_because,
+                )
             )
             continue
         if family.matches is None:
@@ -189,6 +226,8 @@ def observe(
                 call_ids=hits,
                 employer_calls=len(mine),
                 observed=config.indicators.fires(len(hits), len(mine)),
+                assessable=assessable,
+                unassessable_because=unassessable_because,
             )
         )
     return tuple(observations)
@@ -213,3 +252,12 @@ def observed(observations: Sequence[Observation]) -> tuple[Observation, ...]:
 def unavailable(observations: Sequence[Observation]) -> tuple[Observation, ...]:
     """Families that could not be checked, so the page can say which."""
     return tuple(observation for observation in observations if not observation.family.computable)
+
+
+def assessed(observations: Sequence[Observation]) -> bool:
+    """Whether the families were tested against this employer at all.
+
+    A caller counting `observed()` needs this beside the count, because nought
+    of ten means two different things without it.
+    """
+    return all(observation.assessable for observation in observations)
