@@ -173,3 +173,39 @@
 .nv-cta a:hover {
   text-decoration: underline;
 }
+
+/* --- The two-panel layout, ported from the prototype's `.withai` --------
+ *
+ * `exec.html` runs a narrow, independently-scrollable feed column (the
+ * needs-attention list) beside a wide main column, rather than stacking
+ * everything full width. Renamed onto this codebase's `nv-` prefix, same
+ * as the rest of this file; the shape is the prototype's own
+ * (`.withai` / `.feedcol` / `.maincol` in `Prototype/v2/v2.css`). */
+
+.nv-withai {
+  display: grid;
+  grid-template-columns: minmax(290px, 330px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.nv-withai > .nv-feedcol {
+  position: sticky;
+  top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.nv-withai > .nv-maincol {
+  min-width: 0;
+}
+
+@media (max-width: 1180px) {
+  .nv-withai {
+    grid-template-columns: 1fr;
+  }
+  .nv-withai > .nv-feedcol {
+    position: static;
+    max-height: none;
+  }
+}

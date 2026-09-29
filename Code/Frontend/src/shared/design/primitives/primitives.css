@@ -14,9 +14,10 @@
 
 .nv-panel > header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 6px 10px;
   margin-bottom: 6px;
 }
 
@@ -443,4 +444,37 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* A panel filled with illustrative rather than real numbers — always used
+ * with `SampleFallback`, never standalone, so the diagonal wash and badge
+ * are the only place in the app a figure is allowed to be made up. */
+.nv-sample {
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--r);
+  padding: 14px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--surface-2) 0px,
+    var(--surface-2) 10px,
+    var(--surface) 10px,
+    var(--surface) 20px
+  );
+}
+
+.nv-samplebadge {
+  display: inline-block;
+  font: 700 11px/1 var(--body);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--warning);
+  background: var(--surface);
+  border: 1px solid var(--warning);
+  border-radius: 999px;
+  padding: 4px 10px;
+  margin-bottom: 10px;
+}
+
+.nv-samplebody {
+  opacity: 0.85;
 }

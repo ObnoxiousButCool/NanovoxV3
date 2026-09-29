@@ -105,7 +105,10 @@
   font-family: var(--mono);
   font-size: 13px;
   color: var(--ink-2);
-  white-space: nowrap;
+  /* Wraps rather than clips: at the withai layout's narrower tile width
+     (see exec.css) a line like "25% of 16 assessed - 277 lives" no longer
+     always fits on one line, and a wrapped line is legible where a clipped
+     one silently drops its last word. */
 }
 
 /* --- What moved, and what is emerging -------------------------------- */

@@ -48,3 +48,20 @@ export function Claim({ children }: { children: ReactNode }) {
 export function SeverityLabel({ severity }: { severity: string }) {
   return <span className={`nv-sev nv-sev-${severity}`}>{severity.toLowerCase()}</span>
 }
+
+/**
+ * A visual stand-in for a panel with nothing in it yet — used only when the
+ * underlying corpus is genuinely empty (an action board nobody has written
+ * to, say), never to paper over a withheld figure or a movement inside
+ * noise, which already have their own honest renderings (`Withheld`, the
+ * noise tag on `nv-movements`). The badge names it every time it appears,
+ * so a reader never mistakes the shape for a claim about the account.
+ */
+export function SampleFallback({ children }: { children: ReactNode }) {
+  return (
+    <div className="nv-sample">
+      <span className="nv-samplebadge">Sample data — illustrative, not from the corpus</span>
+      <div className="nv-samplebody">{children}</div>
+    </div>
+  )
+}

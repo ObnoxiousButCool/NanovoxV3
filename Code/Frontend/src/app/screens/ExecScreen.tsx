@@ -78,6 +78,7 @@ import {
   KpiTile,
   Note,
   Panel,
+  SampleFallback,
   basisFromApi,
 } from '@/shared/design/primitives'
 import type { Figure } from '@/shared/design/primitives'
@@ -139,11 +140,11 @@ function ExecBody({
   const { trends } = data
 
   return (
-    <div className="nv-grid">
-      <div className="nv-c12">
+    <div className="nv-withai">
+      <div className="nv-feedcol">
         <NeedsAttentionPanel risk={risk} names={names} />
       </div>
-
+      <div className="nv-maincol nv-grid">
       <div className="nv-c12">
         <Panel
           title="The window"
@@ -256,6 +257,7 @@ function ExecBody({
 
       <div className="nv-c12">
         <ActionProgressPanel board={board} />
+      </div>
       </div>
     </div>
   )
@@ -600,42 +602,35 @@ function ActionProgressPanel({ board }: { board: ActionBoard }) {
   const openActions = board.actions.filter((action) => findLane(board.lanes, action.status)?.open)
   const overdue = board.actions.filter((action) => action.pastDue)
   const measured = board.actions.filter((action) => action.outcome !== null)
+  const hasActions = board.actions.length > 0
+
+  // A believable spread across whatever lanes this board defines, shown
+  // only inside `SampleFallback` when the board is genuinely empty — never
+  // a claim about this account's own actions.
+  const sampleSpread = [3, 2, 4, 1, 3, 2]
+  const sampleCounts = new Map(board.lanes.map((lane, index) => [lane.code, sampleSpread[index % sampleSpread.length] ?? 1]))
 
   return (
     <Panel
       title="What is being done"
       sub={
-        <>
-          {openActions.length} of {board.actions.length} actions open, {overdue.length} overdue,{' '}
-          {measured.length} with a measured outcome.
-        </>
+        hasActions ? (
+          <>
+            {openActions.length} of {board.actions.length} actions open, {overdue.length} overdue,{' '}
+            {measured.length} with a measured outcome.
+          </>
+        ) : (
+          'No actions have been raised on this board yet.'
+        )
       }
       chip={<EpistemicChip kind="observed" />}
     >
-      {board.actions.length === 0 ? (
-        <Empty title="No actions raised">Nothing has been raised on the board yet.</Empty>
+      {hasActions ? (
+        <ActionBar lanes={board.lanes} counts={counts} colors={colors} />
       ) : (
-        <>
-          <div className="nv-actionbar">
-            {board.lanes.map((lane) => {
-              const n = counts.get(lane.code) ?? 0
-              if (n === 0) return null
-              return (
-                <span key={lane.code} style={{ flex: n, background: colors.get(lane.code) }} title={`${lane.label}: ${String(n)}`}>
-                  {n}
-                </span>
-              )
-            })}
-          </div>
-          <ul className="nv-lanekey">
-            {board.lanes.map((lane) => (
-              <li key={lane.code}>
-                <i style={{ background: colors.get(lane.code) }} />
-                {lane.label} <b>{counts.get(lane.code) ?? 0}</b>
-              </li>
-            ))}
-          </ul>
-        </>
+        <SampleFallback>
+          <ActionBar lanes={board.lanes} counts={sampleCounts} colors={colors} />
+        </SampleFallback>
       )}
       <Note>{board.trustNote}</Note>
       <p className="nv-cta">
@@ -643,5 +638,41 @@ function ActionProgressPanel({ board }: { board: ActionBoard }) {
         <Link to="/risk">See every risk and driver →</Link>
       </p>
     </Panel>
+  )
+}
+
+/** The colored status bar plus its legend — the real counts, or, wrapped in
+ * `SampleFallback` by the caller, an illustrative spread. */
+function ActionBar({
+  lanes,
+  counts,
+  colors,
+}: {
+  lanes: ActionBoard['lanes']
+  counts: Map<string, number>
+  colors: Map<string, string>
+}) {
+  return (
+    <>
+      <div className="nv-actionbar">
+        {lanes.map((lane) => {
+          const n = counts.get(lane.code) ?? 0
+          if (n === 0) return null
+          return (
+            <span key={lane.code} style={{ flex: n, background: colors.get(lane.code) }} title={`${lane.label}: ${String(n)}`}>
+              {n}
+            </span>
+          )
+        })}
+      </div>
+      <ul className="nv-lanekey">
+        {lanes.map((lane) => (
+          <li key={lane.code}>
+            <i style={{ background: colors.get(lane.code) }} />
+            {lane.label} <b>{counts.get(lane.code) ?? 0}</b>
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }
