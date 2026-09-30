@@ -13,11 +13,29 @@ body,
   height: 100%;
 }
 
+/* Margin only. The type is `tokens.css`'s to set, and this file is imported
+   after it: the `font-family` that used to live here was overriding
+   `font: 400 15px/1.5 var(--body)` longhand-beats-shorthand, so the body
+   stayed on system-ui however the tokens were written. */
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
+}
+
+/* Form controls do not inherit type from their parent — the UA stylesheet
+   gives them its own, which on Windows is Arial. Nothing in this product
+   asks for Arial, and nothing pointed at it: the exec screen's AI feed wraps
+   each insight in a button, so the sentence, its badges and its evidence
+   line were all rendering in a font the design system never names, inside a
+   panel set in Public Sans.
+
+   `Prototype/app.css` has no such rule because the prototype never puts body
+   text inside a bare button — it reaches for `font: inherit` case by case
+   (`.picker li button`). One rule here instead, so the next button added
+   cannot quietly do it again.
+
+   Buttons that set their own type still win: every one in this codebase does
+   it through a class, which outranks this. */
+button {
+  font: inherit;
+  letter-spacing: inherit;
 }

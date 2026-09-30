@@ -12,8 +12,17 @@ from datetime import date
 
 import pytest
 
+from domain.aggregation.call_tags import Window
 from domain.aggregation.figure import WithheldReason
-from domain.aggregation.indicators import FAMILIES, assessed, observe, observed, unavailable
+from domain.aggregation.indicators import (
+    FAMILIES,
+    assessed,
+    first_indicator_on,
+    newly_flagged,
+    observe,
+    observed,
+    unavailable,
+)
 from domain.aggregation.risk_flag import (
     Condition,
     RiskAssessment,
@@ -451,3 +460,64 @@ class TestTheRenewalMonthAsReferenceDataWritesIt:
     def test_a_month_nobody_recorded_stays_unknown(self) -> None:
         assert months_until("", date(2026, 9, 28)) is None
         assert months_until("Quartember", date(2026, 9, 28)) is None
+
+
+# --- Newly flagged: the first indicator, not the flag -----------------------
+
+
+def test_newly_flagged_counts_an_account_whose_first_indicator_is_recent() -> None:
+    """The tile asks who is new to the list, not who is on it."""
+    # WINDOW is 85 days, so the last of three slices starts on day 56.
+    recent = [
+        call("C-1", on=day(60), employer_ref="EMP-NEW", outcome=Outcome.UNRESOLVED),
+        call("C-2", on=day(70), employer_ref="EMP-NEW"),
+    ]
+
+    result = newly_flagged(recent, WINDOW)
+
+    assert result is not None
+    assert result.employers == ("EMP-NEW",)
+    assert result.count == 1
+    assert result.since == day(56)
+
+
+def test_an_account_whose_first_indicator_is_old_is_not_newly_flagged() -> None:
+    """An account that has been on the list all quarter is not new to it,
+    however many indicators it has raised since."""
+    long_standing = [
+        call("C-1", on=day(2), employer_ref="EMP-OLD", outcome=Outcome.UNRESOLVED),
+        call("C-2", on=day(70), employer_ref="EMP-OLD", outcome=Outcome.UNRESOLVED),
+    ]
+
+    result = newly_flagged(long_standing, WINDOW)
+
+    assert result is not None
+    assert result.employers == ()
+
+
+def test_an_account_with_no_indicator_at_all_is_not_newly_flagged() -> None:
+    """Unremarkable calls are not a first anything."""
+    quiet = [call("C-1", on=day(60), employer_ref="EMP-QUIET")]
+
+    result = newly_flagged(quiet, WINDOW)
+
+    assert result is not None
+    assert result.employers == ()
+
+
+def test_first_indicator_reads_the_same_families_observe_does() -> None:
+    """One definition of "an indicator" on this screen. A family `observe`
+    counts and this did not would make the tile disagree with the table
+    underneath it."""
+    assert first_indicator_on([call("C-1", on=day(3))]) is None
+    assert first_indicator_on([call("C-1", on=day(3), outcome=Outcome.UNRESOLVED)]) == day(3)
+    assert first_indicator_on(
+        [call("C-1", on=day(4), signals=frozenset({SignalType.BROKER_CONDUCT_ADVERSE}))]
+    ) == day(4)
+
+
+def test_a_window_too_short_to_slice_gives_absent_not_nought() -> None:
+    """A window that cannot be cut has not told anyone that nobody is new."""
+    single_day = Window(start=day(0), end=day(0))
+
+    assert newly_flagged([call("C-1", on=day(0), outcome=Outcome.UNRESOLVED)], single_day) is None

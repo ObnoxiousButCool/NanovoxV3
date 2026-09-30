@@ -14,6 +14,9 @@ export function Panel({
   chip,
   actions,
   info,
+  meta,
+  footer,
+  className,
   children,
 }: {
   title: ReactNode
@@ -27,10 +30,24 @@ export function Panel({
    * than in a paragraph nobody reads.
    */
   info?: ReactNode
+  /**
+   * A line between the subtitle and the contents, laid out as two ends —
+   * `.ai-meta` in `v2.css`, where the left names what the card is about and
+   * the right counts what is behind it.
+   */
+  meta?: ReactNode
+  /**
+   * Below the contents. `v2.css` puts a card's actions at its foot
+   * (`.ai-act`) rather than beside its title, which is where `actions`
+   * puts them; a caller uses one or the other, not both.
+   */
+  footer?: ReactNode
+  /** An extra class on the section, for a panel with its own card shape. */
+  className?: string
   children: ReactNode
 }) {
   return (
-    <section className="nv-panel">
+    <section className={className === undefined ? 'nv-panel' : `nv-panel ${className}`}>
       <header>
         <div>
           <h2>
@@ -46,7 +63,9 @@ export function Panel({
         ) : null}
       </header>
       {sub ? <p className="nv-sub">{sub}</p> : null}
+      {meta ? <p className="nv-panel-meta">{meta}</p> : null}
       {children}
+      {footer}
     </section>
   )
 }

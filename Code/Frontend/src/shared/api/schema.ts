@@ -611,6 +611,11 @@ export interface components {
             /** Flagged */
             flagged: boolean;
             /**
+             * Lives
+             * @description Lives enrolled with this employer, from reference data. What is behind the flag: two flagged accounts are not the same finding when one covers 8 lives and the other 800. Never summed on a screen -- `exposure` is the only total, so a reader cannot arrive at two different books. Null, never 0, where reference data does not carry it: an account with no recorded size is not an account covering nobody.
+             */
+            lives?: number | null;
+            /**
              * Monthstorenewal
              * @description Whole months from `as_of` to the next renewal. Null when the reference data's renewal month could not be read, which sorts and reads as unknown rather than as renewing now.
              */
@@ -2246,6 +2251,37 @@ export interface components {
             z: number;
         };
         /**
+         * NewlyFlaggedResponse
+         * @description Accounts new to the indicator list, and the date they are new since.
+         *
+         *     `since` travels with `count` because the count is unreadable without it,
+         *     and `unfiltered` is stated rather than assumed: this is the one figure on
+         *     the screen the filter bar does not touch, and a reader comparing it with
+         *     the tiles beside it needs to know that.
+         */
+        NewlyFlaggedResponse: {
+            /** Count */
+            count: number;
+            /** Employers */
+            employers: string[];
+            /**
+             * Since
+             * Format: date
+             */
+            since: string;
+            /**
+             * Unfiltered
+             * @description Always true. Counted across the whole book: an account's first indicator is a fact about the account, not about the slice being looked through, and narrowing by region would make an account new because a reader changed a dropdown.
+             * @default true
+             */
+            unfiltered: boolean;
+            /**
+             * Weeks
+             * @description How many weeks the recent slice spans.
+             */
+            weeks: number;
+        };
+        /**
          * ObservationResponse
          * @description One indicator family's standing. Informational — it does not set the flag.
          */
@@ -2601,6 +2637,8 @@ export interface components {
             ineligible: string[];
             /** Ineligiblecount */
             ineligibleCount: number;
+            /** @description Accounts whose first indicator falls in the most recent slice of the window. Null when the window is too short to slice -- absent rather than nought, because a window that cannot be cut has not told anyone that nobody is new. */
+            newlyFlagged?: components["schemas"]["NewlyFlaggedResponse"] | null;
             /**
              * Outcomes
              * @description How the window's calls ended, every outcome including the ones at zero and in the workbook's order. Categories that reorder with the data cannot be compared against last week's chart.

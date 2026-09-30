@@ -206,32 +206,24 @@
 .nv-risk-accounts .nv-tblwrap table {
   min-width: 860px;
   table-layout: fixed;
-  font-size: 13px;
 }
 
+/* Account, Flag, Indicators, Calls, Lives, Renews. Flag took the conditions
+   column's width when the two merged into one cell; the rest are unchanged.
+   Widths only -- the header type and the cell padding are the shared
+   `.nv-tblwrap` rule's, which is the prototype's own. */
 .nv-risk-accounts .nv-tblwrap th:nth-child(1),
 .nv-risk-accounts .nv-tblwrap td:nth-child(1) { width: 21%; }
 .nv-risk-accounts .nv-tblwrap th:nth-child(2),
-.nv-risk-accounts .nv-tblwrap td:nth-child(2) { width: 11%; }
+.nv-risk-accounts .nv-tblwrap td:nth-child(2) { width: 16%; }
 .nv-risk-accounts .nv-tblwrap th:nth-child(3),
 .nv-risk-accounts .nv-tblwrap td:nth-child(3) { width: 32%; }
 .nv-risk-accounts .nv-tblwrap th:nth-child(4),
-.nv-risk-accounts .nv-tblwrap td:nth-child(4) { width: 13%; }
+.nv-risk-accounts .nv-tblwrap td:nth-child(4) { width: 8%; }
 .nv-risk-accounts .nv-tblwrap th:nth-child(5),
 .nv-risk-accounts .nv-tblwrap td:nth-child(5) { width: 8%; }
 .nv-risk-accounts .nv-tblwrap th:nth-child(6),
 .nv-risk-accounts .nv-tblwrap td:nth-child(6) { width: 15%; }
-
-.nv-risk-accounts .nv-tblwrap th {
-  padding: 6px 8px 7px;
-  font-size: 10.5px;
-}
-
-.nv-risk-accounts .nv-tblwrap td {
-  padding: 6px 8px;
-  vertical-align: middle;
-  line-height: 1.25;
-}
 
 .nv-risk-account-name {
   font-size: 13.5px;

@@ -296,3 +296,69 @@ class FactSet:
         number the corpus never produced, and the sentence does not ship.
         """
         return numbers_in(text) - self.allowed_numbers
+
+
+#: The tails a sentence must not end on.
+#:
+#: Every one of these turns a figure into a claim the figures cannot carry:
+#: "2 compliance exceptions were recorded, **indicating potential issues with
+#: adherence to guidelines**" counts two things and then asserts a third that
+#: nobody measured. The prompt has forbidden them since v1.5.0 and named three
+#: of them verbatim; the first real run came back with all of them anyway,
+#: which is why this is code and not a paragraph of instructions.
+#:
+#: Matched only after a comma. "Suggesting" is a normal English word and a
+#: sentence is entitled to use it; what is refused is the trailing clause
+#: bolted onto a number, which is the shape every one of these took.
+_HEDGE_TAILS = (
+    "indicating",
+    "suggesting",
+    "highlighting",
+    "reflecting",
+    "implying",
+    "signalling",
+    "signaling",
+    "pointing to",
+    "which may",
+    "which could",
+    "which might",
+    "potentially",
+    "raising concerns",
+)
+
+_HEDGE = re.compile(
+    r",\s*(?:and\s+|thus\s+|so\s+)?(" + "|".join(_HEDGE_TAILS) + r")\b",
+    re.IGNORECASE,
+)
+
+#: Metric syntax in the middle of a sentence: "Brokers named adversely = 0".
+#: A reader is being shown the inside of the fact list rather than a sentence,
+#: and no human writes an equals sign into prose.
+_EQUATION = re.compile(r"\S\s*=\s*\S")
+
+
+#: The shape the prompt gives for a figure nobody can state yet. Legitimate
+#: on its own -- "Commercial intent routed cannot be given yet" -- and
+#: self-contradictory the moment the same sentence quotes a number, because a
+#: figure that has been given cannot also be the one that cannot be. The
+#: first real run produced "Accounts that could not be assessed total 81,
+#: which cannot be given yet", which is the template stitched onto a count.
+_WITHHELD_PHRASE = re.compile(r"cannot be (?:given|said|published)", re.IGNORECASE)
+_DIGIT = re.compile(r"\d")
+
+
+def hedged_tail(sentence: str) -> str | None:
+    """The offending phrase, or `None` if the sentence is clean.
+
+    Returns the phrase rather than a bare bool so the log names what was
+    wrong: "rejected a sentence" is not actionable, and the point of the
+    check is to be able to say which habit the model fell into this time.
+    """
+    hedge = _HEDGE.search(sentence)
+    if hedge is not None:
+        return hedge.group(1).lower()
+    if _EQUATION.search(sentence) is not None:
+        return "="
+    if _WITHHELD_PHRASE.search(sentence) is not None and _DIGIT.search(sentence) is not None:
+        return "cannot be given, beside a figure"
+    return None

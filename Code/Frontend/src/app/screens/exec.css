@@ -484,8 +484,15 @@
   color: var(--ink-2);
 }
 
+/* The prototype's `#lenses` is a bare section, not a panel: transparent,
+   no border, no padding, so the four lens cards sit straight on the page
+   ground. We had it inside a bordered panel, which put a card border around
+   four card borders and stole 21px a column from the cards themselves. */
 .nv-exec-lenses > .nv-panel {
-  padding: 18px 20px 20px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
 }
 
 .nv-exec-lenses > .nv-panel h2 {
@@ -671,11 +678,134 @@
   }
 }
 
+/* The flagged-accounts card, shaped like `v2.css`'s `.aiitem`.
+ *
+ * `exec.html` does not give this a title: the sentence is the heading, with
+ * its figures in bold, and a 3px accent down the left edge says how urgent
+ * it is. The count sits opposite a label, and the two actions are a filled
+ * button and a ghost at the foot rather than links beside a title.
+ *
+ * It stays a `<section>` and not the prototype's `<details>`: ours is not
+ * one of the generated insights and must not sit among them wearing their
+ * shape. The accent is `--critical` rather than the feed's violet for the
+ * same reason — this is counted, not written.
+ */
+.nv-exec .nv-flagcard {
+  position: relative;
+  padding: 12px 12px 12px 18px;
+  border-radius: var(--r);
+}
+
+.nv-exec .nv-flagcard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--critical);
+}
+
+/* The title carries the panel for a screen reader and nothing for the eye,
+   the way the other panels in this column already hide theirs. */
+.nv-exec .nv-flagcard > header {
+  margin: 0;
+}
+
+.nv-exec .nv-flagcard > header h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* `.ai-t` — the sentence is the card, so it is body size and not a caption. */
+.nv-exec .nv-flagcard > .nv-sub {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+/* `.ai-meta` */
+.nv-exec .nv-flagcard > .nv-panel-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin: 0 0 4px;
+}
+
+.nv-exec .nv-flagcard-lens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* `.ai-more`, without the disclosure caret: this list is not collapsible,
+   so a caret would promise an interaction that is not there. */
+.nv-exec .nv-flagcard-count {
+  color: var(--brand);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* `.ai-act` */
+.nv-exec .nv-ai-act {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 6px 0 0;
+}
+
+.nv-exec .nv-ai-act:empty {
+  display: none;
+}
+
+/* `.nv-attn`'s own row is `10px minmax(0,1fr) 56px 150px 20px`, built for
+   the full-width panel on `/actions`. This list sits in the 330px feed
+   column, where those fixed tracks plus the gaps come to more than the row
+   is wide — so `minmax(0, 1fr)` resolved to 0 and the account's name was
+   given no width at all.
+
+   Four columns here, with the count and the renewal in one compact meta the
+   way `exec.html` writes it ("3 indicators · Oct"), and the name taking what
+   is left. */
+.nv-exec .nv-attn li a {
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+}
+
+.nv-exec .nv-attn-who {
+  min-width: 0;
+}
+
+/* The name wraps rather than truncating, which is what `exec.html` does:
+   "Sandpiper Hospitality Group" takes two lines there and is never cut. An
+   ellipsis would hide which account it is, and the account is the row. */
+.nv-exec .nv-attn-who b {
+  display: block;
+  font-weight: 600;
+}
+
+/* The meta holds its line so the two never interleave, and it is the part
+   that can afford not to: it is short by construction. */
+.nv-exec .nv-attn-meta {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
 @media (max-width: 820px) {
-  .nv-exec .nv-attn li a {
-    grid-template-columns: 10px minmax(0, 1fr) 44px 20px;
-  }
-  .nv-exec .nv-attn .nv-own { display: none; }
+  .nv-exec .nv-attn li a { grid-template-columns: 10px minmax(0, 1fr); }
+  .nv-exec .nv-attn-meta { display: none; }
   .nv-exec .nv-screen { padding-inline: 16px; }
   .nv-exec .nv-stickyhead {
     margin-inline: -16px;

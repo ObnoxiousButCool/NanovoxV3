@@ -797,8 +797,10 @@ const RISK_RICH = {
       conditions: [],
       evidence: [],
       observations: observationsWithNObserved(5),
-      renewalMonth: 'November',
-      monthsToRenewal: 2,
+      // Renews later than EMP-1002 but carries more indicators, so the two
+      // orderings disagree and the exec panel's own rule is testable.
+      renewalMonth: 'March',
+      monthsToRenewal: 6,
     },
     {
       employerRef: 'EMP-1002',
@@ -811,8 +813,8 @@ const RISK_RICH = {
       conditions: [],
       evidence: [],
       observations: observationsWithNObserved(3),
-      renewalMonth: 'March',
-      monthsToRenewal: 6,
+      renewalMonth: 'November',
+      monthsToRenewal: 2,
     },
     {
       employerRef: 'EMP-1003',
@@ -890,21 +892,34 @@ describe('/exec, with accounts, escalations and an action board', () => {
     )
   })
 
-  it('lists the flagged accounts in the needs-attention panel, most indicators first', async () => {
+  it('lists the flagged accounts soonest renewal first, as exec.html does', async () => {
     renderAt('/exec')
 
     await waitFor(() => {
       expect(screen.getByText('Needs attention now')).toBeInTheDocument()
     })
+    const rows = screen.getByRole('list', { name: 'Flagged accounts' })
+    const card = rows.closest('section')
+    expect(card).not.toBeNull()
     // Two of three assessed accounts are flagged; the unflagged EMP-1003
-    // never appears here even though it was assessed.
-    expect(screen.getByText(/2 of 3 accounts are flagged/i)).toBeInTheDocument()
-    // Each name also appears in the filter bar's employer dropdown, so this
-    // counts rather than insisting on a single match.
-    expect(screen.getAllByText('Cedar Point Workforce Partners').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Park Mechanical').length).toBeGreaterThan(0)
-    expect(screen.getByText('5 of 10 indicators')).toBeInTheDocument()
-    expect(screen.getByText('renews in 2 months')).toBeInTheDocument()
+    // never appears here even though it was assessed. Matched over the
+    // card's own text because `exec.html` bolds the figures, so the
+    // sentence is split across elements.
+    expect((card as HTMLElement).textContent).toMatch(/2 of 14 accounts|2 of 3 accounts/)
+
+    const names = within(rows)
+      .getAllByRole('link')
+      .map((link) => link.textContent ?? '')
+
+    // Park Mechanical has 3 indicators to Cedar Point's 5 and still leads,
+    // because it renews in 2 months against Cedar Point's 6. `/risk` ranks
+    // these the other way round and is right to: every account here is
+    // already flagged, so what separates them is how long there is to act.
+    expect(names[0]).toContain('Park Mechanical')
+    expect(names[1]).toContain('Cedar Point Workforce Partners')
+    // The prototype's own row: the count and the renewal in one meta.
+    expect(names[0]).toContain('3 indicators')
+    expect(names[0]).toContain('Nov')
   })
 
   it('gets the four-tile row right, including a gauge with a rendered value', async () => {
@@ -1997,6 +2012,21 @@ describe('an account flagged below the indicator floor', () => {
 
     expect(await screen.findByText(/Other conditions observed — not assessed/)).toBeInTheDocument()
     expect(screen.getByText(UNASSESSED_FAMILY_REASON)).toBeInTheDocument()
+  })
+
+  it('shows the risk table a dash, not a nought, when nothing was assessed', async () => {
+    // The same defect one screen along. `/accounts` had the dash and the
+    // risk table still printed "0 of 10" beside "Flagged", which is what
+    // Ranjit challenged on 2026-09-30: Junipero and Blue Mesa both read as
+    // flags with nothing behind them while carrying four families of real
+    // hits apiece, unexamined at 3 and 4 calls.
+    renderAt('/risk')
+
+    const table = await screen.findByRole('table', { name: /Accounts assessed/i })
+    expect(within(table).queryByText('0 of 10')).not.toBeInTheDocument()
+    expect(
+      within(table).getByTitle('Too few calls to assess the indicator families'),
+    ).toBeInTheDocument()
   })
 
   it('never calls a family with hits "not observed"', async () => {

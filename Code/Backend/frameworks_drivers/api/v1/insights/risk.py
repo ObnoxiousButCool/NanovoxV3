@@ -39,6 +39,7 @@ than a missing one.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, Query, status
@@ -150,6 +151,41 @@ class AccountRiskResponse(CamelModel):
             "Whole months from `as_of` to the next renewal. Null when the reference "
             "data's renewal month could not be read, which sorts and reads as "
             "unknown rather than as renewing now."
+        ),
+    )
+    lives: int | None = Field(
+        default=None,
+        description=(
+            "Lives enrolled with this employer, from reference data. What is behind "
+            "the flag: two flagged accounts are not the same finding when one covers "
+            "8 lives and the other 800. Never summed on a screen -- `exposure` is the "
+            "only total, so a reader cannot arrive at two different books. "
+            "Null, never 0, where reference data does not carry it: an account with "
+            "no recorded size is not an account covering nobody."
+        ),
+    )
+
+
+class NewlyFlaggedResponse(CamelModel):
+    """Accounts new to the indicator list, and the date they are new since.
+
+    `since` travels with `count` because the count is unreadable without it,
+    and `unfiltered` is stated rather than assumed: this is the one figure on
+    the screen the filter bar does not touch, and a reader comparing it with
+    the tiles beside it needs to know that.
+    """
+
+    count: int
+    employers: list[str]
+    since: date
+    weeks: int = Field(description="How many weeks the recent slice spans.")
+    unfiltered: bool = Field(
+        default=True,
+        description=(
+            "Always true. Counted across the whole book: an account's first "
+            "indicator is a fact about the account, not about the slice being "
+            "looked through, and narrowing by region would make an account new "
+            "because a reader changed a dropdown."
         ),
     )
 
@@ -377,6 +413,15 @@ class RiskScreenResponse(CamelModel):
     exit_language_calls: int = Field(
         description="Calls carrying the retention_risk signal — exit language, verbatim."
     )
+    newly_flagged: NewlyFlaggedResponse | None = Field(
+        default=None,
+        description=(
+            "Accounts whose first indicator falls in the most recent slice of the "
+            "window. Null when the window is too short to slice -- absent rather "
+            "than nought, because a window that cannot be cut has not told anyone "
+            "that nobody is new."
+        ),
+    )
 
 
 @router.get(
@@ -433,6 +478,16 @@ def build_risk_response(
         escalations_triggered=result.escalations_triggered,
         escalations_missed=result.escalations_missed,
         exit_language_calls=result.exit_language_calls,
+        newly_flagged=(
+            None
+            if result.newly_flagged is None
+            else NewlyFlaggedResponse(
+                count=result.newly_flagged.count,
+                employers=list(result.newly_flagged.employers),
+                since=result.newly_flagged.since,
+                weeks=result.newly_flagged.weeks,
+            )
+        ),
         band_calibration=WithheldPanelResponse(
             insight=result.band_calibration.insight,
             question=result.band_calibration.question,
@@ -482,6 +537,7 @@ def _account(entry: AccountRisk) -> AccountRiskResponse:
         entry.observations,
         renewal_month=entry.renewal_month,
         months_to_renewal=entry.months_to_renewal,
+        lives=entry.lives,
     )
 
 
@@ -490,6 +546,7 @@ def account_risk_response(
     observations: Sequence[Observation],
     *,
     renewal_month: str | None = None,
+    lives: int | None = None,
     months_to_renewal: int | None = None,
 ) -> AccountRiskResponse:
     """One employer's risk standing, flattened for the wire.
@@ -540,6 +597,7 @@ def account_risk_response(
         ],
         renewal_month=renewal_month,
         months_to_renewal=months_to_renewal,
+        lives=lives,
     )
 
 

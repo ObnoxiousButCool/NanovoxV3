@@ -36,9 +36,11 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import date
 
 from domain.aggregation.call_tags import CallContext, EmployerFacts, Window
 from domain.aggregation.repeat_contact import repeats
+from domain.aggregation.trends import slice_window
 from domain.dashboard_config import DashboardConfig
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.intent_type import IntentType
@@ -261,3 +263,91 @@ def assessed(observations: Sequence[Observation]) -> bool:
     of ten means two different things without it.
     """
     return all(observation.assessable for observation in observations)
+
+
+#: The window is cut into this many slices and only the last one counts as
+#: "recently". Three, so a 12-week window gives the prototype's own "Wk
+#: 9-12" -- expressed as a ratio, like `risk_drivers._PARTS`, so it survives
+#: a change to the window's length rather than hard-coding four weeks.
+_RECENT_PARTS = 3
+
+
+@dataclass(frozen=True)
+class NewlyFlagged:
+    """Accounts whose **first** indicator falls in the recent slice.
+
+    Not "accounts flagged recently": the flag is metric 10 and this is not
+    it (D12). This counts an account's first appearance of any of the ten
+    indicator families, which is the question the tile asks -- who is new to
+    the list, rather than who is on it.
+
+    Counted across the whole book and deliberately unfiltered, which is the
+    one place on this screen where that is true. An account's first
+    indicator is a fact about the account, not about the slice a reader is
+    looking through: narrowing to a region would make an account "new"
+    because the reader changed a dropdown, which is the opposite of what the
+    tile says.
+
+    `since` travels with the count because a bare "7" is unreadable -- the
+    number means nothing without the date it counts from.
+    """
+
+    employers: tuple[str, ...]
+    since: date
+    #: How many weeks the recent slice spans, for a screen that wants to say
+    #: "in the last four weeks" without recomputing it.
+    weeks: int
+
+    @property
+    def count(self) -> int:
+        return len(self.employers)
+
+
+def first_indicator_on(calls: Sequence[CallContext]) -> date | None:
+    """The date of the earliest call raising any indicator, or `None`.
+
+    Reads the same `FAMILIES` predicates `observe` does, including the
+    repeat-contact set it has to compute rather than match, so "an
+    indicator" means one thing on this screen. A family that cannot be
+    computed contributes nothing here and is not treated as absent -- it is
+    simply not evidence of a first anything.
+    """
+    mine = tuple(calls)
+    if not mine:
+        return None
+    repeat_refs = {pair.first.reference for pair in repeats(mine)}
+    hits = [
+        call.occurred_on
+        for call in mine
+        if call.reference in repeat_refs
+        or any(family.matches(call) for family in FAMILIES if family.computable and family.matches)
+    ]
+    return min(hits) if hits else None
+
+
+def newly_flagged(
+    calls: Sequence[CallContext], window: Window, *, parts: int = _RECENT_PARTS
+) -> NewlyFlagged | None:
+    """Accounts whose first indicator lands in the last slice of `window`.
+
+    `None` where the window is too short to slice, rather than nought: a
+    window that cannot be cut has not told us that nobody is new.
+    """
+    slices = slice_window(window, parts)
+    if not slices:
+        return None
+    recent = slices[-1]
+    by_employer: dict[str, list[CallContext]] = {}
+    for call in window.calls_in(tuple(calls)):
+        if call.employer_ref is not None:
+            by_employer.setdefault(call.employer_ref, []).append(call)
+    new = [
+        reference
+        for reference, mine in by_employer.items()
+        if (first := first_indicator_on(mine)) is not None and first >= recent.start
+    ]
+    return NewlyFlagged(
+        employers=tuple(sorted(new)),
+        since=recent.start,
+        weeks=round(((recent.end - recent.start).days + 1) / 7),
+    )

@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>NanoVox Insights</title>
     <!--
+      The three families `tokens.css` names in --display, --body and --mono.
+
+      Without these the stacks fall straight through to system-ui, so every
+      heading, figure and reference rendered in Segoe UI while the tokens
+      claimed Archivo — the application looked like a different product from
+      the prototype it was ported from, on every screen at once, and no
+      component was wrong.
+
+      Weights are the prototype's own set (`Prototype/v2/*.html`), not a
+      rounder-looking selection: a weight that is not fetched is synthesised
+      by the browser, which is how 600 becomes a smeared 400.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <!--
       Stamp the theme before first paint.
 
       Inline and synchronous on purpose. Run from the bundle instead, and the

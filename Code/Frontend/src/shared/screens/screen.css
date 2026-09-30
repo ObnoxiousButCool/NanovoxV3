@@ -239,13 +239,12 @@
   margin-top: 2px;
 }
 
+/* The header type lives on `.nv-tblwrap th`, which is the prototype's own
+   `thead th`. This used to restate it at 12px/0.04em and `calls.css` at
+   10.5px/0.05em, so three tables built from one component wore three
+   different header sizes. Only the border stays, which is this table's. */
 .nv-risktable thead th {
   border-top: 0;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  font-weight: 600;
 }
 
 .nv-risktable tbody th {

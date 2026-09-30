@@ -329,7 +329,15 @@ def build_account_response(detail: AccountDetail, query: InsightsQueryDep) -> Ac
             window_weeks=round(detail.repeat_rate_window.weeks),
             figure=FigureResponse.of(detail.repeat_rate),
         ),
-        risk=account_risk_response(detail.risk, detail.observations),
+        risk=account_risk_response(
+            detail.risk,
+            detail.observations,
+            # Passed here too, so the shared row reads identically on both
+            # screens. Unlike the renewal, lives are not restated anywhere
+            # else on this page, so leaving them out would be a real gap
+            # rather than a deliberate omission.
+            lives=detail.employer.enrolled,
+        ),
         risk_window_weeks=round(detail.risk_window.weeks),
         drift=DriftResponse(
             flagged=detail.drift.flagged,
