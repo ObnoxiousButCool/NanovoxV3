@@ -114,6 +114,27 @@ function InsightEvidence({ insight, issue = insight.issueKey }: { insight: Insig
   )
 }
 
+function InsightFactKeys({ insight }: { insight: Insight }) {
+  return (
+    <p className="nv-ai-read">
+      <span>Read from</span> {insight.factKeys.join(', ')}
+    </p>
+  )
+}
+
+/**
+ * The persistent "What to do" link for a card with no expand affordance of
+ * its own to hide it behind — the compact card grid (`/risk`) shows every
+ * card's action up front, the way the prototype's `insightStrip` always
+ * does, rather than gating it behind a click the way the read-first feed
+ * cards (`/exec`) do.
+ */
+function InsightAction({ insight }: { insight: Insight }) {
+  const issue = insight.issueKey
+  if (issue === null || issue === undefined || !isIssueKey(issue)) return null
+  return <IssueCue issue={issue} />
+}
+
 function KindChip({ insight }: { insight: Insight }) {
   return (
     <span className={`nv-ai-kind nv-ai-kind-${insight.kind.code.toLowerCase()}`}>
@@ -278,7 +299,9 @@ export function InsightFeed({
                       <KindChip insight={insight} />
                       <span className="nv-ai-order">{insight.severity.label}</span>
                     </button>
-                    <InsightBody insight={insight} expanded={expanded} />
+                    <p className="nv-ai-sentence">{insight.sentence}</p>
+                    {expanded ? <InsightFactKeys insight={insight} /> : null}
+                    <InsightAction insight={insight} />
                   </>
                 )}
               </li>

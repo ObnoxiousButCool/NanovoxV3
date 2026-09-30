@@ -21,7 +21,9 @@ from domain.aggregation.risk_flag import (
     exposure,
     flagged_share,
     months_until,
+    newly_flagged_count,
 )
+from domain.aggregation.trends import preceding
 from domain.dashboard_config import DashboardConfig
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
@@ -262,6 +264,64 @@ def test_a_book_where_nobody_is_eligible_is_withheld_not_zero(
 
     assert figure.withheld_reason is WithheldReason.NOT_ELIGIBLE
     assert figure.value is None
+
+
+# --- Newly flagged: this window against the equal-length one before it ----
+
+
+def test_flagged_only_now_counts_as_newly_flagged(config: DashboardConfig) -> None:
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+    current = assess(config, employer(), traffic, WINDOW)
+    prior = assess(config, employer(), traffic, preceding(WINDOW))
+
+    assert current.flagged is True
+    assert prior.eligible is False, "none of these calls fall inside the prior window"
+    assert newly_flagged_count([current], [prior]) == 1
+
+
+def test_flagged_in_both_windows_is_not_newly_flagged(config: DashboardConfig) -> None:
+    """Still flagged, not newly — the count is the first indicator firing,
+    not a running total of every account still flagged."""
+    earlier = (
+        call("P-0001", caller_ref="CB-2", outcome=Outcome.UNRESOLVED, on=day(-80)),
+        call("P-0002", caller_ref="CB-2", on=day(-77)),
+        call("P-0003", intent=IntentType.MARKET_TEST, on=day(-75)),
+    )
+    later = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+    both = earlier + later
+    current = assess(config, employer(), both, WINDOW)
+    prior = assess(config, employer(), both, preceding(WINDOW))
+
+    assert current.flagged is True
+    assert prior.flagged is True
+    assert newly_flagged_count([current], [prior]) == 0
+
+
+def test_an_ineligible_prior_window_still_counts_as_not_flagged_then(
+    config: DashboardConfig,
+) -> None:
+    """Eligibility is a floor on quoting the flag, not the flag itself — an
+    account crossing that floor between the two windows is exactly what
+    "newly" means here."""
+    traffic = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+    current = assess(config, employer(), traffic, WINDOW)
+    prior = assess(config, employer(), (), preceding(WINDOW))
+
+    assert prior.eligible is False
+    assert prior.flagged is False
+    assert newly_flagged_count([current], [prior]) == 1
 
 
 # --- The ten indicator families --------------------------------------------

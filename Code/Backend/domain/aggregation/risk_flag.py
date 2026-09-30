@@ -201,6 +201,22 @@ def exposure(assessments: Sequence[RiskAssessment], employers: Sequence[Employer
     )
 
 
+def newly_flagged_count(
+    current: Sequence[RiskAssessment], prior: Sequence[RiskAssessment]
+) -> int:
+    """Employers flagged now that were not flagged in the preceding window
+    of equal length (`trends.preceding`) — the first indicator firing, not a
+    running total of every account still flagged.
+
+    An employer ineligible in the prior window counts as not flagged then:
+    eligibility is a floor on quoting the flag (D2's `quotable`), not the
+    flag itself, so a call-count crossing the eligibility floor between the
+    two windows is exactly the "newly" this counts.
+    """
+    flagged_before = {a.employer_ref for a in prior if a.flagged}
+    return sum(1 for a in current if a.flagged and a.employer_ref not in flagged_before)
+
+
 def flagged_share(config: DashboardConfig, assessments: Sequence[RiskAssessment]) -> Figure:
     """Flagged employers as a share of the *eligible* ones.
 

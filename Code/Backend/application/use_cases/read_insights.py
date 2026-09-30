@@ -97,6 +97,7 @@ from domain.aggregation.risk_flag import (
     exposure,
     flagged_share,
     months_until,
+    newly_flagged_count,
 )
 from domain.aggregation.rules import (
     RuleRow,
@@ -312,6 +313,10 @@ class RiskResult:
     #: no gate that unlocks it, only a schema change (a termination/renewal
     #: outcome per employer) nobody has made.
     band_calibration: WithheldPanel
+    #: Flagged now, not flagged in the equal-length window before this one
+    #: (`risk_flag.newly_flagged_count`) — the same before/after comparison
+    #: `_exec_trends` already makes for call counts, applied to the flag.
+    newly_flagged: int
 
 
 class InsightsReader:
@@ -541,6 +546,10 @@ class GetAccountRisk:
         assessments = tuple(
             assess(self._config, employer, calls, window) for employer in scope.corpus.employers
         )
+        prior_assessments = tuple(
+            assess(self._config, employer, calls, preceding(window))
+            for employer in scope.corpus.employers
+        )
         assessed = tuple(
             AccountRisk(
                 assessment=assessment,
@@ -614,6 +623,7 @@ class GetAccountRisk:
             escalations_missed=len(missed),
             exit_language_calls=len(exit_language),
             band_calibration=BAND_CALIBRATION,
+            newly_flagged=newly_flagged_count(assessments, prior_assessments),
         )
 
 

@@ -4811,6 +4811,11 @@
             "title": "Ineligiblecount",
             "type": "integer"
           },
+          "newlyFlagged": {
+            "description": "Flagged now, not flagged in the equal-length window before this one \u2014 the flag's own version of the movement comparison the exec screen makes.",
+            "title": "Newlyflagged",
+            "type": "integer"
+          },
           "outcomes": {
             "description": "How the window's calls ended, every outcome including the ones at zero and in the workbook's order. Categories that reorder with the data cannot be compared against last week's chart.",
             "items": {
@@ -4860,6 +4865,7 @@
           "flaggedShare",
           "exposure",
           "bandCalibration",
+          "newlyFlagged",
           "escalationsTriggered",
           "escalationsMissed",
           "exitLanguageCalls"

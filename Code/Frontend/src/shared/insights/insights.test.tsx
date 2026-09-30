@@ -139,6 +139,16 @@ describe('the feed', () => {
     expect(screen.getByRole('link', { name: /What to do/ })).toBeInTheDocument()
   })
 
+  it('shows the what-to-do link up front, on a card with no expand of its own to hide it behind', () => {
+    // The compact card grid (`/risk`) has no per-card "click to reveal"
+    // affordance the way the read-first feed does, so its action cannot
+    // wait behind one either — unlike `factKeys`, which still does.
+    show(<InsightFeed data={{ ...GENERATED, insights: [insight({ issueKey: 'unresolved' })] }} />)
+
+    expect(screen.getByRole('link', { name: /What to do/ })).toBeInTheDocument()
+    expect(screen.queryByText(/first_contact_resolution/)).not.toBeInTheDocument()
+  })
+
   it('drops the link for a key this build holds back', async () => {
     // `brush_off` is held back with archetype (D14/C8a). A link to it would
     // focus the actions page on something it cannot show.

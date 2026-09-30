@@ -2602,6 +2602,11 @@ export interface components {
             /** Ineligiblecount */
             ineligibleCount: number;
             /**
+             * Newlyflagged
+             * @description Flagged now, not flagged in the equal-length window before this one — the flag's own version of the movement comparison the exec screen makes.
+             */
+            newlyFlagged: number;
+            /**
              * Outcomes
              * @description How the window's calls ended, every outcome including the ones at zero and in the workbook's order. Categories that reorder with the data cannot be compared against last week's chart.
              */

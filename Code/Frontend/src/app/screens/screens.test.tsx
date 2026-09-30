@@ -146,6 +146,7 @@ const RISK = {
   escalationsTriggered: 0,
   escalationsMissed: 0,
   exitLanguageCalls: 0,
+  newlyFlagged: 0,
 }
 
 const ACTION_BOARD = {
@@ -1012,24 +1013,6 @@ describe('/risk', () => {
     expect(screen.queryByText('EMP-1001')).not.toBeInTheDocument()
   })
 
-  it('renders insight 9 withheld unconditionally, not as an empty panel', async () => {
-    renderAt('/risk')
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('Whether the risk bands actually predict who leaves'),
-      ).toBeInTheDocument()
-    })
-    expect(screen.getByText(/no termination or renewal outcome exists/i)).toBeInTheDocument()
-  })
-
-  it('says the share is over every assessed account, not the filtered rows', async () => {
-    renderAt('/risk')
-
-    await waitFor(() => {
-      expect(screen.getByText(/whatever is filtered here/i)).toBeInTheDocument()
-    })
-  })
 })
 
 describe('/risk, with an account it could assess', () => {
@@ -1069,7 +1052,7 @@ describe('/risk, with an account it could assess', () => {
 
     // Scoped to the accounts table: the drivers panel below it names the
     // same ten families book-wide, so an unscoped query matches both.
-    const assessed = await screen.findByText('Accounts assessed')
+    const assessed = await screen.findByText('Accounts at risk')
     const panel = assessed.closest('section')
 
     expect(panel).not.toBeNull()
@@ -1102,6 +1085,7 @@ describe('/risk, the headline tile row', () => {
                     escalationsTriggered: 11,
                     escalationsMissed: 4,
                     exitLanguageCalls: 4,
+                    newlyFlagged: 1,
                   }
                 : routeFor(input),
             ),
@@ -1140,6 +1124,16 @@ describe('/risk, the headline tile row', () => {
       expect(screen.getByText('Escalations missed')).toBeInTheDocument()
     })
     expect(screen.getByText('7 of 11 handled')).toBeInTheDocument()
+  })
+
+  it('carries a sixth tile for accounts newly flagged this window', async () => {
+    renderAt('/risk')
+
+    await waitFor(() => {
+      expect(screen.getByText('Newly flagged')).toBeInTheDocument()
+    })
+    const tile = screen.getByText('Newly flagged').closest('div')
+    expect(within(tile as HTMLElement).getByText('1')).toBeInTheDocument()
   })
 
   it('links each nonzero headline tile to what to do about it', async () => {

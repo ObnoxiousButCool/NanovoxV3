@@ -370,6 +370,12 @@ class RiskScreenResponse(CamelModel):
     band_calibration: WithheldPanelResponse = Field(
         description="Insight 9, withheld until a termination/renewal outcome exists per employer."
     )
+    newly_flagged: int = Field(
+        description=(
+            "Flagged now, not flagged in the equal-length window before this one — "
+            "the flag's own version of the movement comparison the exec screen makes."
+        )
+    )
     escalations_triggered: int = Field(description="Metric 6's denominator, over this window.")
     escalations_missed: int = Field(
         description="Warranted and not handled — `Escalation.missed`'s own definition."
@@ -439,6 +445,7 @@ def build_risk_response(
             why=result.band_calibration.why,
             unlocked_by=result.band_calibration.unlocked_by,
         ),
+        newly_flagged=result.newly_flagged,
         exposure=ExposureResponse(
             employers=list(result.exposure.employers),
             lives=result.exposure.lives,
