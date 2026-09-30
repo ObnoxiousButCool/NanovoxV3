@@ -524,7 +524,7 @@ const EVIDENCE = {
   resolutionReason: null,
   transcriptMissing: false,
   analysis: unrunAnalysis('CB-7700001'),
-  turns: [{ seq: 0, speaker: 'AGENT', text: 'Choice Administrators, how can I help?' }],
+  turns: [{ sequence: 0, role: 'AGENT', text: 'Choice Administrators, how can I help?' }],
 }
 
 function routeFor(url: string): unknown {

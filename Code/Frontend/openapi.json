@@ -1357,13 +1357,6 @@
             "title": "Callertype",
             "type": "string"
           },
-          "controlExceptions": {
-            "items": {
-              "$ref": "#/components/schemas/CodedValue"
-            },
-            "title": "Controlexceptions",
-            "type": "array"
-          },
           "employerName": {
             "anyOf": [
               {
@@ -1385,26 +1378,6 @@
               }
             ],
             "title": "Employerref"
-          },
-          "knowledgeFailure": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/KnowledgeFailureResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "processGap": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProcessGapResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
           },
           "reference": {
             "title": "Reference",
@@ -1429,14 +1402,6 @@
             "description": "Why the prototype's 'Rules in play' (every rule_ref the call cites, quoted from the rulebook) has no counterpart here. Said rather than rendered as an empty section beside a full one.",
             "title": "Rulesunavailable",
             "type": "string"
-          },
-          "signals": {
-            "description": "Empty when extraction has not reached this call, never a stand-in for 'none fired'.",
-            "items": {
-              "$ref": "#/components/schemas/SignalRaisedResponse"
-            },
-            "title": "Signals",
-            "type": "array"
           },
           "transcriptMissing": {
             "description": "True when the call is stored without a transcript. Distinct from an empty conversation, which is not a thing that happens.",
@@ -2495,6 +2460,18 @@
       "EvidencedItem": {
         "description": "Something a layer found, with the line it found it on.\n\nEvery quote here survived evidence checking against the transcript: an\nitem whose quote could not be located is rejected and never stored\n(plan \u00a77, \"Evidence validation, every LLM layer\"). `turnSeq` indexes\nthe `turns` on the same response, so the drawer can point at the line.",
         "properties": {
+          "ownerTeam": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signals only. The team the Signal Taxonomy sheet makes answerable for this type -- fixed per type like `severity`, never decided per call.",
+            "title": "Ownerteam"
+          },
           "quote": {
             "title": "Quote",
             "type": "string"
@@ -3339,31 +3316,6 @@
         "title": "IssueResponse",
         "type": "object"
       },
-      "KnowledgeFailureResponse": {
-        "description": "Schema field 8: the rule cited, and the statement it should have\nfollowed \u2014 never a correction, because D7 is open and this is not an\nagent-conduct finding (see `KnowledgeFailure`'s own docstring).",
-        "properties": {
-          "correctStatement": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Correctstatement"
-          },
-          "ruleId": {
-            "title": "Ruleid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "ruleId"
-        ],
-        "title": "KnowledgeFailureResponse",
-        "type": "object"
-      },
       "L1PanelResponse": {
         "description": "Deterministic extraction. Code, no model \u2014 the same transcript gives\nthe same answer every time, which is why it has no provenance.",
         "properties": {
@@ -3827,6 +3779,7 @@
                 "type": "null"
               }
             ],
+            "description": "Words, not the Touchpoints-sheet reference -- the same `touchpoint_label` the calls table and the risk screen's drivers panel use, so one reader never meets `denial_letter_eob` on one screen and the sheet's own words on the next.",
             "title": "Processgaptouchpoint"
           },
           "processGapType": {
@@ -4584,46 +4537,6 @@
         "title": "PlaybookResponse",
         "type": "object"
       },
-      "ProcessGapResponse": {
-        "description": "Schema field 15, with the lifecycle status the sheet requires.",
-        "properties": {
-          "proposedChange": {
-            "title": "Proposedchange",
-            "type": "string"
-          },
-          "raisedBy": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CodedValue"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "status": {
-            "$ref": "#/components/schemas/CodedValue"
-          },
-          "touchpoint": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Words, not the Touchpoints-sheet reference \u2014 see `touchpoint_label`.",
-            "title": "Touchpoint"
-          }
-        },
-        "required": [
-          "proposedChange",
-          "status"
-        ],
-        "title": "ProcessGapResponse",
-        "type": "object"
-      },
       "ProductLine": {
         "enum": [
           "dental",
@@ -5256,28 +5169,6 @@
           "total"
         ],
         "title": "SelfInflictedResponse",
-        "type": "object"
-      },
-      "SignalRaisedResponse": {
-        "description": "One signal, plus the severity and owner the taxonomy fixes per type.",
-        "properties": {
-          "ownerTeam": {
-            "title": "Ownerteam",
-            "type": "string"
-          },
-          "severity": {
-            "$ref": "#/components/schemas/CodedValue"
-          },
-          "signal": {
-            "$ref": "#/components/schemas/CodedValue"
-          }
-        },
-        "required": [
-          "signal",
-          "severity",
-          "ownerTeam"
-        ],
-        "title": "SignalRaisedResponse",
         "type": "object"
       },
       "SignalType": {

@@ -187,11 +187,8 @@ class Container:
         return ListCalls(self.insights_reader())
 
     def read_call_evidence(self) -> ReadCallEvidence:
-        # The same reader every figure uses, so a call's evidence panel
-        # cannot show tags the rest of the dashboard would disagree with.
         return ReadCallEvidence(
             self.call_repository,
-            self.insights_reader(),
             self.call_extraction_repository,
             self.reference_lookup,
         )

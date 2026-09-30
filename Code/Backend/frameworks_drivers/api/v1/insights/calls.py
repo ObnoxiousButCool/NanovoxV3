@@ -165,36 +165,6 @@ class TurnResponse(CamelModel):
     text: str
 
 
-class SignalRaisedResponse(CamelModel):
-    """One signal, plus the severity and owner the taxonomy fixes per type."""
-
-    signal: CodedValue
-    severity: CodedValue
-    owner_team: str
-
-
-class KnowledgeFailureResponse(CamelModel):
-    """Schema field 8: the rule cited, and the statement it should have
-    followed — never a correction, because D7 is open and this is not an
-    agent-conduct finding (see `KnowledgeFailure`'s own docstring).
-    """
-
-    rule_id: str
-    correct_statement: str | None = None
-
-
-class ProcessGapResponse(CamelModel):
-    """Schema field 15, with the lifecycle status the sheet requires."""
-
-    proposed_change: str
-    touchpoint: str | None = Field(
-        default=None,
-        description="Words, not the Touchpoints-sheet reference — see `touchpoint_label`.",
-    )
-    raised_by: CodedValue | None = None
-    status: CodedValue
-
-
 class CallEvidenceResponse(CamelModel):
     reference: str
     caller_type: str
@@ -220,15 +190,6 @@ class CallEvidenceResponse(CamelModel):
             "empty conversation, which is not a thing that happens."
         )
     )
-    signals: list[SignalRaisedResponse] = Field(
-        default_factory=list,
-        description=(
-            "Empty when extraction has not reached this call, never a stand-in for 'none fired'."
-        ),
-    )
-    knowledge_failure: KnowledgeFailureResponse | None = None
-    process_gap: ProcessGapResponse | None = None
-    control_exceptions: list[CodedValue] = Field(default_factory=list)
     rules_unavailable: str = Field(
         description=(
             "Why the prototype's 'Rules in play' (every rule_ref the call cites, "
@@ -255,8 +216,8 @@ class CallEvidenceResponse(CamelModel):
 RULES_UNAVAILABLE = (
     "The prototype also quotes every rule_ref this call cites, in full, from the "
     "rulebook. A cited rule is only recorded here when it names a knowledge "
-    "failure (below), and even then the Rules sheets carry no rule text to "
-    "quote — only which layer, area and confidence grade it has."
+    "failure, which the L3 panel carries, and even then the Rules sheets hold no "
+    "rule text to quote — only which layer, area and confidence grade it has."
 )
 
 #: Why each prototype column is absent. Shipped to the client so the gap is
@@ -541,42 +502,6 @@ def _evidence_response(evidence: CallEvidence) -> CallEvidenceResponse:
             for turn in evidence.turns
         ],
         transcript_missing=evidence.transcript_missing,
-        signals=[
-            SignalRaisedResponse(
-                signal=coded(signal.signal_type),
-                severity=coded(signal.severity),
-                owner_team=signal.owner_team,
-            )
-            for signal in evidence.signals
-        ],
-        knowledge_failure=(
-            KnowledgeFailureResponse(
-                rule_id=evidence.knowledge_failure.rule_id,
-                correct_statement=evidence.knowledge_failure.correct_statement,
-            )
-            if evidence.knowledge_failure is not None
-            and evidence.knowledge_failure.rule_id is not None
-            else None
-        ),
-        process_gap=(
-            ProcessGapResponse(
-                proposed_change=evidence.process_gap.proposed_change,
-                touchpoint=(
-                    touchpoint_label(evidence.process_gap.touchpoint)
-                    if evidence.process_gap.touchpoint is not None
-                    else None
-                ),
-                raised_by=coded(evidence.process_gap.raised_by)
-                if evidence.process_gap.raised_by is not None
-                else None,
-                status=coded(evidence.process_gap.status),
-            )
-            if evidence.process_gap is not None
-            and evidence.process_gap.proposed_change is not None
-            and evidence.process_gap.status is not None
-            else None
-        ),
-        control_exceptions=[coded(item) for item in evidence.control_exceptions],
         rules_unavailable=RULES_UNAVAILABLE,
         analysis=analysis_response(evidence.analysis, caller_ref=evidence.caller_ref),
     )

@@ -196,6 +196,27 @@ async def test_a_call_with_no_transcript_says_so(
 # the transcript) --------------------------------------------------------
 
 
+#: What the pipeline stamps on a row once a layer has finished with it.
+#: `analysis_response` decides a panel `ran` from these and nothing else, so
+#: a seed that sets L3/L4 fields without them is not a smaller version of a
+#: real row -- it is a shape `RunExtractionOverCorpus` never produces.
+LAYER_RUNS: dict[str, object] = {
+    "l2_provider": "openai",
+    "l2_model": "test-model",
+    "l2_prompt_version": "v1",
+    "l2_completed_at": datetime(2026, 9, 20, 11, 0, tzinfo=timezone.utc),
+    "l3_provider": "openai",
+    "l3_model": "test-model",
+    "l3_prompt_version": "v1",
+    "rubric_version": "v1",
+    "l3_completed_at": datetime(2026, 9, 20, 11, 0, tzinfo=timezone.utc),
+    "l4_provider": "openai",
+    "l4_model": "test-model",
+    "l4_prompt_version": "v1",
+    "l4_completed_at": datetime(2026, 9, 20, 11, 0, tzinfo=timezone.utc),
+}
+
+
 async def seed_a_tagged_call(
     session_factory: async_sessionmaker[AsyncSession],
     *,
@@ -243,6 +264,11 @@ async def seed_a_tagged_call(
             "complaint_present": False,
             "escalation_triggered": False,
             "knowledge_failure_present": False,
+            # Layer-run provenance, because the panels read `ran` off it and a
+            # row without it is a row the pipeline could not have written. A
+            # fixture that omitted it would have the endpoint report "not run"
+            # over fields the fixture had just set.
+            **LAYER_RUNS,
         }
         fields.update(extraction)
         session.add(CallExtractionRow(call_id=call.id, **fields))
@@ -294,15 +320,22 @@ async def test_the_evidence_response_carries_the_signals_this_call_raised(
                 complaint_present=False,
                 escalation_triggered=False,
                 knowledge_failure_present=False,
+                **LAYER_RUNS,
             )
         )
         session.add(SignalRow(call_id=call.id, type="retention_risk", quote="q", turn_seq=1))
 
     body = client.get("/api/v1/insights/calls/C-9102").json()
 
-    assert body["signals"] == [
+    # On the L4 panel, where the layer that raised it puts it. The flat copy
+    # this response used to carry alongside came from the dashboard's reader
+    # rather than from the call's own extraction -- two sources for one fact,
+    # free to disagree.
+    assert body["analysis"]["l4"]["signals"] == [
         {
-            "signal": {"code": "retention_risk", "label": "Retention risk"},
+            "type": {"code": "retention_risk", "label": "Retention risk"},
+            "quote": "q",
+            "turnSeq": 1,
             "severity": {"code": "CRITICAL", "label": "Critical"},
             "ownerTeam": "Account Management",
         }
@@ -325,12 +358,12 @@ async def test_the_evidence_response_carries_a_knowledge_failure_when_present(
 
     body = client.get("/api/v1/insights/calls/C-9103").json()
 
-    assert body["knowledgeFailure"] == {
-        "ruleId": "P-014",
-        "correctStatement": (
-            "COBRA election runs 60 days from the later of the notice or the loss date."
-        ),
-    }
+    l3 = body["analysis"]["l3"]
+    assert l3["knowledgeFailurePresent"] is True
+    assert l3["knowledgeFailureRuleId"] == "P-014"
+    assert l3["knowledgeFailureCorrectStatement"] == (
+        "COBRA election runs 60 days from the later of the notice or the loss date."
+    )
 
 
 @pytest.mark.asyncio
@@ -342,7 +375,10 @@ async def test_the_evidence_response_has_no_knowledge_failure_when_absent(
 
     body = client.get("/api/v1/insights/calls/C-9104").json()
 
-    assert body["knowledgeFailure"] is None
+    # `present=False` is the layer saying it looked and found none, which is
+    # not the same as the null a layer that never ran leaves.
+    assert body["analysis"]["l3"]["knowledgeFailurePresent"] is False
+    assert body["analysis"]["l3"]["knowledgeFailureRuleId"] is None
 
 
 @pytest.mark.asyncio
@@ -362,16 +398,15 @@ async def test_the_evidence_response_carries_a_process_gap_when_present(
 
     body = client.get("/api/v1/insights/calls/C-9105").json()
 
-    assert body["processGap"] == {
-        "proposedChange": "State the appeal deadline on the first page.",
-        # The Touchpoints-sheet reference, in words — the same
-        # `touchpoint_label` the calls table and the risk screen's drivers
-        # panel use, so a reference nobody wrote a workbook label for still
-        # shows the sheet's own words.
-        "touchpoint": "Denial letter / EOB",
-        "raisedBy": {"code": "AGENT", "label": "Agent"},
-        "status": {"code": "UNVALIDATED", "label": "Not yet validated"},
-    }
+    l4 = body["analysis"]["l4"]
+    assert l4["processGapPresent"] is True
+    assert l4["processGapProposedChange"] == "State the appeal deadline on the first page."
+    # The Touchpoints-sheet reference, in words — the same `touchpoint_label`
+    # the calls table and the risk screen's drivers panel use, so a reader
+    # never meets the raw slug on one screen and the sheet's words on the next.
+    assert l4["processGapTouchpoint"] == "Denial letter / EOB"
+    assert l4["processGapRaisedBy"] == {"code": "AGENT", "label": "Agent"}
+    assert l4["processGapStatus"] == {"code": "UNVALIDATED", "label": "Not yet validated"}
 
 
 @pytest.mark.asyncio
@@ -386,7 +421,9 @@ async def test_the_evidence_response_carries_control_exceptions(
 
     body = client.get("/api/v1/insights/calls/C-9106").json()
 
-    assert body["controlExceptions"] == [
+    # L1's own output: a control exception is found deterministically, so it
+    # sits on the panel of the layer that found it.
+    assert body["analysis"]["l1"]["controlExceptions"] == [
         {"code": "no_recording_disclosure", "label": "No recording disclosure"}
     ]
 
@@ -427,10 +464,16 @@ async def test_the_evidence_response_has_no_tags_before_extraction_reaches_it(
 
     body = client.get("/api/v1/insights/calls/C-9107").json()
 
-    assert body["signals"] == []
-    assert body["knowledgeFailure"] is None
-    assert body["processGap"] is None
-    assert body["controlExceptions"] == []
+    analysis = body["analysis"]
+    # Four panels saying nothing has run, rather than four empty ones: a panel
+    # rendering "no signals" for a layer that never ran reports a clean call.
+    for layer in ("l1", "l2", "l3", "l4"):
+        assert analysis[layer]["ran"] is False
+        assert analysis[layer]["notRunBecause"]
+    assert analysis["l4"]["signals"] == []
+    assert analysis["l1"]["controlExceptions"] == []
+    assert analysis["l3"]["knowledgeFailurePresent"] is None
+    assert analysis["l4"]["processGapPresent"] is None
 
 
 # --- The workbench ---------------------------------------------------------

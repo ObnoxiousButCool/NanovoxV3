@@ -1063,14 +1063,10 @@ export interface components {
             callerRef: string;
             /** Callertype */
             callerType: string;
-            /** Controlexceptions */
-            controlExceptions?: components["schemas"]["CodedValue"][];
             /** Employername */
             employerName?: string | null;
             /** Employerref */
             employerRef?: string | null;
-            knowledgeFailure?: components["schemas"]["KnowledgeFailureResponse"] | null;
-            processGap?: components["schemas"]["ProcessGapResponse"] | null;
             /** Reference */
             reference: string;
             /** Resolutionreason */
@@ -1082,11 +1078,6 @@ export interface components {
              * @description Why the prototype's 'Rules in play' (every rule_ref the call cites, quoted from the rulebook) has no counterpart here. Said rather than rendered as an empty section beside a full one.
              */
             rulesUnavailable: string;
-            /**
-             * Signals
-             * @description Empty when extraction has not reached this call, never a stand-in for 'none fired'.
-             */
-            signals?: components["schemas"]["SignalRaisedResponse"][];
             /**
              * Transcriptmissing
              * @description True when the call is stored without a transcript. Distinct from an empty conversation, which is not a thing that happens.
@@ -1571,6 +1562,11 @@ export interface components {
          *     the `turns` on the same response, so the drawer can point at the line.
          */
         EvidencedItem: {
+            /**
+             * Ownerteam
+             * @description Signals only. The team the Signal Taxonomy sheet makes answerable for this type -- fixed per type like `severity`, never decided per call.
+             */
+            ownerTeam?: string | null;
             /** Quote */
             quote: string;
             /** @description Signals only. Fixed per type by the Signal Taxonomy sheet. */
@@ -1948,18 +1944,6 @@ export interface components {
             unit: string;
         };
         /**
-         * KnowledgeFailureResponse
-         * @description Schema field 8: the rule cited, and the statement it should have
-         *     followed — never a correction, because D7 is open and this is not an
-         *     agent-conduct finding (see `KnowledgeFailure`'s own docstring).
-         */
-        KnowledgeFailureResponse: {
-            /** Correctstatement */
-            correctStatement?: string | null;
-            /** Ruleid */
-            ruleId: string;
-        };
-        /**
          * L1PanelResponse
          * @description Deterministic extraction. Code, no model — the same transcript gives
          *     the same answer every time, which is why it has no provenance.
@@ -2076,7 +2060,10 @@ export interface components {
             processGapProposedChange?: string | null;
             processGapRaisedBy?: components["schemas"]["CodedValue"] | null;
             processGapStatus?: components["schemas"]["CodedValue"] | null;
-            /** Processgaptouchpoint */
+            /**
+             * Processgaptouchpoint
+             * @description Words, not the Touchpoints-sheet reference -- the same `touchpoint_label` the calls table and the risk screen's drivers panel use, so one reader never meets `denial_letter_eob` on one screen and the sheet's own words on the next.
+             */
             processGapTouchpoint?: string | null;
             /** Processgaptype */
             processGapType?: string | null;
@@ -2471,21 +2458,6 @@ export interface components {
             why: string;
         };
         /**
-         * ProcessGapResponse
-         * @description Schema field 15, with the lifecycle status the sheet requires.
-         */
-        ProcessGapResponse: {
-            /** Proposedchange */
-            proposedChange: string;
-            raisedBy?: components["schemas"]["CodedValue"] | null;
-            status: components["schemas"]["CodedValue"];
-            /**
-             * Touchpoint
-             * @description Words, not the Touchpoints-sheet reference — see `touchpoint_label`.
-             */
-            touchpoint?: string | null;
-        };
-        /**
          * ProductLine
          * @enum {string}
          */
@@ -2789,16 +2761,6 @@ export interface components {
             loggedProcessDefect: components["schemas"]["FigureResponse"];
             /** @description Calls meeting ANY component, over distinct calls. Not the sum of the three — a call can be both a repeat and a process defect. */
             total: components["schemas"]["FigureResponse"];
-        };
-        /**
-         * SignalRaisedResponse
-         * @description One signal, plus the severity and owner the taxonomy fixes per type.
-         */
-        SignalRaisedResponse: {
-            /** Ownerteam */
-            ownerTeam: string;
-            severity: components["schemas"]["CodedValue"];
-            signal: components["schemas"]["CodedValue"];
         };
         /**
          * SignalType
