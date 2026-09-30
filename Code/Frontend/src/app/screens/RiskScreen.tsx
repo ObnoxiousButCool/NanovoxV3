@@ -298,13 +298,19 @@ function RiskBody({
 
       <div className="nv-c12 nv-risk-accounts">
         <Panel
-          title="Accounts assessed"
-          sub={
-            <>
-              Most indicators first, then soonest renewal. Showing{' '}
-              {data.assessed.length} of {data.assessedCount} assessed — the share and
-              exposure above are over all {data.assessedCount}, whatever is filtered here.
-            </>
+          title="Accounts at risk"
+          sub="Select an account for its calls and evidence. Select a tag for what to do about it."
+          info={
+            <Tooltip>
+              <p>
+                Ranked by how many <b>unrelated</b> indicators the account&rsquo;s calls raise,
+                then by how soon it renews.
+              </p>
+              <p>
+                Risk movement per account (improving or worsening) is withheld: most accounts
+                have one call in batch 1, so there is no earlier period to compare against.
+              </p>
+            </Tooltip>
           }
           chip={<EpistemicChip kind="observed" />}
           actions={
@@ -559,51 +565,7 @@ function RiskBody({
         </Panel>
       </div>
 
-      <div className="nv-c12 nv-risk-support-wrap">
-        <details className="nv-risk-support">
-          <summary>Supporting evidence and eligibility limits</summary>
-          <div className="nv-risk-support-grid">
-            <Panel
-              title="Not enough calls to assess"
-              sub="Kept apart on purpose. Too few calls to assess is not a finding of low risk."
-              chip={<EpistemicChip kind="observed" />}
-            >
-              {data.ineligible.length === 0 ? (
-                <Empty>Every employer in scope had enough calls to assess.</Empty>
-              ) : (
-                <div className="nv-fires">
-                  {data.ineligible.map((ref) => (
-                    <Link
-                      key={ref}
-                      className="nv-fire"
-                      to={`/accounts/${encodeURIComponent(ref)}`}
-                    >
-                      {names.get(ref)?.name ?? ref}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </Panel>
-            <BandCalibrationPanel panel={data.bandCalibration} />
-          </div>
-        </details>
-      </div>
     </div>
-  )
-}
-
-/** Insight 9, withheld unconditionally — no gate unlocks it, only a schema
- * change (a termination/renewal outcome per employer) nobody has made. */
-function BandCalibrationPanel({
-  panel,
-}: {
-  panel: RiskScreenData['bandCalibration']
-}) {
-  return (
-    <Panel title={panel.question} chip={<EpistemicChip kind="inference" />}>
-      <Note>{panel.why}</Note>
-      <Note>{panel.unlockedBy}</Note>
-    </Panel>
   )
 }
 

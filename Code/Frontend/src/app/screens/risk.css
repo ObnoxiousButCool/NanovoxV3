@@ -163,8 +163,14 @@
   line-height: 1.5;
 }
 
-.nv-risk-insights .nv-ai-feed > li > .nv-ai-detail {
+/* The card's own "What to do", always shown — the prototype's `insightStrip`
+   footer carries it unconditionally, unlike the read-first feed's cards. */
+.nv-risk-insights .nv-ai-feed > li > .nv-todo {
   order: 3;
+}
+
+.nv-risk-insights .nv-ai-feed > li > .nv-ai-read {
+  order: 4;
   margin: 0;
   padding-left: 10px;
 }
@@ -226,7 +232,7 @@
 .nv-risk-accounts .nv-tblwrap td:nth-child(6) { width: 15%; }
 
 .nv-risk-account-name {
-  font-size: 13.5px;
+  font-size: 14.5px;
   line-height: 1.2;
   font-weight: 600;
 }
@@ -235,7 +241,7 @@
   display: block;
   margin-top: 2px;
   color: var(--ink-3);
-  font-size: 11.5px;
+  font-size: 12.5px;
   line-height: 1.25;
 }
 
@@ -334,49 +340,6 @@
   grid-column: 3 / -1;
   font-size: 11.5px;
   line-height: 1.35;
-}
-
-.nv-risk .nv-support-wrap {
-  margin-top: 0;
-}
-
-.nv-risk-support {
-  border-top: 1px solid var(--rule);
-  padding-top: 12px;
-}
-
-.nv-risk-support > summary {
-  width: fit-content;
-  color: var(--brand);
-  cursor: pointer;
-  font-size: 13.5px;
-  font-weight: 600;
-  list-style: none;
-}
-
-.nv-risk-support > summary::-webkit-details-marker {
-  display: none;
-}
-
-.nv-risk-support > summary::before {
-  content: '›';
-  display: inline-block;
-  margin-right: 8px;
-  transition: transform 120ms ease;
-}
-
-.nv-risk-support[open] > summary::before {
-  transform: rotate(90deg);
-}
-
-.nv-risk-support-grid {
-  display: grid;
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.nv-risk-support-grid > .nv-panel {
-  min-width: 0;
 }
 
 /* The two weekly panels are the only half-width cells on this page; the
