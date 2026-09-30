@@ -439,6 +439,18 @@
             "title": "Callids",
             "type": "array"
           },
+          "callsOnAccount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many of this action's cited calls belong to the account the board was scoped to. Null on the unscoped board, where there is no account to count against \u2014 never nought, which would read as a card touching none of an account's calls. **The card's own figures stay corpus-wide.** `title` counts every call that raised the signal, because that is the piece of work: one card, one owner team, worked once. Re-counting it per account would describe a different job from the one on the board and make the same card disagree with itself between two screens. This travels beside that number so an account page can show both rather than presenting the book's figure as the account's.",
+            "title": "Callsonaccount"
+          },
           "createdAt": {
             "format": "date-time",
             "title": "Createdat",
@@ -485,6 +497,18 @@
               }
             ],
             "title": "Issuekey"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The action's name with no count in it \u2014 the playbook's own label, which `title` was composed from before '\u2014 N calls' was appended. Sent on the board only. A screen showing its own figure beside the card's needs the name without a number in it, and the alternative is the client cutting the count back off prose the server wrote.",
+            "title": "Label"
           },
           "log": {
             "description": "Oldest first. Append-only.",
@@ -1267,11 +1291,63 @@
         "title": "BucketResponse",
         "type": "object"
       },
+      "CallAnalysisResponse": {
+        "description": "Four panels for one call.",
+        "properties": {
+          "l1": {
+            "$ref": "#/components/schemas/L1PanelResponse"
+          },
+          "l2": {
+            "$ref": "#/components/schemas/L2PanelResponse"
+          },
+          "l3": {
+            "$ref": "#/components/schemas/L3PanelResponse"
+          },
+          "l4": {
+            "$ref": "#/components/schemas/L4PanelResponse"
+          }
+        },
+        "required": [
+          "l1",
+          "l2",
+          "l3",
+          "l4"
+        ],
+        "title": "CallAnalysisResponse",
+        "type": "object"
+      },
       "CallEvidenceResponse": {
         "properties": {
+          "agentName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentname"
+          },
           "agentRef": {
             "title": "Agentref",
             "type": "string"
+          },
+          "analysis": {
+            "$ref": "#/components/schemas/CallAnalysisResponse",
+            "description": "What the pipeline made of this call, in five panels: L1, L2, L3, L4 and the values derived in code afterwards. Always present \u2014 a call nothing has run on gets five panels saying so, because that is the answer to what we know about it, and a null would render as a section that failed to load."
+          },
+          "callerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who rang, from the Member or Contact sheet. Null where the reference matches nobody -- a gap in reference data, not an anonymous caller, which is why the reference is sent as well and never replaced by it.",
+            "title": "Callername"
           },
           "callerRef": {
             "title": "Callerref",
@@ -1287,6 +1363,17 @@
             },
             "title": "Controlexceptions",
             "type": "array"
+          },
+          "employerName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employername"
           },
           "employerRef": {
             "anyOf": [
@@ -1371,7 +1458,8 @@
           "agentRef",
           "resolutionStatus",
           "transcriptMissing",
-          "rulesUnavailable"
+          "rulesUnavailable",
+          "analysis"
         ],
         "title": "CallEvidenceResponse",
         "type": "object"
@@ -1379,6 +1467,18 @@
       "CallRowResponse": {
         "description": "One row of the workbench.",
         "properties": {
+          "agentName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the Agent Roster. Null for an agent the roster does not know, which is why the reference travels with it rather than being replaced.",
+            "title": "Agentname"
+          },
           "agentRef": {
             "anyOf": [
               {
@@ -2392,6 +2492,40 @@
         "title": "EmployerOptionResponse",
         "type": "object"
       },
+      "EvidencedItem": {
+        "description": "Something a layer found, with the line it found it on.\n\nEvery quote here survived evidence checking against the transcript: an\nitem whose quote could not be located is rejected and never stored\n(plan \u00a77, \"Evidence validation, every LLM layer\"). `turnSeq` indexes\nthe `turns` on the same response, so the drawer can point at the line.",
+        "properties": {
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signals only. Fixed per type by the Signal Taxonomy sheet."
+          },
+          "turnSeq": {
+            "title": "Turnseq",
+            "type": "integer"
+          },
+          "type": {
+            "$ref": "#/components/schemas/CodedValue"
+          }
+        },
+        "required": [
+          "type",
+          "quote",
+          "turnSeq"
+        ],
+        "title": "EvidencedItem",
+        "type": "object"
+      },
       "ExecScorecardResponse": {
         "properties": {
           "areaOfConcern": {
@@ -3230,6 +3364,522 @@
         "title": "KnowledgeFailureResponse",
         "type": "object"
       },
+      "L1PanelResponse": {
+        "description": "Deterministic extraction. Code, no model \u2014 the same transcript gives\nthe same answer every time, which is why it has no provenance.",
+        "properties": {
+          "callerRef": {
+            "title": "Callerref",
+            "type": "string"
+          },
+          "controlExceptions": {
+            "description": "Schema field 7. Never carries missing_benefit_disclosure: metric 7 is deterministic and a greeting check cannot prove that one.",
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Controlexceptions",
+            "type": "array"
+          },
+          "notRunBecause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notrunbecause"
+          },
+          "ran": {
+            "title": "Ran",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ran",
+          "callerRef"
+        ],
+        "title": "L1PanelResponse",
+        "type": "object"
+      },
+      "L2PanelResponse": {
+        "description": "Classification. What the call was about, and how it ended.",
+        "properties": {
+          "brokerMatchesEmployerOfRecord": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the broker named aloud is the employer's broker of record. Null when no broker was named, or when the employer has none on file.",
+            "title": "Brokermatchesemployerofrecord"
+          },
+          "brokerNamedAloud": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brokernamedaloud"
+          },
+          "brokerRef": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brokerref"
+          },
+          "brokerSentiment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The workbook's own wording, so it is not re-labelled.",
+            "title": "Category"
+          },
+          "complaintAttributedTo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "complaintPresent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complaintpresent"
+          },
+          "escalationRequestedByCaller": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalationrequestedbycaller"
+          },
+          "escalationTriggered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalationtriggered"
+          },
+          "impactScope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "impactScopeCount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The N the caller stated. Null for the two buckets that are one person by definition. This is the caller's claim, never our count.",
+            "title": "Impactscopecount"
+          },
+          "intent": {
+            "items": {
+              "$ref": "#/components/schemas/EvidencedItem"
+            },
+            "title": "Intent",
+            "type": "array"
+          },
+          "notRunBecause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notrunbecause"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "primaryIssue": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primaryissue"
+          },
+          "productLines": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Productlines",
+            "type": "array"
+          },
+          "ran": {
+            "title": "Ran",
+            "type": "boolean"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LayerRunResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "secondaryIssues": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Secondaryissues",
+            "type": "array"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "touchpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Touchpoint"
+          }
+        },
+        "required": [
+          "ran"
+        ],
+        "title": "L2PanelResponse",
+        "type": "object"
+      },
+      "L3PanelResponse": {
+        "description": "Quality and knowledge.",
+        "properties": {
+          "knowledgeFailureCorrectStatement": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledgefailurecorrectstatement"
+          },
+          "knowledgeFailurePresent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledgefailurepresent"
+          },
+          "knowledgeFailureRuleId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledgefailureruleid"
+          },
+          "markers": {
+            "description": "Markers that survived evidence checking. A score with no marker trail is not auditable, so the trail travels with the score.",
+            "items": {
+              "$ref": "#/components/schemas/MarkerResponse"
+            },
+            "title": "Markers",
+            "type": "array"
+          },
+          "notRunBecause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notrunbecause"
+          },
+          "qualityScore": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualityscore"
+          },
+          "qualityStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "qualityTier": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ran": {
+            "title": "Ran",
+            "type": "boolean"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LayerRunResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ran"
+        ],
+        "title": "L3PanelResponse",
+        "type": "object"
+      },
+      "L4PanelResponse": {
+        "description": "Signals and gaps.",
+        "properties": {
+          "escalationHandled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escalationhandled"
+          },
+          "escalationTriggerType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notRunBecause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notrunbecause"
+          },
+          "preventable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Call Tag Schema field 18. Computed in code, like field 17. Yes, Partly or No \u2014 already the words a reader wants, so it carries no label.",
+            "title": "Preventable"
+          },
+          "processGapPresent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processgappresent"
+          },
+          "processGapProposedChange": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processgapproposedchange"
+          },
+          "processGapRaisedBy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "processGapStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "processGapTouchpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processgaptouchpoint"
+          },
+          "processGapType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processgaptype"
+          },
+          "ran": {
+            "title": "Ran",
+            "type": "boolean"
+          },
+          "rootCauseOwner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodedValue"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Call Tag Schema field 17. Computed in code from complaint and signals, never asked of a model."
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LayerRunResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "signals": {
+            "description": "Distinct types, worst severity first. Five instances of one problem is one problem; three different problems is an account coming apart.",
+            "items": {
+              "$ref": "#/components/schemas/EvidencedItem"
+            },
+            "title": "Signals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ran"
+        ],
+        "title": "L4PanelResponse",
+        "type": "object"
+      },
       "LabelledFigureResponse": {
         "properties": {
           "figure": {
@@ -3280,6 +3930,48 @@
         "title": "LaneResponse",
         "type": "object"
       },
+      "LayerRunResponse": {
+        "description": "Which model produced a layer's output, and when (plan \u00a77).",
+        "properties": {
+          "completedAt": {
+            "format": "date-time",
+            "title": "Completedat",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "promptVersion": {
+            "title": "Promptversion",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "rubricVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "L3 only. Null on layers that score nothing.",
+            "title": "Rubricversion"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "promptVersion",
+          "completedAt"
+        ],
+        "title": "LayerRunResponse",
+        "type": "object"
+      },
       "ListProvidersResponse": {
         "properties": {
           "default": {
@@ -3318,6 +4010,39 @@
           "text"
         ],
         "title": "LogEntryResponse",
+        "type": "object"
+      },
+      "MarkerResponse": {
+        "description": "One rubric observation behind a quality score.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "dimension": {
+            "title": "Dimension",
+            "type": "string"
+          },
+          "polarity": {
+            "$ref": "#/components/schemas/CodedValue"
+          },
+          "quote": {
+            "title": "Quote",
+            "type": "string"
+          },
+          "turnSeq": {
+            "title": "Turnseq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dimension",
+          "polarity",
+          "description",
+          "quote",
+          "turnSeq"
+        ],
+        "title": "MarkerResponse",
         "type": "object"
       },
       "MatrixRowResponse": {
@@ -3461,13 +4186,19 @@
       "ObservationResponse": {
         "description": "One indicator family's standing. Informational \u2014 it does not set the flag.",
         "properties": {
+          "assessable": {
+            "default": true,
+            "description": "False when the employer has too few calls for any family to be tested, so `observed` is false for every one of the ten whatever their hits. Distinct from `available`, which is about the v9 schema rather than about this account: read together they separate 'we cannot look at all', 'we cannot look here' and 'we looked and found nothing'. A count of observed families is not a finding until this is true.",
+            "title": "Assessable",
+            "type": "boolean"
+          },
           "available": {
             "description": "False when v9 has no field for this family. Not the same as no hits.",
             "title": "Available",
             "type": "boolean"
           },
           "callIds": {
-            "description": "The calls this family was observed on, so the reader can open them. The envelope's rule \u2014 every figure travels with the call ids behind it \u2014 applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with.",
+            "description": "The calls this family was observed on, so the reader can open them. The envelope's rule \u2014 every figure travels with the call ids behind it \u2014 applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with. Carried on an unassessable family too: those calls are real, and a page saying '2 of 3 calls, not assessed' is true where 'not observed' is not.",
             "items": {
               "type": "string"
             },
@@ -3505,6 +4236,12 @@
             ],
             "description": "Null when the family cannot be computed, never zero.",
             "title": "Rate"
+          },
+          "unassessableBecause": {
+            "default": "",
+            "description": "Why the families were not tested. Empty when `assessable`.",
+            "title": "Unassessablebecause",
+            "type": "string"
           },
           "unavailableBecause": {
             "default": "",
@@ -6082,6 +6819,26 @@
     "/api/v1/insights/actions/board": {
       "get": {
         "operationId": "read_board_api_v1_insights_actions_board_get",
+        "parameters": [
+          {
+            "description": "Scope the board to one employer: the actions naming it, plus the actions citing one of its calls. Omitted, the whole board comes back. The join is here rather than on the client because membership by cited call cannot be computed from the board alone without sending every action's whole call list.",
+            "in": "query",
+            "name": "employer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Scope the board to one employer: the actions naming it, plus the actions citing one of its calls. Omitted, the whole board comes back. The join is here rather than on the client because membership by cited call cannot be computed from the board alone without sending every action's whole call list.",
+              "title": "Employer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -6092,6 +6849,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "Every action being worked, with the board's lanes",

@@ -50,6 +50,55 @@ interface RiskState {
   flagged: boolean
   indicators: number
   calls: number
+  /** Months until renewal, or null when the month could not be read. */
+  monthsToRenewal: number | null
+  /**
+   * Whether the ten families could be tested against this account at all.
+   *
+   * False below the indicator floor, where `indicators` is nought for every
+   * account whatever its calls carry — so the number is not a finding and is
+   * not shown as one. Junipero is the case that found this: flagged, renewing
+   * this month, two of its three calls carrying a complaint, and a bare 0
+   * beside the word Flagged.
+   */
+  assessed: boolean
+}
+
+/**
+ * The indicator count beside the flag, or a dash where there is no count.
+ *
+ * Two different noughts reach this component and they are opposite
+ * statements: an account tested against the ten families that cleared them
+ * all, and an account with too few calls for any family to be tested. The
+ * first is a finding; the second is a gap. A bare 0 renders them the same,
+ * and next to the word "Flagged" it reads as a flag with nothing behind it.
+ */
+function IndicatorCount({ state }: { state: RiskState }) {
+  if (!state.assessed) {
+    return (
+      <i className="nv-acct-unassessed" title="Too few calls to assess the indicator families">
+        &mdash;
+      </i>
+    )
+  }
+  return <i>{state.indicators}</i>
+}
+
+/** An account nobody could assess is not unflagged; it sorts below both. */
+function rank(flagged: boolean | undefined): number {
+  if (flagged === undefined) return -1
+  return flagged ? 1 : 0
+}
+
+/**
+ * Months to renewal, with the unknown ones last.
+ *
+ * `null` would otherwise read as "renewing now" and put the accounts we know
+ * least about at the top — the same reasoning, and the same 99, as the
+ * server's own key.
+ */
+function renewal(state: RiskState | undefined): number {
+  return state?.monthsToRenewal ?? 99
 }
 
 function PickerRow({
@@ -78,11 +127,13 @@ function PickerRow({
           <span className="nv-acct-state nv-acct-none">Not assessed</span>
         ) : state.flagged ? (
           <span className="nv-acct-state nv-acct-flag">
-            Flagged<i>{state.indicators}</i>
+            Flagged
+            <IndicatorCount state={state} />
           </span>
         ) : (
           <span className="nv-acct-state">
-            Not flagged<i>{state.indicators}</i>
+            Not flagged
+            <IndicatorCount state={state} />
           </span>
         )}
       </button>
@@ -109,6 +160,11 @@ export function AccountsScreen() {
         flagged: row.flagged,
         indicators: row.observations.filter((observation) => observation.observed).length,
         calls: row.calls,
+        // The floor is on the employer, so one unassessable family means all
+        // ten are. `every` over an empty list is true, which is the right
+        // answer: no families is not the same as families nobody could test.
+        assessed: row.observations.every((observation) => observation.assessable),
+        monthsToRenewal: row.monthsToRenewal ?? null,
       })
     }
     return map
@@ -116,13 +172,25 @@ export function AccountsScreen() {
 
   const ordered = useMemo(() => {
     const employers = options.data?.employers ?? []
-    // Most indicators first, then soonest renewal, then name — the
-    // prototype's own order, and the same one the risk table uses, so an
-    // account does not move between two screens that both rank it.
+    // D12's order, amended 2026-09-29: the flag first, then the indicator
+    // count, then soonest renewal, then name. The same key the server sorts
+    // `assessed` by, because an account must not move between two screens
+    // that both rank it — and this list cannot simply follow the server's
+    // order, since it holds every employer including the ones the risk
+    // response never mentions.
+    //
+    // The renewal tiebreak is new here. The comment claimed it before and
+    // the code never applied it, so the two screens already disagreed
+    // whenever an indicator count tied.
     return [...employers].sort((a, b) => {
-      const left = states.get(a.ref)?.indicators ?? -1
-      const right = states.get(b.ref)?.indicators ?? -1
-      return right - left || a.name.localeCompare(b.name)
+      const left = states.get(a.ref)
+      const right = states.get(b.ref)
+      return (
+        rank(right?.flagged) - rank(left?.flagged) ||
+        (right?.indicators ?? -1) - (left?.indicators ?? -1) ||
+        renewal(left) - renewal(right) ||
+        a.name.localeCompare(b.name)
+      )
     })
   }, [options.data, states])
 
@@ -222,12 +290,7 @@ export function AccountsScreen() {
                 <AccountCalls employerRef={selected} search={filters.apiSearch} />
               </div>
               <div className="nv-c12">
-                <AccountActions
-                  employerRef={selected}
-                  // Optional on the wire; an account with no evidence
-                  // cited is a real state, not a missing field.
-                  callRefs={account.data.risk.evidence ?? []}
-                />
+                <AccountActions employerRef={selected} />
               </div>
             </>
           )}

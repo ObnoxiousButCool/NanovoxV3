@@ -19,6 +19,7 @@ from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.impact_scope import ImpactScope
 from domain.value_objects.intent_statement import IntentStatement
 from domain.value_objects.knowledge_failure import KnowledgeFailure
+from domain.value_objects.layer_run import LayerRun
 from domain.value_objects.outcome import Outcome
 from domain.value_objects.preventable import Preventable
 from domain.value_objects.process_gap import ProcessGap
@@ -41,6 +42,14 @@ class CallExtraction:
     control_exceptions: frozenset[ControlExceptionType] | None = None
 
     # --- L2 ---
+    #: `None` until L2 has run. This, not the nullity of any tag below, is
+    #: what says whether the layer ran: L2 can legitimately produce a call
+    #: with no intent, no complaint and no broker named, and that record
+    #: is indistinguishable from an unanalysed one without a run to point
+    #: at. L1 has no run of its own — it is pure, recomputed rather than
+    #: stored, and saved in the same transaction, so L1 ran exactly when
+    #: this is set.
+    l2_run: LayerRun | None = None
     outcome: Outcome | None = None
     category: Category | None = None
     product_lines: tuple[ProductLine, ...] = ()
@@ -62,6 +71,9 @@ class CallExtraction:
     impact_scope: ImpactScope | None = None
 
     # --- L3 ---
+    #: `None` until L3 has run, or when it failed and was recorded
+    #: unavailable for this call (plan §7: L3 is not pipeline-critical).
+    l3_run: LayerRun | None = None
     quality_score: Score | None = None
     quality_status: ScoreStatus | None = None
     quality_tier: Tier | None = None
@@ -72,6 +84,9 @@ class CallExtraction:
     knowledge_failure: KnowledgeFailure | None = None
 
     # --- L4 ---
+    #: `None` until L4 has run, or when it failed. A call with no signals
+    #: and a run present is a clean call; no run is an unread one.
+    l4_run: LayerRun | None = None
     signals: tuple[Signal, ...] = ()
     escalation_handled: bool | None = None
     escalation_trigger_type: EscalationTriggerType | None = None

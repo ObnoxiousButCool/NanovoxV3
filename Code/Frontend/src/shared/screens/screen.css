@@ -792,3 +792,14 @@ details.nv-more[open] > summary::before {
   border-radius: 2px;
   display: inline-block;
 }
+
+/* A reference beside the name it belongs to. Quieter and monospaced: the
+   name is what a reader scans for, and the reference is what they quote in
+   a ticket or paste into a filter, so it has to stay legible without
+   competing. */
+.nv-ref {
+  font:
+    500 11.5px/1.4 var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+}

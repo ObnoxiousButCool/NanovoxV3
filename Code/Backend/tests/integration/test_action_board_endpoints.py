@@ -6,6 +6,7 @@ real database, plus every refusal the lifecycle makes.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -272,3 +273,136 @@ def test_the_derived_findings_are_untouched(seeded: None, client: TestClient) ->
 
     assert "items" in findings
     assert all("status" not in item for item in findings["items"])
+
+
+# --- The board, scoped to one account ----------------------------------------
+
+
+@pytest.fixture
+async def with_employer_calls(session_factory: async_sessionmaker[AsyncSession]) -> None:
+    """Two calls on EMP-1001 and one on nobody, so a scoped board has
+    something to leave out as well as something to return."""
+    await SqlReferenceRepository(session_factory).upsert(
+        ReferenceDataset(brokers=(_BROKER,), employers=(_EMPLOYER,))
+    )
+    await SqlCallRepository(session_factory, SystemClock()).upsert_all(
+        (
+            _with_employer(_call("C-0001"), "EMP-1001"),
+            _with_employer(_call("C-0002"), "EMP-1001"),
+            _call("C-0003"),
+        )
+    )
+
+
+def _with_employer(call: IngestedCall, employer_ref: str) -> IngestedCall:
+    return replace(call, employer_ref=employer_ref)
+
+
+def test_an_action_reaches_an_account_through_the_calls_it_cites(
+    with_employer_calls: None, client: TestClient
+) -> None:
+    """The defect this exists to stop.
+
+    Every seeded signal-wide action carries no `employerRef` at all and
+    reaches an account only through its calls, so an account board that
+    matched on the reference alone came back empty and the page said
+    "nothing in its calls has needed one" over eighteen calls' worth of
+    signals.
+    """
+    cited = _create(client, title="Escalations missed", ownerTeam="Service", callIds=["C-0001"])
+    _create(client, title="Somebody else's", ownerTeam="Service", callIds=["C-0003"])
+
+    board = client.get(f"{URL}/board", params={"employer": "EMP-1001"}).json()
+
+    assert [action["id"] for action in board["actions"]] == [cited["id"]]
+
+
+def test_an_action_naming_the_account_is_returned_with_no_calls_cited(
+    with_employer_calls: None, client: TestClient
+) -> None:
+    """The other half, and neither is redundant: an action raised against an
+    account before any call is cited has the reference and nothing else."""
+    named = _create(client, title="Renewal review", ownerTeam="Service", employerRef="EMP-1001")
+
+    board = client.get(f"{URL}/board", params={"employer": "EMP-1001"}).json()
+
+    assert [action["id"] for action in board["actions"]] == [named["id"]]
+
+
+def test_an_action_is_not_returned_twice_when_it_both_names_and_cites(
+    with_employer_calls: None, client: TestClient
+) -> None:
+    """`or`, not two queries concatenated. A card listed twice on an account
+    reads as two pieces of work."""
+    both = _create(
+        client,
+        title="Both",
+        ownerTeam="Service",
+        employerRef="EMP-1001",
+        callIds=["C-0001", "C-0002"],
+    )
+
+    board = client.get(f"{URL}/board", params={"employer": "EMP-1001"}).json()
+
+    assert [action["id"] for action in board["actions"]] == [both["id"]]
+
+
+def test_the_lanes_stand_whether_or_not_the_account_has_cards(
+    with_employer_calls: None, client: TestClient
+) -> None:
+    """The lanes are the lifecycle's, not a summary of what is on the board.
+    An account with nothing in progress still shows the column, rather than
+    a board whose shape changes per account."""
+    whole = client.get(f"{URL}/board").json()
+
+    scoped = client.get(f"{URL}/board", params={"employer": "EMP-1001"}).json()
+
+    assert scoped["actions"] == []
+    assert [lane["code"] for lane in scoped["lanes"]] == [lane["code"] for lane in whole["lanes"]]
+
+
+def test_an_unscoped_board_is_unchanged(with_employer_calls: None, client: TestClient) -> None:
+    """The parameter is optional and the board screen does not pass it."""
+    _create(client, title="Mine", ownerTeam="Service", callIds=["C-0001"])
+    _create(client, title="Theirs", ownerTeam="Service", callIds=["C-0003"])
+
+    board = client.get(f"{URL}/board").json()
+
+    assert len(board["actions"]) == 2
+
+
+def test_a_scoped_card_carries_the_account_share_beside_its_own_figure(
+    with_employer_calls: None, client: TestClient
+) -> None:
+    """The card's title counts the whole corpus and must keep doing so: it
+    names the piece of work, which is done once by one team. What the account
+    page needs is its own share beside that, not instead of it — otherwise a
+    panel headed "Actions for this account" shows 179 calls to an account
+    that has 18.
+    """
+    action = _create(
+        client,
+        title="Member communication gap — 3 calls",
+        ownerTeam="Service",
+        callIds=["C-0001", "C-0002", "C-0003"],
+    )
+
+    board = client.get(f"{URL}/board", params={"employer": "EMP-1001"}).json()
+
+    card = next(a for a in board["actions"] if a["id"] == action["id"])
+    assert card["title"] == "Member communication gap — 3 calls"
+    assert len(card["callIds"]) == 3
+    assert card["callsOnAccount"] == 2
+
+
+def test_an_unscoped_card_has_no_account_share_rather_than_nought(
+    with_employer_calls: None, client: TestClient
+) -> None:
+    """Nought would read as a card touching none of an account's calls. On
+    the board there is no account to touch, which is a different statement
+    and the one `null` makes."""
+    _create(client, title="Anything", ownerTeam="Service", callIds=["C-0001"])
+
+    board = client.get(f"{URL}/board").json()
+
+    assert board["actions"][0]["callsOnAccount"] is None

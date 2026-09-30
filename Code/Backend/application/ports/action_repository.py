@@ -51,8 +51,33 @@ class ActionRepository(ABC):
     async def get(self, action_id: int) -> Action | None: ...
 
     @abstractmethod
-    async def list(self) -> tuple[Action, ...]:
-        """Every action, newest first."""
+    async def list(self, employer_ref: str | None = None) -> tuple[Action, ...]:
+        """Every action, newest first. Scoped to one employer when given.
+
+        **Scoped here rather than by the caller**, because "this account's
+        actions" is a definition and not a filter. An action belongs to an
+        account either by naming it or by citing one of its calls, and the
+        second half is a join the client cannot do without being sent every
+        action's whole call list -- one seeded action cites 179 calls. A
+        client that did it anyway would own a second definition of account
+        membership, and the two would disagree the first time either moved.
+        """
+
+    @abstractmethod
+    async def calls_on_account(self, employer_ref: str) -> dict[int, int]:
+        """Per action, how many of its cited calls are this employer's.
+
+        A separate method rather than a field on `Action`, because it is a
+        property of the question and not of the action: the same card has a
+        different answer on every account page and none at all on the board.
+        Hanging it off the entity would make `Action` mean something
+        different depending on which query produced it.
+
+        Actions with none of this employer's calls are absent rather than
+        present at nought -- a caller that has scoped the board to this
+        account will not ask about them, and a nought would have to mean
+        "no share" where the honest reading is "not in this scope".
+        """
 
     @abstractmethod
     async def save(self, action: Action) -> None:

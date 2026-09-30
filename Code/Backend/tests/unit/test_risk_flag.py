@@ -13,7 +13,7 @@ from datetime import date
 import pytest
 
 from domain.aggregation.figure import WithheldReason
-from domain.aggregation.indicators import FAMILIES, observe, observed, unavailable
+from domain.aggregation.indicators import FAMILIES, assessed, observe, observed, unavailable
 from domain.aggregation.risk_flag import (
     Condition,
     RiskAssessment,
@@ -344,6 +344,62 @@ def test_the_knowledge_failure_family_does_not_blame_the_agent() -> None:
     family = next(f for f in FAMILIES if f.code == "knowledge_failure")
 
     assert "agent" not in family.label.lower()
+
+
+def test_an_account_under_the_floor_is_unassessed_rather_than_clear(
+    config: DashboardConfig,
+) -> None:
+    """The defect this exists to stop.
+
+    Three calls is under `min_employer_calls`, so no family can fire whatever
+    its hits — and two of these three carry a complaint. Reporting that as
+    nought observed says the account is clean on the strength of never having
+    looked, which is the withheld-is-not-zero mistake one level down.
+    """
+    thin = (
+        *calls(2, prefix="U", outcome=Outcome.UNRESOLVED),
+        *calls(1, prefix="R", outcome=Outcome.RESOLVED),
+    )
+
+    observations = observe(config, employer(), thin, WINDOW)
+
+    assert assessed(observations) is False
+    assert all(o.assessable is False for o in observations)
+    # The hits are still carried. They are real calls, and a page saying
+    # "2 of 3 calls, not assessed" is true where "not observed" is not.
+    unresolved = next(o for o in observations if o.family.code == "unresolved")
+    assert unresolved.hits == 2
+    assert unresolved.observed is False
+    assert "not the same as none being present" in unresolved.unassessable_because
+
+
+def test_an_account_over_the_floor_that_fires_nothing_is_a_finding(
+    config: DashboardConfig,
+) -> None:
+    """The other nought, and it means the opposite. The families were tested
+    against this account and none of them cleared — which is something a
+    reader may act on, unlike the nought above."""
+    quiet = calls(8, outcome=Outcome.RESOLVED)
+
+    observations = observe(config, employer(), quiet, WINDOW)
+
+    assert assessed(observations) is True
+    assert observed(observations) == ()
+    assert all(o.unassessable_because == "" for o in observations)
+
+
+def test_the_unassessable_reason_carries_the_configured_floor(
+    config: DashboardConfig,
+) -> None:
+    """Written once from config rather than phrased by each caller: the floor
+    is the weakest number in `dashboard.yaml` and is expected to move, and a
+    page with "five" hard-coded into a sentence goes quietly wrong the day it
+    does."""
+    observations = observe(config, employer(), calls(2), WINDOW)
+
+    reason = observations[0].unassessable_because
+    assert str(config.indicators.min_employer_calls) in reason
+    assert "2 calls" in reason
 
 
 def test_every_family_is_returned_even_when_it_did_not_fire(

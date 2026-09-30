@@ -58,6 +58,10 @@ from application.use_cases.list_calls import (
 from domain.value_objects.outcome import Outcome
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import ListCallsDep, ReadCallEvidenceDep
+from frameworks_drivers.api.v1.insights.call_analysis import (
+    CallAnalysisResponse,
+    analysis_response,
+)
 from frameworks_drivers.api.v1.insights.envelope import ScopeResponse
 from frameworks_drivers.api.v1.insights.labels import CodedValue, coded, touchpoint_label
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
@@ -88,6 +92,13 @@ class CallRowResponse(CamelModel):
     caller_kind: str | None = Field(
         default=None,
         description="'member' or 'employer contact'. They carry different authority.",
+    )
+    agent_name: str | None = Field(
+        default=None,
+        description=(
+            "From the Agent Roster. Null for an agent the roster does not know, "
+            "which is why the reference travels with it rather than being replaced."
+        ),
     )
     broker_ref: str | None = None
     broker_agency: str | None = None
@@ -188,8 +199,18 @@ class CallEvidenceResponse(CamelModel):
     reference: str
     caller_type: str
     caller_ref: str
+    caller_name: str | None = Field(
+        default=None,
+        description=(
+            "Who rang, from the Member or Contact sheet. Null where the reference "
+            "matches nobody -- a gap in reference data, not an anonymous caller, "
+            "which is why the reference is sent as well and never replaced by it."
+        ),
+    )
     agent_ref: str
+    agent_name: str | None = None
     employer_ref: str | None = None
+    employer_name: str | None = None
     resolution_status: str
     resolution_reason: str | None = None
     turns: list[TurnResponse] = Field(default_factory=list)
@@ -213,6 +234,15 @@ class CallEvidenceResponse(CamelModel):
             "Why the prototype's 'Rules in play' (every rule_ref the call cites, "
             "quoted from the rulebook) has no counterpart here. Said rather than "
             "rendered as an empty section beside a full one."
+        )
+    )
+    analysis: CallAnalysisResponse = Field(
+        description=(
+            "What the pipeline made of this call, in five panels: L1, L2, L3, L4 "
+            "and the values derived in code afterwards. Always present — a call "
+            "nothing has run on gets five panels saying so, because that is the "
+            "answer to what we know about it, and a null would render as a section "
+            "that failed to load."
         )
     )
 
@@ -471,6 +501,7 @@ def _row_response(row: CallRowView) -> CallRowResponse:
         employer_name=row.employer_name,
         caller_ref=row.caller_ref,
         caller_name=row.caller_name,
+        agent_name=row.agent_name,
         caller_kind=row.caller_kind,
         broker_ref=row.broker_ref,
         broker_agency=row.broker_agency,
@@ -498,8 +529,11 @@ def _evidence_response(evidence: CallEvidence) -> CallEvidenceResponse:
         reference=evidence.reference,
         caller_type=evidence.caller_type,
         caller_ref=evidence.caller_ref,
+        caller_name=evidence.caller_name,
         agent_ref=evidence.agent_ref,
+        agent_name=evidence.agent_name,
         employer_ref=evidence.employer_ref,
+        employer_name=evidence.employer_name,
         resolution_status=evidence.resolution_status,
         resolution_reason=evidence.resolution_reason,
         turns=[
@@ -544,4 +578,5 @@ def _evidence_response(evidence: CallEvidence) -> CallEvidenceResponse:
         ),
         control_exceptions=[coded(item) for item in evidence.control_exceptions],
         rules_unavailable=RULES_UNAVAILABLE,
+        analysis=analysis_response(evidence.analysis, caller_ref=evidence.caller_ref),
     )

@@ -189,7 +189,12 @@ class Container:
     def read_call_evidence(self) -> ReadCallEvidence:
         # The same reader every figure uses, so a call's evidence panel
         # cannot show tags the rest of the dashboard would disagree with.
-        return ReadCallEvidence(self.call_repository, self.insights_reader())
+        return ReadCallEvidence(
+            self.call_repository,
+            self.insights_reader(),
+            self.call_extraction_repository,
+            self.reference_lookup,
+        )
 
     def get_demand(self) -> GetDemand:
         return GetDemand(self.insights_reader(), self.dashboard_config)
@@ -248,7 +253,10 @@ class Container:
 
     def list_actions(self) -> ListActions:
         return ListActions(
-            actions=self.action_repository, lifecycle=self.action_lifecycle, clock=self.clock
+            actions=self.action_repository,
+            lifecycle=self.action_lifecycle,
+            catalogue=self.playbook_catalogue,
+            clock=self.clock,
         )
 
     def seed_actions(self) -> SeedActions:

@@ -24,7 +24,7 @@ permission model that does not exist.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date
 
 from application.ports.action_repository import ActionRepository, NewAction
@@ -85,6 +85,29 @@ class ActionBoard:
     lifecycle: Lifecycle
     today: date
     trust_note: str = TRUST_NOTE
+    #: Per action id, how many of its cited calls belong to the account the
+    #: board was scoped to. Empty on the unscoped board, where the question
+    #: has no subject.
+    #:
+    #: **The card's own figures are the whole corpus and stay that way.** A
+    #: seeded action counts every call that raised its signal, because that
+    #: is what the piece of work is -- one card, one owner team, worked
+    #: once. Re-counting it per account would describe a different job from
+    #: the one on the board, and the same card would then disagree with
+    #: itself between two screens. So the account's share travels beside the
+    #: card's number rather than replacing it.
+    calls_on_account: dict[int, int] = field(default_factory=dict)
+    #: Per action id, its name with no count in it -- the playbook's own
+    #: label, which is what `seed_actions` built the title from before
+    #: appending "-- N calls".
+    #:
+    #: Sent because a screen showing its own figure beside the card's needs
+    #: the name without a number in it, and the alternative is the client
+    #: cutting the count back off a title the server composed. That is
+    #: string surgery on somebody else's prose: it breaks the moment the
+    #: wording changes, and it would quietly mangle a hand-raised action
+    #: whose title happens to end in the same shape.
+    labels: dict[int, str] = field(default_factory=dict)
 
 
 class CreateAction:
@@ -206,16 +229,48 @@ class GetAction:
 
 
 class ListActions:
-    def __init__(self, *, actions: ActionRepository, lifecycle: Lifecycle, clock: Clock) -> None:
+    def __init__(
+        self,
+        *,
+        actions: ActionRepository,
+        lifecycle: Lifecycle,
+        catalogue: PlaybookCatalogue,
+        clock: Clock,
+    ) -> None:
         self._actions = actions
         self._lifecycle = lifecycle
+        self._catalogue = catalogue
         self._clock = clock
 
-    async def execute(self) -> ActionBoard:
+    def _label(self, action: Action) -> str:
+        """The action's name with no count in it.
+
+        The playbook's own label where the action came from one, and the
+        title otherwise -- a hand-raised action's title *is* its name, and
+        there is nothing else to fall back to that would not be invented.
+        """
+        if action.issue_key is None:
+            return action.title
+        playbook = resolve(self._catalogue, action.issue_key, {})
+        return playbook.label if playbook is not None else action.title
+
+    async def execute(self, employer_ref: str | None = None) -> ActionBoard:
+        """The board, or one account's share of it.
+
+        The lanes are the same either way: they are the lifecycle's, not a
+        summary of what happens to be on the board, so an account with
+        nothing in progress still shows an empty In progress lane rather
+        than losing the column.
+        """
+        actions = await self._actions.list(employer_ref)
         return ActionBoard(
-            actions=await self._actions.list(),
+            actions=actions,
             lifecycle=self._lifecycle,
             today=self._clock.now().date(),
+            calls_on_account=(
+                {} if employer_ref is None else await self._actions.calls_on_account(employer_ref)
+            ),
+            labels={action.id: self._label(action) for action in actions},
         )
 
 

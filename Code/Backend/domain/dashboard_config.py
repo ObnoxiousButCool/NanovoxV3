@@ -166,6 +166,17 @@ class IndicatorGates:
     #: fire on two calls out of ninety. No source; needs calibration.
     min_rate: float
 
+    def assessable(self, employer_calls: int) -> bool:
+        """Whether the families can be tested against this employer at all.
+
+        Separate from `fires` because it answers a different question, and
+        the two answers mean opposite things to a reader. Below this floor
+        no family can fire whatever its hits, so a count of nought is not a
+        finding of nothing -- it is the families not having been checked.
+        The page has to be able to tell those apart.
+        """
+        return employer_calls >= self.min_employer_calls
+
     def fires(self, hits: int, employer_calls: int) -> bool:
         """All three gates, or the family is not observed.
 
@@ -173,7 +184,7 @@ class IndicatorGates:
         and the rate stops a long-standing trickle reading as one. Either
         alone lets through exactly what the other exists to catch.
         """
-        if employer_calls < self.min_employer_calls or hits < self.min_calls:
+        if not self.assessable(employer_calls) or hits < self.min_calls:
             return False
         return hits / employer_calls >= self.min_rate
 

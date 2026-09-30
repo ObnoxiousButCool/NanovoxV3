@@ -113,8 +113,20 @@ class _FakeActionRepository(ActionRepository):
     async def get(self, action_id: int) -> Action | None:
         return self._rows.get(action_id)
 
-    async def list(self) -> tuple[Action, ...]:
-        return tuple(self._rows.values())
+    async def list(self, employer_ref: str | None = None) -> tuple[Action, ...]:
+        if employer_ref is None:
+            return tuple(self._rows.values())
+        # Only the naming half. The citing half is a join this fake has no
+        # calls to make, and seeding never scopes by employer -- a fake that
+        # pretended otherwise would be asserting behaviour it cannot have.
+        return tuple(a for a in self._rows.values() if a.employer_ref == employer_ref)
+
+    async def calls_on_account(self, employer_ref: str) -> dict[int, int]:
+        # Seeding never scopes to an account, so there is nothing honest for
+        # this fake to return. Raising beats returning {} : an empty mapping
+        # is a real answer that means "no cited calls here", and a fake that
+        # gave it would let a caller believe it had been asked.
+        raise NotImplementedError
 
     async def save(self, action: Action) -> None:
         raise NotImplementedError

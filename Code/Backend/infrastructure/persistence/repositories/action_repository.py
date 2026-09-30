@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from application.ports.action_repository import ActionRepository, NewAction
@@ -18,7 +18,32 @@ from infrastructure.persistence.tables import (
     ActionRow,
     ActionStepRow,
     CallRow,
+    EmployerRow,
 )
+
+
+def _belongs_to(employer_ref: str) -> ColumnElement[bool]:
+    """Whether an action is this account's.
+
+    Either it names the employer, or it cites one of that employer's calls.
+    **Both halves are needed and neither is redundant**: the seeded
+    signal-wide actions carry no `employer_ref` at all and reach an account
+    only through their calls, while an action raised against an account
+    before any call is cited has the reference and nothing else.
+
+    The call half is a join through `action_calls` to `calls`, which is
+    where the employer actually lives -- an action stores call ids, not
+    employers, so there is no denormalised column to read instead.
+    """
+    return or_(
+        ActionRow.employer_ref == employer_ref,
+        ActionRow.id.in_(
+            select(ActionCallRow.action_id)
+            .join(CallRow, CallRow.id == ActionCallRow.call_id)
+            .join(EmployerRow, EmployerRow.id == CallRow.employer_id)
+            .where(EmployerRow.reference == employer_ref)
+        ),
+    )
 
 
 class SqlActionRepository(ActionRepository):
@@ -70,14 +95,24 @@ class SqlActionRepository(ActionRepository):
                 return None
             return (await _hydrate(session, [row]))[0]
 
-    async def list(self) -> tuple[Action, ...]:
+    async def list(self, employer_ref: str | None = None) -> tuple[Action, ...]:
         async with self._session_factory() as session:
-            rows = (
-                (await session.execute(select(ActionRow).order_by(ActionRow.id.desc())))
-                .scalars()
-                .all()
-            )
+            query = select(ActionRow).order_by(ActionRow.id.desc())
+            if employer_ref is not None:
+                query = query.where(_belongs_to(employer_ref))
+            rows = (await session.execute(query)).scalars().all()
             return tuple(await _hydrate(session, list(rows)))
+
+    async def calls_on_account(self, employer_ref: str) -> dict[int, int]:
+        async with self._session_factory() as session:
+            rows = await session.execute(
+                select(ActionCallRow.action_id, func.count(ActionCallRow.call_id))
+                .join(CallRow, CallRow.id == ActionCallRow.call_id)
+                .join(EmployerRow, EmployerRow.id == CallRow.employer_id)
+                .where(EmployerRow.reference == employer_ref)
+                .group_by(ActionCallRow.action_id)
+            )
+            return dict(rows.all())  # type: ignore[arg-type]
 
     async def save(self, action: Action) -> None:
         async with self._session_factory() as session, session.begin():

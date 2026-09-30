@@ -22,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '@/app/App'
 import { createQueryClient } from '@/app/queryClient'
 import { DrawerProvider } from '@/shared/design/drawer'
+import { unrunAnalysis } from '@/shared/design/drawer/analysisFixture'
 import { ThemeProvider } from '@/shared/design/ThemeProvider'
 
 const SCOPE = {
@@ -372,6 +373,7 @@ function handle(url: string, init?: RequestInit): unknown {
       resolutionStatus: 'UNRESOLVED',
       resolutionReason: null,
       transcriptMissing: false,
+      analysis: unrunAnalysis('MEM-1'),
       turns: [],
     }
   }

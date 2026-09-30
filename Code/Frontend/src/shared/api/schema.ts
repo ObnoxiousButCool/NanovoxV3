@@ -676,6 +676,11 @@ export interface components {
             /** Callids */
             callIds: string[];
             /**
+             * Callsonaccount
+             * @description How many of this action's cited calls belong to the account the board was scoped to. Null on the unscoped board, where there is no account to count against — never nought, which would read as a card touching none of an account's calls. **The card's own figures stay corpus-wide.** `title` counts every call that raised the signal, because that is the piece of work: one card, one owner team, worked once. Re-counting it per account would describe a different job from the one on the board and make the same card disagree with itself between two screens. This travels beside that number so an account page can show both rather than presenting the book's figure as the account's.
+             */
+            callsOnAccount?: number | null;
+            /**
              * Createdat
              * Format: date-time
              */
@@ -690,6 +695,11 @@ export interface components {
             id: number;
             /** Issuekey */
             issueKey: string | null;
+            /**
+             * Label
+             * @description The action's name with no count in it — the playbook's own label, which `title` was composed from before '— N calls' was appended. Sent on the board only. A screen showing its own figure beside the card's needs the name without a number in it, and the alternative is the client cutting the count back off prose the server wrote.
+             */
+            label?: string | null;
             /**
              * Log
              * @description Oldest first. Append-only.
@@ -1026,16 +1036,37 @@ export interface components {
             /** Start */
             start: string;
         };
+        /**
+         * CallAnalysisResponse
+         * @description Four panels for one call.
+         */
+        CallAnalysisResponse: {
+            l1: components["schemas"]["L1PanelResponse"];
+            l2: components["schemas"]["L2PanelResponse"];
+            l3: components["schemas"]["L3PanelResponse"];
+            l4: components["schemas"]["L4PanelResponse"];
+        };
         /** CallEvidenceResponse */
         CallEvidenceResponse: {
+            /** Agentname */
+            agentName?: string | null;
             /** Agentref */
             agentRef: string;
+            /** @description What the pipeline made of this call, in five panels: L1, L2, L3, L4 and the values derived in code afterwards. Always present — a call nothing has run on gets five panels saying so, because that is the answer to what we know about it, and a null would render as a section that failed to load. */
+            analysis: components["schemas"]["CallAnalysisResponse"];
+            /**
+             * Callername
+             * @description Who rang, from the Member or Contact sheet. Null where the reference matches nobody -- a gap in reference data, not an anonymous caller, which is why the reference is sent as well and never replaced by it.
+             */
+            callerName?: string | null;
             /** Callerref */
             callerRef: string;
             /** Callertype */
             callerType: string;
             /** Controlexceptions */
             controlExceptions?: components["schemas"]["CodedValue"][];
+            /** Employername */
+            employerName?: string | null;
             /** Employerref */
             employerRef?: string | null;
             knowledgeFailure?: components["schemas"]["KnowledgeFailureResponse"] | null;
@@ -1069,6 +1100,11 @@ export interface components {
          * @description One row of the workbench.
          */
         CallRowResponse: {
+            /**
+             * Agentname
+             * @description From the Agent Roster. Null for an agent the roster does not know, which is why the reference travels with it rather than being replaced.
+             */
+            agentName?: string | null;
             /** Agentref */
             agentRef?: string | null;
             /**
@@ -1525,6 +1561,24 @@ export interface components {
             /** Region */
             region: string;
         };
+        /**
+         * EvidencedItem
+         * @description Something a layer found, with the line it found it on.
+         *
+         *     Every quote here survived evidence checking against the transcript: an
+         *     item whose quote could not be located is rejected and never stored
+         *     (plan §7, "Evidence validation, every LLM layer"). `turnSeq` indexes
+         *     the `turns` on the same response, so the drawer can point at the line.
+         */
+        EvidencedItem: {
+            /** Quote */
+            quote: string;
+            /** @description Signals only. Fixed per type by the Signal Taxonomy sheet. */
+            severity?: components["schemas"]["CodedValue"] | null;
+            /** Turnseq */
+            turnSeq: number;
+            type: components["schemas"]["CodedValue"];
+        };
         /** ExecScorecardResponse */
         ExecScorecardResponse: {
             /** @description The category with the most unresolved calls this period, and how its escalations fared. Null when no category had an unresolved call. */
@@ -1905,6 +1959,138 @@ export interface components {
             /** Ruleid */
             ruleId: string;
         };
+        /**
+         * L1PanelResponse
+         * @description Deterministic extraction. Code, no model — the same transcript gives
+         *     the same answer every time, which is why it has no provenance.
+         */
+        L1PanelResponse: {
+            /** Callerref */
+            callerRef: string;
+            /**
+             * Controlexceptions
+             * @description Schema field 7. Never carries missing_benefit_disclosure: metric 7 is deterministic and a greeting check cannot prove that one.
+             */
+            controlExceptions?: components["schemas"]["CodedValue"][];
+            /** Notrunbecause */
+            notRunBecause?: string | null;
+            /** Ran */
+            ran: boolean;
+        };
+        /**
+         * L2PanelResponse
+         * @description Classification. What the call was about, and how it ended.
+         */
+        L2PanelResponse: {
+            /**
+             * Brokermatchesemployerofrecord
+             * @description Whether the broker named aloud is the employer's broker of record. Null when no broker was named, or when the employer has none on file.
+             */
+            brokerMatchesEmployerOfRecord?: boolean | null;
+            /** Brokernamedaloud */
+            brokerNamedAloud?: boolean | null;
+            /** Brokerref */
+            brokerRef?: string | null;
+            brokerSentiment?: components["schemas"]["CodedValue"] | null;
+            /**
+             * Category
+             * @description The workbook's own wording, so it is not re-labelled.
+             */
+            category?: string | null;
+            complaintAttributedTo?: components["schemas"]["CodedValue"] | null;
+            /** Complaintpresent */
+            complaintPresent?: boolean | null;
+            /** Escalationrequestedbycaller */
+            escalationRequestedByCaller?: boolean | null;
+            /** Escalationtriggered */
+            escalationTriggered?: boolean | null;
+            impactScope?: components["schemas"]["CodedValue"] | null;
+            /**
+             * Impactscopecount
+             * @description The N the caller stated. Null for the two buckets that are one person by definition. This is the caller's claim, never our count.
+             */
+            impactScopeCount?: number | null;
+            /** Intent */
+            intent?: components["schemas"]["EvidencedItem"][];
+            /** Notrunbecause */
+            notRunBecause?: string | null;
+            outcome?: components["schemas"]["CodedValue"] | null;
+            /** Primaryissue */
+            primaryIssue?: string | null;
+            /** Productlines */
+            productLines?: components["schemas"]["CodedValue"][];
+            /** Ran */
+            ran: boolean;
+            run?: components["schemas"]["LayerRunResponse"] | null;
+            /** Secondaryissues */
+            secondaryIssues?: string[];
+            /** Summary */
+            summary?: string | null;
+            /** Touchpoint */
+            touchpoint?: string | null;
+        };
+        /**
+         * L3PanelResponse
+         * @description Quality and knowledge.
+         */
+        L3PanelResponse: {
+            /** Knowledgefailurecorrectstatement */
+            knowledgeFailureCorrectStatement?: string | null;
+            /** Knowledgefailurepresent */
+            knowledgeFailurePresent?: boolean | null;
+            /** Knowledgefailureruleid */
+            knowledgeFailureRuleId?: string | null;
+            /**
+             * Markers
+             * @description Markers that survived evidence checking. A score with no marker trail is not auditable, so the trail travels with the score.
+             */
+            markers?: components["schemas"]["MarkerResponse"][];
+            /** Notrunbecause */
+            notRunBecause?: string | null;
+            /** Qualityscore */
+            qualityScore?: number | null;
+            qualityStatus?: components["schemas"]["CodedValue"] | null;
+            qualityTier?: components["schemas"]["CodedValue"] | null;
+            /** Ran */
+            ran: boolean;
+            run?: components["schemas"]["LayerRunResponse"] | null;
+        };
+        /**
+         * L4PanelResponse
+         * @description Signals and gaps.
+         */
+        L4PanelResponse: {
+            /** Escalationhandled */
+            escalationHandled?: boolean | null;
+            escalationTriggerType?: components["schemas"]["CodedValue"] | null;
+            /** Notrunbecause */
+            notRunBecause?: string | null;
+            /**
+             * Preventable
+             * @description Call Tag Schema field 18. Computed in code, like field 17. Yes, Partly or No — already the words a reader wants, so it carries no label.
+             */
+            preventable?: string | null;
+            /** Processgappresent */
+            processGapPresent?: boolean | null;
+            /** Processgapproposedchange */
+            processGapProposedChange?: string | null;
+            processGapRaisedBy?: components["schemas"]["CodedValue"] | null;
+            processGapStatus?: components["schemas"]["CodedValue"] | null;
+            /** Processgaptouchpoint */
+            processGapTouchpoint?: string | null;
+            /** Processgaptype */
+            processGapType?: string | null;
+            /** Ran */
+            ran: boolean;
+            /** @description Call Tag Schema field 17. Computed in code from complaint and signals, never asked of a model. */
+            rootCauseOwner?: components["schemas"]["CodedValue"] | null;
+            run?: components["schemas"]["LayerRunResponse"] | null;
+            /**
+             * Signals
+             * @description Distinct types, worst severity first. Five instances of one problem is one problem; three different problems is an account coming apart.
+             */
+            signals?: components["schemas"]["EvidencedItem"][];
+        };
         /** LabelledFigureResponse */
         LabelledFigureResponse: {
             figure: components["schemas"]["FigureResponse"];
@@ -1928,6 +2114,28 @@ export interface components {
              */
             requires: string[];
         };
+        /**
+         * LayerRunResponse
+         * @description Which model produced a layer's output, and when (plan §7).
+         */
+        LayerRunResponse: {
+            /**
+             * Completedat
+             * Format: date-time
+             */
+            completedAt: string;
+            /** Model */
+            model: string;
+            /** Promptversion */
+            promptVersion: string;
+            /** Provider */
+            provider: string;
+            /**
+             * Rubricversion
+             * @description L3 only. Null on layers that score nothing.
+             */
+            rubricVersion?: string | null;
+        };
         /** ListProvidersResponse */
         ListProvidersResponse: {
             /** Default */
@@ -1944,6 +2152,21 @@ export interface components {
             at: string;
             /** Text */
             text: string;
+        };
+        /**
+         * MarkerResponse
+         * @description One rubric observation behind a quality score.
+         */
+        MarkerResponse: {
+            /** Description */
+            description: string;
+            /** Dimension */
+            dimension: string;
+            polarity: components["schemas"]["CodedValue"];
+            /** Quote */
+            quote: string;
+            /** Turnseq */
+            turnSeq: number;
         };
         /** MatrixRowResponse */
         MatrixRowResponse: {
@@ -2041,13 +2264,19 @@ export interface components {
          */
         ObservationResponse: {
             /**
+             * Assessable
+             * @description False when the employer has too few calls for any family to be tested, so `observed` is false for every one of the ten whatever their hits. Distinct from `available`, which is about the v9 schema rather than about this account: read together they separate 'we cannot look at all', 'we cannot look here' and 'we looked and found nothing'. A count of observed families is not a finding until this is true.
+             * @default true
+             */
+            assessable: boolean;
+            /**
              * Available
              * @description False when v9 has no field for this family. Not the same as no hits.
              */
             available: boolean;
             /**
              * Callids
-             * @description The calls this family was observed on, so the reader can open them. The envelope's rule — every figure travels with the call ids behind it — applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with.
+             * @description The calls this family was observed on, so the reader can open them. The envelope's rule — every figure travels with the call ids behind it — applies to an indicator as much as to a rate: a family reported on three calls that names none of them cannot be argued with. Carried on an unassessable family too: those calls are real, and a page saying '2 of 3 calls, not assessed' is true where 'not observed' is not.
              */
             callIds?: string[];
             /** Code */
@@ -2065,6 +2294,12 @@ export interface components {
              * @description Null when the family cannot be computed, never zero.
              */
             rate?: number | null;
+            /**
+             * Unassessablebecause
+             * @description Why the families were not tested. Empty when `assessable`.
+             * @default
+             */
+            unassessableBecause: string;
             /**
              * Unavailablebecause
              * @default
@@ -3037,7 +3272,10 @@ export interface operations {
     };
     read_board_api_v1_insights_actions_board_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Scope the board to one employer: the actions naming it, plus the actions citing one of its calls. Omitted, the whole board comes back. The join is here rather than on the client because membership by cited call cannot be computed from the board alone without sending every action's whole call list. */
+                employer?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3051,6 +3289,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionBoardResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

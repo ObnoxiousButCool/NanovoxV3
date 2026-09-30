@@ -253,6 +253,10 @@ export function AccountHeader({
 export function AccountBody({ data }: { data: AccountDetail }) {
   const { facts, risk } = data
   const fired = risk.observations.filter((observation) => observation.observed)
+  // One unassessable family means all ten are: the floor is on the employer,
+  // not on the family. Read off the first rather than assumed, so a server
+  // that ever disagreed would show through instead of being papered over.
+  const unassessed = risk.observations.find((observation) => !observation.assessable)
 
   return (
     <>
@@ -293,12 +297,19 @@ export function AccountBody({ data }: { data: AccountDetail }) {
           </ul>
 
           <h3 className="nv-subhead">
-            Other conditions observed — {fired.length} of {risk.observations.length}
+            Other conditions observed —{' '}
+            {unassessed === undefined
+              ? `${String(fired.length)} of ${String(risk.observations.length)}`
+              : 'not assessed'}
           </h3>
           <p className="nv-sub">
             Informational. These do not set the flag (D2), and the count is a count rather
             than a level (D12).
           </p>
+          {/* Said once at the top rather than repeated on all ten rows. A
+              count of nought here would read as a clean account, when what
+              happened is that nobody could look. */}
+          {unassessed === undefined ? null : <Note>{unassessed.unassessableBecause}</Note>}
           {risk.observations.length === 0 ? (
             <Empty>No indicator families were evaluated for this account.</Empty>
           ) : (
@@ -307,7 +318,7 @@ export function AccountBody({ data }: { data: AccountDetail }) {
                 <li
                   key={observation.code}
                   className={
-                    !observation.available
+                    !observation.available || !observation.assessable
                       ? 'nv-unavailable'
                       : observation.observed
                         ? 'nv-met'
@@ -315,7 +326,11 @@ export function AccountBody({ data }: { data: AccountDetail }) {
                   }
                 >
                   <span aria-hidden="true">
-                    {!observation.available ? '—' : observation.observed ? '●' : '○'}
+                    {!observation.available || !observation.assessable
+                      ? '—'
+                      : observation.observed
+                        ? '●'
+                        : '○'}
                   </span>
                   <span>{observation.label}</span>
                   {/* Unavailable is never zero. A family whose field v9
@@ -330,9 +345,17 @@ export function AccountBody({ data }: { data: AccountDetail }) {
                     <span className="nv-indreason">{observation.unavailableBecause}</span>
                   ) : (
                     <span className="nv-indcount">
+                      {/* Three readings, not two. A family with hits on an
+                          account nobody could assess is neither observed nor
+                          absent, and "not observed" is false about it — two
+                          of Junipero's three calls carry a complaint. */}
                       {observation.observed
                         ? `${String(observation.hits)} of ${String(observation.employerCalls)} calls`
-                        : 'not observed'}
+                        : observation.assessable
+                          ? 'not observed'
+                          : observation.hits > 0
+                            ? `${String(observation.hits)} of ${String(observation.employerCalls)} calls, not assessed`
+                            : 'not assessed'}
                     </span>
                   )}
                   <IndicatorEvidence

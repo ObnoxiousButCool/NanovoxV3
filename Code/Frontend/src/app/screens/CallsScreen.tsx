@@ -29,7 +29,7 @@ import { useCalls, useFilterOptions } from '@/shared/api/insights'
 import type { CallRow, CallsPage } from '@/shared/api/insights'
 import { useDrawer } from '@/shared/design/drawer'
 import { CallEvidence } from '@/shared/design/drawer/Evidence'
-import { BigRow, Empty, KpiTile, Note } from '@/shared/design/primitives'
+import { BigRow, Empty, KpiTile, Named, Note } from '@/shared/design/primitives'
 import { OUTCOME_COLOR } from '@/shared/design/outcome'
 import { getConfig } from '@/shared/config/env'
 import { useFilters } from '@/shared/filters/useFilters'
@@ -435,13 +435,15 @@ function Row({
   const account = [row.brokerAgency, row.region].filter(
     (part) => part !== null && part !== undefined && part !== '',
   )
-  const callerContext = [row.callerKind, row.agentRef ? `agent ${row.agentRef}` : null].filter(
+  const callerContext = [
+    row.callerKind,
+    row.agentName ? `agent ${row.agentName}` : null,
+    row.agentRef ? `(${row.agentRef})` : null,
+  ].filter(
     (part) => part !== null && part !== undefined && part !== '',
   )
   const callerName = row.callerName?.trim()
-  const callerLabel = callerName || (row.callerRef ? 'Caller not found' : 'Caller not recorded')
   const callerDetails = [
-    !callerName && row.callerRef ? `Reference ${row.callerRef}` : null,
     ...callerContext,
   ].filter((part): part is string => part !== null)
   const accountLabel = row.employerName ?? row.employerRef ?? 'Account not recorded'
@@ -498,7 +500,9 @@ function Row({
         <small className="nv-call-secondary">{secondaryAccount}</small>
       </td>
       <td>
-        <span className="nv-call-primary">{callerLabel}</span>
+        <span className="nv-call-primary">
+          <Named name={callerName} reference={row.callerRef} mask fallback="Caller not recorded" />
+        </span>
         <small className="nv-call-secondary">
           {callerDetails.length > 0
             ? callerDetails.join(' · ')

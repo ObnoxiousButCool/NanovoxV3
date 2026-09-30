@@ -40,6 +40,24 @@ A call can exist in `CallRepository` (it was ingested) without yet having
 tags (extraction has not run, or has not reached this call). That is not
 an error — the tags below are simply absent, the same "not run yet" this
 application already represents elsewhere as `None` rather than a zero.
+
+## The analysis beside the transcript
+
+The call's own pipeline output travels with it, grouped the way plan §7
+groups it: L1, L2, L3, L4, and then the values computed in code after the
+layers have run. **Five panels, four layers.** The Call Tag Schema's
+"Emitted by" column names four and nothing beyond L4 exists in the
+workbook (`domain/layers.py` is the source of truth and deliberately has
+four members). The fifth panel is not a fifth layer and is not labelled as
+one: it holds what §7 lists under "Deterministic, not LLM" — values no
+model ever saw, derived from the layers' output.
+
+Every panel carries whether its layer **ran**, separately from what it
+found. L3 and L4 are not pipeline-critical: either can fail on a single
+call and be recorded unavailable while the rest of the analysis stands. A
+panel that rendered "no signals" for a layer that never ran would be
+reporting a clean call, which is the same "withheld is not zero" mistake
+the figures make impossible everywhere else on the product.
 """
 
 from __future__ import annotations
@@ -50,9 +68,11 @@ from typing import TYPE_CHECKING
 from application.use_cases.read_insights import InsightsRequest
 from domain.aggregation.filters import InsightFilters
 from domain.errors import NotFoundError
+from domain.value_objects.caller_type import CallerType
 from domain.value_objects.signal_type import owner_team_of, severity_of
 
 if TYPE_CHECKING:
+    from application.ports.call_extraction_repository import CallExtractionRepository
     from application.ports.call_repository import CallRepository
     from application.use_cases.read_insights import InsightsReader
     from domain.aggregation.call_tags import CallTags
@@ -61,6 +81,9 @@ if TYPE_CHECKING:
     from domain.value_objects.process_gap import ProcessGap
     from domain.value_objects.signal_severity import SignalSeverity
     from domain.value_objects.signal_type import SignalType
+    from application.ports.reference_lookup import ReferenceLookup
+    from domain.entities.call_extraction import CallExtraction
+    from domain.entities.ingested_call import IngestedCall
 
 
 @dataclass(frozen=True)
@@ -97,6 +120,13 @@ class CallEvidence:
     employer_ref: str | None
     resolution_status: str
     resolution_reason: str | None
+    #: Who rang, from the Member or Contact sheet. `None` where the
+    #: reference matches nobody -- a gap in reference data, not an
+    #: anonymous caller, which is why the reference travels with it.
+    caller_name: str | None
+    #: The agent who took it, from the Agent Roster.
+    agent_name: str | None
+    employer_name: str | None
     turns: tuple[Turn, ...]
     #: True when the call has no turns to show.
     #:
@@ -113,6 +143,10 @@ class CallEvidence:
     knowledge_failure: KnowledgeFailure | None = None
     process_gap: ProcessGap | None = None
     control_exceptions: tuple[ControlExceptionType, ...] = ()
+    #: The pipeline's output for this call, or `None` when nothing has run
+    #: on it at all. Not flattened into this dataclass: the grouping by
+    #: layer is the point, and `CallExtraction` already carries it.
+    analysis: CallExtraction | None = None
 
     @property
     def text(self) -> str:
@@ -123,9 +157,31 @@ class CallEvidence:
 class ReadCallEvidence:
     """One call by reference, or a 404 that names it."""
 
-    def __init__(self, calls: CallRepository, reader: InsightsReader) -> None:
+    def __init__(
+        self,
+        calls: CallRepository,
+        reader: InsightsReader,
+        extractions: CallExtractionRepository,
+        reference: ReferenceLookup,
+    ) -> None:
         self._calls = calls
         self._reader = reader
+        self._extractions = extractions
+        self._reference = reference
+
+    async def _caller_name(self, call: IngestedCall) -> str | None:
+        """The caller's own name, from whichever sheet knows them.
+
+        A member and an employer contact are different people with
+        different authority, and `caller_type` is what says which sheet to
+        ask -- looking in both and taking the first hit would quietly
+        resolve a member reference against a contact of the same shape.
+        """
+        if call.caller_type is CallerType.MEMBER:
+            member = await self._reference.find_member(call.caller_ref)
+            return member.name if member is not None else None
+        contact = await self._reference.find_employer_contact(call.caller_ref)
+        return contact.name if contact is not None else None
 
     async def execute(self, reference: str) -> CallEvidence:
         call = await self._calls.get(reference)
@@ -137,6 +193,13 @@ class ReadCallEvidence:
                 "No such call in this corpus.",
                 detail=f"reference={reference}",
             )
+        extraction = await self._extractions.get(reference)
+        agent = await self._reference.find_agent(call.agent_ref)
+        employer = (
+            await self._reference.find_employer(call.employer_ref)
+            if call.employer_ref is not None
+            else None
+        )
         transcript = call.transcript
         turns = (
             tuple(
@@ -167,6 +230,9 @@ class ReadCallEvidence:
             employer_ref=call.employer_ref,
             resolution_status=call.resolution_status.value,
             resolution_reason=call.resolution_reason,
+            caller_name=await self._caller_name(call),
+            agent_name=agent.name if agent is not None else None,
+            employer_name=employer.name if employer is not None else None,
             turns=turns,
             transcript_missing=not turns,
             signals=tuple(
@@ -179,6 +245,7 @@ class ReadCallEvidence:
             control_exceptions=tuple(sorted(tags.control_exceptions, key=lambda item: item.value))
             if tags is not None
             else (),
+            analysis=extraction,
         )
 
     async def _tags_for(self, reference: str) -> CallTags | None:

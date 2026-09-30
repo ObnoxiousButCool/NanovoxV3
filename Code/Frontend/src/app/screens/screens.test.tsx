@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '@/app/App'
 import { createQueryClient } from '@/app/queryClient'
 import { DrawerProvider } from '@/shared/design/drawer'
+import { unrunAnalysis } from '@/shared/design/drawer/analysisFixture'
 import { ThemeProvider } from '@/shared/design/ThemeProvider'
 
 const SCOPE = {
@@ -165,6 +166,7 @@ const FAMILIES = [
     employerCalls: 9,
     rate: 0.33,
     available: true,
+    assessable: true,
     unavailableBecause: '',
     callIds: ['C-1', 'C-2', 'C-3'],
   },
@@ -176,6 +178,7 @@ const FAMILIES = [
     employerCalls: 9,
     rate: 0,
     available: true,
+    assessable: true,
     unavailableBecause: '',
   },
   {
@@ -186,6 +189,9 @@ const FAMILIES = [
     employerCalls: 9,
     rate: null,
     available: false,
+    // Assessable, and still unavailable. The two are independent: this
+    // account has the calls, and v9 has no field.
+    assessable: true,
     unavailableBecause: 'Member effort is our composite and is not built yet.',
   },
 ]
@@ -362,6 +368,7 @@ function callRow(reference: string, over: Record<string, unknown> = {}) {
     brokerAgency: 'Whitfield Benefits',
     region: 'Orange County',
     agentRef: 'AG-03',
+    agentName: 'Alex',
     callerRef: 'MBR-01',
     callerName: 'Jordan Lee',
     callerKind: 'member',
@@ -516,6 +523,7 @@ const EVIDENCE = {
   resolutionStatus: 'RESOLVED',
   resolutionReason: null,
   transcriptMissing: false,
+  analysis: unrunAnalysis('CB-7700001'),
   turns: [{ seq: 0, speaker: 'AGENT', text: 'Choice Administrators, how can I help?' }],
 }
 
@@ -649,6 +657,7 @@ function observationsWithNObserved(n: number) {
     employerCalls: 9,
     rate: 0.2,
     available: true,
+    assessable: true,
     unavailableBecause: '',
   }))
 }
@@ -1392,9 +1401,10 @@ describe('/calls', () => {
     await screen.findByText('C-0001')
     const row = screen.getByText('C-0001').closest('tr') as HTMLElement
     expect(within(row).getByText('Jordan Lee')).toBeInTheDocument()
-    expect(within(row).getByText('member · agent AG-03')).toBeInTheDocument()
+    expect(within(row).getByText('member · agent Alex · (AG-03)')).toBeInTheDocument()
     expect(within(row).getByText('Quality not recorded · talk-only AHT ≥6m 40s')).toBeInTheDocument()
     expect(within(row).getByText('Member communication gap')).toHaveClass('nv-call-signal')
+    expect(within(row).queryByText('MBR-01')).not.toBeInTheDocument()
     expect(within(row).queryByText('member_communication_gap')).not.toBeInTheDocument()
     expect(within(row).queryByText('Indicators')).not.toBeInTheDocument()
     expect(within(row).queryByText('Agent Smith')).not.toBeInTheDocument()
@@ -1885,5 +1895,285 @@ describe('the insight strip on an account', () => {
     expect(
       screen.getByText('Cedar Point Workforce Partners', { selector: 'h2' }),
     ).toBeInTheDocument()
+  })
+})
+
+/**
+ * An account flagged on metric 10 whose indicator families could not be
+ * tested — Junipero Restaurant Group in the real corpus.
+ *
+ * Three calls: over metric 10's eligibility floor of three, under the
+ * indicator floor of five. So the flag is real and evidenced, and every one
+ * of the ten families comes back `observed: false` without having been
+ * looked at. Two of the three calls carry a complaint, which is what makes
+ * the bare nought a false statement rather than an unhelpful one.
+ */
+const UNASSESSED_FAMILY_REASON =
+  'This account has 3 calls in the window and the ten families are assessed from 5. ' +
+  'They were not checked, which is not the same as none being present.'
+
+const THIN_FAMILIES = [
+  {
+    code: 'complaint_choice',
+    label: 'Complaint attributed to Choice',
+    observed: false,
+    hits: 2,
+    employerCalls: 3,
+    rate: 0.67,
+    available: true,
+    assessable: false,
+    unavailableBecause: '',
+    unassessableBecause: UNASSESSED_FAMILY_REASON,
+    callIds: ['C-0067', 'C-0068'],
+  },
+  {
+    code: 'exit_language',
+    label: 'Exit or market-test language, verbatim',
+    observed: false,
+    hits: 0,
+    employerCalls: 3,
+    rate: 0,
+    available: true,
+    assessable: false,
+    unavailableBecause: '',
+    unassessableBecause: UNASSESSED_FAMILY_REASON,
+    callIds: [],
+  },
+]
+
+const RISK_THIN = {
+  ...RISK,
+  assessed: [
+    {
+      ...ASSESSED,
+      calls: 3,
+      flagged: true,
+      state: 'Flagged: 2 of 4 conditions met. Too few calls to quote this as a figure.',
+      conditionsMet: 2,
+      observations: THIN_FAMILIES,
+    },
+  ],
+  assessedCount: 1,
+  ineligible: ['EMP-1002'],
+  ineligibleCount: 1,
+}
+
+describe('an account flagged below the indicator floor', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.includes('/insights/risk')
+                ? RISK_THIN
+                : input.includes('/insights/accounts/')
+                  ? { ...ACCOUNT, risk: { ...ACCOUNT.risk, observations: THIN_FAMILIES } }
+                  : routeFor(input),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+  })
+
+  it('does not put a nought beside the flag when nothing could be counted', async () => {
+    // The defect this exists to stop. "Flagged 0" reads as a flag with
+    // nothing behind it, when the truth is that the families were never
+    // tested — and two of this account's three calls carry a complaint.
+    renderAt('/accounts')
+
+    const picker = await screen.findByLabelText('Accounts')
+    const flagged = within(picker).getByText('Flagged').closest('span')
+
+    expect(flagged).not.toBeNull()
+    expect(within(flagged as HTMLElement).queryByText('0')).not.toBeInTheDocument()
+  })
+
+  it('says the families were not assessed, rather than counting them', async () => {
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByText(/Other conditions observed — not assessed/)).toBeInTheDocument()
+    expect(screen.getByText(UNASSESSED_FAMILY_REASON)).toBeInTheDocument()
+  })
+
+  it('never calls a family with hits "not observed"', async () => {
+    // A complaint attributed to Choice on two of three calls was observed.
+    // What did not happen is that it cleared a gate nobody could apply.
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByText('2 of 3 calls, not assessed')).toBeInTheDocument()
+    expect(screen.queryByText('not observed')).not.toBeInTheDocument()
+  })
+})
+
+describe('actions for one account', () => {
+  it('asks the server for that account’s actions rather than filtering the board', async () => {
+    // The panel used to fetch the whole board and filter it against
+    // `risk.evidence` — the calls behind metric 10's *fired conditions*.
+    // Every seeded action leaves `employerRef` null and reaches an account
+    // only through its calls, so an account with nothing flagged matched
+    // nothing and the panel said none of its calls had needed an action.
+    const seen: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) => {
+        seen.push(input)
+        return Promise.resolve(
+          new Response(JSON.stringify(routeFor(input)), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }),
+    )
+
+    renderAt('/accounts/EMP-1001')
+
+    await waitFor(() => {
+      expect(seen.some((url) => url.includes('/insights/actions/board'))).toBe(true)
+    })
+    const board = seen.filter((url) => url.includes('/insights/actions/board'))
+    expect(board.every((url) => url.includes('employer=EMP-1001'))).toBe(true)
+  })
+})
+
+describe('a book-wide action on an account page', () => {
+  /** One card whose figures are the corpus's, on an account holding 2 of its calls. */
+  const SHARED = {
+    ...ACTION_BOARD,
+    actions: [
+      {
+        id: 1,
+        reference: 'ACT-1',
+        title: 'Member communication gap — 179 calls',
+        sourceKind: 'signal',
+        issueKey: 'member_communication_gap',
+        evidence: 'Calls raising the signal are rising across the quarter.',
+        ownerTeam: 'Service',
+        owner: null,
+        priority: 'medium',
+        status: 'needs_action',
+        statusLabel: 'Needs action',
+        pastDue: false,
+        employerRef: null,
+        callIds: ['C-1', 'C-2', 'C-3'],
+        callsOnAccount: 2,
+        label: 'Member communication gap',
+        steps: [],
+        log: [],
+        createdAt: '2026-09-01T00:00:00Z',
+        assignedOn: null,
+        due: null,
+        actionTaken: null,
+        outcome: null,
+        measurementWindow: null,
+        sourceDetail: null,
+        recommendation: null,
+      },
+    ],
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.includes('/insights/actions/board') ? SHARED : routeFor(input),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+  })
+
+  it('shows the account’s share beside the card’s own corpus-wide figure', async () => {
+    // "179 calls" under a heading reading "Actions for this account", on an
+    // account with far fewer than that, is out by an order of magnitude.
+    // Both numbers belong on the card; only one of them is this account's.
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByText('Member communication gap — 2 / 3 calls')).toBeInTheDocument()
+    // The stored title, with the book's count in it, is not what an account
+    // page shows: 179 under "Actions for this account" reads as this
+    // account's and is out by an order of magnitude.
+    expect(screen.queryByText(/179 calls/)).not.toBeInTheDocument()
+  })
+
+  it('says once, not on every row, that the cards count the whole book', async () => {
+    // The evidence line is a trend claim about the corpus — "rising across
+    // the quarter". Labelling every row with that repeated the panel's own
+    // subtitle once per card; the ratio above already separates the two
+    // numbers, which is what a reader can actually misread.
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByText(/Book-wide actions touching this account/)).toBeInTheDocument()
+    expect(screen.queryByText(/Across the book:/)).not.toBeInTheDocument()
+  })
+})
+
+describe('the account picker order', () => {
+  /** A flagged account with no indicators, and an unflagged one with three. */
+  const RISK_ORDER = {
+    ...RISK,
+    assessed: [
+      {
+        ...ASSESSED,
+        employerRef: 'EMP-1002',
+        calls: 9,
+        flagged: false,
+        observations: observationsWithNObserved(3),
+        monthsToRenewal: 6,
+      },
+      {
+        ...ASSESSED,
+        employerRef: 'EMP-1001',
+        calls: 3,
+        flagged: true,
+        observations: THIN_FAMILIES,
+        monthsToRenewal: 0,
+      },
+    ],
+    assessedCount: 2,
+    ineligible: [],
+    ineligibleCount: 0,
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(input.includes('/insights/risk') ? RISK_ORDER : routeFor(input)),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+  })
+
+  it('puts a flagged account above an unflagged one with more indicators', async () => {
+    // D12's order, amended 2026-09-29. The flag is the one scoring system;
+    // the ten families are informational and gated from five calls, so a
+    // flagged account can score nought without one having been checked —
+    // and under the old key it sank below every unflagged account.
+    renderAt('/accounts')
+
+    const picker = await screen.findByLabelText('Accounts')
+    const names = within(picker)
+      .getAllByRole('button')
+      .map((button) => button.textContent ?? '')
+
+    const flagged = names.findIndex((name) => name.includes('Cedar Point'))
+    const unflagged = names.findIndex((name) => name.includes('Park Mechanical'))
+    expect(flagged).toBeGreaterThanOrEqual(0)
+    expect(unflagged).toBeGreaterThanOrEqual(0)
+    expect(flagged).toBeLessThan(unflagged)
   })
 })

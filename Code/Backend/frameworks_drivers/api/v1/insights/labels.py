@@ -55,15 +55,23 @@ from domain.insights.generated import (
     Severity,
     UnavailableReason,
 )
+from domain.value_objects.broker_sentiment import BrokerSentiment
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
+from domain.value_objects.escalation_trigger_type import EscalationTriggerType
+from domain.value_objects.impact_scope import ImpactScopeBucket
+from domain.value_objects.intent_type import IntentType
 from domain.value_objects.outcome import Outcome
+from domain.value_objects.polarity import Polarity
 from domain.value_objects.process_gap import ProcessGapStatus, RaisedBy
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.root_cause_owner import RootCauseOwner
 from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
+from domain.value_objects.score import ScoreStatus
 from domain.value_objects.signal_severity import SignalSeverity
 from domain.value_objects.signal_type import SignalType
+from domain.value_objects.tier import Tier
 from frameworks_drivers.api.camel import CamelModel
 
 
@@ -169,20 +177,74 @@ LABELS: dict[Enum, str] = {
     ComplaintAttribution.BROKER: "Broker",
     ComplaintAttribution.CARRIER: "Carrier",
     ComplaintAttribution.PROVIDER: "Provider",
-    # --- Who raised a process gap (schema field 15) ---
+    # --- The rest of the Call Tag Schema, shown on one call at a time in
+    # the evidence drawer's layer panels. Everything above this line also
+    # appears on an aggregate screen; everything below is per-call only,
+    # which is why it arrives here later rather than having been missed.
+    #
+    # --- Product lines (schema field 3). Use the display wording expected
+    # by the analysis drawer, including spelling out the workbook's "chiro".
+    ProductLine.DENTAL: "Dental",
+    ProductLine.VISION: "Vision",
+    ProductLine.LIFE: "Life",
+    ProductLine.CHIRO: "Chiropractic",
+    ProductLine.PROGRAM: "Program",
+    # --- Commercial intent (schema field 11). "NONE" is a real stored
+    # value, not an absence, so it gets words like the rest.
+    IntentType.EXPANSION: "Wants to add cover",
+    IntentType.MARKET_TEST: "Testing the market",
+    IntentType.CANCELLATION: "Talking about cancelling",
+    IntentType.NONE: "No commercial intent stated",
+    # --- How the broker was spoken of, when one was named aloud.
+    BrokerSentiment.ADVERSE: "Spoken of adversely",
+    BrokerSentiment.POSITIVE: "Spoken of positively",
+    # --- Impact scope (schema field 20). The caller's own claim about how
+    # many people this affects, never our count of them.
+    ImpactScopeBucket.ONE_MEMBER: "One member",
+    ImpactScopeBucket.ONE_GROUP: "The whole group",
+    ImpactScopeBucket.N_EMPLOYEES: "Several employees",
+    ImpactScopeBucket.N_MEMBERS_AND_DEPENDENTS: "Several members and dependents",
+    # --- Why an escalation was warranted (eight types, L4).
+    EscalationTriggerType.CALLER_REQUEST: "The caller asked",
+    EscalationTriggerType.COMPLIANCE_EXCEPTION: "Compliance exception",
+    EscalationTriggerType.CONTESTED_DOCUMENT: "Contested document",
+    EscalationTriggerType.RETENTION_RISK: "Retention risk",
+    EscalationTriggerType.CLINICAL_OR_SAFETY_RISK: "Clinical or safety risk",
+    EscalationTriggerType.SCHEDULED_CARE_AT_RISK: "Scheduled care at risk",
+    EscalationTriggerType.AUTHORITY_LIMIT: "Beyond what the agent may approve",
+    EscalationTriggerType.BROKER_CONDUCT_ADVERSE: "Broker conduct",
+    # --- Who raised a process gap and its lifecycle (schema fields 13/15).
+    # Keep the existing direct-evidence API wording; the enclosing field
+    # supplies the "raised by" context to the per-layer panel as well.
     RaisedBy.AGENT: "Agent",
     RaisedBy.CALLER: "Caller",
-    # --- A process gap's own lifecycle: "a tag without one is a note." ---
     ProcessGapStatus.UNVALIDATED: "Not yet validated",
     ProcessGapStatus.VALIDATED: "Validated",
     ProcessGapStatus.ACTIONED: "Actioned",
     ProcessGapStatus.REJECTED: "Rejected",
-    # --- Call Tag Schema field 3. Multi-valued; a call can touch several. ---
-    ProductLine.DENTAL: "Dental",
-    ProductLine.VISION: "Vision",
-    ProductLine.LIFE: "Life",
-    ProductLine.CHIRO: "Chiro",
-    ProductLine.PROGRAM: "Program",
+    # --- Quality (schema field 12 and the Call Quality Framework sheet).
+    # "Provisional" is worded as what to do about it rather than as a
+    # grade: it means the score is not final, not that it is a bad one.
+    Tier.GOOD: "Good",
+    Tier.AVERAGE: "Average",
+    Tier.POOR: "Poor",
+    ScoreStatus.CONFIRMED: "Confirmed",
+    ScoreStatus.PROVISIONAL: "Provisional — not final",
+    Polarity.POSITIVE: "Did well",
+    Polarity.NEGATIVE: "Fell short",
+    # --- Root cause and preventability (schema fields 17-18, computed in
+    # code from complaint and signals, never asked of a model).
+    RootCauseOwner.CHOICE: "Choice",
+    RootCauseOwner.BROKER: "Broker",
+    RootCauseOwner.CARRIER: "Carrier",
+    RootCauseOwner.PROVIDER: "Provider",
+    RootCauseOwner.EMPLOYER: "Employer",
+    RootCauseOwner.SYSTEM: "System",
+    RootCauseOwner.MEMBER_MISUNDERSTANDING: "Member misunderstanding",
+    # `Preventable` is deliberately absent, like `Category`: its three
+    # values are already the words a reader wants — "Yes", "Partly", "No" —
+    # and a label identical to its own code is not a label. It travels as
+    # a plain string.
 }
 
 #: The Touchpoints sheet's own reference column — a slug, not prose, unlike
@@ -243,10 +305,18 @@ LABELLED_ENUMS: tuple[type[Enum], ...] = (
     Severity,
     InsightsStatus,
     Lens,
-    ProcessGapStatus,
-    ProductLine,
-    RaisedBy,
     UnavailableReason,
+    IntentType,
+    BrokerSentiment,
+    ImpactScopeBucket,
+    EscalationTriggerType,
+    RaisedBy,
+    ProcessGapStatus,
+    Tier,
+    ScoreStatus,
+    Polarity,
+    ProductLine,
+    RootCauseOwner,
 )
 
 
