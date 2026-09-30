@@ -74,16 +74,16 @@ from domain.value_objects.signal_type import owner_team_of, severity_of
 if TYPE_CHECKING:
     from application.ports.call_extraction_repository import CallExtractionRepository
     from application.ports.call_repository import CallRepository
+    from application.ports.reference_lookup import ReferenceLookup
     from application.use_cases.read_insights import InsightsReader
     from domain.aggregation.call_tags import CallTags
+    from domain.entities.call_extraction import CallExtraction
+    from domain.entities.ingested_call import IngestedCall
     from domain.value_objects.control_exception_type import ControlExceptionType
     from domain.value_objects.knowledge_failure import KnowledgeFailure
     from domain.value_objects.process_gap import ProcessGap
     from domain.value_objects.signal_severity import SignalSeverity
     from domain.value_objects.signal_type import SignalType
-    from application.ports.reference_lookup import ReferenceLookup
-    from domain.entities.call_extraction import CallExtraction
-    from domain.entities.ingested_call import IngestedCall
 
 
 @dataclass(frozen=True)
