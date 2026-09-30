@@ -261,7 +261,14 @@ def _search(rows: Sequence[CallRowView], q: str) -> tuple[CallRowView, ...]:
 #: is "not recorded", and it should not lead the table as the worst score
 #: nor as the best depending on which way the arrow points.
 _KEYS: dict[Sort, Callable[[CallRowView], tuple[object, ...]]] = {
-    Sort.DATE: lambda row: (row.occurred_on.toordinal(),),
+    # The leading flag is not decoration here even though a call always has a
+    # date. `_sorted`'s descending branch reads `key(row)[0]` as "is this one
+    # null", and a bare `(ordinal,)` made every row answer yes: an ordinal is
+    # a large positive integer, so every row fell into the null group, was
+    # re-sorted by reference and came back *ascending*. Date-descending is
+    # the workbench's default sort, so the table opened on the oldest calls
+    # in the corpus.
+    Sort.DATE: lambda row: (False, row.occurred_on.toordinal()),
     Sort.EMPLOYER: lambda row: (row.employer_name is None, (row.employer_name or "").lower()),
     Sort.AGENT: lambda row: (row.agent_ref is None, (row.agent_ref or "").lower()),
     Sort.CATEGORY: lambda row: (row.category is None, (row.category or "").lower()),

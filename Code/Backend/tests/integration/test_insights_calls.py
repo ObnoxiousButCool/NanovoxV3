@@ -1102,3 +1102,72 @@ async def test_the_evidence_response_names_the_people_and_keeps_the_references(
     assert "callerName" in body
     assert "agentName" in body
     assert "employerName" in body
+
+
+@pytest.mark.asyncio
+async def test_the_workbench_opens_on_the_newest_call(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Date-descending is the default sort, and it was returning the oldest.
+
+    `_KEYS[Sort.DATE]` was a bare `(ordinal,)` where every other column is
+    `(is_null, value)`. `_sorted`'s descending branch reads `key(row)[0]` as
+    "is this null"; an ordinal is a large positive integer, so every row
+    answered yes, fell into the null group and was re-sorted by reference --
+    ascending. The workbench opened on the first call in the corpus.
+
+    Every existing sort test asked for `order: asc`, which is why this
+    survived. This one seeds three distinct days so the two directions
+    cannot agree by accident.
+    """
+    async with session_factory() as session, session.begin():
+        broker = BrokerRow(
+            reference="BRK-77",
+            name="Broker",
+            agency="Agency",
+            region="West",
+            groups_in_book=2,
+            signal_profile="neutral",
+        )
+        session.add(broker)
+        await session.flush()
+        employer = _employer("EMP-77", broker.id)
+        session.add(employer)
+        await session.flush()
+        for index, day in enumerate((10, 20, 15), start=1):
+            call = CallRow(
+                reference=f"C-77{index:02d}",
+                source=CallSource.CORPUS_PDF.value,
+                occurred_at=datetime(2026, 9, day, 10, 0, tzinfo=timezone.utc),
+                aht_seconds=400,
+                caller_type="MEMBER",
+                caller_ref="MEM-77",
+                agent_ref="AG-77",
+                agent_name="Alex",
+                resolution_status="RESOLVED",
+                employer_id=employer.id,
+            )
+            session.add(call)
+            await session.flush()
+            session.add(
+                CallExtractionRow(
+                    call_id=call.id,
+                    outcome=Outcome.RESOLVED.value,
+                    category=Category.CLAIMS_AND_EOB.value,
+                    complaint_present=False,
+                    escalation_triggered=False,
+                    knowledge_failure_present=False,
+                )
+            )
+
+    def dates(**params: str) -> list[str]:
+        body = client.get("/api/v1/insights/calls", params={"asOf": AS_OF, **params}).json()
+        return [str(row["occurredOn"]) for row in body["rows"]]
+
+    newest_first = ["2026-09-20", "2026-09-15", "2026-09-10"]
+    assert dates(sort="date", order="desc") == newest_first
+    assert dates(sort="date", order="asc") == list(reversed(newest_first))
+    # The default is `order=desc`, so asking for nothing must match asking
+    # for it: a default that disagrees with its own parameter is the shape
+    # this defect took.
+    assert dates() == newest_first
