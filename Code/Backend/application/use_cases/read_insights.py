@@ -73,7 +73,7 @@ from domain.aggregation.distributions import (
 )
 from domain.aggregation.exec_scorecard import ExecScorecard, exec_scorecard
 from domain.aggregation.filters import AppliedFilter
-from domain.aggregation.indicators import observe
+from domain.aggregation.indicators import NewlyFlagged, newly_flagged, observe
 from domain.aggregation.isolation import (
     BrokerRow,
     ComplaintOwnership,
@@ -97,7 +97,6 @@ from domain.aggregation.risk_flag import (
     exposure,
     flagged_share,
     months_until,
-    newly_flagged_count,
 )
 from domain.aggregation.rules import (
     RuleRow,
@@ -257,6 +256,12 @@ class AccountRisk:
     #: pretending the renewal is imminent.
     renewal_month: str
     months_to_renewal: int | None
+    #: How many lives the account carries, from reference data. The size of
+    #: what is behind the flag, which the risk list prints beside it: two
+    #: flagged accounts are not the same finding when one covers 8 lives and
+    #: the other 800. Not a second score -- `Exposure` already sums this
+    #: across the flagged accounts and is the only place it is totalled.
+    lives: int | None = None
 
     @property
     def indicator_count(self) -> int:
@@ -313,10 +318,11 @@ class RiskResult:
     #: no gate that unlocks it, only a schema change (a termination/renewal
     #: outcome per employer) nobody has made.
     band_calibration: WithheldPanel
-    #: Flagged now, not flagged in the equal-length window before this one
-    #: (`risk_flag.newly_flagged_count`) — the same before/after comparison
-    #: `_exec_trends` already makes for call counts, applied to the flag.
-    newly_flagged: int
+    #: Accounts whose first indicator falls in the most recent slice of the
+    #: window, across the whole book. `None` where the window is too short
+    #: to slice -- absent, not nought. Deliberately computed from the
+    #: unfiltered corpus: see `NewlyFlagged`.
+    newly_flagged: NewlyFlagged | None
 
 
 class InsightsReader:
@@ -546,10 +552,6 @@ class GetAccountRisk:
         assessments = tuple(
             assess(self._config, employer, calls, window) for employer in scope.corpus.employers
         )
-        prior_assessments = tuple(
-            assess(self._config, employer, calls, preceding(window))
-            for employer in scope.corpus.employers
-        )
         assessed = tuple(
             AccountRisk(
                 assessment=assessment,
@@ -561,6 +563,7 @@ class GetAccountRisk:
                 ),
                 renewal_month=employer.renewal_month,
                 months_to_renewal=months_until(employer.renewal_month, scope.as_of),
+                lives=employer.enrolled,
             )
             for assessment, employer in zip(assessments, scope.corpus.employers, strict=True)
             if assessment.eligible
@@ -575,6 +578,11 @@ class GetAccountRisk:
         exit_language = [
             call for call in windowed if SignalType.RETENTION_RISK in call.tags.signals
         ]
+        # `scope.corpus.calls`, not `calls`: the tile counts an account's
+        # first indicator across the whole book, and the filter bar has no
+        # say in when that was. Every other figure on this screen reads the
+        # filtered set, which is why this one says so on the screen too.
+        new_accounts = newly_flagged(scope.corpus.calls, window)
         return RiskResult(
             scope=scope,
             # D12's order: most indicators first, then soonest renewal. Sorted
@@ -622,8 +630,8 @@ class GetAccountRisk:
             escalations_triggered=len(triggered),
             escalations_missed=len(missed),
             exit_language_calls=len(exit_language),
+            newly_flagged=new_accounts,
             band_calibration=BAND_CALIBRATION,
-            newly_flagged=newly_flagged_count(assessments, prior_assessments),
         )
 
 

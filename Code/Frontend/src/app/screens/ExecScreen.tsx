@@ -75,6 +75,7 @@ import {
   EpistemicChip,
   FigureSample,
   FigureValue,
+  IndicatorCount,
   KpiTile,
   Note,
   Panel,
@@ -147,13 +148,18 @@ function ExecBody({
   return (
     <div className="nv-withai">
       <div className="nv-feedcol">
+        {/* The flagged accounts lead the column. `exec.html` opens its feed
+            with this card — it is the first `.aiitem` and the only one open
+            by default — because it is the one thing on the page that names
+            an account somebody has to do something about. The generated
+            sentences follow it. */}
+        <NeedsAttentionPanel risk={risk} names={names} />
         <InsightFeed
           data={insights}
           title="Attention insights"
           badgeLabel="Needs attention now"
           callCount={data.calls}
         />
-        <NeedsAttentionPanel risk={risk} names={names} />
       </div>
       <div className="nv-maincol nv-grid">
       <div className="nv-c12">
@@ -185,9 +191,26 @@ function ExecBody({
 /**
  * "Needs attention now" — the account-risk panel the prototype leads with.
  *
- * `risk.assessed` arrives most-indicators-first, then soonest-renewal (D12).
- * Filtering to the flagged accounts preserves that order; nothing here
- * re-sorts it.
+ * ## Soonest renewal first, not most indicators
+ *
+ * `risk.assessed` arrives in D12's order: the flag, then the indicator
+ * count, then the renewal. That is the right order for `/risk`, where the
+ * question is which accounts are in trouble. It is the wrong one here.
+ *
+ * `exec.html` sorts this list by renewal and then by indicator count —
+ * Kelso (3, Oct), Kingsley (2, Oct), Sandpiper (5, Dec) — and it is right
+ * to. Every account in this list is already flagged, so the count no longer
+ * separates them by whether they need attention, only by how much; what
+ * separates them on an executive page is how long there is left to do
+ * anything about it. The panel's own subtitle counts renewals for the same
+ * reason.
+ *
+ * D12 is not touched by this. It fixes what "flagged" means and how `/risk`
+ * ranks; this is one panel choosing which of two flagged accounts to print
+ * first, and §3.0 gives the prototype presentation.
+ *
+ * A renewal nobody can read sorts last rather than first, the same 99 the
+ * server's own key uses: `null` would otherwise read as "renewing now".
  */
 function NeedsAttentionPanel({
   risk,
@@ -196,33 +219,62 @@ function NeedsAttentionPanel({
   risk: RiskScreenData
   names: Map<string, string>
 }) {
-  const flagged = risk.assessed.filter((account) => account.flagged)
+  const flagged = [...risk.assessed]
+    .filter((account) => account.flagged)
+    .sort(
+      (a, b) =>
+        monthsOrLast(a) - monthsOrLast(b) ||
+        indicatorCount(b) - indicatorCount(a) ||
+        a.employerRef.localeCompare(b.employerRef),
+    )
   const renewingSoon = flagged.filter((account) => withinRenewSoon(account))
-  const top = flagged.slice(0, 5)
+  // Six, as `exec.html` prints.
+  const top = flagged.slice(0, 6)
 
   return (
+    // `exec.html` writes this as a card, not a titled panel: the sentence is
+    // the heading, the figures in it are bold, the count sits opposite a
+    // label, and the two actions are a filled button and a ghost at the foot.
+    // The title stays for screen readers, hidden the way the feed's other
+    // panels hide theirs.
     <Panel
       title="Flagged accounts"
+      className="nv-flagcard"
       sub={
         <>
-          {flagged.length} of {risk.assessedCount} accounts are flagged for risk, and{' '}
-          {renewingSoon.length} of them renew within {RENEW_SOON_MONTHS} months.
+          <b>
+            {flagged.length} of {risk.assessedCount} accounts
+          </b>{' '}
+          are flagged for risk, and{' '}
+          <b>
+            {renewingSoon.length} of them renew within {RENEW_SOON_MONTHS} months
+          </b>
+          .
         </>
       }
-      chip={<EpistemicChip kind="observed" />}
-      actions={
+      meta={
         <>
+          <span className="nv-flagcard-lens">
+            <EpistemicChip kind="observed" /> Account risk
+          </span>
+          <span className="nv-flagcard-count">
+            {flagged.length} {flagged.length === 1 ? 'account' : 'accounts'}
+          </span>
+        </>
+      }
+      footer={
+        <div className="nv-ai-act">
           {flagged.length > 0 ? <IssueCue issue="flagged" /> : null}
           <Link className="nv-btn" to="/risk">
             Show in overview
           </Link>
-        </>
+        </div>
       }
     >
       {top.length === 0 ? (
         <Empty title="Nothing flagged">No account meets metric 10's flag in this scope.</Empty>
       ) : (
-        <ul className="nv-attn">
+        <ul className="nv-attn" aria-label="Flagged accounts">
           {top.map((account) => (
             <li key={account.employerRef}>
               <Link to={`/accounts/${encodeURIComponent(account.employerRef)}`}>
@@ -230,14 +282,27 @@ function NeedsAttentionPanel({
                   className="nv-dot"
                   style={{ background: withinRenewSoon(account) ? 'var(--critical)' : 'var(--serious)' }}
                 />
-                <span>
+                <span className="nv-attn-who">
                   <b>{names.get(account.employerRef) ?? account.employerRef}</b>
-                  <small>{indicatorCount(account)} of 10 indicators</small>
                 </span>
-                <span className="nv-n">{indicatorCount(account)}</span>
-                <span className="nv-own">{renewalText(account)}</span>
-                <span className="nv-go" aria-hidden="true">
-                  →
+                {/* One compact meta, the way `exec.html` writes it — "3
+                    indicators · Oct". The five-column row this list borrows
+                    from `/actions` was built for a full-width panel; in the
+                    330px feed column its fixed tracks came to more than the
+                    row was wide, so the account's name was allotted 0px.
+
+                    A dash, not a nought, below the families' own floor:
+                    Junipero and Blue Mesa are flagged on 3 and 4 calls and
+                    were never assessed on the ten, and "0 of 10" beside their
+                    names reads as a flag with nothing behind it. */}
+                <span className="nv-attn-meta" title={renewalText(account)}>
+                  <IndicatorCount
+                    assessed={assessedOnFamilies(account)}
+                    count={indicatorCount(account)}
+                    unassessed="not assessed"
+                  />
+                  {assessedOnFamilies(account) ? ' indicators' : null} ·{' '}
+                  {account.renewalMonth ?? 'renewal unknown'}
                 </span>
               </Link>
             </li>
@@ -250,6 +315,17 @@ function NeedsAttentionPanel({
 
 function indicatorCount(account: AssessedAccount): number {
   return account.observations.filter((observation) => observation.observed).length
+}
+
+/** False below `indicators.min_employer_calls`, where none were tested. */
+function assessedOnFamilies(account: AssessedAccount): boolean {
+  return account.observations.every((observation) => observation.assessable)
+}
+
+/** Months to renewal, with an unreadable one sorting last rather than now. */
+function monthsOrLast(account: AssessedAccount): number {
+  const months = account.monthsToRenewal
+  return months === null || months === undefined ? 99 : months
 }
 
 function withinRenewSoon(account: AssessedAccount): boolean {
@@ -305,6 +381,21 @@ function SummaryTilesPanel({
     <BigRow>
       <KpiTile
         label="Accounts flagged"
+        // `exec.html` puts a tooltip here and we had none. Its wording is not
+        // portable: it describes the four-level band off a count of
+        // indicators and says "Three or more is High" — the scoring D12
+        // replaced with metric 10's flag. Same slot, this product's own
+        // definition.
+        info={
+          <Tooltip>
+            Flagged means metric 10 and nothing else: 2 or more of its 4 conditions met, on an
+            account with at least 3 calls in the window. The ten indicator families are shown
+            beside it as a count and never set it.
+            <br />
+            A condition worth a conversation, not a prediction that anyone will leave — no
+            termination outcomes exist here to validate one against.
+          </Tooltip>
+        }
         tone={flagged.length > 0 ? 'warm' : 'plain'}
         value={String(flagged.length)}
         meta={

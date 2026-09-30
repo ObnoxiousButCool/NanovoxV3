@@ -273,6 +273,18 @@
             "title": "Flagged",
             "type": "boolean"
           },
+          "lives": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lives enrolled with this employer, from reference data. What is behind the flag: two flagged accounts are not the same finding when one covers 8 lives and the other 800. Never summed on a screen -- `exposure` is the only total, so a reader cannot arrive at two different books. Null, never 0, where reference data does not carry it: an account with no recorded size is not an account covering nobody.",
+            "title": "Lives"
+          },
           "monthsToRenewal": {
             "anyOf": [
               {
@@ -4136,6 +4148,46 @@
         "title": "MovementResponse",
         "type": "object"
       },
+      "NewlyFlaggedResponse": {
+        "description": "Accounts new to the indicator list, and the date they are new since.\n\n`since` travels with `count` because the count is unreadable without it,\nand `unfiltered` is stated rather than assumed: this is the one figure on\nthe screen the filter bar does not touch, and a reader comparing it with\nthe tiles beside it needs to know that.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "employers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Employers",
+            "type": "array"
+          },
+          "since": {
+            "format": "date",
+            "title": "Since",
+            "type": "string"
+          },
+          "unfiltered": {
+            "default": true,
+            "description": "Always true. Counted across the whole book: an account's first indicator is a fact about the account, not about the slice being looked through, and narrowing by region would make an account new because a reader changed a dropdown.",
+            "title": "Unfiltered",
+            "type": "boolean"
+          },
+          "weeks": {
+            "description": "How many weeks the recent slice spans.",
+            "title": "Weeks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "employers",
+          "since",
+          "weeks"
+        ],
+        "title": "NewlyFlaggedResponse",
+        "type": "object"
+      },
       "ObservationResponse": {
         "description": "One indicator family's standing. Informational \u2014 it does not set the flag.",
         "properties": {
@@ -4812,9 +4864,15 @@
             "type": "integer"
           },
           "newlyFlagged": {
-            "description": "Flagged now, not flagged in the equal-length window before this one \u2014 the flag's own version of the movement comparison the exec screen makes.",
-            "title": "Newlyflagged",
-            "type": "integer"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NewlyFlaggedResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Accounts whose first indicator falls in the most recent slice of the window. Null when the window is too short to slice -- absent rather than nought, because a window that cannot be cut has not told anyone that nobody is new."
           },
           "outcomes": {
             "description": "How the window's calls ended, every outcome including the ones at zero and in the workbook's order. Categories that reorder with the data cannot be compared against last week's chart.",
@@ -4865,7 +4923,6 @@
           "flaggedShare",
           "exposure",
           "bandCalibration",
-          "newlyFlagged",
           "escalationsTriggered",
           "escalationsMissed",
           "exitLanguageCalls"

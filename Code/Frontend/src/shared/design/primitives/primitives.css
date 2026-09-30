@@ -360,22 +360,37 @@
   font-size: 14px;
 }
 
+/* `app.css`'s `thead th`, with `v2.css`'s size and padding over it: a small
+   uppercase label in the muted ink, not a 14px sentence-case heading. We had
+   set weight and colour only and inherited the table's own 14px, so every
+   header row on every screen read as a second row of data rather than as the
+   column names. `position: sticky` and its background are ours — the
+   prototype's tables do not scroll under a page head — and the top padding
+   stays at 0 the way `app.css` has it. */
 .nv-tblwrap th {
   text-align: left;
-  font-weight: 600;
-  color: var(--ink-2);
+  font:
+    600 11.5px/1.3 var(--body);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-3);
+  white-space: nowrap;
   border-bottom: 1px solid var(--rule-strong);
-  padding: 8px 10px 6px;
+  padding: 0 10px 9px 0;
   position: sticky;
   top: var(--nv-head-h, 0);
   z-index: 5;
   background: var(--surface);
 }
 
+/* `v2.css`'s own `tbody td`, which overrides `app.css`'s tighter cell:
+   `11px 12px 11px 0` and middle alignment. Ours was 9px all round and top
+   aligned, which is why rows sat closer together than the prototype's and a
+   one-line cell floated above a two-line one beside it. */
 .nv-tblwrap td {
-  padding: 9px 10px;
+  padding: 11px 12px 11px 0;
   border-bottom: 1px solid var(--rule);
-  vertical-align: top;
+  vertical-align: middle;
   color: var(--ink);
 }
 
@@ -486,4 +501,18 @@
 
 .nv-samplebody {
   opacity: 0.85;
+}
+
+/* `IndicatorCount`'s "nobody looked". Dimmed, like the prototype's own `.nd`,
+   with a dashed underline to mark it as a gap with an explanation behind it
+   rather than a value -- the two noughts are opposite statements and a table
+   row has no space to say which in words.
+
+   Underline, not `border-style: dashed`. That was the first attempt and it
+   set a style with no width, so the browser drew all four sides at `medium`
+   and boxed the words in. */
+.nv-unassessed {
+  border-bottom: 1px dashed var(--rule-strong);
+  color: var(--ink-3);
+  font-style: italic;
 }

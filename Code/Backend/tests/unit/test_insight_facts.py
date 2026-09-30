@@ -12,6 +12,7 @@ from domain.errors import ValidationError
 from domain.insights.facts import (
     Fact,
     FactSet,
+    hedged_tail,
     normalise_number,
     numbers_in,
     spelled_numbers,
@@ -217,3 +218,86 @@ class TestLabelsAreQuotable:
         )
 
         assert facts.unsupported_numbers("The rate reached 9.7 per 1,000 lives.") == {"9.7"}
+
+
+# --- Sentences that read as a machine wrote them ---------------------------
+#
+# Every string below is verbatim from the first real generation run against
+# the live corpus, on 2026-09-30. The prompt had forbidden this shape since
+# v1.5.0 and named three of them almost exactly ("..., which may affect
+# customer satisfaction"), and the model wrote them anyway -- which is the
+# argument for checking in code rather than asking again more firmly.
+
+
+@pytest.mark.parametrize(
+    ("sentence", "phrase"),
+    [
+        (
+            "Commercial intent capture is at 16%, reflecting a low rate of identifying "
+            "potential sales opportunities during calls.",
+            "reflecting",
+        ),
+        (
+            "First-contact resolution is at 40%, indicating that a significant number "
+            "of calls are not resolved on the first attempt.",
+            "indicating",
+        ),
+        (
+            "The knowledge failure rate stands at 21%, suggesting that agents may lack "
+            "the necessary information to resolve inquiries effectively.",
+            "suggesting",
+        ),
+        (
+            "93 lives are behind the 2 flagged accounts, highlighting a significant "
+            "number of individuals affected.",
+            "highlighting",
+        ),
+        (
+            "8 rules were stated wrongly, which may affect the accuracy of information "
+            "provided to callers.",
+            "which may",
+        ),
+    ],
+)
+def test_a_hedged_tail_is_refused(sentence: str, phrase: str) -> None:
+    """The figure is counted and then a third thing is asserted that nobody
+    measured. The tail is the claim, and it is the part no reader can check."""
+    assert hedged_tail(sentence) == phrase
+
+
+def test_metric_syntax_in_prose_is_refused() -> None:
+    """ "Brokers named adversely = 0" shows a reader the inside of the fact
+    list. Nobody writes an equals sign into a sentence."""
+    assert hedged_tail("Brokers named adversely = 0, indicating no adverse mentions.") is not None
+
+
+def test_a_figure_cannot_be_quoted_and_withheld_in_one_breath() -> None:
+    """The withheld wording stitched onto a count, which is what the model
+    did with the ineligible accounts: it states 81 and denies it in the same
+    sentence."""
+    assert (
+        hedged_tail(
+            "Accounts that could not be assessed total 81, which cannot be given yet "
+            "— too few calls to publish."
+        )
+        is not None
+    )
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        # The prototype's own voice: a figure, and what sits beside it.
+        "30 of 95 accounts are flagged for risk, and 12 of them renew between October and January.",
+        "Repeat contacts fell from 6 to 2 in the last four weeks.",
+        "Control exceptions fell from 5 to 0 in the last 4 weeks.",
+        # The withheld sentence the prompt actually asks for, which carries no
+        # figure precisely because there is none to carry.
+        "Commercial intent routed cannot be given yet — too few calls to publish.",
+        # "Suggesting" is an ordinary word. Only the trailing clause bolted
+        # onto a number is refused, so a sentence is free to use it.
+        "The 3 calls suggesting a renewal date were counted separately.",
+    ],
+)
+def test_a_sentence_a_person_would_write_survives(sentence: str) -> None:
+    assert hedged_tail(sentence) is None

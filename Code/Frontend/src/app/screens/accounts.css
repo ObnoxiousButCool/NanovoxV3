@@ -123,14 +123,6 @@
   color: var(--ink-2);
 }
 
-/* No count, because there was nothing to count from. Dashed and dimmed so
-   it does not read as a nought at a glance -- the two are opposite
-   statements and the row has no space to say which in words. */
-.nv-acct-unassessed {
-  border-style: dashed;
-  color: var(--ink-3);
-}
-
 .nv-acct-flag {
   color: var(--critical);
   font-weight: 600;

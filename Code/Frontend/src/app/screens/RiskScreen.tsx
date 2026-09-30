@@ -48,6 +48,7 @@ import {
   Empty,
   EpistemicChip,
   FigureValue,
+  IndicatorCount,
   KpiTile,
   Note,
   Panel,
@@ -270,17 +271,27 @@ function RiskBody({
                 </>
               }
             />
-            <KpiTile
-              label="Newly flagged"
-              value={String(data.newlyFlagged)}
-              info={
-                <Tooltip>
-                  Flagged now, not flagged in the window before this one — of equal length, over
-                  the same calls every other figure here reads.
-                </Tooltip>
-              }
-              meta={<span className="nv-indcount">first indicator this window</span>}
-            />
+            {/* The prototype's sixth tile. Absent rather than nought when the
+                window is too short to slice: a window that cannot be cut has
+                not told anyone that nobody is new. */}
+            {data.newlyFlagged ? (
+              <KpiTile
+                label="Newly flagged"
+                info={
+                  <Tooltip>
+                    Counted across the whole book. This is the one figure here the filter
+                    bar does not touch: an account&rsquo;s first indicator is a fact about
+                    the account, not about the slice you are looking through.
+                  </Tooltip>
+                }
+                value={String(data.newlyFlagged.count)}
+                meta={
+                  <span className="nv-indcount">
+                    first indicator in the last {String(data.newlyFlagged.weeks)} weeks
+                  </span>
+                }
+              />
+            ) : null}
         </BigRow>
         <Note>{data.exposure.caveat}</Note>
       </section>
@@ -347,10 +358,16 @@ function RiskBody({
               caption="Accounts assessed for risk"
               columns={[
                 { key: 'account', header: 'Account' },
+                // The flag and the conditions it was met on are one metric,
+                // so they share a cell -- the way `index.html` puts its band
+                // and its count together. That frees the sixth column for
+                // lives without blurring D12: the flag stays its own column,
+                // the ten families stay theirs, and nothing suggests the
+                // families set the flag.
                 { key: 'flag', header: 'Flag' },
                 { key: 'indicators', header: 'Indicators' },
-                { key: 'conditions', header: 'Conditions' },
                 { key: 'calls', header: 'Calls', numeric: true },
+                { key: 'lives', header: 'Lives', numeric: true },
                 { key: 'renews', header: 'Renews' },
               ]}
               rows={data.assessed.map((account) => {
@@ -376,18 +393,40 @@ function RiskBody({
                     // A flagged account is the clearest case of a figure
                     // that should lead somewhere: the pill says what is
                     // true, the link says what to do.
-                    account.flagged ? (
-                      <IssueValue issue="flagged" scope={{ employer: account.employerRef }}>
+                    <>
+                      {account.flagged ? (
+                        <IssueValue issue="flagged" scope={{ employer: account.employerRef }}>
+                          <RiskPill eligible={account.eligible} flagged={account.flagged} />
+                        </IssueValue>
+                      ) : (
                         <RiskPill eligible={account.eligible} flagged={account.flagged} />
-                      </IssueValue>
-                    ) : (
-                      <RiskPill eligible={account.eligible} flagged={account.flagged} />
-                    ),
+                      )}
+                      <small className="nv-indcount">
+                        {account.conditionsMet} of {account.conditions.length} conditions
+                      </small>
+                    </>,
                     <>
                       {/* A count and the names behind it. Never a level: the
                           families are informational and do not set the flag
-                          (D2, D12). */}
-                      <span className="nv-indcount">{fired.length} of 10</span>
+                          (D2, D12).
+
+                          `IndicatorCount`, not a bare number: this table
+                          printed "0 of 10" beside "Flagged" for accounts
+                          nobody had assessed, which reads as a flag with
+                          nothing behind it. */}
+                      <span className="nv-indcount">
+                        <IndicatorCount
+                          assessed={account.observations.every((o) => o.assessable)}
+                          count={fired.length}
+                          // Ten, fixed: `domain/aggregation/indicators.py`
+                          // defines exactly ten families and the server
+                          // returns all of them, the ones that cleared
+                          // included. Not `observations.length`, which would
+                          // quietly restate the denominator as whatever
+                          // happened to arrive.
+                          total={10}
+                        />
+                      </span>
                       {fired.length > 0 ? (
                         <div className="nv-fires">
                           {fired.map((observation) =>
@@ -413,10 +452,16 @@ function RiskBody({
                         </div>
                       ) : null}
                     </>,
-                    <span className="nv-indcount">
-                      {account.conditionsMet} of {account.conditions.length}
-                    </span>,
                     account.calls,
+                    // `index.html` prints lives beside the flag: two flagged
+                    // accounts are not the same finding when one covers 8
+                    // lives and the other 800. Never totalled here — the
+                    // exposure note under the tiles is the only sum.
+                    //
+                    // Said rather than left blank when reference data has no
+                    // size: an empty cell reads as a rendering fault, and 0
+                    // would read as an account covering nobody.
+                    account.lives ?? <span className="nv-none">Not recorded</span>,
                     <span className="nv-indcount">
                       {account.renewalMonth ?? 'unknown'}
                       {account.monthsToRenewal === null || account.monthsToRenewal === undefined ? null : (

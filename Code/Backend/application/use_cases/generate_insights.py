@@ -47,7 +47,7 @@ from application.dto.insight_response import InsightItem, InsightsResponse
 from application.ports.insight_cache import InsightCache, InsightCacheKey
 from application.ports.llm_provider import LLMProvider, LlmRequest
 from application.ports.prompts import PromptSource
-from domain.insights.facts import FactSet, spelled_numbers
+from domain.insights.facts import FactSet, hedged_tail, spelled_numbers
 from domain.insights.generated import (
     GeneratedInsights,
     Insight,
@@ -194,6 +194,22 @@ class GenerateInsights:
                     },
                 )
                 return None
+
+            # A hedge drops its own sentence rather than the panel. The
+            # prompt's own remedy is "leave it out", and two sound sentences
+            # beside a dropped one is a better screen than none; a fabricated
+            # number is a different matter and still poisons everything.
+            hedge = hedged_tail(item.sentence)
+            if hedge is not None:
+                logger.warning(
+                    "Insight dropped: added a claim the figures do not carry",
+                    extra={
+                        "subject": facts.subject,
+                        "phrase": hedge,
+                        "sentence": item.sentence,
+                    },
+                )
+                continue
 
             cited = tuple(key for key in item.fact_keys if key in known)
             if not cited:

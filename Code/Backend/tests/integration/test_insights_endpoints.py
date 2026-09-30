@@ -615,3 +615,44 @@ async def test_a_flagged_account_ranks_above_an_unflagged_one_with_more_indicato
     assert sum(1 for o in flagged["observations"] if o["observed"]) < sum(
         1 for o in quiet["observations"] if o["observed"]
     )
+
+
+@pytest.mark.asyncio
+async def test_the_risk_screen_carries_lives_per_account_and_never_nought(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """`index.html` prints lives beside the flag, so the wire has to carry
+    them per account and not only summed into `exposure`.
+
+    The two must agree: `exposure.lives` is the only total on the screen, and
+    a reader who adds the column up has to arrive at the same book.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 4})
+
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
+
+    account = body["assessed"][0]
+    assert account["lives"] is not None
+    assert account["lives"] > 0
+    flagged = [a["lives"] for a in body["assessed"] if a["flagged"]]
+    assert sum(flagged) == body["exposure"]["lives"]
+
+
+@pytest.mark.asyncio
+async def test_the_risk_screen_counts_accounts_new_to_the_indicator_list(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """The sixth tile. It says what it counts from, because a bare number of
+    newly flagged accounts is unreadable without the date."""
+    await seed(session_factory, calls_per_employer={"EMP-01": 4})
+
+    body = client.get("/api/v1/insights/risk", params={"asOf": AS_OF}).json()
+
+    tile = body["newlyFlagged"]
+    assert tile is not None
+    assert tile["count"] == len(tile["employers"])
+    assert tile["since"]
+    assert tile["weeks"] > 0
+    # Stated on the wire rather than left for a screen to remember: this is
+    # the one figure here the filter bar does not narrow.
+    assert tile["unfiltered"] is True

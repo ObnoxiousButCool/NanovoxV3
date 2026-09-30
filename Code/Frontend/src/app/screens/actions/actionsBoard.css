@@ -379,7 +379,8 @@
   border: 1px solid var(--rule);
   border-left: 3px solid var(--rule-strong);
   border-radius: 8px;
-  padding: 10px 11px;
+  /* `.card2` in actions.html: 9px at the foot, not 10. */
+  padding: 10px 11px 9px;
 }
 
 .nv-card:hover {

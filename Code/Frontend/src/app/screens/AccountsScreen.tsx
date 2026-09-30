@@ -41,7 +41,7 @@ import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
 import { AccountBody, AccountHeader } from '@/app/screens/AccountScreen'
 import { AccountActions, AccountCalls, AccountTiles } from '@/app/screens/AccountPanels'
-import { Empty, Note } from '@/shared/design/primitives'
+import { Empty, IndicatorCount, Note } from '@/shared/design/primitives'
 import { InsightStrip } from '@/shared/insights/Insights'
 import '@/app/screens/accounts.css'
 
@@ -73,15 +73,8 @@ interface RiskState {
  * first is a finding; the second is a gap. A bare 0 renders them the same,
  * and next to the word "Flagged" it reads as a flag with nothing behind it.
  */
-function IndicatorCount({ state }: { state: RiskState }) {
-  if (!state.assessed) {
-    return (
-      <i className="nv-acct-unassessed" title="Too few calls to assess the indicator families">
-        &mdash;
-      </i>
-    )
-  }
-  return <i>{state.indicators}</i>
+function PickerIndicators({ state }: { state: RiskState }) {
+  return <IndicatorCount assessed={state.assessed} count={state.indicators} />
 }
 
 /** An account nobody could assess is not unflagged; it sorts below both. */
@@ -128,12 +121,12 @@ function PickerRow({
         ) : state.flagged ? (
           <span className="nv-acct-state nv-acct-flag">
             Flagged
-            <IndicatorCount state={state} />
+            <PickerIndicators state={state} />
           </span>
         ) : (
           <span className="nv-acct-state">
             Not flagged
-            <IndicatorCount state={state} />
+            <PickerIndicators state={state} />
           </span>
         )}
       </button>
