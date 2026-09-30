@@ -48,9 +48,9 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from domain.value_objects.signal_type import SEVERITY_ORDER, severity_of
+from domain.value_objects.signal_type import SEVERITY_ORDER, owner_team_of, severity_of
 from frameworks_drivers.api.camel import CamelModel
-from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded, touchpoint_label
 
 if TYPE_CHECKING:
     from domain.entities.call_extraction import CallExtraction
@@ -93,6 +93,13 @@ class EvidencedItem(CamelModel):
     severity: CodedValue | None = Field(
         default=None,
         description="Signals only. Fixed per type by the Signal Taxonomy sheet.",
+    )
+    owner_team: str | None = Field(
+        default=None,
+        description=(
+            "Signals only. The team the Signal Taxonomy sheet makes answerable for "
+            "this type -- fixed per type like `severity`, never decided per call."
+        ),
     )
 
 
@@ -200,7 +207,15 @@ class L4PanelResponse(CamelModel):
     escalation_trigger_type: CodedValue | None = None
     process_gap_present: bool | None = None
     process_gap_type: str | None = None
-    process_gap_touchpoint: str | None = None
+    process_gap_touchpoint: str | None = Field(
+        default=None,
+        description=(
+            "Words, not the Touchpoints-sheet reference -- the same `touchpoint_label` "
+            "the calls table and the risk screen's drivers panel use, so one reader "
+            "never meets `denial_letter_eob` on one screen and the sheet's own words "
+            "on the next."
+        ),
+    )
     process_gap_proposed_change: str | None = None
     process_gap_raised_by: CodedValue | None = None
     process_gap_status: CodedValue | None = None
@@ -387,6 +402,7 @@ def _l4(extraction: CallExtraction | None) -> L4PanelResponse:
                 quote=signal.quote,
                 turn_seq=signal.turn_seq,
                 severity=coded(severity_of(signal.type)),
+                owner_team=owner_team_of(signal.type),
             )
             for signal in signals
         ],
@@ -398,7 +414,9 @@ def _l4(extraction: CallExtraction | None) -> L4PanelResponse:
         ),
         process_gap_present=None if gap is None else gap.present,
         process_gap_type=None if gap is None else gap.gap_type,
-        process_gap_touchpoint=None if gap is None else gap.touchpoint,
+        process_gap_touchpoint=(
+            None if gap is None or gap.touchpoint is None else touchpoint_label(gap.touchpoint)
+        ),
         process_gap_proposed_change=None if gap is None else gap.proposed_change,
         process_gap_raised_by=(
             coded(gap.raised_by) if gap is not None and gap.raised_by is not None else None

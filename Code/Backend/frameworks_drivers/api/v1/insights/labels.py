@@ -182,10 +182,8 @@ LABELS: dict[Enum, str] = {
     # appears on an aggregate screen; everything below is per-call only,
     # which is why it arrives here later rather than having been missed.
     #
-    # --- Product lines (schema field 3). "chiro" and "program" are the
-    # workbook's own short codes and neither is a phrase anyone says out
-    # loud; the other three are spelled out with them so one list does not
-    # mix codes and words.
+    # --- Product lines (schema field 3). Use the display wording expected
+    # by the analysis drawer, including spelling out the workbook's "chiro".
     ProductLine.DENTAL: "Dental",
     ProductLine.VISION: "Vision",
     ProductLine.LIFE: "Life",
@@ -215,9 +213,11 @@ LABELS: dict[Enum, str] = {
     EscalationTriggerType.SCHEDULED_CARE_AT_RISK: "Scheduled care at risk",
     EscalationTriggerType.AUTHORITY_LIMIT: "Beyond what the agent may approve",
     EscalationTriggerType.BROKER_CONDUCT_ADVERSE: "Broker conduct",
-    # --- The process-gap lifecycle (schema field 13).
-    RaisedBy.AGENT: "Raised by the agent",
-    RaisedBy.CALLER: "Raised by the caller",
+    # --- Who raised a process gap and its lifecycle (schema fields 13/15).
+    # Keep the existing direct-evidence API wording; the enclosing field
+    # supplies the "raised by" context to the per-layer panel as well.
+    RaisedBy.AGENT: "Agent",
+    RaisedBy.CALLER: "Caller",
     ProcessGapStatus.UNVALIDATED: "Not yet validated",
     ProcessGapStatus.VALIDATED: "Validated",
     ProcessGapStatus.ACTIONED: "Actioned",
@@ -246,6 +246,47 @@ LABELS: dict[Enum, str] = {
     # and a label identical to its own code is not a label. It travels as
     # a plain string.
 }
+
+#: The Touchpoints sheet's own reference column — a slug, not prose, unlike
+#: `Category`. Written out rather than derived for the same reason as
+#: everything else in this module: a naive `replace("_", " ").title()` would
+#: turn "denial_letter_eob" into "Denial Letter Eob".
+#:
+#: Not an `Enum`, so it cannot join `LABELLED_ENUMS`'s completeness check —
+#: `call.tags.touchpoint` is free text an extraction produces, not a closed
+#: set this application defines, and a call can legitimately name a
+#: touchpoint the workbook's twelve rows do not cover. `touchpoint_label`
+#: below is the fallback for exactly that case.
+TOUCHPOINT_LABELS: dict[str, str] = {
+    "enrolment_meeting": "Enrolment meeting",
+    "enrolment_material": "Enrolment material",
+    "enrolment_form": "Enrolment form",
+    "welcome_pack": "Welcome pack",
+    "id_card_mailer": "ID card mailer",
+    "denial_letter_eob": "Denial letter / EOB",
+    "invoice_statement": "Invoice / statement",
+    "employer_portal": "Employer portal",
+    "renewal_pack": "Renewal pack",
+    "broker_material": "Broker material",
+    "agent_conversation": "Agent conversation",
+    "cobra_notice": "COBRA notice",
+}
+
+
+def touchpoint_label(reference: str) -> str:
+    """A touchpoint's words, from the sheet where this application knows
+    them and a plain reformatting where it does not.
+
+    The fallback lower-cases then capitalises rather than title-casing —
+    still a guess, but a smaller one than the naive derivation this
+    module's docstring warns against, and only reached for a value nobody
+    has written out yet.
+    """
+    known = TOUCHPOINT_LABELS.get(reference)
+    if known is not None:
+        return known
+    return reference.replace("_", " ").capitalize()
+
 
 #: The enums this module is responsible for. The completeness test walks
 #: these, so adding one here without its members fails loudly rather than

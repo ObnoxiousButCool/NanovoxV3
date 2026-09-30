@@ -32,9 +32,12 @@ from application.use_cases.read_insights import ExecResult, ExecTrends
 from domain.aggregation.exec_scorecard import SCORECARD_METRICS, escalation_integrity_pair
 from domain.aggregation.patterns import window_for
 from domain.dashboard_config import DashboardConfig
+from domain.value_objects.product_line import ProductLine
+from domain.value_objects.signal_type import SignalType
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import DashboardConfigDep, GetExecScorecardDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
+from frameworks_drivers.api.v1.insights.labels import coded, touchpoint_label
 from frameworks_drivers.api.v1.insights.query import InsightsQuery, InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -126,6 +129,13 @@ class EmergingResponse(CamelModel):
 
     kind: str = Field(description="category | touchpoint | signal | product_line")
     key: str
+    label: str = Field(
+        description=(
+            "The words for `key`. Categories arrive from the workbook as prose "
+            "already; touchpoints, signals and product lines are coded values "
+            "and this is what `labels.py` says a reader should see for them."
+        )
+    )
     buckets: list[BucketResponse]
     delta: int = Field(description="Latest slice minus earliest.")
     rising: bool
@@ -330,6 +340,7 @@ def _trends(trends: ExecTrends) -> TrendsResponse:
             EmergingResponse(
                 kind=row.kind,
                 key=row.key,
+                label=_emerging_label(row.kind, row.key),
                 buckets=[
                     BucketResponse(
                         start=bucket.window.start.isoformat(),
@@ -345,3 +356,21 @@ def _trends(trends: ExecTrends) -> TrendsResponse:
             for row in trends.emerging
         ],
     )
+
+
+def _emerging_label(kind: str, key: str) -> str:
+    """Words for an emerging row's `key`, by which of the four kinds it is.
+
+    Categories are already the workbook's own prose (`Category`'s docstring
+    in `labels.py`), so they pass through unchanged. Touchpoints, signals
+    and product lines are coded values, and this is the one place `kind`
+    decides which map reads them — `_touchpoint_keys` etc. in
+    `read_insights.py` is where each kind's raw key comes from.
+    """
+    if kind == "touchpoint":
+        return touchpoint_label(key)
+    if kind == "signal":
+        return coded(SignalType(key)).label
+    if kind == "product_line":
+        return coded(ProductLine(key)).label
+    return key

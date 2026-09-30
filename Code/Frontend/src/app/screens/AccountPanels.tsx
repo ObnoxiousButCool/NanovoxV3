@@ -125,11 +125,19 @@ export function AccountCalls({
 
 function CallLine({ call, onOpen }: { call: CallRow; onOpen: () => void }) {
   return (
-    <tr>
+    <tr
+      className="nv-clickable"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
+    >
       <td>
-        <button type="button" className="nv-linkbtn" onClick={onOpen}>
-          {call.reference}
-        </button>
+        {call.reference}
         <small>{call.occurredOn}</small>
       </td>
       <td>
@@ -145,7 +153,7 @@ function CallLine({ call, onOpen }: { call: CallRow; onOpen: () => void }) {
       </td>
       <td>
         {/* The word carries the meaning, never the colour alone. */}
-        {call.outcome ? titleCase(call.outcome) : 'not recorded'}
+        {call.outcome ? call.outcome.label : 'not recorded'}
         <small>
           {call.qualityScore === null || call.qualityScore === undefined
             ? 'unscored'

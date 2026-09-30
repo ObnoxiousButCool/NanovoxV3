@@ -55,6 +55,7 @@ from application.use_cases.list_calls import (
     CallsQuery,
     Sort,
 )
+from domain.value_objects.outcome import Outcome
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import ListCallsDep, ReadCallEvidenceDep
 from frameworks_drivers.api.v1.insights.call_analysis import (
@@ -62,6 +63,7 @@ from frameworks_drivers.api.v1.insights.call_analysis import (
     analysis_response,
 )
 from frameworks_drivers.api.v1.insights.envelope import ScopeResponse
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded, touchpoint_label
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 if TYPE_CHECKING:
@@ -104,8 +106,11 @@ class CallRowResponse(CamelModel):
     agent_ref: str | None = None
     category: str | None = None
     product_lines: list[str] = Field(default_factory=list)
-    touchpoint: str | None = None
-    outcome: str | None = None
+    touchpoint: str | None = Field(
+        default=None,
+        description="Words, not the Touchpoints-sheet reference — see `touchpoint_label`.",
+    )
+    outcome: CodedValue | None = None
     quality_score: int | None = Field(
         default=None,
         description="Null means not recorded, never a score of zero.",
@@ -144,6 +149,14 @@ class CallsPageResponse(CamelModel):
             "'no value for this call' instead of 'we do not publish this'."
         ),
     )
+    unresolved_count: int = Field(description="Over every matching call, not only the page shown.")
+    escalations_missed_count: int = Field(
+        description="Warranted and not handled, over every matching call."
+    )
+    average_quality: float | None = Field(
+        default=None,
+        description="Null when no matching call carries a recorded score, never zero.",
+    )
 
 
 class TurnResponse(CamelModel):
@@ -177,6 +190,13 @@ class CallEvidenceResponse(CamelModel):
             "empty conversation, which is not a thing that happens."
         )
     )
+    rules_unavailable: str = Field(
+        description=(
+            "Why the prototype's 'Rules in play' (every rule_ref the call cites, "
+            "quoted from the rulebook) has no counterpart here. Said rather than "
+            "rendered as an empty section beside a full one."
+        )
+    )
     analysis: CallAnalysisResponse = Field(
         description=(
             "What the pipeline made of this call, in five panels: L1, L2, L3, L4 "
@@ -187,6 +207,18 @@ class CallEvidenceResponse(CamelModel):
         )
     )
 
+
+#: Why "Rules in play" has no counterpart in the evidence drawer. `rule_ref`
+#: exists only as ground-truth data for scoring the extraction model against
+#: (`domain.entities.ground_truth`) — it is not part of a call's own tags in
+#: the live corpus, and the Rules sheets carry no quotable rule text, only
+#: metadata (layer, area, confidence). Absent rather than invented.
+RULES_UNAVAILABLE = (
+    "The prototype also quotes every rule_ref this call cites, in full, from the "
+    "rulebook. A cited rule is only recorded here when it names a knowledge "
+    "failure, which the L3 panel carries, and even then the Rules sheets hold no "
+    "rule text to quote — only which layer, area and confidence grade it has."
+)
 
 #: Why each prototype column is absent. Shipped to the client so the gap is
 #: visible where the export is offered, not only in this docstring.
@@ -416,6 +448,9 @@ def _page_response(page: CallsPage, query: InsightsQueryDep) -> CallsPageRespons
         pages=page.pages,
         considered=len(page.scope.corpus.calls),
         omitted_columns=list(OMITTED_COLUMNS),
+        unresolved_count=page.unresolved_count,
+        escalations_missed_count=page.escalations_missed_count,
+        average_quality=page.average_quality,
     )
 
 
@@ -435,8 +470,8 @@ def _row_response(row: CallRowView) -> CallRowResponse:
         agent_ref=row.agent_ref,
         category=row.category,
         product_lines=list(row.product_lines),
-        touchpoint=row.touchpoint,
-        outcome=row.outcome,
+        touchpoint=touchpoint_label(row.touchpoint) if row.touchpoint is not None else None,
+        outcome=coded(Outcome(row.outcome)) if row.outcome is not None else None,
         quality_score=row.quality_score,
         aht_seconds=row.aht_seconds,
         complaint=row.complaint,
@@ -467,5 +502,6 @@ def _evidence_response(evidence: CallEvidence) -> CallEvidenceResponse:
             for turn in evidence.turns
         ],
         transcript_missing=evidence.transcript_missing,
+        rules_unavailable=RULES_UNAVAILABLE,
         analysis=analysis_response(evidence.analysis, caller_ref=evidence.caller_ref),
     )

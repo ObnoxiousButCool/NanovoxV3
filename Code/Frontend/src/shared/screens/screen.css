@@ -550,7 +550,8 @@ details.nv-more[open] > summary::before {
   white-space: nowrap;
 }
 
-.nv-callstable td:nth-child(4) {
+.nv-callstable td:nth-child(4),
+.nv-callstable td:nth-child(6) {
   white-space: normal;
   min-width: 160px;
 }

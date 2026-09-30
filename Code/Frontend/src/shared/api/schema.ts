@@ -1074,6 +1074,11 @@ export interface components {
             /** Resolutionstatus */
             resolutionStatus: string;
             /**
+             * Rulesunavailable
+             * @description Why the prototype's 'Rules in play' (every rule_ref the call cites, quoted from the rulebook) has no counterpart here. Said rather than rendered as an empty section beside a full one.
+             */
+            rulesUnavailable: string;
+            /**
              * Transcriptmissing
              * @description True when the call is stored without a transcript. Distinct from an empty conversation, which is not a thing that happens.
              */
@@ -1136,8 +1141,7 @@ export interface components {
             knowledgeFailure: boolean;
             /** Occurredon */
             occurredOn: string;
-            /** Outcome */
-            outcome?: string | null;
+            outcome?: components["schemas"]["CodedValue"] | null;
             /** Productlines */
             productLines?: string[];
             /**
@@ -1151,7 +1155,10 @@ export interface components {
             region?: string | null;
             /** Signals */
             signals?: string[];
-            /** Touchpoint */
+            /**
+             * Touchpoint
+             * @description Words, not the Touchpoints-sheet reference — see `touchpoint_label`.
+             */
             touchpoint?: string | null;
         };
         /**
@@ -1162,10 +1169,20 @@ export interface components {
         /** CallsPageResponse */
         CallsPageResponse: {
             /**
+             * Averagequality
+             * @description Null when no matching call carries a recorded score, never zero.
+             */
+            averageQuality?: number | null;
+            /**
              * Considered
              * @description Calls in the corpus before filters and search. Filters slice, never hide: a reader must be able to tell a narrow result from an empty corpus.
              */
             considered: number;
+            /**
+             * Escalationsmissedcount
+             * @description Warranted and not handled, over every matching call.
+             */
+            escalationsMissedCount: number;
             /**
              * Omittedcolumns
              * @description Columns the prototype's export has that this one does not, and why. Stated rather than left as blank columns, which would read as 'no value for this call' instead of 'we do not publish this'.
@@ -1185,6 +1202,11 @@ export interface components {
              * @description Rows matching the filters and search, before paging.
              */
             total: number;
+            /**
+             * Unresolvedcount
+             * @description Over every matching call, not only the page shown.
+             */
+            unresolvedCount: number;
         };
         /**
          * Category
@@ -1497,6 +1519,11 @@ export interface components {
              * @description category | touchpoint | signal | product_line
              */
             kind: string;
+            /**
+             * Label
+             * @description The words for `key`. Categories arrive from the workbook as prose already; touchpoints, signals and product lines are coded values and this is what `labels.py` says a reader should see for them.
+             */
+            label: string;
             /** Rising */
             rising: boolean;
         };
@@ -1535,6 +1562,11 @@ export interface components {
          *     the `turns` on the same response, so the drawer can point at the line.
          */
         EvidencedItem: {
+            /**
+             * Ownerteam
+             * @description Signals only. The team the Signal Taxonomy sheet makes answerable for this type -- fixed per type like `severity`, never decided per call.
+             */
+            ownerTeam?: string | null;
             /** Quote */
             quote: string;
             /** @description Signals only. Fixed per type by the Signal Taxonomy sheet. */
@@ -2028,7 +2060,10 @@ export interface components {
             processGapProposedChange?: string | null;
             processGapRaisedBy?: components["schemas"]["CodedValue"] | null;
             processGapStatus?: components["schemas"]["CodedValue"] | null;
-            /** Processgaptouchpoint */
+            /**
+             * Processgaptouchpoint
+             * @description Words, not the Touchpoints-sheet reference -- the same `touchpoint_label` the calls table and the risk screen's drivers panel use, so one reader never meets `denial_letter_eob` on one screen and the sheet's own words on the next.
+             */
             processGapTouchpoint?: string | null;
             /** Processgaptype */
             processGapType?: string | null;

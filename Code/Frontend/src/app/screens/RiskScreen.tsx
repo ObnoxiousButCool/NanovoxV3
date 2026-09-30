@@ -34,11 +34,13 @@ import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { issueHref } from '@/shared/actions/issueHref'
 import { BarCell, VBars, VLine } from '@/shared/design/charts'
+import { OUTCOME_COLOR } from '@/shared/design/outcome'
 import type { IssueKey } from '@/shared/actions/issueHref'
 import { ISSUE_KEYS, RENEW_SOON_MONTHS } from '@/shared/actions/issueHref'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
 import { InsightFeed } from '@/shared/insights/Insights'
+import '@/app/screens/risk.css'
 import {
   BigRow,
   DataTable,
@@ -54,6 +56,7 @@ import {
 } from '@/shared/design/primitives'
 
 type AssessedAccount = RiskScreenData['assessed'][number]
+type AccountContext = { name: string; broker: string; region: string }
 
 /** Whether an account's renewal falls inside the shared soon-window — the
  * same test `/exec`'s needs-attention panel uses, so the two screens cannot
@@ -93,8 +96,18 @@ export function RiskScreen() {
   // and `FilterBar` states the rule this screen has to keep too: codes
   // never reach a reader.
   const options = useFilterOptions(filters.apiSearch)
+  const brokerNames = new Map(
+    (options.data?.brokers ?? []).map((broker) => [broker.ref, broker.agency]),
+  )
   const names = new Map(
-    (options.data?.employers ?? []).map((employer) => [employer.ref, employer.name]),
+    (options.data?.employers ?? []).map((employer) => [
+      employer.ref,
+      {
+        name: employer.name,
+        broker: brokerNames.get(employer.brokerRef) ?? '',
+        region: employer.region,
+      },
+    ]),
   )
 
   const setRow = (key: string, value: string | null) => {
@@ -113,29 +126,29 @@ export function RiskScreen() {
   }
 
   return (
-    <Screen
-      // The rail's wording, which is the prototype's own. A screen whose
-      // title disagrees with the link that reached it reads as the wrong page.
-      title="What are the risks?"
-      lede="Metric 10's flag, the conditions behind it, and the accounts there was not enough evidence to assess."
-      scope={data?.scope}
-      isPending={isPending}
-      error={error}
-    >
-      {/* The prototype's `.aistrip` sits right under the filter bar, above
-          the KPI tiles — the same reading order this feed keeps here,
-          rather than after every computed panel on the page. */}
-      <InsightFeed data={insights.data} />
-      {data === undefined ? null : (
-        <RiskBody
-          data={data}
-          names={names}
-          flagged={flagged}
-          minIndicators={minIndicators}
-          onChange={setRow}
-        />
-      )}
-    </Screen>
+    <div className="nv-risk">
+      <Screen
+        title="What are the risks?"
+        lede="This page shows every risk indicator across accounts, what is driving it and how calls are going. Use it to decide which accounts need attention first. Use the filters to narrow by period, region, broker or account."
+        stickyHead
+        scope={data?.scope}
+        isPending={isPending}
+        error={error}
+      >
+        <div className="nv-risk-insights">
+          <InsightFeed data={insights.data} />
+        </div>
+        {data === undefined ? null : (
+          <RiskBody
+            data={data}
+            names={names}
+            flagged={flagged}
+            minIndicators={minIndicators}
+            onChange={setRow}
+          />
+        )}
+      </Screen>
+    </div>
   )
 }
 
@@ -147,9 +160,9 @@ function RiskBody({
   onChange,
 }: {
   data: RiskScreenData
-  /** Employer reference to name. Falls back to the reference, which is
-      better than an empty cell while the options are still loading. */
-  names: Map<string, string>
+  /** Employer context from filter options. Falls back to reference while
+      the options are still loading. */
+  names: Map<string, AccountContext>
   flagged: string | null
   minIndicators: string | null
   onChange: (key: string, value: string | null) => void
@@ -174,13 +187,15 @@ function RiskBody({
 
   return (
     <div className="nv-grid">
-      <div className="nv-c12">
-        <Panel
-          title="Across the eligible accounts"
-          sub={`Metric 10 over ${String(data.windowWeeks)} weeks, as at ${data.asOf}.`}
-          chip={<EpistemicChip kind="observed" />}
-        >
-          <BigRow>
+      <section className="nv-c12 nv-risk-kpis" aria-label="Risk summary">
+        <header>
+          <div>
+            <h2>Across the eligible accounts</h2>
+            <p>Metric 10 over {String(data.windowWeeks)} weeks, as at {data.asOf}.</p>
+          </div>
+          <EpistemicChip kind="observed" />
+        </header>
+        <BigRow>
             <KpiTile
               label="Accounts flagged"
               value={String(flaggedAccounts.length)}
@@ -255,12 +270,11 @@ function RiskBody({
                 </>
               }
             />
-          </BigRow>
-          <Note>{data.exposure.caveat}</Note>
-        </Panel>
-      </div>
+        </BigRow>
+        <Note>{data.exposure.caveat}</Note>
+      </section>
 
-      <div className="nv-c12">
+      <div className="nv-c12 nv-risk-accounts">
         <Panel
           title="Accounts assessed"
           sub={
@@ -324,6 +338,7 @@ function RiskBody({
               ]}
               rows={data.assessed.map((account) => {
                 const fired = account.observations.filter((o) => o.observed)
+                const context = names.get(account.employerRef)
                 return {
                   key: account.employerRef,
                   // The prototype's `data-href` on the row: the whole row
@@ -331,7 +346,16 @@ function RiskBody({
                   // indicators) still win over the row's own navigation.
                   href: `/accounts/${encodeURIComponent(account.employerRef)}`,
                   cells: [
-                    names.get(account.employerRef) ?? account.employerRef,
+                    <>
+                      <span className="nv-risk-account-name">
+                        {context?.name ?? account.employerRef}
+                      </span>
+                      {context ? (
+                        <small>
+                          {[context.broker, context.region].filter(Boolean).join(' · ')}
+                        </small>
+                      ) : null}
+                    </>,
                     // A flagged account is the clearest case of a figure
                     // that should lead somewhere: the pill says what is
                     // true, the link says what to do.
@@ -398,27 +422,7 @@ function RiskBody({
         <DriversPanel drivers={data.drivers} />
       </div>
 
-      {/* The three corpus-shape panels V2 puts on this page. They were on
-          /exec or nowhere until conflict C9 was recorded: each screen had
-          been shaped by its endpoint rather than by the page it mirrors.
-          `index.html`'s own order: "How calls ended" stands full width on
-          its own, then the two weekly charts pair up beside each other —
-          not the other way around. */}
-      <div className="nv-c12">
-        <Panel
-          title="How calls ended"
-          sub={`${String(unresolvedCount)} of ${String(endedTotal)} calls ended unresolved.`}
-          chip={<EpistemicChip kind="observed" />}
-        >
-          {endedTotal === 0 ? (
-            <Empty>No call in scope records an outcome.</Empty>
-          ) : (
-            <OutcomeBar outcomes={outcomes} />
-          )}
-          <Note>{data.handlingUnavailable}</Note>
-        </Panel>
-      </div>
-
+      {/* `index.html` pairs the weekly charts, then shows outcomes. */}
       <div className="nv-c6">
         <Panel
           title="Calls each week"
@@ -486,30 +490,47 @@ function RiskBody({
 
       <div className="nv-c12">
         <Panel
-          title="Not enough calls to assess"
-          sub="Kept apart on purpose. Too few calls to assess is not a finding of low risk."
+          title="How calls ended"
+          sub={`${String(unresolvedCount)} of ${String(endedTotal)} calls ended unresolved.`}
           chip={<EpistemicChip kind="observed" />}
         >
-          {data.ineligible.length === 0 ? (
-            <Empty>Every employer in scope had enough calls to assess.</Empty>
+          {endedTotal === 0 ? (
+            <Empty>No call in scope records an outcome.</Empty>
           ) : (
-            <div className="nv-fires">
-              {data.ineligible.map((ref) => (
-                <Link
-                  key={ref}
-                  className="nv-fire"
-                  to={`/accounts/${encodeURIComponent(ref)}`}
-                >
-                  {names.get(ref) ?? ref}
-                </Link>
-              ))}
-            </div>
+            <OutcomeBar outcomes={outcomes} />
           )}
+          <Note>{data.handlingUnavailable}</Note>
         </Panel>
       </div>
 
-      <div className="nv-c12">
-        <BandCalibrationPanel panel={data.bandCalibration} />
+      <div className="nv-c12 nv-risk-support-wrap">
+        <details className="nv-risk-support">
+          <summary>Supporting evidence and eligibility limits</summary>
+          <div className="nv-risk-support-grid">
+            <Panel
+              title="Not enough calls to assess"
+              sub="Kept apart on purpose. Too few calls to assess is not a finding of low risk."
+              chip={<EpistemicChip kind="observed" />}
+            >
+              {data.ineligible.length === 0 ? (
+                <Empty>Every employer in scope had enough calls to assess.</Empty>
+              ) : (
+                <div className="nv-fires">
+                  {data.ineligible.map((ref) => (
+                    <Link
+                      key={ref}
+                      className="nv-fire"
+                      to={`/accounts/${encodeURIComponent(ref)}`}
+                    >
+                      {names.get(ref)?.name ?? ref}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </Panel>
+            <BandCalibrationPanel panel={data.bandCalibration} />
+          </div>
+        </details>
       </div>
     </div>
   )
@@ -528,20 +549,6 @@ function BandCalibrationPanel({
       <Note>{panel.unlockedBy}</Note>
     </Panel>
   )
-}
-
-/** The workbook's own order for an outcome — the legend and the bar read
- * left to right in the order a call resolves worse, matching the prototype
- * rather than whatever order the API happens to list them in. Colours are
- * the prototype's own outcome set (`--s3`/`--s4`/`--seq-2`), not the general
- * good/warning ramp: `--good` and `--warning` already mean something else
- * elsewhere on this screen (tile tone), and reusing them here would make
- * this one bar look like a status readout rather than a distribution. */
-const OUTCOME_COLOR: Record<string, string> = {
-  RESOLVED: 'var(--s3)',
-  PARTIALLY_RESOLVED: 'var(--s4)',
-  ESCALATED: 'var(--seq-2)',
-  UNRESOLVED: 'var(--critical)',
 }
 
 /** "How calls ended" as one bar, segmented by count — the prototype's

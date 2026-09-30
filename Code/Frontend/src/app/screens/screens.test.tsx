@@ -368,16 +368,20 @@ function callRow(reference: string, over: Record<string, unknown> = {}) {
     brokerAgency: 'Whitfield Benefits',
     region: 'Orange County',
     agentRef: 'AG-03',
+    agentName: 'Alex',
+    callerRef: 'MBR-01',
+    callerName: 'Jordan Lee',
+    callerKind: 'member',
     category: 'Claims & EOB',
     productLines: ['dental'],
     touchpoint: null,
-    outcome: 'RESOLVED',
+    outcome: { code: 'RESOLVED', label: 'Resolved' },
     // Null is not zero: a call with no score recorded did not score nothing.
     qualityScore: null,
     ahtSeconds: 400,
     complaint: false,
     complaintAgainst: null,
-    signals: [],
+    signals: ['member_communication_gap'],
     escalationTriggered: false,
     escalationHandled: false,
     controlExceptions: [],
@@ -398,6 +402,11 @@ const CALLS = {
   omittedColumns: [
     'Handling (archetype) — not one of the sixteen schema fields (C8a).',
   ],
+  unresolvedCount: 0,
+  escalationsMissedCount: 0,
+  // Distinct from any single row's own score shown on screen, so a test
+  // asserting on one cannot be satisfied by the other.
+  averageQuality: 82,
 }
 
 const OPTIONS = {
@@ -409,7 +418,7 @@ const OPTIONS = {
   ],
   agents: [],
   touchpoints: [],
-  signals: [],
+  signals: [{ code: 'member_communication_gap', label: 'Member communication gap' }],
   complaintTargets: [],
   outcomes: [],
   categories: [],
@@ -515,7 +524,7 @@ const EVIDENCE = {
   resolutionReason: null,
   transcriptMissing: false,
   analysis: unrunAnalysis('CB-7700001'),
-  turns: [{ seq: 0, speaker: 'AGENT', text: 'Choice Administrators, how can I help?' }],
+  turns: [{ sequence: 0, role: 'AGENT', text: 'Choice Administrators, how can I help?' }],
 }
 
 function routeFor(url: string): unknown {
@@ -731,6 +740,7 @@ const EXEC_RICH = {
       {
         kind: 'category',
         key: 'Coverage & Benefits',
+        label: 'Coverage & Benefits',
         buckets: [bucket(1), bucket(2), bucket(5)],
         delta: 4,
         rising: true,
@@ -738,6 +748,7 @@ const EXEC_RICH = {
       {
         kind: 'signal',
         key: 'retention_risk',
+        label: 'Retention risk',
         buckets: [bucket(0), bucket(1), bucket(3)],
         delta: 3,
         rising: true,
@@ -745,6 +756,7 @@ const EXEC_RICH = {
       {
         kind: 'touchpoint',
         key: 'denial_letter_eob',
+        label: 'Denial letter / EOB',
         buckets: [bucket(1), bucket(1), bucket(2)],
         delta: 1,
         rising: true,
@@ -752,6 +764,7 @@ const EXEC_RICH = {
       {
         kind: 'product_line',
         key: 'dental',
+        label: 'Dental',
         buckets: [bucket(5), bucket(3), bucket(1)],
         delta: -4,
         rising: false,
@@ -759,6 +772,7 @@ const EXEC_RICH = {
       {
         kind: 'category',
         key: 'Broker Conduct',
+        label: 'Broker Conduct',
         buckets: [bucket(3), bucket(2), bucket(1)],
         delta: -2,
         rising: false,
@@ -897,9 +911,8 @@ describe('/exec, with accounts, escalations and an action board', () => {
     renderAt('/exec')
 
     await waitFor(() => {
-      expect(screen.getByText('Risk and follow-through, at a glance')).toBeInTheDocument()
+      expect(screen.getByText('Accounts flagged')).toBeInTheDocument()
     })
-    expect(screen.getByText('Accounts flagged')).toBeInTheDocument()
     // Two flagged accounts, out of three assessed.
     const tiles = screen.getByText('Accounts flagged').closest('.nv-big')
     expect(tiles).not.toBeNull()
@@ -939,15 +952,17 @@ describe('/exec, with accounts, escalations and an action board', () => {
     // The three risen furthest: Coverage & Benefits (+4), retention_risk
     // (+3), denial_letter_eob (+1). The fourth-largest rise does not exist
     // in this fixture — the two falling items must not appear as cards.
+    // Shown by their words, never their raw codes (a naive
+    // `replace('_',' ')` is exactly the bug this guards against).
     const panel = screen.getByText('Emerging issues').closest('.nv-panel') as HTMLElement
     expect(within(panel).getByText('Coverage & Benefits')).toBeInTheDocument()
-    expect(within(panel).getByText('retention_risk')).toBeInTheDocument()
-    expect(within(panel).getByText('denial_letter_eob')).toBeInTheDocument()
+    expect(within(panel).getByText('Retention risk')).toBeInTheDocument()
+    expect(within(panel).getByText('Denial letter / EOB')).toBeInTheDocument()
     // Each rising card carries its own chart.
     expect(within(panel).getAllByRole('img').length).toBeGreaterThanOrEqual(3)
     // Easing: the two falling items, dental first (furthest fallen).
     expect(within(panel).getByText('Easing')).toBeInTheDocument()
-    expect(within(panel).getByText('dental')).toBeInTheDocument()
+    expect(within(panel).getByText('Dental')).toBeInTheDocument()
     expect(within(panel).getByText('Broker Conduct')).toBeInTheDocument()
   })
 
@@ -1302,12 +1317,15 @@ describe('/calls', () => {
     renderAt('/calls')
 
     await waitFor(() => {
-      expect(screen.getByText('Not recorded')).toBeInTheDocument()
+      expect(screen.getByText(/Quality not recorded/)).toBeInTheDocument()
     })
-    expect(screen.getByText('78')).toBeInTheDocument()
+    const score = screen.getByText(/quality 78 · talk/)
+    expect(score).toBeInTheDocument()
     // The failure this guards: an unscored call reading as the worst call
-    // in the corpus.
-    expect(screen.queryByText('0')).not.toBeInTheDocument()
+    // in the corpus. Scoped to the table — the headline tiles legitimately
+    // show a real zero for unresolved calls and escalations missed.
+    const table = score.closest('table') as HTMLElement
+    expect(within(table).queryByText('0')).not.toBeInTheDocument()
   })
 
   it('says what the export does not carry, where the export is offered', async () => {
@@ -1359,6 +1377,54 @@ describe('/calls', () => {
     await user.click(screen.getByLabelText('Select every call on this page'))
 
     expect(screen.getByRole('link', { name: /download 2 selected/i })).toBeInTheDocument()
+  })
+
+  it("shows the prototype's bare headline strip over every matching call", async () => {
+    renderAt('/calls')
+
+    await waitFor(() => {
+      expect(screen.getByText('Calls in view')).toBeInTheDocument()
+    })
+    const tiles = screen.getByText('Calls in view').closest('.nv-bigrow') as HTMLElement
+    expect(screen.queryByText('Every call in scope, at a glance')).not.toBeInTheDocument()
+    expect(within(tiles).getByText('Calls in view')).toBeInTheDocument()
+    expect(within(tiles).getByText('2')).toBeInTheDocument()
+    expect(within(tiles).getByText('Unresolved')).toBeInTheDocument()
+    expect(within(tiles).getByText('Escalations missed')).toBeInTheDocument()
+    expect(within(tiles).getByText('Average quality')).toBeInTheDocument()
+    expect(within(tiles).getByText('82')).toBeInTheDocument()
+  })
+
+  it('uses the list row caller and talk-time floor, and the filter API signal label', async () => {
+    renderAt('/calls')
+
+    await screen.findByText('C-0001')
+    const row = screen.getByText('C-0001').closest('tr') as HTMLElement
+    expect(within(row).getByText('Jordan Lee')).toBeInTheDocument()
+    expect(within(row).getByText('member · agent Alex · (AG-03)')).toBeInTheDocument()
+    expect(within(row).getByText('Quality not recorded · talk-only AHT ≥6m 40s')).toBeInTheDocument()
+    expect(within(row).getByText('Member communication gap')).toHaveClass('nv-call-signal')
+    expect(within(row).queryByText('MBR-01')).not.toBeInTheDocument()
+    expect(within(row).queryByText('member_communication_gap')).not.toBeInTheDocument()
+    expect(within(row).queryByText('Indicators')).not.toBeInTheDocument()
+    expect(within(row).queryByText('Agent Smith')).not.toBeInTheDocument()
+  })
+
+  it('opens a call from anywhere in its row, not only the reference cell', async () => {
+    const user = userEvent.setup()
+    renderAt('/calls')
+
+    await waitFor(() => {
+      expect(screen.getByText('C-0001')).toBeInTheDocument()
+    })
+    // The prototype's own row (`nv2.js`'s `data-call`): the checkbox stays a
+    // checkbox, and clicking anywhere else in the row opens the call.
+    const row = screen.getByText('C-0001').closest('tr') as HTMLElement
+    const employerCell = within(row).getByText('Cedar Point Workforce Partners')
+
+    await user.click(employerCell)
+
+    expect(await screen.findByText('Call C-0001')).toBeInTheDocument()
   })
 })
 

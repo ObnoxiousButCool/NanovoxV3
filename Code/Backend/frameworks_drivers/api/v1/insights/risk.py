@@ -47,7 +47,7 @@ from pydantic import Field
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetAccountRiskDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
-from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded, touchpoint_label
 from frameworks_drivers.api.v1.insights.query import InsightsQuery, InsightsQueryDep
 
 if TYPE_CHECKING:
@@ -456,9 +456,10 @@ def _driver(driver: Driver) -> DriverResponse:
         calls=driver.calls,
         call_ids=list(driver.call_ids),
         # `category.value` is the workbook's own wording, which `labels.py`
-        # deliberately does not remap.
+        # deliberately does not remap. `touchpoint` is a Touchpoints-sheet
+        # reference (a slug), which it does.
         top_category=driver.top_category.value if driver.top_category else None,
-        top_touchpoint=driver.top_touchpoint,
+        top_touchpoint=touchpoint_label(driver.top_touchpoint) if driver.top_touchpoint else None,
         available=driver.family.computable,
         unavailable_because=driver.family.unavailable_because,
         change=(
