@@ -226,37 +226,6 @@
   font: 500 12.5px/1.2 var(--body);
 }
 
-.nv-calls-export {
-  margin-top: -4px;
-  border-top: 1px solid var(--rule);
-  padding-top: 10px;
-}
-
-.nv-calls-export > summary {
-  color: var(--ink-3);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-  list-style: none;
-}
-
-.nv-calls-export > summary::-webkit-details-marker {
-  display: none;
-}
-
-.nv-calls-export > summary::before {
-  content: '▸ ';
-  color: var(--brand);
-}
-
-.nv-calls-export[open] > summary::before {
-  content: '▾ ';
-}
-
-.nv-calls-export .nv-emerging {
-  margin-top: 8px;
-}
-
 .nv-sr-only {
   position: absolute;
   width: 1px;

@@ -364,22 +364,6 @@ function CallsBody({
           </div>
         </section>
       </div>
-
-      {(data.omittedColumns ?? []).length > 0 ? (
-        <div className="nv-c12">
-          <details className="nv-calls-export">
-            <summary>What the export does not carry</summary>
-            {/* Said where the export is offered, not only in a docstring.
-                A column absent from a file is a question somebody will
-                otherwise ask by email. */}
-            <ul className="nv-emerging">
-              {(data.omittedColumns ?? []).map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-          </details>
-        </div>
-      ) : null}
     </div>
   )
 }
