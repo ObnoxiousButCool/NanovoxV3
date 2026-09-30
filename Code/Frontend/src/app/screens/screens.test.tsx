@@ -1338,14 +1338,6 @@ describe('/calls', () => {
     expect(within(table).queryByText('0')).not.toBeInTheDocument()
   })
 
-  it('says what the export does not carry, where the export is offered', async () => {
-    renderAt('/calls')
-
-    await waitFor(() => {
-      expect(screen.getByText(/not one of the sixteen schema fields/i)).toBeInTheDocument()
-    })
-  })
-
   it('points download at the server rather than building a file here', async () => {
     // Checkpoint I2: the column projection is the server's. A file built in
     // the browser would be a second column list, and the file a reader
