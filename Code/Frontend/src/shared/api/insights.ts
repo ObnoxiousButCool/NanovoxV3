@@ -38,6 +38,8 @@ export type AccountProfile = components['schemas']['AccountProfileResponse']
 export type Hierarchy = components['schemas']['HierarchyResponse']
 export type Agents = components['schemas']['AgentsResponse']
 export type Agent = components['schemas']['AgentResponse']
+export type Rules = components['schemas']['RulesResponse']
+export type RuleRow = components['schemas']['RuleRowResponse']
 
 /**
  * A screen's query, keyed by the filters that produced it.
@@ -65,6 +67,10 @@ export function useRisk(search: string) {
 
 export function useAgents(search: string) {
   return useScreen<Agents>('agents', '/insights/agents', search)
+}
+
+export function useRules(search: string) {
+  return useScreen<Rules>('rules', '/insights/rules', search)
 }
 
 export function useHierarchy(search: string) {

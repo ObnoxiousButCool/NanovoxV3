@@ -528,12 +528,46 @@ const EVIDENCE = {
   turns: [{ sequence: 0, role: 'AGENT', text: 'Choice Administrators, how can I help?' }],
 }
 
+const RULES = {
+  scope: SCOPE,
+  asOf: '2026-09-21',
+  windowWeeks: 4,
+  // Withheld on purpose. The one rate this screen publishes is the one most
+  // likely to be turned into a reassuring 0.0%.
+  overallRate: WITHHELD,
+  rules: [
+    {
+      ruleRef: 'P-01',
+      layer: { code: 'P', label: 'Program' },
+      area: 'Group eligibility',
+      confidence: { code: 'VERIFIED', label: 'Verified' },
+      commonlyConfusedWith: 'ChoiceBuilder being small-group only.',
+      failures: 2,
+      failedCallIds: ['C-1', 'C-2'],
+    },
+    {
+      ruleRef: 'A-46',
+      layer: { code: 'A', label: 'Administration' },
+      area: 'New hires',
+      confidence: { code: 'UNVERIFIED', label: 'Unverified' },
+      commonlyConfusedWith: '',
+      failures: 0,
+      failedCallIds: [],
+    },
+  ],
+  byLayer: [{ value: { code: 'P', label: 'Program' }, failures: 2 }],
+  byArea: [{ value: { code: 'Group eligibility', label: 'Group eligibility' }, failures: 2 }],
+  byProvenance: [{ value: { code: 'VERIFIED', label: 'Verified' }, failures: 2 }],
+  byTouchpoint: [{ value: { code: 'enrollment', label: 'enrollment' }, failures: 2 }],
+}
+
 function routeFor(url: string): unknown {
   if (url.includes('/insights/filters')) return OPTIONS
   // Checked before `/insights/exec`: the generated surface takes the screen
   // as a query parameter, so both URLs carry the word.
   if (url.includes('/insights/generated')) return NO_INSIGHTS
   if (url.includes('/insights/agents')) return AGENTS
+  if (url.includes('/insights/rules')) return RULES
   if (url.includes('/insights/exec')) return EXEC
   if (url.includes('/insights/risk')) return RISK
   if (url.includes('/insights/actions/board')) return ACTION_BOARD
@@ -2192,5 +2226,54 @@ describe('the account picker order', () => {
     expect(flagged).toBeGreaterThanOrEqual(0)
     expect(unflagged).toBeGreaterThanOrEqual(0)
     expect(flagged).toBeLessThan(unflagged)
+  })
+})
+
+describe('the rules screen', () => {
+  it('counts the calls a rule was got wrong on, and never turns that into a rate', async () => {
+    // Insight 23's whole constraint. The denominator a per-rule rate needs
+    // is "calls where this rule was relevant", which v9 does not record, so
+    // a misstated-twice rule has to read as two calls and nothing else.
+    renderAt('/rules')
+
+    const table = await screen.findByRole('table', {
+      name: /published rules stated incorrectly/i,
+    })
+    const row = within(table).getByRole('row', { name: /P-01/ })
+    expect(within(row).getByRole('button', { name: '2' })).toBeInTheDocument()
+    expect(row.textContent).not.toMatch(/%/)
+  })
+
+  it('withholds metric 8 rather than rendering it as nought per cent', async () => {
+    renderAt('/rules')
+
+    expect(await screen.findByText(/Too few calls to publish/i)).toBeInTheDocument()
+    expect(screen.queryByText('0.0%')).not.toBeInTheDocument()
+  })
+
+  it('refuses to read a rule with no failures as a rule we explain well', async () => {
+    // The 101-rule list is the easiest thing on this page to misread as a
+    // clean bill of health, and the corpus cannot support that reading: it
+    // records the rule a call got wrong, never the rules it got right.
+    renderAt('/rules')
+
+    const note = await screen.findByText(/This is not a list of rules we explain well/i)
+    // Scoped to the panel: A-46 is also the unverified tile's meta line, and
+    // an unscoped match would pass on that one instead.
+    const panel = note.closest('section')
+    expect(panel).not.toBeNull()
+    expect(within(panel as HTMLElement).getByText(/A-46/)).toBeInTheDocument()
+    expect(within(panel as HTMLElement).queryByText(/P-01/)).not.toBeInTheDocument()
+  })
+
+  it('names no agent, because schema field 8 is organisational wherever it fires', async () => {
+    // D7 is open with Karim. A misstatement on this page is never somebody's
+    // mistake; the `knowledge_error` signal is the conduct event and it
+    // lives on `/agents`.
+    renderAt('/rules')
+
+    await screen.findByRole('table', { name: /published rules stated incorrectly/i })
+    expect(screen.queryByText(/agent error/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/AG-/)).not.toBeInTheDocument()
   })
 })

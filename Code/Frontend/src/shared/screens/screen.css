@@ -802,3 +802,13 @@ details.nv-more[open] > summary::before {
   color: var(--ink-3);
   white-space: nowrap;
 }
+
+/* A long run of references read as a block rather than as one line: the
+   rules nobody got wrong is a list of a hundred, and `.nv-ref` keeps a
+   single reference on one line, which here would be one very wide line. */
+.nv-rulelist {
+  white-space: normal;
+  line-height: 1.8;
+  color: var(--ink-2);
+  margin: 0;
+}
