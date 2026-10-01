@@ -7,7 +7,7 @@
  */
 
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -198,6 +198,46 @@ describe('FilterBar', () => {
     expect(address).toContain('outcome=RESOLVED')
     expect(address).toContain('intent=market_test')
     expect(address).toContain('qualityBand=GOOD')
+  })
+
+  it('filters on repeat contact, in words a reader can act on', async () => {
+    // The API has carried `repeat` since Phase 1 and nothing offered it, so
+    // the one filter the prototype has that this bar did not was simply
+    // unreachable.
+    //
+    // Not labelled Yes/No. "Repeat contact: No" reads as "no repeat was
+    // recorded" -- an absence of data -- where what it selects is calls
+    // positively known not to be one. That is the withheld-is-not-zero
+    // mistake in a dropdown.
+    stubApi()
+    const user = userEvent.setup()
+    setup()
+
+    await user.click(await screen.findByRole('button', { name: /Advanced filters/ }))
+    const select = await screen.findByRole('combobox', { name: /repeat contact/i })
+
+    expect(within(select).getByRole('option', { name: 'Repeat only' })).toBeInTheDocument()
+    expect(within(select).getByRole('option', { name: 'First contact only' })).toBeInTheDocument()
+    expect(within(select).getByRole('option', { name: 'Any' })).toBeInTheDocument()
+
+    await user.selectOptions(select, 'true')
+
+    expect(screen.getByTestId('address').textContent ?? '').toContain('repeat=true')
+    // The chip says what the dropdown said, not "yes".
+    expect(screen.getByText(/Repeat contact: Repeat only/)).toBeInTheDocument()
+  })
+
+  it('keeps first-contact-only distinct from unset', async () => {
+    // `false` is a real selection the API honours; absent narrows nothing.
+    stubApi()
+    const user = userEvent.setup()
+    setup()
+
+    await user.click(await screen.findByRole('button', { name: /Advanced filters/ }))
+    await user.selectOptions(await screen.findByRole('combobox', { name: /repeat contact/i }), 'false')
+
+    expect(screen.getByTestId('address').textContent ?? '').toContain('repeat=false')
+    expect(screen.getByText(/Repeat contact: First contact only/)).toBeInTheDocument()
   })
 
   it('resets everything at once', async () => {

@@ -47,9 +47,25 @@ const LABELS: Record<string, string> = {
   complaintTarget: 'Complaint against',
   qualityBand: 'Call quality',
   escalated: 'Escalated',
+  repeat: 'Repeat contact',
   complaint: 'Complaint',
   complianceException: 'Compliance exception',
 }
+
+/**
+ * What a yes/no filter's two answers are called, where Yes and No would be
+ * ambiguous.
+ *
+ * "Repeat contact: No" could be read as "no repeat was recorded" — an
+ * absence of data — when what it selects is calls that are positively known
+ * not to be a repeat. The prototype's own wording avoids it, and the chip
+ * reads from the same map so the applied row and the dropdown agree.
+ */
+const FLAG_WORDS: Partial<Record<FlagKey, { yes: string; no: string }>> = {
+  repeat: { yes: 'Repeat only', no: 'First contact only' },
+}
+
+const flagWords = (key: FlagKey) => FLAG_WORDS[key] ?? { yes: 'Yes', no: 'No' }
 
 interface Option {
   value: string
@@ -180,8 +196,8 @@ export function FilterBar({
         {/* "Any" is not the same as "no". Absent narrows nothing; false is
             a real selection, and the API distinguishes them. */}
         <option value="">Any</option>
-        <option value="true">Yes</option>
-        <option value="false">No</option>
+        <option value="true">{flagWords(key).yes}</option>
+        <option value="false">{flagWords(key).no}</option>
       </select>
     </label>
   )
@@ -245,6 +261,8 @@ export function FilterBar({
           {select('qualityBand')}
           {select('agent')}
           {flag('escalated')}
+          {/* After escalation, as in the prototype's own advanced panel. */}
+          {flag('repeat')}
           {flag('complaint')}
           {flag('complianceException')}
         </div>
@@ -293,6 +311,13 @@ function labelFor(
   value: string,
   options: Partial<Record<MultiKey, Option[] | undefined>>,
 ): string {
+  // Flags arrive here as "yes" or "no" from `applied`, and have no entry in
+  // `options`. Reading their wording from the same map the dropdown uses
+  // keeps the chip and the control saying the same thing.
+  if ((FLAG_KEYS as readonly string[]).includes(key)) {
+    const words = flagWords(key as FlagKey)
+    return value === 'yes' ? words.yes : words.no
+  }
   const found = options[key as MultiKey]?.find((option) => option.value === value)
   return found?.label ?? value
 }

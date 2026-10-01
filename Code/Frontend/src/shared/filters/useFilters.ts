@@ -45,8 +45,16 @@ export const MULTI_KEYS = [
 /** Filters that are a single value. */
 export const SINGLE_KEYS = ['from', 'to', 'asOf', 'period'] as const
 
-/** Yes/no filters. Absent means unset; `false` is a real selection. */
-export const FLAG_KEYS = ['escalated', 'complaint', 'complianceException'] as const
+/**
+ * Yes/no filters. Absent means unset; `false` is a real selection.
+ *
+ * `repeat` is one of these on the wire and not in meaning: a repeat is a
+ * relationship between two calls rather than a property of one, which is why
+ * the API computes it over the whole corpus and applies it after the other
+ * filters. Nothing here has to know that — but it is why the control says
+ * "Repeat only" and "First contact only" rather than yes and no.
+ */
+export const FLAG_KEYS = ['escalated', 'repeat', 'complaint', 'complianceException'] as const
 
 export type MultiKey = (typeof MULTI_KEYS)[number]
 export type SingleKey = (typeof SINGLE_KEYS)[number]
@@ -70,6 +78,7 @@ export const ADVANCED_KEYS: readonly (MultiKey | FlagKey)[] = [
   'qualityBand',
   'agent',
   'escalated',
+  'repeat',
   'complaint',
   'complianceException',
 ]
