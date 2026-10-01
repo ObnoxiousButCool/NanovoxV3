@@ -147,8 +147,10 @@ function readState(params: URLSearchParams): FilterState {
 }
 
 export interface Filters extends FilterState {
-  /** How many filters are set, for the Advanced badge and Reset. */
+  /** How many filters carry a chip, for the applied-filters row. */
   activeCount: number
+  /** Whether anything the bar or the screen owns is set, for Reset. */
+  canReset: boolean
   /** Every set filter, flattened for the applied-filters chip row. */
   applied: { key: string; value: string }[]
   toggleMulti: (key: MultiKey, value: string) => void
@@ -190,6 +192,30 @@ export interface Filters extends FilterState {
  * whether it mattered -- which is what this list exists to prevent.
  */
 const UI_ONLY_KEYS = ['period', 'stage', 'focus'] as const
+
+/**
+ * Keys a screen owns rather than the bar: the calls table's search, sort
+ * and paging, and the action board's stage strip and focused issue.
+ *
+ * They narrow what a reader is looking at exactly as a filter does, so
+ * "Reset all" clears them and is enabled while any is set. It used to do
+ * neither: the button went grey over a screen narrowed by a search term,
+ * and when a chip did enable it, clicking it left `q`, `sort` and
+ * `perPage` behind. A button called Reset all has to mean it.
+ *
+ * `page` is here for a second reason: a page number kept across a reset
+ * points into a result the reset just resized, which is the stale-page bug
+ * `CallsScreen` already guards against.
+ */
+const SCREEN_KEYS = ['q', 'sort', 'order', 'page', 'perPage', 'stage', 'focus'] as const
+
+/** Everything "Reset all" clears, and everything that enables it. */
+const RESETTABLE_KEYS: readonly string[] = [
+  ...MULTI_KEYS,
+  ...SINGLE_KEYS,
+  ...FLAG_KEYS,
+  ...SCREEN_KEYS,
+]
 
 export function useFilters(): Filters {
   const [params, setParams] = useSearchParams()
@@ -278,9 +304,22 @@ export function useFilters(): Filters {
 
   const reset = useCallback(() => {
     write((next) => {
-      for (const key of [...MULTI_KEYS, ...SINGLE_KEYS, ...FLAG_KEYS]) next.delete(key)
+      for (const key of RESETTABLE_KEYS) next.delete(key)
     })
   }, [write])
+
+  /**
+   * Whether anything at all is set for Reset to clear.
+   *
+   * Deliberately not `activeCount`, which counts chips. A period, a search
+   * term or a stage shows in its own control rather than as a chip, so a
+   * chip count said "nothing is set" over a plainly narrowed screen and
+   * the button sat disabled.
+   */
+  const canReset = useMemo(
+    () => RESETTABLE_KEYS.some((key) => params.has(key)),
+    [params],
+  )
 
   const applied = useMemo(() => {
     const rows: { key: string; value: string }[] = []
@@ -296,10 +335,12 @@ export function useFilters(): Filters {
 
   return {
     ...state,
-    // The period is deliberately excluded: it is always set to something,
-    // shown in its own control, and counting it would make "Reset all" look
-    // as though it had left a filter behind.
+    // Chips only. The period is excluded because it is always set to
+    // something and shown in its own control, so counting it would make the
+    // applied-filters row claim a filter the reader cannot see. What Reset
+    // acts on is `canReset`, which is a different question.
     activeCount: applied.length,
+    canReset,
     applied,
     toggleMulti,
     setSingle,

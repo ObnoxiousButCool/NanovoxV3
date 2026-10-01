@@ -251,6 +251,48 @@ describe('FilterBar', () => {
     expect(screen.getByTestId('address').textContent).not.toContain('signal')
   })
 
+  it('clears what the screen owns as well as what the bar owns', async () => {
+    // The button is called Reset all and left `q`, `sort`, `order` and
+    // `perPage` behind, so a reader who pressed it was still looking at a
+    // searched, sorted, resized list. `page` goes too: a page number kept
+    // across a reset points into a result the reset just resized.
+    stubApi()
+    const user = userEvent.setup()
+    setup('/calls?region=West&q=ironwood&sort=quality&order=asc&page=2&perPage=50')
+
+    await user.click(await screen.findByRole('button', { name: 'Reset all' }))
+
+    const address = screen.getByTestId('address').textContent ?? ''
+    expect(address).toBe('')
+  })
+
+  it('clears the period and the action board’s own state', async () => {
+    // Neither carries a chip, and both narrow what is on screen.
+    stubApi()
+    const user = userEvent.setup()
+    setup('/actions?period=month&from=2026-07-06&to=2026-07-31&stage=needs_action&focus=unresolved')
+
+    await user.click(await screen.findByRole('button', { name: 'Reset all' }))
+
+    expect(screen.getByTestId('address').textContent).toBe('')
+  })
+
+  it('is offered while a period alone is set, which carries no chip', async () => {
+    // It went grey over a plainly narrowed screen, because it was driven by
+    // the chip count and a period shows in its own control instead.
+    stubApi()
+    setup('/exec?period=month&from=2026-07-06&to=2026-07-31')
+
+    expect(await screen.findByRole('button', { name: 'Reset all' })).toBeEnabled()
+  })
+
+  it('is offered while only a search term is set', async () => {
+    stubApi()
+    setup('/calls?q=ironwood')
+
+    expect(await screen.findByRole('button', { name: 'Reset all' })).toBeEnabled()
+  })
+
   it('offers nothing to reset when nothing is set', async () => {
     stubApi()
     setup()
