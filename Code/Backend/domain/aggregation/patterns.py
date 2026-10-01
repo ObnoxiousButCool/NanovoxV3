@@ -116,6 +116,53 @@ def period_caveat(
     )
 
 
+def window_excludes_caveat(
+    window: Window,
+    calls: Sequence[CallContext],
+    *,
+    subjects: Sequence[str],
+) -> str | None:
+    """The sentence for calls in scope that a metric's window leaves out.
+
+    `period_caveat` answers the opposite question — a window reaching
+    *outside* what was asked for — and it only fires when a period filter is
+    set. With no filter it stays silent, which left the common case unsaid:
+    a window ends on today's date, the corpus ended weeks ago, and its
+    earliest calls fall off the back of the window. The risk screen counted
+    562 of the 600 calls the filter bar reported in scope, and nothing on
+    the page accounted for the other 38.
+
+    Returns `None` when the window covers every call in scope, so the
+    sentence appears only when there is something to disclose.
+
+    Counted rather than described, because "some calls are outside the
+    window" is not a fact a reader can reconcile against the figure in front
+    of them, and the whole point of the caveat is that they can.
+
+    `subjects` is every metric sharing this window, said once. The executive
+    screen has five metrics over two distinct windows, and a sentence each
+    put five near-identical paragraphs above the figures — which is how a
+    caveat stops being read.
+    """
+    outside = len(calls) - len(window.calls_in(tuple(calls)))
+    if outside <= 0 or not subjects:
+        return None
+    return (
+        f"{_subject_list(subjects)} computed over {window.start.isoformat()} to "
+        f"{window.end.isoformat()}, which leaves out {outside} of the {len(calls)} "
+        "calls in scope. The window is the one the Metrics sheet sets and is not "
+        "widened to cover the corpus."
+    )
+
+
+def _subject_list(subjects: Sequence[str]) -> str:
+    """ "X is" for one, "X and Y are" for two, Oxford-free list beyond."""
+    names = list(subjects)
+    if len(names) == 1:
+        return f"{names[0]} is"
+    return f"{', '.join(names[:-1])} and {names[-1]} are"
+
+
 def _period_text(since: date | None, until: date | None) -> str:
     if since is not None and until is not None:
         return f"{since.isoformat()} to {until.isoformat()}"

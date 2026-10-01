@@ -55,8 +55,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from domain.aggregation.call_tags import Window
-from domain.aggregation.patterns import period_caveat
+from domain.aggregation.call_tags import CallContext, Window
+from domain.aggregation.patterns import period_caveat, window_excludes_caveat
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 
@@ -220,13 +220,21 @@ class ScopeResponse(CamelModel):
         *,
         windows: Sequence[tuple[str, Window]] = (),
     ) -> ScopeResponse:
-        """The scope, plus a caveat for every window that reaches outside the period.
+        """The scope, plus a caveat for every window that disagrees with it.
 
         `windows` is what this endpoint actually computed over, named as a
         reader would name it. Passing them is how decision D11 becomes
         visible rather than merely true: the period bounds the corpus, each
         metric keeps its own window, and where the two disagree the response
         says so instead of quietly publishing a narrower figure.
+
+        Two ways they disagree, and both are said. A window can reach
+        **outside** the period asked for, which `period_caveat` covers. It
+        can also **leave calls out** — a window ends on today's date while
+        the corpus ended weeks ago, so its earliest calls fall off the back.
+        Only the first was reported, and the second is the one that happens
+        with no filter set at all: the risk screen counted 562 of the 600
+        calls its own filter bar reported in scope.
         """
         return cls(
             sources=sorted(source.value for source in query.sources),
@@ -259,5 +267,31 @@ class ScopeResponse(CamelModel):
                     if (note := period_caveat(window, query.since, query.until, subject=subject))
                     is not None
                 ),
+                *_excluded_notes(windows, filtered.calls),
             ],
         )
+
+
+def _excluded_notes(
+    windows: Sequence[tuple[str, Window]],
+    calls: Sequence[CallContext],
+) -> list[str]:
+    """One sentence per distinct window, not per metric.
+
+    The executive screen's five metrics run over two windows, and a sentence
+    each put five near-identical paragraphs above the figures. Grouped by
+    the window's own bounds, in the order the endpoint listed them, so the
+    sentences stay stable between requests.
+    """
+    grouped: dict[tuple[date, date], list[str]] = {}
+    spans: dict[tuple[date, date], Window] = {}
+    for subject, window in windows:
+        key = (window.start, window.end)
+        grouped.setdefault(key, []).append(subject)
+        spans.setdefault(key, window)
+    notes = []
+    for key, subjects in grouped.items():
+        note = window_excludes_caveat(spans[key], calls, subjects=subjects)
+        if note is not None:
+            notes.append(note)
+    return notes
