@@ -31,7 +31,7 @@ invented. A seeded action has none of them until someone sets them.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Container, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 from enum import Enum
@@ -262,6 +262,53 @@ def past_due(action: Action, lifecycle: Lifecycle, today: date) -> bool:
     nobody moved.
     """
     return action.due is not None and action.due < today and lifecycle.state(action.status).open
+
+
+def in_scope(
+    action: Action,
+    *,
+    call_references: Container[str],
+    employer_refs: Container[str],
+    corpus_references: Container[str],
+) -> bool:
+    """Whether a filtered corpus still has anything to do with this action.
+
+    The prototype's rule in `actions.html`, which the board needs because
+    the filter bar is shared: a reader who narrows to a region and then asks
+    what to do next should not be handed work on accounts the narrowing
+    excluded.
+
+    Three clauses, and the third is the one that matters:
+
+    1. It cites a call the filters kept.
+    2. It names an employer whose calls the filters kept.
+    3. **It cites no calls at all**, in which case no call filter can speak
+       to it either way and it stays. An action raised by hand, about a
+       process rather than a conversation, has nothing for a corpus filter
+       to match on; dropping it would make it disappear the moment anyone
+       touched the bar, and nothing on the screen would say why.
+
+    4. **None of the calls it cites are in the corpus at all.** The corpus
+       holds the calls the pipeline has analysed; an action can cite one it
+       has not reached yet. Nothing here can place such an action in or out
+       of scope, so it stays. Dropping it would make the unfiltered board
+       quietly narrower than the set of actions people are working, which
+       is the worse of the two errors by far.
+
+    Not "cites only calls the filters kept". An action raised over forty
+    calls is still live when the reader has narrowed to one of them -- the
+    narrowing changes what they are looking at, not what the action is.
+
+    The whole rule is one sentence: drop an action only when the corpus can
+    positively place it out of scope.
+    """
+    if any(reference in call_references for reference in action.call_references):
+        return True
+    if action.employer_ref is not None and action.employer_ref in employer_refs:
+        return True
+    if not action.call_references:
+        return True
+    return not any(reference in corpus_references for reference in action.call_references)
 
 
 def steps_from(texts: Sequence[str]) -> tuple[ChecklistStep, ...]:

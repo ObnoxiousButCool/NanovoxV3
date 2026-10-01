@@ -30,27 +30,31 @@ export type UpdateActionBody = components['schemas']['UpdateActionBody']
 const BOARD_KEY = ['insights', 'actionBoard'] as const
 
 /**
- * The board, or one account's share of it.
+ * The board, narrowed by the shared filter bar.
  *
- * `employerRef` is sent to the server rather than filtered here. An action
- * belongs to an account either by naming it or by citing one of its calls,
- * and the second half is a join the client cannot do: the board's actions
- * carry call ids, not employers, and one seeded action cites 179 calls.
- * Filtering here was the bug — it matched on the employer reference alone,
- * which every seeded signal-wide action leaves null, so an account board
- * came back empty and the page reported that nothing had needed an action.
+ * `search` is the bar's own query string, sent to the server rather than
+ * applied here. An action belongs to a filtered corpus either by citing one
+ * of its calls or by naming one of its employers, and the first half is a
+ * join the client cannot do: the board's actions carry call ids, not
+ * employers or regions, and one seeded action cites 179 calls. Filtering
+ * here was the bug once before — it matched on the employer reference
+ * alone, which every seeded signal-wide action leaves null, so an account
+ * board came back empty and the page reported that nothing had needed an
+ * action.
  *
- * The account's key extends the board's, so the mutations below still
- * invalidate it: react-query matches a query key by prefix.
+ * Before this the board was fetched unfiltered while the findings panel
+ * beside it was not, so the two answered different questions under one bar.
+ *
+ * The search is part of the query key, so each scope is cached separately
+ * and the mutations below still invalidate all of them: react-query matches
+ * a query key by prefix.
  */
-export function useActionBoard(employerRef?: string) {
+export function useActionBoard(search = '') {
   return useQuery({
-    queryKey: employerRef === undefined ? BOARD_KEY : [...BOARD_KEY, employerRef],
+    queryKey: search === '' ? BOARD_KEY : [...BOARD_KEY, search],
     queryFn: () =>
       getJson<ActionBoard>(
-        employerRef === undefined
-          ? '/insights/actions/board'
-          : `/insights/actions/board?employer=${encodeURIComponent(employerRef)}`,
+        search === '' ? '/insights/actions/board' : `/insights/actions/board?${search}`,
       ),
   })
 }

@@ -254,6 +254,7 @@ class Container:
             lifecycle=self.action_lifecycle,
             catalogue=self.playbook_catalogue,
             clock=self.clock,
+            reader=self.insights_reader(),
         )
 
     def seed_actions(self) -> SeedActions:

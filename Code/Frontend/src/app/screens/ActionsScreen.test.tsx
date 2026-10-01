@@ -295,7 +295,7 @@ function handle(url: string, init?: RequestInit): unknown {
   if (path.startsWith('/insights/playbooks/')) {
     return { title: 'No playbook for this key.', status: 404, code: 'not_found', correlation_id: null, detail: null }
   }
-  if (path === '/insights/actions/board' && method === 'GET') {
+  if (path.startsWith('/insights/actions/board') && method === 'GET') {
     return { lanes: LANES, actions: store.actions, trustNote: 'There is no sign-in; anyone who can reach this can edit it.' }
   }
   const patchMatch = /^\/insights\/actions\/(\d+)$/.exec(path)

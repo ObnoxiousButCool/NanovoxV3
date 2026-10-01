@@ -25,9 +25,9 @@ them is how a finding acquires a fake status.
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Annotated, Literal
+from typing import Literal
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, status
 from pydantic import Field
 
 from application.use_cases.manage_actions import CreateActionRequest
@@ -40,6 +40,7 @@ from frameworks_drivers.api.dependencies import (
     ListActionsDep,
     UpdateActionDep,
 )
+from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["actions"])
 
@@ -181,20 +182,20 @@ class UpdateActionBody(CamelModel):
 )
 async def read_board(
     use_case: ListActionsDep,
-    employer: Annotated[
-        str | None,
-        Query(
-            description=(
-                "Scope the board to one employer: the actions naming it, plus the "
-                "actions citing one of its calls. Omitted, the whole board comes "
-                "back. The join is here rather than on the client because "
-                "membership by cited call cannot be computed from the board alone "
-                "without sending every action's whole call list."
-            )
-        ),
-    ] = None,
+    query: InsightsQueryDep,
 ) -> ActionBoardResponse:
-    board = await use_case.execute(employer)
+    """Scoped by the shared filter bar, like every other screen.
+
+    It was not, and the board sat under a bar reading "87 calls in scope"
+    showing work on every account in the book, with nothing saying the two
+    were answering different questions.
+
+    The employer case is no longer a parameter of its own. `employer` is one
+    of the shared filters and repeatable there, where this took a single
+    string and silently used the last one sent -- so picking two accounts in
+    the bar scoped the board to an arbitrary one of them.
+    """
+    board = await use_case.execute(query.to_request())
     return ActionBoardResponse(
         lanes=[
             LaneResponse(

@@ -80,7 +80,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Every action being worked, with the board's lanes */
+        /**
+         * Every action being worked, with the board's lanes
+         * @description Scoped by the shared filter bar, like every other screen.
+         *
+         *     It was not, and the board sat under a bar reading "87 calls in scope"
+         *     showing work on every account in the book, with nothing saying the two
+         *     were answering different questions.
+         *
+         *     The employer case is no longer a parameter of its own. `employer` is one
+         *     of the shared filters and repeatable there, where this took a single
+         *     string and silently used the last one sent -- so picking two accounts in
+         *     the bar scoped the board to an arbitrary one of them.
+         */
         get: operations["read_board_api_v1_insights_actions_board_get"];
         put?: never;
         post?: never;
@@ -3289,8 +3301,38 @@ export interface operations {
     read_board_api_v1_insights_actions_board_get: {
         parameters: {
             query?: {
-                /** @description Scope the board to one employer: the actions naming it, plus the actions citing one of its calls. Omitted, the whole board comes back. The join is here rather than on the client because membership by cited call cannot be computed from the board alone without sending every action's whole call list. */
-                employer?: string | null;
+                /** @description Employer region. */
+                region?: string[] | null;
+                /** @description Broker of record, from reference data — not who was named aloud. */
+                broker?: string[] | null;
+                /** @description Employer reference. */
+                employer?: string[] | null;
+                /** @description Agent reference. */
+                agent?: string[] | null;
+                category?: components["schemas"]["Category"][] | null;
+                /** @description Calls touching this line. A call may touch several. */
+                productLine?: components["schemas"]["ProductLine"][] | null;
+                /** @description Where the failure originated, not where it surfaced. */
+                touchpoint?: string[] | null;
+                outcome?: components["schemas"]["Outcome"][] | null;
+                signal?: components["schemas"]["SignalType"][] | null;
+                intent?: components["schemas"]["IntentType"][] | null;
+                complaintTarget?: components["schemas"]["ComplaintAttribution"][] | null;
+                qualityBand?: components["schemas"]["QualityBand"][] | null;
+                escalated?: boolean | null;
+                /** @description Whether a complaint was made. */
+                complaint?: boolean | null;
+                complianceException?: boolean | null;
+                /** @description Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters — a repeat does not stop being one because the call it followed was filtered out. */
+                repeat?: boolean | null;
+                /** @description Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric. */
+                source?: components["schemas"]["CallSource"][] | null;
+                /** @description Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window. */
+                from?: string | null;
+                /** @description Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window. */
+                to?: string | null;
+                /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
+                asOf?: string | null;
             };
             header?: never;
             path?: never;

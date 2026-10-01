@@ -30,6 +30,7 @@ from datetime import date
 from application.ports.action_repository import ActionRepository, NewAction
 from application.ports.clock import Clock
 from application.ports.reference_lookup import ReferenceLookup
+from application.use_cases.read_insights import InsightsReader, InsightsRequest
 from domain.actions import (
     Action,
     ActionChange,
@@ -38,6 +39,7 @@ from domain.actions import (
     Priority,
     apply,
     check_state,
+    in_scope,
     steps_from,
 )
 from domain.errors import NotFoundError, ValidationError
@@ -236,11 +238,13 @@ class ListActions:
         lifecycle: Lifecycle,
         catalogue: PlaybookCatalogue,
         clock: Clock,
+        reader: InsightsReader,
     ) -> None:
         self._actions = actions
         self._lifecycle = lifecycle
         self._catalogue = catalogue
         self._clock = clock
+        self._reader = reader
 
     def _label(self, action: Action) -> str:
         """The action's name with no count in it.
@@ -254,22 +258,69 @@ class ListActions:
         playbook = resolve(self._catalogue, action.issue_key, {})
         return playbook.label if playbook is not None else action.title
 
-    async def execute(self, employer_ref: str | None = None) -> ActionBoard:
-        """The board, or one account's share of it.
+    async def execute(self, request: InsightsRequest | None = None) -> ActionBoard:
+        """The board, narrowed to what the filter bar left standing.
 
         The lanes are the same either way: they are the lifecycle's, not a
         summary of what happens to be on the board, so an account with
         nothing in progress still shows an empty In progress lane rather
         than losing the column.
+
+        `None` is the unfiltered board, for callers that have no corpus
+        question -- the seeding CLI and the tests that only care about
+        lifecycle.
+
+        The narrowing is `domain.actions.in_scope`, not a repository query.
+        Which actions a filtered corpus still concerns is a rule about
+        actions and calls, and it reads the filtered calls the same reader
+        every other screen uses, so the board cannot disagree with the
+        findings panel beside it about what is in scope.
         """
-        actions = await self._actions.list(employer_ref)
+        actions = await self._actions.list(None)
+        if request is None:
+            return self._board(actions, calls_on_account={})
+
+        scope = await self._reader.scope(request)
+        calls = scope.filtered.calls
+        references = {call.reference for call in calls}
+        employers = {call.employer_ref for call in calls if call.employer_ref is not None}
+        # The whole corpus, not the filtered slice: it is what tells an
+        # action the filters excluded apart from one citing a call the
+        # pipeline has not analysed, which nothing here can judge.
+        corpus = {call.reference for call in scope.corpus.calls}
+        kept = tuple(
+            action
+            for action in actions
+            if in_scope(
+                action,
+                call_references=references,
+                employer_refs=employers,
+                corpus_references=corpus,
+            )
+        )
+        return self._board(kept, calls_on_account=await self._shares(request))
+
+    async def _shares(self, request: InsightsRequest) -> dict[int, int]:
+        """Each card's share of the account, when exactly one is selected.
+
+        Meaningless for two accounts or none -- "12 of this account's calls"
+        has no referent then -- so it is fetched only for the single-employer
+        case and left empty otherwise, which is the state the card already
+        renders for the whole-book board.
+        """
+        chosen = request.filters.employer_refs
+        if len(chosen) != 1:
+            return {}
+        return await self._actions.calls_on_account(next(iter(chosen)))
+
+    def _board(
+        self, actions: tuple[Action, ...], *, calls_on_account: dict[int, int]
+    ) -> ActionBoard:
         return ActionBoard(
             actions=actions,
             lifecycle=self._lifecycle,
             today=self._clock.now().date(),
-            calls_on_account=(
-                {} if employer_ref is None else await self._actions.calls_on_account(employer_ref)
-            ),
+            calls_on_account=calls_on_account,
             labels={action.id: self._label(action) for action in actions},
         )
 

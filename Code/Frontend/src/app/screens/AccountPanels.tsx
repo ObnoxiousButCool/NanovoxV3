@@ -218,7 +218,13 @@ export function AccountActions({ employerRef }: { employerRef: string }) {
   // the calls behind metric 10's *fired conditions*, not the account's
   // calls -- so an account with nothing flagged matched nothing at all and
   // the panel below reported that none of its calls had needed an action.
-  const { data, isPending, error } = useActionBoard(employerRef)
+  //
+  // The board now takes the shared filter set rather than a bare employer
+  // reference, and `employer` is one of those filters, so this account page
+  // asks for its own account the same way the filter bar would.
+  const { data, isPending, error } = useActionBoard(
+    new URLSearchParams({ employer: employerRef }).toString(),
+  )
 
   const rows: Row[] = (data?.actions ?? []).map((action) => ({
     key: String(action.id),

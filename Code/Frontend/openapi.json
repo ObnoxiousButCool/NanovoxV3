@@ -6830,24 +6830,393 @@
     },
     "/api/v1/insights/actions/board": {
       "get": {
+        "description": "Scoped by the shared filter bar, like every other screen.\n\nIt was not, and the board sat under a bar reading \"87 calls in scope\"\nshowing work on every account in the book, with nothing saying the two\nwere answering different questions.\n\nThe employer case is no longer a parameter of its own. `employer` is one\nof the shared filters and repeatable there, where this took a single\nstring and silently used the last one sent -- so picking two accounts in\nthe bar scoped the board to an arbitrary one of them.",
         "operationId": "read_board_api_v1_insights_actions_board_get",
         "parameters": [
           {
-            "description": "Scope the board to one employer: the actions naming it, plus the actions citing one of its calls. Omitted, the whole board comes back. The join is here rather than on the client because membership by cited call cannot be computed from the board alone without sending every action's whole call list.",
+            "description": "Employer region.",
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer region.",
+              "title": "Region"
+            }
+          },
+          {
+            "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+            "in": "query",
+            "name": "broker",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Broker of record, from reference data \u2014 not who was named aloud.",
+              "title": "Broker"
+            }
+          },
+          {
+            "description": "Employer reference.",
             "in": "query",
             "name": "employer",
             "required": false,
             "schema": {
               "anyOf": [
                 {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Employer reference.",
+              "title": "Employer"
+            }
+          },
+          {
+            "description": "Agent reference.",
+            "in": "query",
+            "name": "agent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Agent reference.",
+              "title": "Agent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "description": "Calls touching this line. A call may touch several.",
+            "in": "query",
+            "name": "productLine",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ProductLine"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Calls touching this line. A call may touch several.",
+              "title": "Productline"
+            }
+          },
+          {
+            "description": "Where the failure originated, not where it surfaced.",
+            "in": "query",
+            "name": "touchpoint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Where the failure originated, not where it surfaced.",
+              "title": "Touchpoint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Outcome"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outcome"
+            }
+          },
+          {
+            "in": "query",
+            "name": "signal",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SignalType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Signal"
+            }
+          },
+          {
+            "in": "query",
+            "name": "intent",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/IntentType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intent"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complaintTarget",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/ComplaintAttribution"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complainttarget"
+            }
+          },
+          {
+            "in": "query",
+            "name": "qualityBand",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/QualityBand"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Qualityband"
+            }
+          },
+          {
+            "in": "query",
+            "name": "escalated",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Escalated"
+            }
+          },
+          {
+            "description": "Whether a complaint was made.",
+            "in": "query",
+            "name": "complaint",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Whether a complaint was made.",
+              "title": "Complaint"
+            }
+          },
+          {
+            "in": "query",
+            "name": "complianceException",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Complianceexception"
+            }
+          },
+          {
+            "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+            "in": "query",
+            "name": "repeat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep only repeat contacts, or only calls that are not one. Omitted means both. A repeat is a relationship between two calls rather than a property of one, so it is computed over the whole corpus and applied after the other filters \u2014 a repeat does not stop being one because the call it followed was filtered out.",
+              "title": "Repeat"
+            }
+          },
+          {
+            "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/CallSource"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Transcript origins to include. Omitted means every source. The published dashboard reads CORPUS_PDF alone, so a transcript pasted to try the pipeline out never lands in a metric.",
+              "title": "Source"
+            }
+          },
+          {
+            "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
                   "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "Scope the board to one employer: the actions naming it, plus the actions citing one of its calls. Omitted, the whole board comes back. The join is here rather than on the client because membership by cited call cannot be computed from the board alone without sending every action's whole call list.",
-              "title": "Employer"
+              "description": "Earliest call date to include. Omitted means no lower bound. Bounds the corpus, not a metric's window.",
+              "title": "From"
+            }
+          },
+          {
+            "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Latest call date to include. Omitted means no upper bound. Bounds the corpus, not a metric's window.",
+              "title": "To"
+            }
+          },
+          {
+            "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+            "in": "query",
+            "name": "asOf",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The date every window ends on. Omitted means today. Supplying it makes a figure reproducible.",
+              "title": "Asof"
             }
           }
         ],

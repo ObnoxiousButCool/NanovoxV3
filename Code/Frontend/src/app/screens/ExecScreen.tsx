@@ -92,7 +92,9 @@ export function ExecScreen() {
   const filters = useFilters()
   const { data, isPending, error } = useExec(filters.apiSearch)
   const risk = useRisk(filters.apiSearch)
-  const board = useActionBoard()
+  // The filter bar applies here as it does everywhere else, so the board
+  // this screen counts from is the one the bar describes.
+  const board = useActionBoard(filters.apiSearch)
   // The same query the filter bar already made, so React Query serves it
   // from cache. An employer reference is a code, and the needs-attention
   // panel names accounts — codes never reach a reader.

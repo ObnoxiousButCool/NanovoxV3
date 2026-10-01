@@ -180,8 +180,16 @@ export interface Filters extends FilterState {
   apiSearch: string
 }
 
-/** URL keys that steer the interface rather than the query. */
-const UI_ONLY_KEYS = ['period'] as const
+/**
+ * URL keys that steer the interface rather than the query.
+ *
+ * `period` is which picker is open. `stage` and `focus` belong to the action
+ * screen: the stage strip narrows the board in the browser, and `focus`
+ * chooses which playbook to open. None of the three is documented on any
+ * endpoint, and a request carrying one leaves the next person working out
+ * whether it mattered -- which is what this list exists to prevent.
+ */
+const UI_ONLY_KEYS = ['period', 'stage', 'focus'] as const
 
 export function useFilters(): Filters {
   const [params, setParams] = useSearchParams()

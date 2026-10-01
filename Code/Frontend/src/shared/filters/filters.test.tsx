@@ -318,15 +318,19 @@ describe('the period control', () => {
     expect(screen.getByTestId('address')).toHaveTextContent('to=2026-08-31')
   })
 
-  it('does not send the picker mode to the API', async () => {
-    // `period` restores the interface; it is not a filter, and the API does
-    // not document it.
+  it('does not send interface-only keys to the API', async () => {
+    // `period` restores the picker; `stage` narrows the action board in the
+    // browser and `focus` chooses a playbook. None is a filter, and none is
+    // documented on any endpoint — a request carrying one leaves the next
+    // person working out whether it mattered.
     stubApi({ ...OPTIONS, corpusPeriod: { from: '2026-07-06', to: '2026-09-25' } })
-    setup('/risk?period=month&region=West')
+    setup('/risk?period=month&stage=needs_action&focus=unresolved&region=West')
 
     await screen.findByText(/Region: West/)
     const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls as [string][]
-    expect(calls.some(([url]) => url.includes('period='))).toBe(false)
+    for (const key of ['period=', 'stage=', 'focus=']) {
+      expect(calls.some(([url]) => url.includes(key))).toBe(false)
+    }
     expect(calls.some(([url]) => url.includes('region=West'))).toBe(true)
   })
 })

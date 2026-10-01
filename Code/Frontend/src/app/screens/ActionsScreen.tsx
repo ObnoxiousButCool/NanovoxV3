@@ -88,7 +88,9 @@ export function ActionsScreen() {
   const stage = params.get('stage')
 
   const findings = useActionsFindings(filters.apiSearch)
-  const board = useActionBoard()
+  // The same query string the findings panel is given, so the board and
+  // the issues beside it cannot be answering different questions.
+  const board = useActionBoard(filters.apiSearch)
   const options = useFilterOptions(filters.apiSearch)
   const employerNames = new Map(
     (options.data?.employers ?? []).map((employer) => [employer.ref, employer.name]),

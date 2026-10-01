@@ -2103,6 +2103,38 @@ describe('an account flagged below the indicator floor', () => {
   })
 })
 
+describe('the action board and the filter bar', () => {
+  it('sends the bar’s filters to the board, not only to the findings', async () => {
+    // The board was fetched unfiltered while the findings panel beside it
+    // was not, so a reader who narrowed to a region saw "87 calls in scope"
+    // above work on every account in the book, with nothing saying the two
+    // were answering different questions.
+    const seen: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) => {
+        seen.push(input)
+        return Promise.resolve(
+          new Response(JSON.stringify(routeFor(input)), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }),
+    )
+
+    renderAt('/actions?region=Bay+Area&outcome=RESOLVED')
+
+    await waitFor(() => {
+      expect(seen.some((url) => url.includes('/insights/actions/board'))).toBe(true)
+    })
+    const board = seen.filter((url) => url.includes('/insights/actions/board'))
+    expect(
+      board.every((url) => url.includes('region=Bay+Area') && url.includes('outcome=RESOLVED')),
+    ).toBe(true)
+  })
+})
+
 describe('actions for one account', () => {
   it('asks the server for that account’s actions rather than filtering the board', async () => {
     // The panel used to fetch the whole board and filter it against

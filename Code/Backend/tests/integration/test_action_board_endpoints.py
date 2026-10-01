@@ -7,18 +7,23 @@ real database, plus every refusal the lifecycle makes.
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from application.ports.reference_source import ReferenceDataset
 from domain.entities.ingested_call import IngestedCall
 from domain.value_objects.call_resolution_status import CallResolutionStatus
 from domain.value_objects.caller_type import CallerType
+from domain.value_objects.category import Category
+from domain.value_objects.outcome import Outcome
 from infrastructure.persistence.repositories.call_repository import SqlCallRepository
 from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
+from infrastructure.persistence.tables import CallExtractionRow, CallRow
 from infrastructure.system_clock import SystemClock
 from tests.integration.test_reference_lookup import _BROKER, _EMPLOYER
 
@@ -281,7 +286,16 @@ def test_the_derived_findings_are_untouched(seeded: None, client: TestClient) ->
 @pytest.fixture
 async def with_employer_calls(session_factory: async_sessionmaker[AsyncSession]) -> None:
     """Two calls on EMP-1001 and one on nobody, so a scoped board has
-    something to leave out as well as something to return."""
+    something to leave out as well as something to return.
+
+    The three are **analysed**, not merely ingested. The board is scoped by
+    the same corpus every other screen reads, and that corpus holds the
+    calls the pipeline has extracted; three rows with no extraction are
+    invisible to it, so a board scoped against them could not tell an
+    account's calls from anybody else's. `in_scope` keeps an action citing
+    such a call rather than dropping it — which is right, and would make
+    this test pass whatever the scoping did.
+    """
     await SqlReferenceRepository(session_factory).upsert(
         ReferenceDataset(brokers=(_BROKER,), employers=(_EMPLOYER,))
     )
@@ -292,6 +306,31 @@ async def with_employer_calls(session_factory: async_sessionmaker[AsyncSession])
             _call("C-0003"),
         )
     )
+    await _analyse(session_factory, ("C-0001", "C-0002", "C-0003"))
+
+
+async def _analyse(
+    session_factory: async_sessionmaker[AsyncSession], references: tuple[str, ...]
+) -> None:
+    """Give each call the extraction row that puts it in the corpus."""
+    async with session_factory() as session, session.begin():
+        rows = (
+            (await session.execute(select(CallRow).where(CallRow.reference.in_(references))))
+            .scalars()
+            .all()
+        )
+        for row in rows:
+            row.occurred_at = datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc)
+            session.add(
+                CallExtractionRow(
+                    call_id=row.id,
+                    outcome=Outcome.RESOLVED.value,
+                    category=Category.CLAIMS_AND_EOB.value,
+                    complaint_present=False,
+                    escalation_triggered=False,
+                    knowledge_failure_present=False,
+                )
+            )
 
 
 def _with_employer(call: IngestedCall, employer_ref: str) -> IngestedCall:
@@ -361,8 +400,53 @@ def test_the_lanes_stand_whether_or_not_the_account_has_cards(
     assert [lane["code"] for lane in scoped["lanes"]] == [lane["code"] for lane in whole["lanes"]]
 
 
+def test_the_board_narrows_with_the_shared_filter_bar(
+    with_employer_calls: None, client: TestClient
+) -> None:
+    """The defect: the bar read "87 calls in scope" and the board showed the
+    whole book, with nothing saying the two were answering different
+    questions. The findings panel beside it had narrowed.
+
+    Any shared filter, not only employer. Here the outcome filter keeps
+    every call, and a category nothing matches keeps none -- so the board
+    follows the corpus rather than one special-cased parameter.
+    """
+    _create(client, title="Mine", ownerTeam="Service", callIds=["C-0001"])
+
+    kept = client.get(f"{URL}/board", params={"outcome": "RESOLVED"}).json()
+    dropped = client.get(f"{URL}/board", params={"outcome": "UNRESOLVED"}).json()
+
+    assert [action["title"] for action in kept["actions"]] == ["Mine"]
+    assert dropped["actions"] == []
+    # The lanes are the lifecycle's, not a summary of what survived, so an
+    # emptied board still shows its columns rather than losing them.
+    assert [lane["code"] for lane in dropped["lanes"]] == [lane["code"] for lane in kept["lanes"]]
+
+
+def test_an_action_citing_a_call_the_pipeline_has_not_reached_is_kept(
+    seeded: None, client: TestClient
+) -> None:
+    """Drop an action only when the corpus can positively place it out of
+    scope.
+
+    `seeded` ingests C-0001 and never extracts it, so the call exists --
+    an action may only cite one that does -- but the corpus every screen
+    reads cannot see it. Nothing here can say whether it is in or out of the
+    filter. Dropping it would make the board quietly narrower than the work
+    people are actually doing, and would empty the unfiltered board
+    entirely, which is how this rule was found.
+    """
+    _create(client, title="Unreachable", ownerTeam="Service", callIds=["C-0001"])
+
+    whole = client.get(f"{URL}/board").json()
+    narrowed = client.get(f"{URL}/board", params={"region": "Bay Area"}).json()
+
+    assert [action["title"] for action in whole["actions"]] == ["Unreachable"]
+    assert [action["title"] for action in narrowed["actions"]] == ["Unreachable"]
+
+
 def test_an_unscoped_board_is_unchanged(with_employer_calls: None, client: TestClient) -> None:
-    """The parameter is optional and the board screen does not pass it."""
+    """No filters is the whole board, which is the common case."""
     _create(client, title="Mine", ownerTeam="Service", callIds=["C-0001"])
     _create(client, title="Theirs", ownerTeam="Service", callIds=["C-0003"])
 
