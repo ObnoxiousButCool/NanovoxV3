@@ -143,7 +143,8 @@ class GenerateInsights:
             logger.exception("Insight generation failed", extra={"subject": facts.subject})
             return GeneratedInsights.unavailable(UnavailableReason.PROVIDER_FAILED)
 
-        accepted = self._accept(list(result.value.insights), facts)
+        offered = list(result.value.insights)
+        accepted = self._accept(offered, facts)
         if accepted is None:
             # Cached: the same figures put to the same model through the same
             # prompt will very likely be refused again, and re-asking bills to
@@ -153,6 +154,16 @@ class GenerateInsights:
             await self._cache.put(key, rejected)
             return rejected
         if not accepted:
+            if offered:
+                # The model wrote sentences and the guardrail dropped every
+                # one — a hedged tail on each, most often. That is the same
+                # fact as an invented figure: the answer was refused, and the
+                # screen's own numbers are fine. Reporting it as
+                # NO_PUBLISHED_FACTS told the reader their data was withheld
+                # when the data was published and the answer was not.
+                rejected = GeneratedInsights.unavailable(UnavailableReason.GUARDRAIL_REJECTED)
+                await self._cache.put(key, rejected)
+                return rejected
             # A well-formed answer with nothing in it is still nothing to show,
             # and must not be dressed up as a generated surface.
             return GeneratedInsights.unavailable(UnavailableReason.NO_PUBLISHED_FACTS)

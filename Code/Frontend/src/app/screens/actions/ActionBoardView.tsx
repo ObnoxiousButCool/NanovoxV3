@@ -7,14 +7,19 @@
  *
  * The seven lanes the prototype hardcodes as `LANES` are `board.lanes` here
  * — read from `GET /insights/actions/board`, which reads them from
- * `config/action_lifecycle.yaml`. Nothing in this file names a lane by code;
- * a lifecycle change on the server draws a different board on the next
- * fetch, not a frontend rebuild.
+ * `config/action_lifecycle.yaml`. A lifecycle change on the server draws a
+ * different board on the next fetch, not a frontend rebuild.
+ *
+ * Nothing here names a lane by code. Which lane a card is drawn in is
+ * `laneOf`'s question, because being late is a computed property rather
+ * than a status and all three readings of it — the strip's counts, the
+ * strip's filter and the kanban's placement — have to give one answer.
  */
 
 import { Empty } from '@/shared/design/primitives'
 import type { Action, ActionBoard, Lane } from '@/shared/api/actionBoard'
 import { formatDue, initials, laneColors, priorityColor } from '@/app/screens/actions/format'
+import { laneOf } from '@/app/screens/actions/laneOf'
 
 export function ActionBoardView({
   board,
@@ -35,9 +40,15 @@ export function ActionBoardView({
 }) {
   const colors = laneColors(board.lanes)
   const counts = new Map(
-    board.lanes.map((lane) => [lane.code, board.actions.filter((a) => a.status === lane.code).length]),
+    board.lanes.map((lane) => [
+      lane.code,
+      board.actions.filter((a) => laneOf(a, board.lanes) === lane.code).length,
+    ]),
   )
-  const visible = stage === null ? board.actions : board.actions.filter((a) => a.status === stage)
+  const visible =
+    stage === null
+      ? board.actions
+      : board.actions.filter((a) => laneOf(a, board.lanes) === stage)
 
   return (
     <section className="nv-panel">
@@ -131,7 +142,7 @@ function BoardKanban({
   return (
   <div className="nv-kanban">
     {lanes.map((lane) => {
-      const items = actions.filter((a) => a.status === lane.code)
+      const items = actions.filter((a) => laneOf(a, lanes) === lane.code)
       return (
         <div className="nv-lane" key={lane.code}>
           <h3>

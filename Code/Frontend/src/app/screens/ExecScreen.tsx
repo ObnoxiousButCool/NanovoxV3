@@ -64,7 +64,7 @@ import { Screen } from '@/shared/screens/Screen'
 import { InsightFeed, InsightLenses } from '@/shared/insights/Insights'
 import { IssueCue } from '@/shared/actions/IssueLink'
 import { RENEW_SOON_MONTHS } from '@/shared/actions/issueHref'
-import { Gauge, MiniBars, VLine } from '@/shared/design/charts'
+import { Gauge, MiniBars } from '@/shared/design/charts'
 import { findLane } from '@/app/screens/actions/lifecycle'
 import { laneColors } from '@/app/screens/actions/format'
 import '@/app/screens/actions/actionsBoard.css'
@@ -73,16 +73,13 @@ import {
   BigRow,
   Empty,
   EpistemicChip,
-  FigureSample,
   FigureValue,
   IndicatorCount,
   KpiTile,
   Note,
   Panel,
   Tooltip,
-  basisFromApi,
 } from '@/shared/design/primitives'
-import type { Figure } from '@/shared/design/primitives'
 
 const percent = (value: number) => `${String(Math.round(value * 100))}%`
 
@@ -90,11 +87,6 @@ type AssessedAccount = RiskScreenData['assessed'][number]
 type MovementEntry = ExecScorecard['trends']['movements'][number]
 type EmergingEntry = ExecScorecard['trends']['emerging'][number]
 
-/** A figure's chip, or nothing when it names no origin (D13). */
-function BasisChip({ figure }: { figure: Figure }) {
-  const kind = basisFromApi(figure.basis?.code)
-  return kind === null ? null : <EpistemicChip kind={kind} />
-}
 
 export function ExecScreen() {
   const filters = useFilters()
@@ -170,10 +162,6 @@ function ExecBody({
 
       <div className="nv-c12 nv-exec-lenses">
         <InsightLenses data={insights} />
-      </div>
-
-      <div className="nv-c12">
-        <SupportingMeasures data={data} />
       </div>
 
       <div className="nv-c12">
@@ -515,65 +503,6 @@ function WellAndConcernPanels({
 }
 
 /** Production measures that have no top-level counterpart in the prototype. */
-function SupportingMeasures({ data }: { data: ExecScorecard }) {
-  const { trends } = data
-  return (
-    <details className="nv-exec-support">
-      <summary>More measured results</summary>
-      <div className="nv-exec-support-body">
-        <h3>The window</h3>
-        <p>{data.calls} calls in scope, as at {data.asOf}.</p>
-        <div className="nv-exec-measures">
-          {data.metrics.map((metric) => (
-            <div key={metric.key}>
-              <span>{metric.name}</span>
-              <b><FigureValue figure={metric.figure} format={percent} /></b>
-              <small>
-                <FigureSample figure={metric.figure} />
-                {metric.windowWeeks === null || metric.windowWeeks === undefined ? null : ` · ${String(metric.windowWeeks)}wk`}
-              </small>
-            </div>
-          ))}
-        </div>
-        <h3>What moved</h3>
-        <p>Against {trends.priorStart} to {trends.priorEnd}.</p>
-        {trends.movements.length === 0 ? (
-          <p>No measure had both a current and a prior period to compare.</p>
-        ) : (
-          <ul className="nv-movements">
-            {trends.movements.map((movement) => (
-              <li key={movement.label} className={movement.beyondNoise ? 'nv-real' : 'nv-noise'}>
-                <b>{movement.label}</b>
-                <span className="nv-indcount">{movement.prior} → {movement.now}</span>
-                {movement.beyondNoise ? (
-                  <span className={movement.worse ? 'nv-worse' : 'nv-better'}>{movement.worse ? 'worse' : 'better'}</span>
-                ) : (
-                  <span className="nv-noise-tag">
-                    within noise — {movement.callsPrior} calls then, {movement.callsNow} now,
-                    so about {Math.round(movement.expected)} was expected
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        <h3>Routed to the right place</h3>
-        <p>
-          Intent routed: <FigureValue figure={data.intentRouted} format={percent} />{' '}
-          <FigureSample figure={data.intentRouted} /> <BasisChip figure={data.intentRouted} />
-        </p>
-        <h3>Calls by week</h3>
-        <p>A blank week is a week the corpus says nothing about, not a week of no calls.</p>
-        <VLine
-          ariaLabel="Calls per week across the window"
-          labels={trends.weeks.map((week) => week.start.slice(5))}
-          series={[{ name: 'Calls', values: trends.weeks.map((week) => week.calls ?? null), color: 'var(--seq-2)' }]}
-        />
-      </div>
-    </details>
-  )
-}
-
 /** The measure that improved the most, relative to its own prior count —
  * the prototype's own `improving[0]`. `worse: false` and a real change are
  * both required: a flat measure with `worse: false` is not an improvement,

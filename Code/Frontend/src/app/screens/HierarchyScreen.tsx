@@ -201,7 +201,11 @@ function HierarchyTiles({ data }: { data: Hierarchy }) {
       <KpiTile
         label="Brokers named adversely"
         value={String(adverse.length)}
-        meta={<span className="nv-indcount">{mentions} calls</span>}
+        meta={
+          <span className="nv-indcount">
+            {mentions} {mentions === 1 ? 'call' : 'calls'}
+          </span>
+        }
         tone={mentions > 0 ? 'warm' : 'plain'}
         todo={mentions > 0 ? <IssueCue issue="broker_adverse" /> : undefined}
       />

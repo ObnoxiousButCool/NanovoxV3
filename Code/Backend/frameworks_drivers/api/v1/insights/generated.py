@@ -62,7 +62,9 @@ from frameworks_drivers.api.v1.insights.accounts import (
 )
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse
 from frameworks_drivers.api.v1.insights.exec_scorecard import (
+    CategoryConcernResponse,
     ExecScorecardResponse,
+    TrendsResponse,
     build_exec_response,
 )
 from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
@@ -81,8 +83,26 @@ router = APIRouter(prefix="/insights", tags=["insights"])
 #: wrong means the model is shown "12" where the screen shows "12%".
 Screen = Literal["exec", "risk", "account", "hierarchy", "agents"]
 
+#: How many sentences a screen shows when the caller does not say.
+DEFAULT_INSIGHTS = 4
+
 #: How many sentences an account page shows at most.
 ACCOUNT_INSIGHTS = 2
+
+#: How many sentences the exec page shows at most — **three per lens across
+#: the four lenses**, which is what `exec.html` renders and what the panel's
+#: own subtitle promises the reader. The shared default of four filled one
+#: lens each and left the subtitle making a promise the API could not keep.
+EXEC_INSIGHTS = 12
+
+#: Emerging entries the exec screen actually draws: the three strongest
+#: risers as cards and the five largest fallers in the "Easing" aside.
+#: Mirrors `EmergingPanel` in `ExecScreen.tsx` — the selection lives there
+#: because the panel owns its own layout, and a fact the reader cannot see
+#: is the one thing a generated sentence may never rest on. If that panel's
+#: slice changes, this changes with it.
+RISING_SHOWN = 3
+EASING_SHOWN = 5
 
 
 def percent(value: float) -> str:
@@ -245,6 +265,8 @@ def exec_facts(response: ExecScorecardResponse) -> FactSet:
         _rate(_slug(entry.label), entry.label, entry.figure) for entry in response.escalation
     )
     facts.append(_rate("intent_routed", "Commercial intent routed", response.intent_routed))
+    facts.extend(_concern_facts(response.area_of_concern))
+    facts.extend(_emerging_facts(response.trends))
 
     return FactSet(
         subject="the executive scorecard",
@@ -253,6 +275,88 @@ def exec_facts(response: ExecScorecardResponse) -> FactSet:
         # the screen without being figures, so a sentence may name them.
         context_numbers=frozenset({str(response.calls), *response.as_of.split("-")}),
     )
+
+
+def _concern_facts(concern: CategoryConcernResponse | None) -> list[Fact]:
+    """The "Area of concern" panel, as facts.
+
+    Three of its four numbers, because the panel prints three: the
+    unresolved count and the two escalation counts. `calls` is on the wire
+    and not on the screen, so it is not here — a sentence may only rest on
+    what the reader can check.
+
+    Without these the four lenses had nothing to read but eight rates, and
+    every sentence came back a restatement of one of them.
+    """
+    if concern is None:
+        return []
+    return [
+        _count(
+            "area_of_concern_unresolved",
+            f"Unresolved calls in {concern.category}",
+            concern.unresolved,
+        ),
+        _count(
+            "area_of_concern_escalations_handled",
+            f"Escalations handled in {concern.category}",
+            concern.escalations_handled,
+        ),
+        _count(
+            "area_of_concern_escalations_triggered",
+            f"Escalations warranted in {concern.category}",
+            concern.escalations_triggered,
+        ),
+    ]
+
+
+def _emerging_facts(trends: TrendsResponse) -> list[Fact]:
+    """The "Emerging issues" panel, as facts — and only the rows it draws.
+
+    `trends.emerging` carries every tracked category, touchpoint, signal and
+    product line; the panel draws the three strongest risers and the five
+    largest fallers. Offering the whole list would licence the model to
+    quote a count sitting in no panel on the page.
+
+    A riser carries both ends of its own bars, so "rose from two to five" is
+    two facts the reader can see rather than a subtraction the model
+    performed. A faller carries its latest slice only: the aside prints the
+    count and the change chip, not a sparkline to read a first slice off.
+    """
+    rising = sorted(
+        (entry for entry in trends.emerging if entry.rising),
+        key=lambda entry: -entry.delta,
+    )[:RISING_SHOWN]
+    easing = sorted(
+        (entry for entry in trends.emerging if entry.delta < 0),
+        key=lambda entry: entry.delta,
+    )[:EASING_SHOWN]
+
+    facts: list[Fact] = []
+    for entry in rising:
+        if not entry.buckets:
+            continue
+        key = f"rising_{_slug(entry.kind)}_{_slug(entry.label)}"
+        facts.append(
+            _count(
+                f"{key}_latest", f"{entry.label}, calls in the latest slice", entry.buckets[-1].hits
+            )
+        )
+        facts.append(
+            _count(
+                f"{key}_first", f"{entry.label}, calls in the first slice", entry.buckets[0].hits
+            )
+        )
+    for entry in easing:
+        if not entry.buckets:
+            continue
+        facts.append(
+            _count(
+                f"easing_{_slug(entry.kind)}_{_slug(entry.label)}",
+                f"{entry.label}, calls in the latest slice",
+                entry.buckets[-1].hits,
+            )
+        )
+    return facts
 
 
 def _count(key: str, label: str, value: int) -> Fact:
@@ -544,7 +648,18 @@ async def read_generated_insights(
     config: DashboardConfigDep,
     query: InsightsQueryDep,
     screen: Annotated[Screen, Query(description="Which screen's figures to read.")] = "exec",
-    limit: Annotated[int, Query(ge=1, le=8, description="How many sentences at most.")] = 4,
+    limit: Annotated[
+        int | None,
+        Query(
+            ge=1,
+            le=12,
+            description=(
+                "How many sentences at most. Omitted, each screen uses its own default: "
+                "twelve on the exec page, which groups them under four lenses, and two on "
+                "an account page, which has fewer figures to read."
+            ),
+        ),
+    ] = None,
     employer_ref: Annotated[
         str | None,
         Query(
@@ -556,12 +671,17 @@ async def read_generated_insights(
     # One fact builder per screen, never a branch inside one: what counts as
     # a fact differs per page, and a shared builder would have to guess
     # whether a number is a rate, a count or a population.
-    per_screen_limit = limit
+    per_screen_limit = DEFAULT_INSIGHTS if limit is None else limit
 
     match screen:
         case "exec":
             card = await exec_use_case.execute(query.to_request())
             facts = exec_facts(build_exec_response(card, config, query))
+            # Twelve, not four. The page groups its sentences under four
+            # lenses (U1) and the shared default gave each lens one, under a
+            # subtitle promising three. A caller who names a limit keeps it.
+            if limit is None:
+                per_screen_limit = EXEC_INSIGHTS
         case "account":
             if employer_ref is None:
                 raise HTTPException(
@@ -594,7 +714,7 @@ async def read_generated_insights(
             # Two, not four. An account offers fewer figures than the exec
             # page and most of its counts are already on tiles, so a longer
             # list is padding by construction.
-            per_screen_limit = min(limit, ACCOUNT_INSIGHTS)
+            per_screen_limit = min(per_screen_limit, ACCOUNT_INSIGHTS)
         case "hierarchy":
             facts = hierarchy_facts(await hierarchy_use_case.execute(query.to_request()))
         case "agents":

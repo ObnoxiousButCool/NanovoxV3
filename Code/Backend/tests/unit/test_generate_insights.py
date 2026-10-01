@@ -226,6 +226,29 @@ class TestRefusing:
 
         assert result.status is InsightsStatus.UNAVAILABLE
 
+    async def test_dropping_every_sentence_blames_the_answer_and_not_the_data(
+        self, service: GenerateInsights
+    ) -> None:
+        """A hedged tail on every sentence leaves nothing accepted, and the
+        reader used to be told "nothing on this screen is published yet" —
+        which says their figures are withheld when the figures are fine and
+        the answer was refused. Seen for real against the local model, whose
+        every sentence ended in `indicating` or `highlighting`.
+        """
+        # No digits in either sentence, deliberately. A number no fact
+        # supports is refused further up as an invented figure, which
+        # reaches GUARDRAIL_REJECTED by the other road and would let this
+        # test pass without the behaviour it is here to pin down.
+        provider = _answering(
+            _item(key="a", sentence="Resolution held where it was, indicating weak handling."),
+            _item(key="b", sentence="Knowledge failures persisted, highlighting a training gap."),
+        )
+
+        result = await _run(service, provider)
+
+        assert result.status is InsightsStatus.UNAVAILABLE
+        assert result.reason is UnavailableReason.GUARDRAIL_REJECTED
+
     async def test_a_screen_with_every_figure_withheld_asks_no_model(
         self, service: GenerateInsights
     ) -> None:

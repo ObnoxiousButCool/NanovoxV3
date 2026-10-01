@@ -29,14 +29,36 @@ export function initials(name: string | null): string {
     .toUpperCase()
 }
 
-/** Working lanes cycle one palette, closed lanes another — a colour per
- * lane without this screen inventing meaning for a lane code it did not
- * define. Which lanes exist, and their order, come from the server alone;
- * this only decides how to tint them. */
+/**
+ * The lifecycle's own colours, as `actions.html` and `exec.html` both set
+ * them — the two agree on all seven, so this is the prototype's palette
+ * rather than one page's.
+ *
+ * Named by code, which this file otherwise avoids. The positional palette
+ * below it was colour-blind to meaning: it gave **Overdue a calm blue** and
+ * Needs action the same tint as Assigned, so the one lane a reader must not
+ * miss looked like the one they can ignore. Position cannot express that;
+ * only the code can.
+ */
+const LANE_COLOR: Record<string, string> = {
+  needs_action: 'var(--serious)',
+  assigned: 'var(--seq-1)',
+  in_progress: 'var(--seq-2)',
+  overdue: 'var(--critical)',
+  action_taken: 'var(--seq-3)',
+  monitoring: 'var(--s4)',
+  completed: 'var(--good)',
+}
+
+/** Working lanes cycle one palette, closed lanes another — a colour for a
+ * lane the prototype never named, so a lifecycle change on the server still
+ * draws a usable board rather than seven identical columns. */
 const OPEN_PALETTE = ['var(--seq-1)', 'var(--seq-2)', 'var(--brand)', 'var(--s1)']
 const CLOSED_PALETTE = ['var(--s4)', 'var(--s3)', 'var(--good)']
 
 export function laneColor(lane: Lane, openIndex: number, closedIndex: number): string {
+  const known = LANE_COLOR[lane.code]
+  if (known !== undefined) return known
   return lane.open
     ? (OPEN_PALETTE[openIndex % OPEN_PALETTE.length] ?? 'var(--seq-1)')
     : (CLOSED_PALETTE[closedIndex % CLOSED_PALETTE.length] ?? 'var(--s4)')

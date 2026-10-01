@@ -9705,17 +9705,23 @@
             }
           },
           {
-            "description": "How many sentences at most.",
+            "description": "How many sentences at most. Omitted, each screen uses its own default: twelve on the exec page, which groups them under four lenses, and two on an account page, which has fewer figures to read.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
-              "default": 4,
-              "description": "How many sentences at most.",
-              "maximum": 8,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "maximum": 12,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "How many sentences at most. Omitted, each screen uses its own default: twelve on the exec page, which groups them under four lenses, and two on an account page, which has fewer figures to read.",
+              "title": "Limit"
             }
           },
           {

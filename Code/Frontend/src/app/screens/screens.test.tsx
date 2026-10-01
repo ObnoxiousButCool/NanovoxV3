@@ -666,26 +666,19 @@ describe('the shared screen frame', () => {
 
 describe('/exec', () => {
   it('never renders a withheld figure as a number', async () => {
+    // Against the flagged-share tile, which is where a withheld rate still
+    // reaches this screen. It used to assert over the scorecard list in
+    // "More measured results"; that section was removed on 2026-10-01 as
+    // an element the v2 prototype does not have, and with it went every
+    // other withheld figure on the page.
     renderAt('/exec')
 
     await waitFor(() => {
-      expect(screen.getAllByText(/too few calls to publish/i).length).toBeGreaterThan(0)
+      expect(screen.getByText(/not enough calls to assess/i)).toBeInTheDocument()
     })
     // The one thing this screen must never do. A withheld rate shown as 0%
     // reads as perfect performance where the truth is no evidence.
     expect(screen.queryByText('0%')).not.toBeInTheDocument()
-  })
-
-  it('says a movement is within noise instead of hiding or asserting it', async () => {
-    renderAt('/exec')
-
-    await waitFor(() => {
-      expect(screen.getByText(/within noise/i)).toBeInTheDocument()
-    })
-    // Both halves matter: the movement is still listed (not hidden), and it
-    // is not dressed up as a finding.
-    expect(screen.getByText('Complaints')).toBeInTheDocument()
-    expect(screen.queryByText('worse')).not.toBeInTheDocument()
   })
 })
 

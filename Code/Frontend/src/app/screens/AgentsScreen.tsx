@@ -20,14 +20,18 @@
  * with itself. It sits in the roster beside what happened, and the panel
  * says so in words.
  *
- * ## One prototype panel is absent, and it is a decision rather than a gap
+ * ## One prototype panel asks a question this page refuses to answer
  *
- * **"Coach the agent, or fix the rule?"** asks how many distinct agents
- * got each rule wrong. That answer comes from schema field 8, which **D7
+ * **"Coach the agent, or fix the rule?"** asks how many distinct agents got
+ * each rule wrong. That answer comes from schema field 8, which **D7
  * forbids attributing to an agent anywhere**; the `knowledge_error` signal
- * is the agent-conduct event and carries no rule id. The question has a
- * home on `/rules`, which this page links to rather than resolving an open
- * decision in code.
+ * is the agent-conduct event and carries no rule id.
+ *
+ * The panel is **rendered, and withheld in words** — the question, why it
+ * cannot be joined, and a link to `/rules`, where the rule-level counts do
+ * live. It was absent entirely until `/rules` shipped, and dropping a
+ * panel the prototype has is indistinguishable, to a reader, from
+ * forgetting it.
  */
 
 import { Link } from 'react-router-dom'

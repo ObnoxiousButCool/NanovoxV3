@@ -3812,8 +3812,8 @@ export interface operations {
             query?: {
                 /** @description Which screen's figures to read. */
                 screen?: "exec" | "risk" | "account" | "hierarchy" | "agents";
-                /** @description How many sentences at most. */
-                limit?: number;
+                /** @description How many sentences at most. Omitted, each screen uses its own default: twelve on the exec page, which groups them under four lenses, and two on an account page, which has fewer figures to read. */
+                limit?: number | null;
                 /** @description Required when `screen` is `account`; ignored otherwise. */
                 employerRef?: string | null;
                 /** @description Employer region. */

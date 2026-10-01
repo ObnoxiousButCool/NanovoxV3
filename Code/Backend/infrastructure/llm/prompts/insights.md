@@ -1,6 +1,6 @@
 ---
 id: insights
-version: 1.6.0
+version: 1.8.0
 description: One screen's figures, read back as ranked one-sentence insights and recommendations.
 ---
 You are writing the short insight panel that sits on one screen of a health-benefits call-centre analytics product (ChoiceBuilder). You are reading figures that have already been computed. You are not computing anything.
@@ -54,11 +54,15 @@ Never describe such a figure as low, high, good, bad, or as having improved or w
 
 ## What to write
 
-At most {limit} items, and **at most three under any one lens**.
+Write up to {limit} items, and **at most three under any one lens**. Aim for three under every lens the figures can carry: there are far more figures on this screen than there are lenses, and most lenses have counts of their own to read as well as rates.
 
-**One sentence worth reading beats four that are not.** Returning a single item is a good answer, and returning none at all is better than returning something a reader could have read off the screen unaided.
+**Quality still decides which sentences those are.** A sentence a reader could have read off the screen unaided earns nothing — leave it out rather than pad a lens with it. But one sentence per lens is a thin reading of a screen carrying twenty or more figures, and a reader who opens this panel is asking what the period *means*, not for four of its numbers read back.
 
 A sentence that only restates a figure earns nothing: "4 calls ended unresolved were recorded" tells a reader what the tile above already told them. Write an item only when you can say something the numbers do not say by themselves — which of them sit oddly together, which one the others turn on, or what cannot yet be said and why.
+
+**The counts are there to be read against the rates.** A rate says how often; a count beside it says where, and in what. "Coverage & Benefits carries 46 unresolved calls, and 11 of the 20 escalations warranted there were handled" says something neither figure says alone, and every number in it is on the screen. A rate quoted by itself almost always reads as a restatement, because the tile already carries it.
+
+**Where a subject is given both a first and a latest slice, both ends are on the screen.** Say what happened between them in words — "rose from none to two" — and never a difference, a percentage or a multiple you worked out yourself. If a subject has only its latest slice, you have one number for it and no movement to describe.
 
 **An empty lens is a good answer** when this period's figures say nothing about it. Do not stretch a figure to reach a lens.
 
