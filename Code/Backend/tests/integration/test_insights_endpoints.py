@@ -245,6 +245,62 @@ async def test_the_risk_screen_carries_its_headline_tile_counts(
 
 
 @pytest.mark.asyncio
+async def test_a_request_with_no_as_of_is_dated_from_the_corpus_not_the_clock(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """Every window is measured back from `asOf`, and the corpus is a fixed
+    historical batch.
+
+    Dating it from the wall clock slid the windows off the data a day at a
+    time: with the corpus ending 25 September and the clock on 1 October,
+    metric 10's twelve weeks began 9 July and left out the 38 calls of
+    6-8 July -- so the risk screen counted 562 under a filter bar reading
+    600, and the gap grew daily until the screen would have shown nothing.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 4}, day=20)
+
+    body = client.get("/api/v1/insights/risk").json()
+
+    assert body["asOf"] == "2026-09-20"
+    # The whole corpus is inside the window now, so the outcome bar and the
+    # filter bar above it count the same calls.
+    assert sum(entry["calls"] for entry in body["outcomes"]) == body["scope"]["matched"]
+
+
+@pytest.mark.asyncio
+async def test_an_explicit_as_of_still_wins(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """The default moved; the parameter did not. A reader asking what the
+    book looked like on a date still gets that date."""
+    await seed(session_factory, calls_per_employer={"EMP-01": 4}, day=20)
+
+    body = client.get("/api/v1/insights/risk", params={"asOf": "2026-09-28"}).json()
+
+    assert body["asOf"] == "2026-09-28"
+
+
+@pytest.mark.asyncio
+async def test_a_period_filter_does_not_move_the_as_of(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """D11 from the other side.
+
+    The anchor is the corpus extent *before* the period bounds, so
+    narrowing to a few days bounds which calls are counted and does not
+    redefine what any metric is computed over. Anchoring to the filtered
+    slice would have made every window move with a dropdown.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 4}, day=20)
+
+    narrowed = client.get(
+        "/api/v1/insights/risk", params={"from": "2026-09-19", "to": "2026-09-21"}
+    ).json()
+
+    assert narrowed["asOf"] == "2026-09-20"
+
+
+@pytest.mark.asyncio
 async def test_the_risk_screen_carries_insight_9_withheld(
     client: TestClient, session_factory: async_sessionmaker[AsyncSession]
 ) -> None:

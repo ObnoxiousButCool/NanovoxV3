@@ -347,7 +347,24 @@ class InsightsReader:
             quality_bands=self._config.quality_bands,
         )
         filtered = _narrow_to_repeats(filtered, corpus.calls, request.repeat)
-        as_of = request.as_of or self._clock.now().date()
+        # The corpus's last dated call, not today. Every window on every
+        # screen is measured back from here, and the corpus is a fixed
+        # historical batch: dating it from the wall clock slid the windows
+        # off the data a day at a time. At the time of writing the corpus
+        # ends 25 September and the clock said 1 October, so metric 10's
+        # twelve weeks began 9 July and left out the 38 calls of 6-8 July —
+        # the risk screen counted 562 under a filter bar reading 600, and
+        # the gap would have grown every day until the screen reported
+        # nothing at all.
+        #
+        # `available_until` is the extent *before* the period bounds, so a
+        # reader narrowing to one week does not move any metric's window.
+        # That is D11 from the other side: a period bounds the corpus, and
+        # it does not redefine what a metric is computed over.
+        #
+        # The clock survives as the last resort, for a corpus where no call
+        # carries a date. An explicit `asOf` still wins over both.
+        as_of = request.as_of or corpus.available_until or self._clock.now().date()
         return ScopedCorpus(
             corpus=corpus,
             filtered=filtered,
