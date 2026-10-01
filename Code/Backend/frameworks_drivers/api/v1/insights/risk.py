@@ -374,7 +374,12 @@ class RiskScreenResponse(CamelModel):
     )
     ineligible_count: int
     flagged_share: FigureResponse = Field(
-        description="Flagged as a share of the *eligible* employers, never of all of them."
+        description=(
+            "Flagged as a share of the *eligible* employers, never of all of them. "
+            "Its `n` is the evidence calls behind the flagged accounts, not the "
+            "share's own denominator — read `assessedCount` for that, and see "
+            "`caveats` when the two counts differ."
+        )
     )
     exposure: ExposureResponse
     outcomes: list[OutcomeCountResponse] = Field(

@@ -29,6 +29,7 @@ from domain.aggregation.risk_flag import (
     assess,
     exposure,
     flagged_share,
+    flagged_share_n_caveat,
     months_until,
 )
 from domain.dashboard_config import DashboardConfig
@@ -260,6 +261,45 @@ def test_the_flagged_share_divides_by_eligible_employers_not_all_of_them(
     figure = flagged_share(config, [eligible_flagged, eligible_clear, ineligible])
 
     assert figure.value == pytest.approx(0.5), "1 of 2 eligible, not 1 of 3"
+
+
+def test_flagged_share_says_so_when_n_is_not_its_own_denominator(
+    config: DashboardConfig,
+) -> None:
+    """`n` is the flagged accounts' evidence calls, which is not the share's
+    denominator (eligible employers). A reader who assumes the two match, as
+    they do for every other figure, needs telling when they do not.
+    """
+    flagging = (
+        call("C-0001", caller_ref="CB-1", outcome=Outcome.UNRESOLVED, on=day(0)),
+        call("C-0002", caller_ref="CB-1", on=day(3)),
+        call("C-0003", intent=IntentType.MARKET_TEST, on=day(5)),
+    )
+    eligible_flagged = assess(config, employer("EMP-01"), flagging, WINDOW)
+    eligible_clear_a = assess(config, employer("EMP-02"), calls(5, employer_ref="EMP-02"), WINDOW)
+    eligible_clear_b = assess(config, employer("EMP-03"), calls(5, employer_ref="EMP-03"), WINDOW)
+
+    figure = flagged_share(config, [eligible_flagged, eligible_clear_a, eligible_clear_b])
+
+    assert figure.n == 2, "the flagged account's evidence calls, not the 3 eligible employers"
+    assert any("assessedCount" in caveat for caveat in figure.caveats)
+    assert any("3 eligible employer" in caveat for caveat in figure.caveats)
+
+
+def test_flagged_share_n_caveat_is_quiet_when_the_counts_coincide() -> None:
+    """Computed from the numbers — it only fires when the counts actually
+    disagree, not every time the figure is published.
+    """
+    assert flagged_share_n_caveat(eligible=5, evidence_calls=5) is None
+
+
+def test_flagged_share_n_caveat_names_both_counts_and_points_at_the_fix() -> None:
+    caveat = flagged_share_n_caveat(eligible=50, evidence_calls=54)
+
+    assert caveat is not None
+    assert "54" in caveat
+    assert "50 eligible employer" in caveat
+    assert "assessedCount" in caveat
 
 
 def test_a_book_where_nobody_is_eligible_is_withheld_not_zero(

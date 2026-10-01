@@ -2647,7 +2647,7 @@ export interface components {
              */
             exitLanguageCalls: number;
             exposure: components["schemas"]["ExposureResponse"];
-            /** @description Flagged as a share of the *eligible* employers, never of all of them. */
+            /** @description Flagged as a share of the *eligible* employers, never of all of them. Its `n` is the evidence calls behind the flagged accounts, not the share's own denominator — read `assessedCount` for that, and see `caveats` when the two counts differ. */
             flaggedShare: components["schemas"]["FigureResponse"];
             /**
              * Ineligible
