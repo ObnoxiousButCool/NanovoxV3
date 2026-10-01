@@ -47,20 +47,18 @@ ignores `request.filters`. Narrowing the options by the current selection is
 a one-way door: filter to one broker, and a bar built from the response
 offers one broker and the reader cannot widen again.
 
-## Enum filters, and the ones with no display wording
+## Enum filters, and the one with no display wording
 
 The enum-backed filters are already in the generated client, so this
 endpoint does not repeat their values — only their labels, where
-`labels.py` defines any.
+`labels.py` defines any: `outcome`, `product line`, `intent` and
+`quality band` all have real wording there now.
 
-The rest — outcome, category, product line, intent, quality band — have
-**no display wording defined anywhere**: not in `labels.py`, not in the
-workbook. `labels.py` records why for categories ("already words", straight
-from the sheet), but `RESOLVED` and `PARTIALLY RESOLVED` are codes a screen
-will have to render somehow, and nobody has said how. That is a real gap
-rather than an oversight here, so this endpoint names them in
-`unlabelledFilters` instead of inventing wording that would then be hard to
-dislodge.
+`category` is the one with **no display wording defined anywhere**: not in
+`labels.py`, not in the workbook. `labels.py` records why ("already words",
+straight from the sheet, and a label identical to its own code is not a
+label) — `category` travels as a plain string, and this endpoint names it
+in `unlabelledFilters` rather than inventing a second vocabulary for it.
 """
 
 from __future__ import annotations
@@ -79,7 +77,7 @@ from domain.value_objects.quality_band import QualityBand
 from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
 from domain.value_objects.signal_severity import SignalSeverity
-from domain.value_objects.signal_type import SignalType
+from domain.value_objects.signal_type import SignalType, severity_of
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetFilterOptionsDep
 from frameworks_drivers.api.v1.insights.envelope import PeriodResponse
@@ -107,6 +105,17 @@ class EmployerOptionResponse(CamelModel):
     name: str
     region: str
     broker_ref: str = Field(description="Broker of record, for a dependent filter.")
+
+
+class SignalOptionResponse(CamelModel):
+    code: str
+    label: str
+    severity: CodedValue = Field(
+        description=(
+            "Fixed per signal type by the Signal Taxonomy sheet — never decided per "
+            "call, the same source `EvidencedItem.severity` reads."
+        )
+    )
 
 
 class FilterOptionsResponse(CamelModel):
@@ -137,7 +146,7 @@ class FilterOptionsResponse(CamelModel):
         )
     )
 
-    signals: list[CodedValue]
+    signals: list[SignalOptionResponse]
     signal_severities: list[CodedValue]
     complaint_targets: list[CodedValue]
     control_exception_types: list[CodedValue]
@@ -175,6 +184,13 @@ class FilterOptionsResponse(CamelModel):
 #: `labels.py` puts it for `Preventable`) a label identical to its own code
 #: is not a label.
 UNLABELLED = ("category",)
+
+
+def _signal_option(signal: SignalType) -> SignalOptionResponse:
+    base = coded(signal)
+    return SignalOptionResponse(
+        code=base.code, label=base.label, severity=coded(severity_of(signal))
+    )
 
 
 @router.get(
@@ -215,7 +231,7 @@ async def read_filter_options(
         ],
         touchpoints=list(options.touchpoints),
         categories=[category.value for category in Category],
-        signals=[coded(signal) for signal in SignalType],
+        signals=[_signal_option(signal) for signal in SignalType],
         signal_severities=[coded(severity) for severity in SignalSeverity],
         complaint_targets=[coded(target) for target in ComplaintAttribution],
         control_exception_types=[coded(kind) for kind in ControlExceptionType],

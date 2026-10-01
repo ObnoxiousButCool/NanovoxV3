@@ -2804,7 +2804,7 @@
           },
           "signals": {
             "items": {
-              "$ref": "#/components/schemas/CodedValue"
+              "$ref": "#/components/schemas/SignalOptionResponse"
             },
             "title": "Signals",
             "type": "array"
@@ -5273,6 +5273,29 @@
           "total"
         ],
         "title": "SelfInflictedResponse",
+        "type": "object"
+      },
+      "SignalOptionResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/CodedValue",
+            "description": "Fixed per signal type by the Signal Taxonomy sheet \u2014 never decided per call, the same source `EvidencedItem.severity` reads."
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "severity"
+        ],
+        "title": "SignalOptionResponse",
         "type": "object"
       },
       "SignalType": {
