@@ -5,11 +5,13 @@
  * entry. Their contents arrive in Phase 2; until then each renders a
  * placeholder that says so, because an empty screen would read as "no data".
  *
- * `/rules` and `/demand` are deliberately absent from the rail. Both
- * endpoints are built and both serve insights that render nowhere else, but
- * the v2 prototype dropped the first and never had the second — conflicts C5
- * and C6 in the revised plan. Routing to a screen nobody has agreed to show
- * would decide that question by accident.
+ * `/rules` and `/demand` are both absent from the rail, for two different
+ * reasons now. **C5 closed on 2026-09-25 (D14): `/rules` ships, reachable
+ * from `/agents`** — so it has a route here and no rail entry, which is the
+ * decision rather than an oversight. `/demand` is still conflict C6: its
+ * endpoint is built and serves insights that render nowhere else, but
+ * routing to a screen nobody has agreed to show would decide that question
+ * by accident.
  */
 
 import { Navigate, Route, Routes } from 'react-router-dom'
@@ -22,6 +24,7 @@ import { AgentsScreen } from '@/app/screens/AgentsScreen'
 import { CallsScreen } from '@/app/screens/CallsScreen'
 import { HierarchyScreen } from '@/app/screens/HierarchyScreen'
 import { RiskScreen } from '@/app/screens/RiskScreen'
+import { RulesScreen } from '@/app/screens/RulesScreen'
 import { StatusPage } from '@/app/StatusPage'
 import { Shell } from '@/shared/design/Shell'
 
@@ -39,6 +42,7 @@ export function App() {
         <Route path="/accounts/:employerRef" element={<AccountsScreen />} />
         <Route path="/hierarchy" element={<HierarchyScreen />} />
         <Route path="/agents" element={<AgentsScreen />} />
+        <Route path="/rules" element={<RulesScreen />} />
         <Route path="/calls" element={<CallsScreen />} />
         <Route path="/actions" element={<ActionsScreen />} />
         <Route path="/design" element={<DesignGallery />} />

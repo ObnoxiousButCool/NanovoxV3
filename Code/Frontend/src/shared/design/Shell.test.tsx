@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { NAV_ITEMS, UNPLACED_SCREENS } from '@/shared/design/navigation'
+import { NAV_ITEMS, OFF_RAIL_SCREENS, UNPLACED_SCREENS } from '@/shared/design/navigation'
 import { Shell } from '@/shared/design/Shell'
 import { THEME_STORAGE_KEY } from '@/shared/design/theme'
 import { createQueryClient } from '@/app/queryClient'
@@ -60,13 +60,16 @@ describe('Shell', () => {
     expect(current).toHaveTextContent('What are the risks?')
   })
 
-  it('keeps unplaced screens out of the rail until C5 and C6 are decided', () => {
-    // Both endpoints are built. Routing to a screen nobody has agreed to
-    // show would settle an open question by accident.
+  it('keeps screens off the rail whether they are decided or not', () => {
+    // Two different reasons, one assertion. `/demand` is still C6, and
+    // routing to a screen nobody has agreed to show would settle an open
+    // question by accident. `/rules` is decided and routed, and D14 put it
+    // behind `/agents` rather than on the rail — so the rail staying at
+    // seven entries is the decision, not a step somebody forgot.
     renderShell()
     const nav = screen.getByRole('navigation', { name: 'Screens' })
 
-    for (const screenItem of UNPLACED_SCREENS) {
+    for (const screenItem of [...UNPLACED_SCREENS, ...OFF_RAIL_SCREENS]) {
       expect(within(nav).queryByText(screenItem.label)).not.toBeInTheDocument()
     }
   })

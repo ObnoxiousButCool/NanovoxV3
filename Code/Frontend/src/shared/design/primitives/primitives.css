@@ -140,6 +140,33 @@
   border-radius: 999px;
 }
 
+/* Rule provenance. Borrows `.nv-pill`'s shape mechanism rather than its
+ * tones: a grade is not a status, and nothing here is good or bad on its
+ * own — a misstated UNVERIFIED rule says the source is weak, a misstated
+ * VERIFIED one says the training is. See `Provenance.tsx`. */
+.nv-prov-verified {
+  color: var(--ink-2);
+}
+
+.nv-prov-secondary {
+  color: var(--warning);
+}
+
+.nv-prov-secondary::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentcolor;
+  border-radius: 999px;
+}
+
+.nv-prov-unverified {
+  color: var(--serious);
+}
+
+.nv-prov-unverified::before {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  border-radius: 0;
+}
+
 /* --- withheld. Never a zero, never an empty cell. --- */
 .nv-withheld {
   display: inline-flex;
