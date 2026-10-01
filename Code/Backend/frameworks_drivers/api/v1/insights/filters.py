@@ -74,7 +74,7 @@ from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
 from domain.value_objects.signal_severity import SignalSeverity
-from domain.value_objects.signal_type import SignalType
+from domain.value_objects.signal_type import SignalType, severity_of
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetFilterOptionsDep
 from frameworks_drivers.api.v1.insights.envelope import PeriodResponse
@@ -104,6 +104,17 @@ class EmployerOptionResponse(CamelModel):
     broker_ref: str = Field(description="Broker of record, for a dependent filter.")
 
 
+class SignalOptionResponse(CamelModel):
+    code: str
+    label: str
+    severity: CodedValue = Field(
+        description=(
+            "Fixed per signal type by the Signal Taxonomy sheet — never decided per "
+            "call, the same source `EvidencedItem.severity` reads."
+        )
+    )
+
+
 class FilterOptionsResponse(CamelModel):
     """Every value the filter bar can offer, by where it came from."""
 
@@ -125,7 +136,7 @@ class FilterOptionsResponse(CamelModel):
         description="Observed on calls, not reference data. Grows with the corpus."
     )
 
-    signals: list[CodedValue]
+    signals: list[SignalOptionResponse]
     signal_severities: list[CodedValue]
     complaint_targets: list[CodedValue]
     control_exception_types: list[CodedValue]
@@ -153,6 +164,13 @@ class FilterOptionsResponse(CamelModel):
 #: display wording for. Listed so the absence is a stated finding rather than
 #: something each screen quietly solves its own way.
 UNLABELLED = ("outcome", "category", "productLine", "intent", "qualityBand")
+
+
+def _signal_option(signal: SignalType) -> SignalOptionResponse:
+    base = coded(signal)
+    return SignalOptionResponse(
+        code=base.code, label=base.label, severity=coded(severity_of(signal))
+    )
 
 
 @router.get(
@@ -192,7 +210,7 @@ async def read_filter_options(
             for agent in options.agents
         ],
         touchpoints=list(options.touchpoints),
-        signals=[coded(signal) for signal in SignalType],
+        signals=[_signal_option(signal) for signal in SignalType],
         signal_severities=[coded(severity) for severity in SignalSeverity],
         complaint_targets=[coded(target) for target in ComplaintAttribution],
         control_exception_types=[coded(kind) for kind in ControlExceptionType],
