@@ -66,6 +66,9 @@ const PLURALS: Partial<Record<MultiKey, string>> = {
   signal: 'signals',
   category: 'topics',
   productLine: 'lines',
+  outcome: 'outcomes',
+  intent: 'intents',
+  qualityBand: 'quality bands',
 }
 
 export function FilterBar({
@@ -108,11 +111,18 @@ export function FilterBar({
     // list nobody can pick from.
     agent: data?.agents.map((agent) => ({ value: agent.ref, label: agent.name })),
     touchpoint: data?.touchpoints.map((point) => ({ value: point, label: point })),
+    // The workbook's own wording, like `touchpoint` — not a `{code, label}`
+    // pair because a label identical to its own code is not a label.
+    category: data?.categories.map((category) => ({ value: category, label: category })),
+    productLine: data?.productLines.map((line) => ({ value: line.code, label: line.label })),
+    outcome: data?.outcomes.map((outcome) => ({ value: outcome.code, label: outcome.label })),
     signal: data?.signals.map((signal) => ({ value: signal.code, label: signal.label })),
+    intent: data?.intents.map((intent) => ({ value: intent.code, label: intent.label })),
     complaintTarget: data?.complaintTargets.map((target) => ({
       value: target.code,
       label: target.label,
     })),
+    qualityBand: data?.qualityBands.map((band) => ({ value: band.code, label: band.label })),
   }
 
   // Membership is tested against the key list, not against `filters.flags`.

@@ -7,7 +7,7 @@
  */
 
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -23,23 +23,32 @@ const OPTIONS = {
   ],
   agents: [{ ref: 'AG-01', name: 'Dana Vale', band: 'Senior' }],
   touchpoints: ['enrolment_meeting'],
+  categories: ['Coverage & Benefits'],
   signals: [{ code: 'billing_defect', label: 'Billing defect' }],
   signalSeverities: [],
   complaintTargets: [{ code: 'CHOICE', label: 'Choice' }],
   controlExceptionTypes: [],
   ruleLayers: [],
   ruleConfidences: [],
-  unlabelledFilters: ['outcome'],
+  productLines: [{ code: 'dental', label: 'Dental' }],
+  outcomes: [{ code: 'RESOLVED', label: 'Resolved' }],
+  intents: [{ code: 'market_test', label: 'Testing the market' }],
+  qualityBands: [{ code: 'GOOD', label: 'Good' }],
+  unlabelledFilters: ['category'],
 }
 
 function stubApi(body: unknown = OPTIONS, status = 200): void {
+  // A fresh `Response` per call, not `mockResolvedValue` with one shared
+  // instance — a `Response` body can only be read once, and selecting a
+  // filter changes `useFilterOptions`'s query key, which refetches.
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      }),
+    vi.fn().mockImplementation(
+      () =>
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        }),
     ),
   )
 }
@@ -152,6 +161,43 @@ describe('FilterBar', () => {
     await user.click(await screen.findByRole('button', { name: /Advanced filters/ }))
 
     expect(screen.getByRole('combobox', { name: /signal/i })).toBeInTheDocument()
+  })
+
+  it('offers a real, pickable option for every advanced filter, not just signal', async () => {
+    // These five were wired into the Advanced panel with no options behind
+    // them: `options` never carried category/productLine/outcome/intent/
+    // qualityBand, so each select stayed on "Loading…", permanently
+    // disabled, regardless of what `/insights/filters` returned.
+    stubApi()
+    const user = userEvent.setup()
+    setup()
+
+    await user.click(await screen.findByRole('button', { name: /Advanced filters/ }))
+
+    // Each selection changes the URL, which re-keys `useFilterOptions` and
+    // refetches — so the next select is briefly back to "Loading…" until
+    // that settles. Waiting for the real option before picking it is what a
+    // reader effectively does too.
+    const pick = async (name: RegExp, value: string) => {
+      const select = await screen.findByRole('combobox', { name })
+      await waitFor(() => {
+        expect(select).not.toBeDisabled()
+      })
+      await user.selectOptions(select, value)
+    }
+
+    await pick(/topic/i, 'Coverage & Benefits')
+    await pick(/product line/i, 'dental')
+    await pick(/^outcome/i, 'RESOLVED')
+    await pick(/^intent/i, 'market_test')
+    await pick(/call quality/i, 'GOOD')
+
+    const address = screen.getByTestId('address').textContent ?? ''
+    expect(address).toContain('category=Coverage')
+    expect(address).toContain('productLine=dental')
+    expect(address).toContain('outcome=RESOLVED')
+    expect(address).toContain('intent=market_test')
+    expect(address).toContain('qualityBand=GOOD')
   })
 
   it('resets everything at once', async () => {

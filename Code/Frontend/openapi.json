@@ -2704,6 +2704,14 @@
             "title": "Brokers",
             "type": "array"
           },
+          "categories": {
+            "description": "The Call Tag Schema's own wording, like `touchpoints` \u2014 not mapped in `labels.py` because the workbook's values are already the words a reader wants, and a label identical to its own code is not a label.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
           "complaintTargets": {
             "items": {
               "$ref": "#/components/schemas/CodedValue"
@@ -2735,6 +2743,34 @@
               "$ref": "#/components/schemas/EmployerOptionResponse"
             },
             "title": "Employers",
+            "type": "array"
+          },
+          "intents": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Intents",
+            "type": "array"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "productLines": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Productlines",
+            "type": "array"
+          },
+          "qualityBands": {
+            "items": {
+              "$ref": "#/components/schemas/CodedValue"
+            },
+            "title": "Qualitybands",
             "type": "array"
           },
           "regions": {
@@ -2796,12 +2832,17 @@
           "employers",
           "agents",
           "touchpoints",
+          "categories",
           "signals",
           "signalSeverities",
           "complaintTargets",
           "controlExceptionTypes",
           "ruleLayers",
           "ruleConfidences",
+          "productLines",
+          "outcomes",
+          "intents",
+          "qualityBands",
           "unlabelledFilters"
         ],
         "title": "FilterOptionsResponse",

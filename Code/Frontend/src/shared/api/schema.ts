@@ -1673,6 +1673,11 @@ export interface components {
              * @description From reference data. Every broker, including those with no calls.
              */
             brokers: components["schemas"]["BrokerOptionResponse"][];
+            /**
+             * Categories
+             * @description The Call Tag Schema's own wording, like `touchpoints` — not mapped in `labels.py` because the workbook's values are already the words a reader wants, and a label identical to its own code is not a label.
+             */
+            categories: string[];
             /** Complainttargets */
             complaintTargets: components["schemas"]["CodedValue"][];
             /** Controlexceptiontypes */
@@ -1684,6 +1689,14 @@ export interface components {
              * @description From reference data. Every employer, including those with no calls.
              */
             employers: components["schemas"]["EmployerOptionResponse"][];
+            /** Intents */
+            intents: components["schemas"]["CodedValue"][];
+            /** Outcomes */
+            outcomes: components["schemas"]["CodedValue"][];
+            /** Productlines */
+            productLines: components["schemas"]["CodedValue"][];
+            /** Qualitybands */
+            qualityBands: components["schemas"]["CodedValue"][];
             /**
              * Regions
              * @description From reference data. Complete.
