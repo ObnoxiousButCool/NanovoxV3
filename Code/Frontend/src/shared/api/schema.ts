@@ -1636,6 +1636,46 @@ export interface components {
             premiumIncomplete: boolean;
         };
         /**
+         * FactResponse
+         * @description One figure a sentence was allowed to read, as the screen prints it.
+         *
+         *     The evidence behind a generated sentence is the figures it was given,
+         *     so this is what the card opens to show. Sent from here rather than
+         *     resolved on the client: the fact set is built per screen by
+         *     `exec_facts`, `risk_facts` and the rest, and a second implementation in
+         *     TypeScript would be a second definition of what counts as a fact.
+         *
+         *     A withheld fact travels too. "Commercial intent capture — too few calls
+         *     to publish" is a reading the model is entitled to write about, and the
+         *     card has to be able to show what it read.
+         */
+        FactResponse: {
+            /** Basis */
+            basis?: string | null;
+            /**
+             * Display
+             * @description The number as printed, e.g. '74%'. Null exactly when withheld.
+             */
+            display?: string | null;
+            /** Key */
+            key: string;
+            /**
+             * Label
+             * @description How a reader would name it.
+             */
+            label: string;
+            /**
+             * N
+             * @description The sample behind it.
+             */
+            n: number;
+            /**
+             * Withheldreason
+             * @description Why there is no number. Non-null exactly when `display` is null.
+             */
+            withheldReason?: string | null;
+        };
+        /**
          * FigureResponse
          * @description One number and everything needed to judge it.
          */
@@ -1738,6 +1778,11 @@ export interface components {
          * @description The insight surface for one screen, generated or explicitly not.
          */
         GeneratedInsightsResponse: {
+            /**
+             * Facts
+             * @description Every figure offered to the model for this screen, so a card can show the ones its sentence read rather than naming their keys. Empty when nothing was generated.
+             */
+            facts?: components["schemas"]["FactResponse"][];
             /**
              * Insights
              * @description Always present, empty when the status is UNAVAILABLE. Required rather than defaulted so a client never has to tell an absent list from an empty one — they would render the same and mean different things.

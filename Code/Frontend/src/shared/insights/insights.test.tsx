@@ -41,6 +41,24 @@ const GENERATED: GeneratedInsights = {
     { code: 'PAYER_AND_CARRIER', label: 'Payer & carrier' },
   ],
   insights: [insight()],
+  facts: [
+    {
+      key: 'first_contact_resolution',
+      label: 'First-contact resolution',
+      display: '74%',
+      n: 141,
+      basis: 'OBSERVED',
+      withheldReason: null,
+    },
+    {
+      key: 'commercial_intent_capture',
+      label: 'Commercial intent capture',
+      display: null,
+      n: 3,
+      basis: 'OBSERVED',
+      withheldReason: 'Too few calls to publish',
+    },
+  ],
   reason: null,
   provider: 'openai',
   model: 'gpt-5',
@@ -122,13 +140,89 @@ describe('the promise', () => {
 
 describe('the feed', () => {
   it('hides what a sentence read until it is asked for', async () => {
+    // Asserted on the figure's label, not its key: the card opens to the
+    // figures themselves now, and the key is an internal name a reader was
+    // never meant to see.
     show(<InsightFeed data={GENERATED} />)
 
-    expect(screen.queryByText(/first_contact_resolution/)).not.toBeInTheDocument()
+    expect(screen.queryByText('First-contact resolution')).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /What this insight read/ }))
 
-    expect(screen.getByText(/first_contact_resolution/)).toBeInTheDocument()
+    expect(screen.getByText('First-contact resolution')).toBeInTheDocument()
+    expect(screen.getByText('74%')).toBeInTheDocument()
+  })
+
+  it('keeps the evidence cue’s wording still, and lets the chevron carry the state', async () => {
+    // The prototype's `.ai-more`: one label per card that does not change,
+    // with `›` and `⌄` supplied by CSS. Ours swapped the word to "Hide
+    // evidence" as well, which said the same thing twice and made the cue
+    // change width as it opened. `aria-expanded` is what states the toggle,
+    // and it is asserted here because it is now the only thing that does.
+    show(<InsightFeed data={GENERATED} badgeLabel="Needs attention now" />)
+
+    // The feed opens its first card, as the prototype's first `<details>`
+    // carries `open`. So the cue is read on the way closed and back.
+    const toggle = screen.getByRole('button', { name: /What this insight read/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Evidence')).toBeInTheDocument()
+
+    await userEvent.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Evidence')).toBeInTheDocument()
+    expect(screen.queryByText(/Hide evidence/)).not.toBeInTheDocument()
+  })
+
+  it('opens to the figures themselves, not to their names', () => {
+    // The prototype's `.ai-ev` is a row per piece of evidence, the thing on
+    // the left and its figure on the right. Ours read
+    // "Read from first_contact_resolution" -- which names the evidence
+    // without showing it, so the sentence could not be checked against
+    // anything without leaving the card.
+    show(<InsightFeed data={GENERATED} badgeLabel="Needs attention now" />)
+
+    const rows = screen.getAllByRole('listitem').filter((li) => li.closest('.nv-ai-ev'))
+
+    expect(rows).toHaveLength(1)
+    expect(within(rows[0]!).getByText('First-contact resolution')).toBeInTheDocument()
+    expect(within(rows[0]!).getByText('74%')).toBeInTheDocument()
+    expect(screen.queryByText(/Read from/)).not.toBeInTheDocument()
+  })
+
+  it('shows a withheld figure with its reason where the number would be', () => {
+    // The model is told about withheld figures and may write about one, so
+    // the card has to be able to show it. A row that vanished would make
+    // the sentence unverifiable exactly where the reader needs to see why.
+    show(
+      <InsightFeed
+        data={{
+          ...GENERATED,
+          insights: [insight({ factKeys: ['commercial_intent_capture'] })],
+        }}
+        badgeLabel="Needs attention now"
+      />,
+    )
+
+    const row = screen.getAllByRole('listitem').find((li) => li.closest('.nv-ai-ev'))
+
+    expect(within(row!).getByText('Commercial intent capture')).toBeInTheDocument()
+    expect(within(row!).getByText('Too few calls to publish')).toBeInTheDocument()
+  })
+
+  it('keeps a key the fact set does not carry, rather than dropping the row', () => {
+    // The two sides disagreeing should be visible. A silently missing row
+    // would read as a sentence with less behind it than it claims.
+    show(
+      <InsightFeed
+        data={{ ...GENERATED, insights: [insight({ factKeys: ['no_such_fact'] })] }}
+        badgeLabel="Needs attention now"
+      />,
+    )
+
+    const row = screen.getAllByRole('listitem').find((li) => li.closest('.nv-ai-ev'))
+
+    expect(within(row!).getByText('no_such_fact')).toBeInTheDocument()
   })
 
   it('offers a what-to-do link for a playbook this build ships', async () => {

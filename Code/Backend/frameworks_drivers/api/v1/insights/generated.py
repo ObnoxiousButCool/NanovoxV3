@@ -152,6 +152,33 @@ class InsightResponse(CamelModel):
     )
 
 
+class FactResponse(CamelModel):
+    """One figure a sentence was allowed to read, as the screen prints it.
+
+    The evidence behind a generated sentence is the figures it was given,
+    so this is what the card opens to show. Sent from here rather than
+    resolved on the client: the fact set is built per screen by
+    `exec_facts`, `risk_facts` and the rest, and a second implementation in
+    TypeScript would be a second definition of what counts as a fact.
+
+    A withheld fact travels too. "Commercial intent capture — too few calls
+    to publish" is a reading the model is entitled to write about, and the
+    card has to be able to show what it read.
+    """
+
+    key: str
+    label: str = Field(description="How a reader would name it.")
+    display: str | None = Field(
+        default=None,
+        description="The number as printed, e.g. '74%'. Null exactly when withheld.",
+    )
+    n: int = Field(description="The sample behind it.")
+    basis: str | None = None
+    withheld_reason: str | None = Field(
+        default=None, description="Why there is no number. Non-null exactly when `display` is null."
+    )
+
+
 class GeneratedInsightsResponse(CamelModel):
     """The insight surface for one screen, generated or explicitly not."""
 
@@ -178,6 +205,14 @@ class GeneratedInsightsResponse(CamelModel):
             "empty one — they would render the same and mean different things."
         )
     )
+    facts: list[FactResponse] = Field(
+        default_factory=list,
+        description=(
+            "Every figure offered to the model for this screen, so a card can "
+            "show the ones its sentence read rather than naming their keys. "
+            "Empty when nothing was generated."
+        ),
+    )
     reason: CodedValue | None = Field(
         default=None, description="Non-null exactly when the status is UNAVAILABLE."
     )
@@ -187,7 +222,10 @@ class GeneratedInsightsResponse(CamelModel):
     model: str | None = Field(default=None)
 
     @classmethod
-    def of(cls, generated: GeneratedInsights) -> GeneratedInsightsResponse:
+    def of(
+        cls, generated: GeneratedInsights, facts: FactSet | None = None
+    ) -> GeneratedInsightsResponse:
+        """`facts` is omitted where nothing was generated to read them."""
         return cls(
             status=coded(generated.status),
             lenses=[coded(lens) for lens in Lens],
@@ -202,6 +240,17 @@ class GeneratedInsightsResponse(CamelModel):
                     issue_key=insight.issue_key,
                 )
                 for insight in generated.insights
+            ],
+            facts=[
+                FactResponse(
+                    key=fact.key,
+                    label=fact.label,
+                    display=fact.display,
+                    n=fact.n,
+                    basis=fact.basis,
+                    withheld_reason=fact.withheld_reason,
+                )
+                for fact in (facts.facts if facts is not None else ())
             ],
             reason=coded(generated.reason) if generated.reason is not None else None,
             provider=generated.provider,
@@ -730,4 +779,6 @@ async def read_generated_insights(
     generated = await use_case.execute(
         GenerateInsightsRequest(facts=facts, limit=per_screen_limit), provider
     )
-    return GeneratedInsightsResponse.of(generated)
+    # The same fact set the model was given, so a card's evidence is the
+    # figures its sentence read rather than a list of their names.
+    return GeneratedInsightsResponse.of(generated, facts)

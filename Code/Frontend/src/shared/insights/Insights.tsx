@@ -32,7 +32,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { IssueCue } from '@/shared/actions/IssueLink'
 import { isIssueKey } from '@/shared/actions/issueHref'
-import type { GeneratedInsights, Insight } from '@/shared/api/insights'
+import type { Fact, GeneratedInsights, Insight } from '@/shared/api/insights'
 import { Panel, Tooltip } from '@/shared/design/primitives'
 import '@/shared/insights/insights.css'
 
@@ -89,36 +89,73 @@ function Unavailable({ reason }: { reason: GeneratedInsights['reason'] }) {
 }
 
 /** One sentence, with what it read and what to do about it. */
-function InsightBody({ insight, expanded }: { insight: Insight; expanded: boolean }) {
+function InsightBody({
+  insight,
+  facts,
+  expanded,
+}: {
+  insight: Insight
+  facts: Fact[]
+  expanded: boolean
+}) {
   const issue = insight.issueKey
   return (
     <>
       <p className="nv-ai-sentence">{insight.sentence}</p>
-      {expanded ? <InsightEvidence insight={insight} issue={issue} /> : null}
+      {expanded ? <InsightEvidence insight={insight} facts={facts} issue={issue} /> : null}
     </>
   )
 }
 
-function InsightEvidence({ insight, issue = insight.issueKey }: { insight: Insight; issue?: Insight['issueKey'] }) {
+/**
+ * What a sentence read, as figures rather than as their names.
+ *
+ * The prototype's `.ai-ev`: a row per piece of evidence, the thing on the
+ * left and its figure on the right. Ours was one line of fact keys —
+ * `Read from area_of_concern_unresolved` — which names the evidence
+ * without showing it, so a reader could not check the sentence against
+ * anything without leaving the card.
+ *
+ * A fact the screen withheld is shown with its reason where the number
+ * would be. The model is told about withheld figures and may write about
+ * them, so the card has to be able to show one; a row that silently
+ * vanished would make the sentence unverifiable exactly where the reader
+ * most needs to see why.
+ *
+ * Keys are resolved against the fact set the server sends, in the order
+ * the sentence lists them. A key with no fact behind it keeps its name
+ * rather than disappearing — it would mean the two sides disagree, and
+ * that should be visible rather than swallowed.
+ */
+function InsightEvidence({
+  insight,
+  facts,
+  issue = insight.issueKey,
+}: {
+  insight: Insight
+  facts: Fact[]
+  issue?: Insight['issueKey']
+}) {
+  const byKey = new Map(facts.map((fact) => [fact.key, fact]))
   return (
     <div className="nv-ai-detail">
-      <p className="nv-ai-read">
-        <span>Read from</span> {insight.factKeys.join(', ')}
-      </p>
+      <ul className="nv-ai-ev">
+        {insight.factKeys.map((key) => {
+          const fact = byKey.get(key)
+          return (
+            <li key={key}>
+              <span>{fact?.label ?? key}</span>
+              <span>{fact ? (fact.display ?? fact.withheldReason ?? 'withheld') : '—'}</span>
+            </li>
+          )
+        })}
+      </ul>
       {/* The link is dropped rather than guessed when the key is not one
           the registry knows: a dead "what to do" is worse than none. */}
       {issue !== null && issue !== undefined && isIssueKey(issue) ? (
         <IssueCue issue={issue} />
       ) : null}
     </div>
-  )
-}
-
-function InsightFactKeys({ insight }: { insight: Insight }) {
-  return (
-    <p className="nv-ai-read">
-      <span>Read from</span> {insight.factKeys.join(', ')}
-    </p>
   )
 }
 
@@ -211,7 +248,7 @@ export function InsightStrip({
               // asking to be read. The label is in the footer either way.
               className={`nv-ai-card nv-ai-lvl-${insight.severity.code.toLowerCase()}`}
             >
-              <InsightBody insight={insight} expanded={false} />
+              <InsightBody insight={insight} facts={data.facts ?? []} expanded={false} />
               <footer>
                 <KindChip insight={insight} />
                 <span className="nv-ai-order">{insight.severity.label}</span>
@@ -281,10 +318,19 @@ export function InsightFeed({
                       <span className="nv-ai-meta">
                         <KindChip insight={insight} />
                         <span className="nv-ai-order">{insight.severity.label}</span>
-                        <span className="nv-ai-more">{expanded ? 'Hide evidence' : 'Evidence'}</span>
+                        {/* The prototype's `.ai-more`: one constant word, with
+                            the chevron carrying the state (`›` closed, `⌄` open,
+                            both from CSS). Swapping the word to "Hide evidence"
+                            as well said the same thing twice and made the cue
+                            change width as it opened. `aria-expanded` on the
+                            button is what tells assistive technology, and it is
+                            unaffected. */}
+                        <span className="nv-ai-more">Evidence</span>
                       </span>
                     </button>
-                    {expanded ? <InsightEvidence insight={insight} /> : null}
+                    {expanded ? (
+                      <InsightEvidence insight={insight} facts={data.facts ?? []} />
+                    ) : null}
                   </>
                 ) : (
                   <>
@@ -300,7 +346,12 @@ export function InsightFeed({
                       <span className="nv-ai-order">{insight.severity.label}</span>
                     </button>
                     <p className="nv-ai-sentence">{insight.sentence}</p>
-                    {expanded ? <InsightFactKeys insight={insight} /> : null}
+                    {/* `issue={null}`: this card carries its what-to-do link
+                        up front, below, so the evidence must not repeat it —
+                        two links to the same playbook in one card. */}
+                    {expanded ? (
+                      <InsightEvidence insight={insight} facts={data.facts ?? []} issue={null} />
+                    ) : null}
                     <InsightAction insight={insight} />
                   </>
                 )}
@@ -391,7 +442,7 @@ export function InsightLenses({ data }: { data: GeneratedInsights | undefined })
                       className={`nv-ai-lvl-${insight.severity.code.toLowerCase()}`}
                     >
                       <KindChip insight={insight} />
-                      <InsightBody insight={insight} expanded />
+                      <InsightBody insight={insight} facts={data.facts ?? []} expanded />
                     </li>
                   ))}
                 </ol>

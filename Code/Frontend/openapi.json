@@ -2614,6 +2614,67 @@
         "title": "ExposureResponse",
         "type": "object"
       },
+      "FactResponse": {
+        "description": "One figure a sentence was allowed to read, as the screen prints it.\n\nThe evidence behind a generated sentence is the figures it was given,\nso this is what the card opens to show. Sent from here rather than\nresolved on the client: the fact set is built per screen by\n`exec_facts`, `risk_facts` and the rest, and a second implementation in\nTypeScript would be a second definition of what counts as a fact.\n\nA withheld fact travels too. \"Commercial intent capture \u2014 too few calls\nto publish\" is a reading the model is entitled to write about, and the\ncard has to be able to show what it read.",
+        "properties": {
+          "basis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The number as printed, e.g. '74%'. Null exactly when withheld.",
+            "title": "Display"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "description": "How a reader would name it.",
+            "title": "Label",
+            "type": "string"
+          },
+          "n": {
+            "description": "The sample behind it.",
+            "title": "N",
+            "type": "integer"
+          },
+          "withheldReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why there is no number. Non-null exactly when `display` is null.",
+            "title": "Withheldreason"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "n"
+        ],
+        "title": "FactResponse",
+        "type": "object"
+      },
       "FigureResponse": {
         "description": "One number and everything needed to judge it.",
         "properties": {
@@ -2851,6 +2912,14 @@
       "GeneratedInsightsResponse": {
         "description": "The insight surface for one screen, generated or explicitly not.",
         "properties": {
+          "facts": {
+            "description": "Every figure offered to the model for this screen, so a card can show the ones its sentence read rather than naming their keys. Empty when nothing was generated.",
+            "items": {
+              "$ref": "#/components/schemas/FactResponse"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
           "insights": {
             "description": "Always present, empty when the status is UNAVAILABLE. Required rather than defaulted so a client never has to tell an absent list from an empty one \u2014 they would render the same and mean different things.",
             "items": {

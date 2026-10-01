@@ -276,3 +276,30 @@
   color: var(--ink-3);
   cursor: default;
 }
+
+/* The prototype's `.ai-ev` rows: the thing on the left, its figure on the
+   right, a rule between each. A list rather than a paragraph because the
+   reader is scanning for one line, not reading a sentence about the
+   sentence. */
+.nv-ai-ev {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.nv-ai-ev li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px solid var(--rule);
+}
+
+/* Muted and unwrapped, so the column of figures stays a column: a withheld
+   reason is longer than a number and would otherwise break the alignment
+   the rows exist for. */
+.nv-ai-ev li span:last-child {
+  color: var(--ink-3);
+  white-space: nowrap;
+}

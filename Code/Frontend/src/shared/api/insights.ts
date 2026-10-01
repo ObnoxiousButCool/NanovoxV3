@@ -157,6 +157,9 @@ export type InsightScreen = NonNullable<
 >
 export type Insight = components['schemas']['InsightResponse']
 
+/** One figure a sentence was allowed to read, as the screen prints it. */
+export type Fact = components['schemas']['FactResponse']
+
 /**
  * A screen's generated insights.
  *
