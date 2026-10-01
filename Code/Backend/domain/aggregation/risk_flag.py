@@ -219,9 +219,34 @@ def flagged_share(config: DashboardConfig, assessments: Sequence[RiskAssessment]
             ),
         )
     flagged = [a for a in eligible if a.flagged]
+    call_ids = tuple(sorted(ref for a in flagged for ref in a.evidence))
+    caveat = flagged_share_n_caveat(len(eligible), len(call_ids))
     return Figure.observed(
         len(flagged) / len(eligible),
-        tuple(sorted(ref for a in flagged for ref in a.evidence)),
+        call_ids,
+        caveats=(caveat,) if caveat else (),
+    )
+
+
+def flagged_share_n_caveat(eligible: int, evidence_calls: int) -> str | None:
+    """Say so when `n` is not this figure's own denominator.
+
+    Every other figure's `n` is the population its rate divides by — a
+    reader checking `first_contact_resolution` or `escalation_integrity`
+    can read `n` straight off as the denominator. `flagged_share` cannot:
+    its denominator is eligible *employers*, but `Figure.call_ids` exists so
+    a reader can open the evidence behind a figure, and the evidence behind
+    an employer-level flag is calls, not employers. The two counts rarely
+    coincide, and a reader who assumes they do would divide by the wrong
+    one. `None` on the rare occasion they do coincide, so the sentence
+    appears only when there is something to disclose.
+    """
+    if evidence_calls == eligible:
+        return None
+    return (
+        f"n ({evidence_calls}) is the evidence calls behind the flagged accounts, not "
+        f"this share's own denominator — {eligible} eligible employer(s). See "
+        "assessedCount for that."
     )
 
 

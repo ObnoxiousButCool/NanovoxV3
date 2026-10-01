@@ -4884,7 +4884,7 @@
           },
           "flaggedShare": {
             "$ref": "#/components/schemas/FigureResponse",
-            "description": "Flagged as a share of the *eligible* employers, never of all of them."
+            "description": "Flagged as a share of the *eligible* employers, never of all of them. Its `n` is the evidence calls behind the flagged accounts, not the share's own denominator \u2014 read `assessedCount` for that, and see `caveats` when the two counts differ."
           },
           "ineligible": {
             "description": "Employers below the eligibility floor, by reference. Kept apart from `assessed` on purpose: too few calls to assess is not a finding of low risk, and at current volume most of the book is here.",
