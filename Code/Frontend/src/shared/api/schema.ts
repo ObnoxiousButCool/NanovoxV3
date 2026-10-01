@@ -1696,7 +1696,7 @@ export interface components {
             /** Signalseverities */
             signalSeverities: components["schemas"]["CodedValue"][];
             /** Signals */
-            signals: components["schemas"]["CodedValue"][];
+            signals: components["schemas"]["SignalOptionResponse"][];
             /**
              * Touchpoints
              * @description Observed on calls, not reference data. Grows with the corpus.
@@ -2799,6 +2799,15 @@ export interface components {
             loggedProcessDefect: components["schemas"]["FigureResponse"];
             /** @description Calls meeting ANY component, over distinct calls. Not the sum of the three — a call can be both a repeat and a process defect. */
             total: components["schemas"]["FigureResponse"];
+        };
+        /** SignalOptionResponse */
+        SignalOptionResponse: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** @description Fixed per signal type by the Signal Taxonomy sheet — never decided per call, the same source `EvidencedItem.severity` reads. */
+            severity: components["schemas"]["CodedValue"];
         };
         /**
          * SignalType

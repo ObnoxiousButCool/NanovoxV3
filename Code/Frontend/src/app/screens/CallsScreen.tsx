@@ -53,6 +53,14 @@ export function CallsScreen() {
     () => new Map((filterOptions?.signals ?? []).map(({ code, label }) => [code, label])),
     [filterOptions?.signals],
   )
+  // Severity is fixed per signal type by the Signal Taxonomy sheet, never
+  // decided per call — the same source `/insights/calls/:id`'s evidence
+  // panel reads for this signal, looked up here rather than carried on
+  // every row.
+  const signalSeverity = useMemo(
+    () => new Map((filterOptions?.signals ?? []).map(({ code, severity }) => [code, severity.code])),
+    [filterOptions?.signals],
+  )
   const [params, setParams] = useSearchParams()
   const { open } = useDrawer()
 
@@ -140,6 +148,7 @@ export function CallsScreen() {
           <CallsBody
             data={data}
             signalLabels={signalLabels}
+            signalSeverity={signalSeverity}
             q={q}
             sort={sort}
             order={order}
@@ -167,6 +176,7 @@ export function CallsScreen() {
 function CallsBody({
   data,
   signalLabels,
+  signalSeverity,
   q,
   sort,
   order,
@@ -181,6 +191,7 @@ function CallsBody({
 }: {
   data: CallsPage
   signalLabels: Map<string, string>
+  signalSeverity: Map<string, string>
   q: string
   sort: string
   order: string
@@ -238,7 +249,7 @@ function CallsBody({
               </span>
             </div>
             <div className="nv-fbtns nv-calls-downloads">
-              <a className="nv-btn" href={downloadUrl([])} download>
+              <a className="nv-btn nv-btn-primary" href={downloadUrl([])} download>
                 ⤓ Download {data.total} matching calls (CSV)
               </a>
               {selected.size > 0 ? (
@@ -315,6 +326,7 @@ function CallsBody({
                       key={row.reference}
                       row={row}
                       signalLabels={signalLabels}
+                      signalSeverity={signalSeverity}
                       checked={selected.has(row.reference)}
                       onToggle={() => {
                         const next = new Set(selected)
@@ -406,12 +418,14 @@ function CallsTilesPanel({ data }: { data: CallsPage }) {
 function Row({
   row,
   signalLabels,
+  signalSeverity,
   checked,
   onToggle,
   onOpen,
 }: {
   row: CallRow
   signalLabels: Map<string, string>
+  signalSeverity: Map<string, string>
   checked: boolean
   onToggle: () => void
   onOpen: () => void
@@ -518,11 +532,17 @@ function Row({
           <span className="nv-call-empty">No signals raised</span>
         ) : (
           <div className="nv-call-signals" aria-label="Signals">
-            {signals.map((signal, index) => (
-              <span className="nv-call-signal" key={`${signal}-${String(index)}`}>
-                {signalLabels.get(signal) ?? signal}
-              </span>
-            ))}
+            {signals.map((signal, index) => {
+              const severity = signalSeverity.get(signal)
+              return (
+                <span
+                  className={`nv-call-signal${severity ? ` nv-call-signal-${severity.toLowerCase()}` : ''}`}
+                  key={`${signal}-${String(index)}`}
+                >
+                  {signalLabels.get(signal) ?? signal}
+                </span>
+              )
+            })}
           </div>
         )}
         {indicators.length > 0 ? (

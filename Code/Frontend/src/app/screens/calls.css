@@ -49,17 +49,17 @@
 .nv-calls-search input {
   width: min(360px, 100%);
   min-width: 280px;
-  padding: 6px 9px;
+  padding: 7px 9px;
   color: var(--ink);
   background: var(--surface);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--rule-strong);
   border-radius: var(--r);
-  font: 400 13px/1.3 var(--body);
+  font: 400 13.5px/1.3 var(--body);
 }
 
 .nv-calls-count {
   color: var(--ink-2);
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.4;
 }
 
@@ -68,15 +68,39 @@
   margin: 0;
 }
 
+/* The prototype's `.btn.primary`: the one call to action on the toolbar,
+   everything else (including "Download selected") stays the plain button. */
+.nv-calls .nv-btn-primary {
+  background: var(--brand);
+  color: #fff;
+  border-color: var(--brand);
+  font-weight: 600;
+}
+
+.nv-calls .nv-btn-primary:hover {
+  background: var(--brand-ink);
+  color: #fff;
+  border-color: var(--brand-ink);
+}
+
+/* Every button on this page, at the prototype's size — `app.css`'s `.btn`
+   with `v2.css`'s padding and font over it, scoped here rather than on the
+   shared `.nv-btn` so other screens keep their own sizing. */
+.nv-calls .nv-btn {
+  padding: 7px 12px;
+  font: 500 13px/1.2 var(--body);
+}
+
 .nv-calls .nv-panel > .nv-note {
   margin: 0 0 12px;
 }
 
+/* `app.css`/`v2.css`'s own table size (14px), the way `.nv-tblwrap table`
+   already has it — this table used to shrink it back down to 12.5px. */
 .nv-calls .nv-callstable {
   width: 100%;
   min-width: 1010px;
   table-layout: fixed;
-  font-size: 12.5px;
 }
 
 .nv-calls .nv-callstable th,
@@ -125,7 +149,7 @@
 .nv-calls .nv-callstable .nv-call-primary {
   display: block;
   color: var(--ink);
-  font-size: 12.5px;
+  font-size: 14.5px;
   font-weight: 600;
   line-height: 1.35;
   white-space: normal;
@@ -143,7 +167,7 @@
   display: block;
   margin-top: 2px;
   color: var(--ink-3);
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 400;
   line-height: 1.35;
   white-space: normal;
@@ -183,6 +207,39 @@
   overflow-wrap: anywhere;
 }
 
+/* The bubble shape stays; the colour is the prototype's `.sev-*` severity
+   scale (fixed per signal type, not decided per call), carried as a bubble
+   tint and border rather than the prototype's plain coloured text. */
+.nv-calls .nv-call-signal {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.nv-calls .nv-call-signal-critical {
+  border-color: color-mix(in srgb, var(--critical) 55%, var(--rule));
+  background: color-mix(in srgb, var(--critical) 12%, var(--surface));
+  color: var(--critical);
+}
+
+.nv-calls .nv-call-signal-high {
+  border-color: color-mix(in srgb, var(--serious) 55%, var(--rule));
+  background: color-mix(in srgb, var(--serious) 12%, var(--surface));
+  color: var(--serious);
+}
+
+.nv-calls .nv-call-signal-medium {
+  border-color: var(--rule-strong);
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+
+.nv-calls .nv-call-signal-low {
+  border-color: var(--rule);
+  background: var(--surface-2);
+  color: var(--ink-3);
+}
+
 .nv-calls .nv-call-indicators {
   margin-top: 5px;
 }
@@ -214,16 +271,16 @@
 
 .nv-calls-perpage {
   color: var(--ink-2);
-  font-size: 12.5px;
+  font-size: 13.5px;
 }
 
 .nv-calls-perpage select {
-  padding: 5px 8px;
+  padding: 7px 9px;
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--rule-strong);
   border-radius: var(--r);
-  font: 500 12.5px/1.2 var(--body);
+  font: 400 13.5px/1.2 var(--body);
 }
 
 .nv-sr-only {

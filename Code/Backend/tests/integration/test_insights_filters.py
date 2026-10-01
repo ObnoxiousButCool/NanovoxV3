@@ -102,6 +102,10 @@ async def test_labelled_enums_carry_their_wording(
 
     signals = {entry["code"]: entry["label"] for entry in body["signals"]}
     assert signals["billing_defect"] == "Billing defect"
+    # Fixed per type by the Signal Taxonomy sheet, not decided per call —
+    # the same severity `EvidencedItem.severity` reads for this signal.
+    by_code = {entry["code"]: entry["severity"] for entry in body["signals"]}
+    assert by_code["billing_defect"]["code"] == "HIGH"
     layers = {entry["code"]: entry["label"] for entry in body["ruleLayers"]}
     assert layers["P"] == "Program"
 

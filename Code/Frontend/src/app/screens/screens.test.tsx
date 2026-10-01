@@ -419,7 +419,13 @@ const OPTIONS = {
   ],
   agents: [],
   touchpoints: [],
-  signals: [{ code: 'member_communication_gap', label: 'Member communication gap' }],
+  signals: [
+    {
+      code: 'member_communication_gap',
+      label: 'Member communication gap',
+      severity: { code: 'MEDIUM', label: 'Medium' },
+    },
+  ],
   complaintTargets: [],
   outcomes: [],
   categories: [],
@@ -1405,7 +1411,13 @@ describe('/calls', () => {
     expect(within(row).getByText('Jordan Lee')).toBeInTheDocument()
     expect(within(row).getByText('member · agent Alex · (AG-03)')).toBeInTheDocument()
     expect(within(row).getByText('Quality not recorded · talk-only AHT ≥6m 40s')).toBeInTheDocument()
-    expect(within(row).getByText('Member communication gap')).toHaveClass('nv-call-signal')
+    // The severity class carries the prototype's colour scale — fixed per
+    // signal type by the Signal Taxonomy sheet, read from the filter
+    // catalogue rather than invented per row.
+    expect(within(row).getByText('Member communication gap')).toHaveClass(
+      'nv-call-signal',
+      'nv-call-signal-medium',
+    )
     expect(within(row).queryByText('MBR-01')).not.toBeInTheDocument()
     expect(within(row).queryByText('member_communication_gap')).not.toBeInTheDocument()
     expect(within(row).queryByText('Indicators')).not.toBeInTheDocument()
