@@ -396,13 +396,11 @@ class RiskScreenResponse(CamelModel):
             "inputs, so 'nobody raised this' is a finding about the book."
         ),
     )
-    handling_unavailable: str = Field(
-        default="",
-        description=(
-            "Why the prototype's Handling distribution has no counterpart here. "
-            "Said rather than rendered as an empty chart beside a full one."
-        ),
-    )
+    # No `handling_unavailable`. The prototype's "How calls ended" has a
+    # second half splitting the same calls by handling archetype, and this
+    # response used to carry a sentence saying why that half is missing.
+    # Withdrawn on request. The reasons the half is missing have not
+    # changed and are recorded at the foot of this module.
     band_calibration: WithheldPanelResponse = Field(
         description="Insight 9, withheld until a termination/renewal outcome exists per employer."
     )
@@ -474,7 +472,6 @@ def build_risk_response(
         weekly_resolved=[_week(entry) for entry in result.weekly_resolved],
         weekly_quality=[_week(entry) for entry in result.weekly_quality],
         drivers=[_driver(entry) for entry in result.drivers],
-        handling_unavailable=HANDLING_UNAVAILABLE,
         escalations_triggered=result.escalations_triggered,
         escalations_missed=result.escalations_missed,
         exit_language_calls=result.exit_language_calls,
@@ -601,12 +598,39 @@ def account_risk_response(
     )
 
 
-#: Conflict C8a, said on the wire rather than left as a missing chart.
-HANDLING_UNAVAILABLE = (
-    "The prototype also splits these calls by handling archetype. `archetype` is not "
-    "one of the sixteen Call Tag Schema fields and has no workbook source (conflict "
-    "C8a), so it is absent rather than invented."
-)
+# Why "How calls ended" has no handling half, kept here now that the
+# sentence that used to say it on screen has been withdrawn. Removing the
+# note did not settle conflict C8a; it stopped the screen raising it.
+#
+# `archetype` is a Transcript Tracker column and one of the five fields the
+# corpus PDF header carries. Four separate things block a port of the
+# prototype's split, measured against the loaded corpus:
+#
+# 1. Coverage. `ground_truth` holds 100 rows against 600 calls, so the
+#    handling half would sit beside an outcome half drawn from six times
+#    as many.
+# 2. It is answer-key material. `domain.entities.ground_truth` is a
+#    forbidden module for `domain.aggregation` under the import-linter
+#    contract, whose own rationale is that a figure sourced from the
+#    answer key reports the truth we wrote rather than what the pipeline
+#    found.
+# 3. The labels are leak-checked. All four archetype strings are in
+#    `_ARCHETYPES` in `tests/support/leak_check.py`, asserted never to
+#    reach rendered text; the split would render them as its labels.
+# 4. It is near-redundant with the outcome bar already in the panel. Over
+#    all 100 tracker rows the mapping is exact -- resolved, partially
+#    resolved and escalated each map to one archetype -- and the only new
+#    information is that UNRESOLVED divides into Brush-off (13) and
+#    Circular (6). `Prototype/app.js` says the same above `NV.ARCHETYPES`:
+#    in batch 1 it is "NOT an independent signal".
+#
+# That remaining distinction is not derivable from the sixteen fields.
+# `process_gap` is absent on every unresolved tracker row, and knowledge
+# failure, repeat contact, signals and quality score all overlap across
+# the two. Building it honestly means defining the archetype and
+# extracting it over the whole corpus as an L3/L4 classification scored in
+# Phase 5 -- a finding rather than an answer -- which needs the definition
+# C8a records as missing.
 
 
 def _week(entry: WeekShare) -> WeekShareResponse:

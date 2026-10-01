@@ -556,12 +556,16 @@ function RiskBody({
           sub={`${String(unresolvedCount)} of ${String(endedTotal)} calls ended unresolved.`}
           chip={<EpistemicChip kind="observed" />}
         >
+          {/* The prototype splits this panel a second way, by handling
+              archetype. A note used to sit here saying why that half is
+              absent; it was withdrawn, and the panel now shows the outcome
+              half without comment. The reasons are recorded at the foot of
+              the risk router, not deleted with the sentence. */}
           {endedTotal === 0 ? (
             <Empty>No call in scope records an outcome.</Empty>
           ) : (
             <OutcomeBar outcomes={outcomes} />
           )}
-          <Note>{data.handlingUnavailable}</Note>
         </Panel>
       </div>
 

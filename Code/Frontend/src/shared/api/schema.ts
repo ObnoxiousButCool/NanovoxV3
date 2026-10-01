@@ -2638,12 +2638,6 @@ export interface components {
             /** @description Flagged as a share of the *eligible* employers, never of all of them. */
             flaggedShare: components["schemas"]["FigureResponse"];
             /**
-             * Handlingunavailable
-             * @description Why the prototype's Handling distribution has no counterpart here. Said rather than rendered as an empty chart beside a full one.
-             * @default
-             */
-            handlingUnavailable: string;
-            /**
              * Ineligible
              * @description Employers below the eligibility floor, by reference. Kept apart from `assessed` on purpose: too few calls to assess is not a finding of low risk, and at current volume most of the book is here.
              */
