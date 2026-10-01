@@ -86,71 +86,62 @@ def window_reaches_outside(window: Window, since: date | None, until: date | Non
     return until is not None and window.end > until
 
 
-def period_caveat(
+def window_note(
     window: Window,
+    calls: Sequence[CallContext],
     since: date | None,
     until: date | None,
     *,
-    subject: str,
-) -> str | None:
-    """The sentence that makes a wider-than-asked window visible.
-
-    Returns `None` when the window sits inside the period, so the caveat
-    appears only when it is true. A caveat printed every time stops being
-    read, and the one time it matters nobody notices it.
-
-    The alternative to saying this is truncating the window to the period,
-    which would publish a number under a definition the Metrics sheet does
-    not carry, with nothing on the screen to say so. Disclosure was chosen
-    over both truncation and suppression; see D11 for why, and for when to
-    revisit it.
-    """
-    if not window_reaches_outside(window, since, until):
-        return None
-    asked = _period_text(since, until)
-    return (
-        f"{subject} is computed over {window.start.isoformat()} to "
-        f"{window.end.isoformat()}, which reaches outside the period you asked for "
-        f"({asked}). The window is the metric's own and is not narrowed to the "
-        "period; the figure is not a shorter-window figure."
-    )
-
-
-def window_excludes_caveat(
-    window: Window,
-    calls: Sequence[CallContext],
-    *,
     subjects: Sequence[str],
 ) -> str | None:
-    """The sentence for calls in scope that a metric's window leaves out.
+    """One sentence for everything a window disagrees with the scope about.
 
-    `period_caveat` answers the opposite question — a window reaching
-    *outside* what was asked for — and it only fires when a period filter is
-    set. With no filter it stays silent, which left the common case unsaid:
-    a window ends on today's date, the corpus ended weeks ago, and its
-    earliest calls fall off the back of the window. The risk screen counted
-    562 of the 600 calls the filter bar reported in scope, and nothing on
-    the page accounted for the other 38.
+    Two disagreements, and a reader meets both at once:
 
-    Returns `None` when the window covers every call in scope, so the
-    sentence appears only when there is something to disclose.
+    - The window reaches **outside** the period asked for. A request for one
+      week does not turn a twelve-week rate into a one-week rate; the rate
+      is still the Metrics sheet's, and most of its weeks lie outside what
+      was asked for.
+    - The window **leaves calls out** of the scope. A window ending before
+      the corpus does, or a period selecting calls the window does not
+      reach, puts calls on the filter bar's count that no figure here used.
 
-    Counted rather than described, because "some calls are outside the
-    window" is not a fact a reader can reconcile against the figure in front
-    of them, and the whole point of the caveat is that they can.
+    Said together because they are one fact about one window, and said once
+    per window rather than once per metric. These were two functions and the
+    executive screen printed six paragraphs: five saying a window reached
+    outside the period, one per metric, and a sixth saying the same window
+    left calls out. Nobody reads six. Grouped, that screen says two things.
 
-    `subjects` is every metric sharing this window, said once. The executive
-    screen has five metrics over two distinct windows, and a sentence each
-    put five near-identical paragraphs above the figures — which is how a
-    caveat stops being read.
+    The all-excluded case gets its own words. "Leaves out 56 of the 56 calls
+    in scope" is arithmetically true and tells a reader nothing; what it
+    means is that the period they picked and the window this metric uses do
+    not overlap at all, which is why the figures above are withheld.
+
+    Returns `None` when the window agrees with the scope on both counts, so
+    the sentence appears only when there is something to disclose. A caveat
+    printed every time stops being read.
     """
-    outside = len(calls) - len(window.calls_in(tuple(calls)))
-    if outside <= 0 or not subjects:
+    if not subjects:
         return None
+    outside = len(calls) - len(window.calls_in(tuple(calls)))
+    reaches_out = window_reaches_outside(window, since, until)
+    if not reaches_out and outside <= 0:
+        return None
+
+    span = f"{window.start.isoformat()} to {window.end.isoformat()}"
+    clauses: list[str] = []
+    if reaches_out:
+        clauses.append(f"reaches outside the period you asked for ({_period_text(since, until)})")
+    if outside > 0:
+        total = len(calls)
+        clauses.append(
+            f"contains none of the {total} calls in scope"
+            if outside == total
+            else f"leaves out {outside} of the {total} calls in scope"
+        )
     return (
-        f"{_subject_list(subjects)} computed over {window.start.isoformat()} to "
-        f"{window.end.isoformat()}, which leaves out {outside} of the {len(calls)} "
-        "calls in scope. The window is the one the Metrics sheet sets and is not "
+        f"{_subject_list(subjects)} computed over {span}, which {' and '.join(clauses)}. "
+        "The window is the metric's own and is neither narrowed to the period nor "
         "widened to cover the corpus."
     )
 
