@@ -306,6 +306,61 @@ async def test_metrics_sharing_a_window_are_named_in_one_sentence(
 
 
 @pytest.mark.asyncio
+async def test_one_sentence_per_window_even_when_both_disagreements_apply(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """A window can reach outside the period *and* leave its calls out.
+
+    They were two sentences from two functions, and the period one was
+    written per metric, so picking a single week produced six paragraphs
+    above the figures: five saying a window reached outside the period, and
+    a sixth saying one of those windows left calls out. Nobody reads six.
+    """
+    await seed(session_factory, days=[2, 25])
+
+    body = client.get(
+        EXEC, params={"asOf": "2026-10-20", "from": "2026-09-01", "to": "2026-09-03"}
+    ).json()
+
+    # Window sentences only: the corpus contributes its own caveats about
+    # fields it cannot record, and those are a different subject.
+    windows = [c for c in body["scope"]["caveats"] if "computed over" in c]
+
+    # Five metrics, two distinct windows, two sentences.
+    assert len(windows) == 2
+    assert all("reaches outside the period" in caveat for caveat in windows)
+    # And not one sentence per metric.
+    assert not any(caveat.startswith("Escalation integrity is computed") for caveat in windows)
+
+
+@pytest.mark.asyncio
+async def test_a_window_holding_none_of_the_period_says_that_rather_than_n_of_n(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """ "Leaves out 56 of the 56 calls in scope" is true and tells a reader
+    nothing.
+
+    What it means is that the period they picked and the window this metric
+    uses do not overlap at all, which is why the figures above it are
+    withheld rather than small.
+    """
+    await seed(session_factory, days=[2, 25])
+
+    # Read as at 20 October, so the 4-week window is 22 September onward and
+    # cannot reach the call on 2 September that this period selects.
+    body = client.get(
+        EXEC, params={"asOf": "2026-10-20", "from": "2026-09-01", "to": "2026-09-03"}
+    ).json()
+
+    four_week = [c for c in body["scope"]["caveats"] if "First-contact resolution" in c]
+
+    assert len(four_week) == 1
+    assert "contains none of the 1 calls in scope" in four_week[0]
+    # The arithmetic phrasing is gone for the all-excluded case.
+    assert "leaves out" not in four_week[0]
+
+
+@pytest.mark.asyncio
 async def test_every_insights_endpoint_accepts_the_period(
     client: TestClient, session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
