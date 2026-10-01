@@ -101,6 +101,56 @@ describe('Shell', () => {
     expect(document.documentElement.hasAttribute('data-theme')).toBe(false)
   })
 
+  it('carries the filter bar from screen to screen', () => {
+    // Without this a reader who narrows to a region and then follows the
+    // rail to ask the next question arrives at the whole book, with the bar
+    // reading "No filters applied". The narrowing is undone by the act of
+    // following it up, and nothing on the screen says so.
+    renderShell('/exec?region=Bay+Area&outcome=RESOLVED&outcome=ESCALATED&escalated=true')
+    const nav = screen.getByRole('navigation', { name: 'Screens' })
+
+    const risk = within(nav).getByRole('link', { name: /What are the risks/i })
+    const carried = new URLSearchParams(risk.getAttribute('href')?.split('?')[1] ?? '')
+
+    expect(carried.get('region')).toBe('Bay Area')
+    expect(carried.get('escalated')).toBe('true')
+    // Repeated, not comma-joined — the same shape the bar and the API use.
+    expect(carried.getAll('outcome')).toEqual(['RESOLVED', 'ESCALATED'])
+  })
+
+  it('leaves one screen’s own controls behind when it changes screen', () => {
+    // An allowlist, so this holds for a screen-local key added later. The
+    // sharp one is `page`: carried onto another screen it means nothing,
+    // and carried back it points into a result the filters have resized —
+    // the stale-page bug the calls screen already guards against.
+    renderShell('/calls?region=Bay+Area&page=3&sort=quality&order=asc&q=ironwood&perPage=100')
+    const nav = screen.getByRole('navigation', { name: 'Screens' })
+
+    const href = within(nav).getByRole('link', { name: /What are the risks/i }).getAttribute('href')
+    const carried = new URLSearchParams(href?.split('?')[1] ?? '')
+
+    expect(carried.get('region')).toBe('Bay Area')
+    for (const own of ['page', 'sort', 'order', 'q', 'perPage']) {
+      expect(carried.has(own)).toBe(false)
+    }
+  })
+
+  it('keeps the period picker showing what it was showing', () => {
+    // `period` is which picker is open, not a filter, so it is stripped
+    // before the API call. It still has to travel: arriving with the dates
+    // applied but the picker snapped back to Week would describe the
+    // filter in force as something it is not.
+    renderShell('/exec?period=month&from=2026-07-06&to=2026-07-31')
+    const nav = screen.getByRole('navigation', { name: 'Screens' })
+
+    const href = within(nav).getByRole('link', { name: /agents/i }).getAttribute('href')
+    const carried = new URLSearchParams(href?.split('?')[1] ?? '')
+
+    expect(carried.get('period')).toBe('month')
+    expect(carried.get('from')).toBe('2026-07-06')
+    expect(carried.get('to')).toBe('2026-07-31')
+  })
+
   it('reaches every rail link by keyboard', async () => {
     // Keyboard operation is a Phase 1 deliverable, not a later pass.
     const user = userEvent.setup()

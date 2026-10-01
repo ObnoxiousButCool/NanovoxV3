@@ -16,9 +16,20 @@ import type { ReactNode } from 'react'
 import { Drawer } from '@/shared/design/drawer'
 import { NAV_ITEMS } from '@/shared/design/navigation'
 import { ThemeControl } from '@/shared/design/ThemeControl'
+import { useSharedSearch } from '@/shared/filters/useFilters'
 import '@/shared/design/shell.css'
 
 export function Shell({ children }: { children: ReactNode }) {
+  // The filter bar is shared, so the rail has to carry it. Without this a
+  // reader who narrows to a region on the executive screen and then asks
+  // "what are the risks?" arrives at the whole book, with the bar reading
+  // "No filters applied" — their narrowing silently undone by the act of
+  // following it up. The prototype's `NV.href` appends the same state to
+  // every rail link for the same reason.
+  //
+  // Only the bar's own keys travel; see `sharedSearch`.
+  const search = useSharedSearch()
+
   return (
     <div className="nv-shell">
       <aside className="nv-rail">
@@ -34,7 +45,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <nav aria-label="Screens">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} className="nv-nav">
+            <NavLink key={item.to} to={{ pathname: item.to, search }} className="nv-nav">
               {item.label}
               <small>{item.hint}</small>
             </NavLink>
@@ -43,6 +54,9 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <div className="nv-foot">
           <ThemeControl />
+          {/* Bare on purpose: the design system has no filter bar and no
+              corpus behind it, so a query string here would describe
+              nothing. Back returns to the filtered screen. */}
           <NavLink to="/design" className="nv-footlink">
             Design system
           </NavLink>

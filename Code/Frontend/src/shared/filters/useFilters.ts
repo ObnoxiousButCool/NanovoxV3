@@ -80,6 +80,39 @@ function apiSearch(params: URLSearchParams): string {
   return next.toString()
 }
 
+/** Everything the shared filter bar owns, in the order the bar shows it. */
+export const SHARED_KEYS = [...MULTI_KEYS, ...SINGLE_KEYS, ...FLAG_KEYS] as const
+
+/**
+ * The filter bar's own query string, for a link that changes screen.
+ *
+ * An allowlist, not a copy with the screen's keys deleted. The bar is shared
+ * and the rest of the address is not: `page`, `sort`, `q` and `perPage`
+ * belong to the calls table, `flagged` and `minIndicators` to the risk list.
+ * Carrying `page=3` onto a screen with no pager is harmless; carrying it
+ * back onto the calls table under a different filter set is the stale-page
+ * bug `CallsScreen` already guards against. Built from the keys that are
+ * known to be shared, so a screen-local key added later is excluded by
+ * default rather than by someone remembering to exclude it.
+ *
+ * `period` travels with `from` and `to` deliberately: it says which picker
+ * is showing, and arriving on the next screen with the dates applied but the
+ * picker snapped back to Week would misdescribe the filter that is in force.
+ */
+export function sharedSearch(params: URLSearchParams): string {
+  const next = new URLSearchParams()
+  for (const key of SHARED_KEYS) {
+    for (const value of params.getAll(key)) next.append(key, value)
+  }
+  return next.toString()
+}
+
+/** The shared filter bar's query string for the current address. */
+export function useSharedSearch(): string {
+  const [params] = useSearchParams()
+  return useMemo(() => sharedSearch(params), [params])
+}
+
 function readState(params: URLSearchParams): FilterState {
   const multi = Object.fromEntries(
     MULTI_KEYS.map((key) => [key, params.getAll(key)]),
