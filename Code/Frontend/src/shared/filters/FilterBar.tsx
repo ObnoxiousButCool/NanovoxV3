@@ -228,7 +228,7 @@ export function FilterBar({
             type="button"
             className="nv-btn"
             onClick={filters.reset}
-            disabled={filters.activeCount === 0}
+            disabled={!filters.canReset}
           >
             Reset all
           </button>
