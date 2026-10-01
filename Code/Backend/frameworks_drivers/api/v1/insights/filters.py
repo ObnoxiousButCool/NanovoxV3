@@ -168,7 +168,9 @@ UNLABELLED = ("outcome", "category", "productLine", "intent", "qualityBand")
 
 def _signal_option(signal: SignalType) -> SignalOptionResponse:
     base = coded(signal)
-    return SignalOptionResponse(code=base.code, label=base.label, severity=coded(severity_of(signal)))
+    return SignalOptionResponse(
+        code=base.code, label=base.label, severity=coded(severity_of(signal))
+    )
 
 
 @router.get(
