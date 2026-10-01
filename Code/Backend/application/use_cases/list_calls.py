@@ -118,6 +118,25 @@ class CallRowView:
     intents: tuple[str, ...]
 
     @property
+    def iso_week(self) -> str:
+        """The calendar week this call falls in, as `2026-W39`.
+
+        The ISO year is carried with the number rather than the number
+        alone. A corpus that spans a new year holds two weeks called 1, and
+        a spreadsheet grouping on the bare number would silently add them
+        together -- the kind of error that produces a plausible figure
+        rather than an obvious one.
+
+        Not the prototype's `w`, which counts 1 to 12 from a fixed corpus
+        start. Here the corpus and the period are both arguments, so a
+        position-in-corpus number would mean something different in two
+        exports of the same calls. This is a property of the call's date
+        and nothing else, so two exports always agree on it.
+        """
+        year, week, _ = self.occurred_on.isocalendar()
+        return f"{year}-W{week:02d}"
+
+    @property
     def haystack(self) -> str:
         """What free-text search looks at, lowercased once per row.
 

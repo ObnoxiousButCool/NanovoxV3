@@ -16,10 +16,17 @@
  *
  * ## Download is a link to the server, not a file built here
  *
- * Checkpoint **I2**: the 26-column projection is the server's. The buttons
+ * Checkpoint **I2**: the column projection is the server's. The buttons
  * hand the browser a URL with the current filters on it, so the file a
  * reader mails out is produced by the same code as the table they are
  * looking at, and a column can never appear in one and not the other.
+ *
+ * The prototype's export has 26 columns and this one has 24. The five it
+ * does not carry are listed under the download button from `omittedColumns`
+ * rather than described here, because the person who needs to know is the
+ * one about to open the file in Excel and wonder where a column went.
+ * Rendered from the response, so a column that gains a source stops being
+ * mentioned without this screen being touched.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -228,6 +235,9 @@ function CallsBody({
   downloadUrl: (refs: string[]) => string
 }) {
   const rows = data.rows
+  // Optional on the wire, because a response that carried every prototype
+  // column would send nothing here rather than an empty list.
+  const omitted = data.omittedColumns ?? []
   const onPage = rows.map((row) => row.reference)
   const allOnPageSelected = onPage.length > 0 && onPage.every((ref) => selected.has(ref))
 
@@ -287,6 +297,20 @@ function CallsBody({
               column can never appear in one and not the other. Selecting rows narrows it;
               it never adds a call the filters exclude.
           </Note>
+          {omitted.length > 0 ? (
+            <>
+              <Note suppressed>
+                The prototype&rsquo;s export has {omitted.length} columns this one does not.
+                They are left out rather than written empty: a blank cell reads as
+                &ldquo;no value for this call&rdquo;, which would not be true of any of them.
+              </Note>
+              <ul className="nv-omitted">
+                {omitted.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </>
+          ) : null}
 
           {rows.length === 0 ? (
             <Empty title="No call matches">

@@ -402,6 +402,7 @@ const CALLS = {
   considered: 120,
   omittedColumns: [
     'Handling (archetype) — not one of the sixteen schema fields (C8a).',
+    'Repeat of — the prototype reads a column from the Transcript Tracker.',
   ],
   unresolvedCount: 0,
   escalationsMissedCount: 0,
@@ -1376,6 +1377,21 @@ describe('/calls', () => {
       expect(latest).toContain('region=Bay')
       expect(latest).not.toContain('page=2')
     })
+  })
+
+  it('says which columns the export leaves out, and why, beside the download', async () => {
+    // Checkpoint I2. The prototype's export has 26 columns and this one has
+    // 23; a reader who opens the file in Excel and finds a column gone has
+    // no way to tell a deliberate omission from a bug unless the screen
+    // that produced the file says so. Rendered from the response, so a
+    // column that gains a source stops being mentioned on its own.
+    renderAt('/calls')
+
+    expect(
+      await screen.findByText(/not one of the sixteen schema fields/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/a column from the Transcript Tracker/)).toBeInTheDocument()
+    expect(screen.getByText(/2 columns this one does not/)).toBeInTheDocument()
   })
 
   it('shows a missing quality score as unrecorded, never as zero', async () => {

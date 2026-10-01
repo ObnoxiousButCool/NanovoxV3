@@ -9,9 +9,11 @@ one here and one in the table component — is a support ticket nobody can
 reproduce, because the file the user sends and the screen they describe
 come from different code.
 
-## Three of the prototype's twenty-six columns are not here
+## Five of the prototype's twenty-six columns are not here
 
-`calls.html` exports 26 columns. Three cannot be filled honestly:
+`calls.html` exports 26. Five cannot be filled honestly, and each is in
+`OMITTED_COLUMNS` so the reason travels with the API rather than living
+only in this docstring:
 
 - **Handling (archetype)** — conflict **C8a**. Not one of the sixteen
   schema fields and it has no source in the workbook. §2A.4 forbids
@@ -19,17 +21,40 @@ come from different code.
 - **Member effort** and **Complexity** — conflict **C8b**. Our composites,
   and not built. `indicators.py` already refuses to compute the
   `high_effort` family for the same reason.
+- **Repeat of** — the prototype reads the Transcript Tracker's column.
+  `repeat_contact.py` forbids this pipeline from reading it: that column is
+  answer-key material Stream B's `ground_truth` owns, and using it would
+  make our own repeat detection circular. The linkage we compute instead is
+  a property of a pair of calls over an exposure period, not of one row.
+- **Risk indicators** — eight of the ten families in `indicators.py` are
+  per-call predicates, but `repeat_contact` is derived across an employer's
+  calls and `high_effort` is not computable at all. A per-call cell would
+  therefore be an eight-of-ten list presented as the whole set, with nothing
+  in the file to say which two were never tested.
 
 They are **absent, not empty**. An empty column in a spreadsheet reads as
 "no value for this call"; a missing column reads as "we do not publish
 this", which is the true statement. `omittedColumns` on the list response
 says so in the API rather than leaving the discrepancy to be noticed.
 
-Two more are named differently on purpose: the prototype's **Caller** is
-the member's name, and this exports `callerRef` instead. A CSV leaves the
-application and gets mailed around; a member's name in it is personal data
-travelling with no control attached, and the reference identifies the call
-just as well for every use this screen supports.
+## Three carry a different value under the same heading
+
+**Week** is a calendar week, `2026-W39`, where the prototype's `w` counts 1
+to 12 from a fixed corpus start. A position-in-corpus number would mean
+something different in two exports of the same calls, because here the
+corpus and the period are both arguments; a calendar week is a property of
+the call's date alone, so two exports always agree on it. The ISO year
+travels with the number because a corpus spanning a new year holds two
+weeks called 1, and grouping on the bare number would add them together.
+
+The prototype's **Caller** and **Agent** are both names; this exports
+`Caller ID` and `Agent` as references. A CSV leaves the application and
+gets mailed around, and a name in it is personal data travelling with no
+control attached — a member's in the first case, and in the second a
+performance record about a named employee. The reference identifies the
+call just as well for every use this screen supports. The names are on the
+list response for the table to show on screen, where the data has not left
+the application.
 
 ## The BOM
 
@@ -227,16 +252,25 @@ OMITTED_COLUMNS = (
     "workbook source (conflict C8a). Absent rather than invented.",
     "Member effort — our composite, not a v9 field, and not built yet (C8b).",
     "Complexity — our composite, not a v9 field, and not built yet (C8b).",
+    "Repeat of — the prototype reads the Transcript Tracker's column, which is "
+    "answer-key data this pipeline may not read. The repeat linkage we compute "
+    "instead belongs to a pair of calls over an exposure period, not to one row.",
+    "Risk indicators — two of the ten families cannot be tested per call: repeat "
+    "contact is derived across an employer's calls, and high member effort has no "
+    "field to read. A cell here would show eight of ten and look like all ten.",
 )
 
 #: The export contract. One list, versioned with this endpoint (I2).
 CSV_COLUMNS: tuple[tuple[str, str], ...] = (
     ("Call ID", "reference"),
     ("Date", "occurred_on"),
+    ("Week", "iso_week"),
     ("Employer ID", "employer_ref"),
     ("Employer", "employer_name"),
     ("Broker", "broker_agency"),
     ("Region", "region"),
+    ("Caller type", "caller_kind"),
+    ("Caller ID", "caller_ref"),
     ("Agent", "agent_ref"),
     ("Topic", "category"),
     ("Product lines", "product_lines"),

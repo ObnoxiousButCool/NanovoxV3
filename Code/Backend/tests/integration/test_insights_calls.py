@@ -46,6 +46,11 @@ from tests.support.leak_check import assert_text_carries_no_answer_key
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
+#: Named so the line terminator and the byte-order mark are legible in the
+#: assertions rather than being escapes a reader has to decode.
+CRLF = "\r\n"
+BOM = "﻿"
+
 
 async def seed_with_turns(
     session_factory: async_sessionmaker[AsyncSession],
@@ -648,7 +653,7 @@ async def test_the_csv_opens_in_excel_and_covers_every_match(
     assert "\r\n" in text
     lines = text.strip().split("\r\n")
     assert len(lines) == 6, "header plus every matching call, not one page"
-    assert lines[0].lstrip("﻿").startswith("Call ID,Date,Employer ID")
+    assert lines[0].lstrip("﻿").startswith("Call ID,Date,Week,Employer ID")
 
 
 @pytest.mark.asyncio
@@ -672,10 +677,63 @@ async def test_the_export_carries_no_columns_it_cannot_fill(
     # (sec)", which is a column that *is* published, so the test would fail
     # for the wrong reason — or, with the assertion inverted, pass for one.
     header = csv_text.split("\r\n")[0].lstrip("﻿").split(",")
-    for absent in ("Handling", "Member effort", "Complexity"):
+    for absent in (
+        "Handling",
+        "Member effort",
+        "Complexity",
+        "Repeat of",
+        "Risk indicators",
+    ):
         assert absent not in header
-    assert len(body["omittedColumns"]) == 3
+    # One note per absent column, so the file and the explanation cannot
+    # drift apart: a column dropped without a reason fails here.
+    assert len(body["omittedColumns"]) == 5
     assert any("C8a" in note for note in body["omittedColumns"])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("day", "expected"),
+    [
+        # A Sunday, which ISO counts as the *last* day of week 38.
+        # strftime's Monday-start %W calls it 37.
+        (20, "2026-W38"),
+        # The Monday after, where ISO week 39 begins. Both strftime
+        # conventions call this one 38 -- %U because its weeks start on the
+        # Sunday just gone, %W because it counts from 1 January rather than
+        # from the first week with four days in the year. So this is the
+        # case that fails on any derivation that is not the ISO one, and it
+        # fails by putting the call in the week before.
+        (21, "2026-W39"),
+    ],
+)
+async def test_the_export_dates_each_call_to_a_calendar_week(
+    client: TestClient,
+    session_factory: async_sessionmaker[AsyncSession],
+    day: int,
+    expected: str,
+) -> None:
+    """Not the prototype's position in a fixed twelve-week corpus.
+
+    Here the corpus and the period are both arguments, so a 1-to-12 index
+    would mean something different in two exports of the same calls. A
+    calendar week is a property of the call's date alone. The ISO year is
+    carried with it because a corpus spanning a new year holds two weeks
+    called 1, and a spreadsheet grouping on the bare number would add them
+    together -- an error that produces a plausible figure, not an obvious one.
+    """
+    await seed(session_factory, calls_per_employer={"EMP-01": 1}, day=day)
+
+    lines = (
+        client.get("/api/v1/insights/calls.csv", params={"asOf": AS_OF})
+        .content.decode("utf-8")
+        .split(CRLF)
+    )
+    header = lines[0].lstrip(BOM).split(",")
+    row = lines[1].split(",")
+
+    assert header[2] == "Week", "the week sits beside the date it is derived from"
+    assert row[2] == expected
 
 
 @pytest.mark.asyncio
@@ -684,10 +742,15 @@ async def test_the_export_never_carries_a_member_name(
 ) -> None:
     """A CSV leaves the application and gets mailed around.
 
-    The prototype exports the caller's name. This exports the reference,
-    which identifies the call just as well for every use this screen
-    supports and does not send personal data travelling with no control
-    attached.
+    The prototype exports the caller's name, and the agent's. This exports
+    a reference for each: they identify the call just as well for every use
+    this screen supports and do not send personal data travelling with no
+    control attached.
+
+    Compared as whole fields rather than as substrings. "Caller" is a
+    substring of both "Caller ID" and "Caller type", which are published, so
+    a substring check would fail for the wrong reason -- or, read the other
+    way round, pass while the name was being exported beside them.
     """
     await seed(session_factory, calls_per_employer={"EMP-01": 1})
 
@@ -695,9 +758,14 @@ async def test_the_export_never_carries_a_member_name(
         client.get("/api/v1/insights/calls.csv", params={"asOf": AS_OF})
         .content.decode("utf-8")
         .split("\r\n")[0]
+        .lstrip("﻿")
+        .split(",")
     )
 
-    assert "Caller" not in header
+    assert "Caller" not in header, "the member's name is in a file that gets mailed around"
+    assert "Agent name" not in header
+    assert "Caller ID" in header, "the reference stands in for the name, so it must be there"
+    assert "Caller type" in header
 
 
 @pytest.mark.asyncio
