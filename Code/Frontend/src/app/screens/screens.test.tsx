@@ -1363,6 +1363,28 @@ describe('/hierarchy', () => {
 })
 
 describe('/calls', () => {
+  it('drops a stale page number when the shared filter bar changes', async () => {
+    // The failure this guards: narrowing to a region while deep in the
+    // pager leaves `page` pointing past the new, smaller result's end, and
+    // the reader sees "No call matches" for a filter that actually matched
+    // plenty — indistinguishable from a filter that really matched nothing.
+    const user = userEvent.setup()
+    renderAt('/calls?page=2')
+
+    await screen.findByText('C-0001')
+
+    await user.selectOptions(screen.getByLabelText('Region'), 'Bay Area')
+
+    await waitFor(() => {
+      const calls = (globalThis.fetch as unknown as { mock: { calls: string[][] } }).mock.calls
+        .map((call) => String(call[0]))
+        .filter((url) => url.includes('/insights/calls?'))
+      const latest = calls.at(-1) ?? ''
+      expect(latest).toContain('region=Bay')
+      expect(latest).not.toContain('page=2')
+    })
+  })
+
   it('shows a missing quality score as unrecorded, never as zero', async () => {
     renderAt('/calls')
 

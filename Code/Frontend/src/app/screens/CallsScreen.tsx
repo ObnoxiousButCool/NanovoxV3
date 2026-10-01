@@ -22,7 +22,7 @@
  * looking at, and a column can never appear in one and not the other.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import { useCalls, useFilterOptions } from '@/shared/api/insights'
@@ -91,6 +91,29 @@ export function CallsScreen() {
   useEffect(() => {
     setSelected(new Set())
   }, [filters.apiSearch, q])
+
+  // `write` below already drops `page` when one of this screen's own
+  // controls changes. The shared filter bar (region, broker, employer,
+  // period, Advanced) writes through `useFilters` instead, which knows
+  // nothing about this screen's `page` — so narrowing the filters while
+  // deep in a result could strand a reader on a page past the new, smaller
+  // end, rendering as "No call matches" (write's own comment, for the
+  // controls it covers). The `useRef` guard skips the very first render, so
+  // a shared link to page 3 of an already-filtered view still opens there.
+  const lastFilters = useRef(filters.apiSearch)
+  useEffect(() => {
+    if (lastFilters.current === filters.apiSearch) return
+    lastFilters.current = filters.apiSearch
+    setParams(
+      (previous) => {
+        if (!previous.has('page')) return previous
+        const next = new URLSearchParams(previous)
+        next.delete('page')
+        return next
+      },
+      { replace: true },
+    )
+  }, [filters.apiSearch, setParams])
 
   const write = (key: string, value: string | null) => {
     setParams(

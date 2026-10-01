@@ -111,21 +111,30 @@ async def test_labelled_enums_carry_their_wording(
 
 
 @pytest.mark.asyncio
-async def test_filters_with_no_display_wording_are_named_not_hidden(
+async def test_category_has_no_separate_wording_but_is_still_offered(
     client: TestClient, session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
-    """The gap is stated rather than filled with invented text.
+    """The one real gap is stated rather than filled with invented text.
 
-    Nothing defines how `PARTIALLY RESOLVED` should read on a screen. Naming
-    the gap keeps it one decision instead of five screens each solving it
-    their own way.
+    `category`'s values are already the words a reader wants — a label
+    identical to its own code is not a label — so it travels as a plain
+    string and stays named in `unlabelledFilters`. `outcome`, `productLine`,
+    `intent` and `qualityBand` used to be named here too; they moved out
+    once `labels.py` gained real wording distinct from their codes, and a
+    client can now build a picker for them like any other filter.
     """
     await seed(session_factory, days=[20])
 
     body = client.get(FILTERS, params={"asOf": AS_OF}).json()
 
-    assert "outcome" in body["unlabelledFilters"]
-    assert "qualityBand" in body["unlabelledFilters"]
+    assert body["unlabelledFilters"] == ["category"]
+    assert "Coverage & Benefits" in body["categories"]
+    for key in ("outcomes", "productLines", "intents", "qualityBands"):
+        assert len(body[key]) > 0
+        for entry in body[key]:
+            # The point of moving these out: the label actually differs from
+            # the code now, rather than restating it.
+            assert entry["label"] != entry["code"]
 
 
 @pytest.mark.asyncio

@@ -251,14 +251,38 @@
 }
 
 .nv-risk-accounts .nv-fires {
-  gap: 3px 4px;
+  gap: 5px;
   margin-top: 3px;
 }
 
+/* The prototype's `.fire`: a rounded rectangle (4px), not the full pill
+   (999px) the shared default draws — and sized to its own type scale,
+   not the table's smaller indicator-count text. */
 .nv-risk-accounts .nv-fire {
-  padding: 2px 6px;
-  font-size: 11px;
-  line-height: 1.2;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font: 500 12px/1 var(--body);
+}
+
+/* An indicator with a playbook link is wrapped in `.nv-act`, whose own
+   convention is a coloured line under plain text — right for a bare
+   number, redundant under a chip that already has its own border. The
+   prototype marks these with a red border and tint on the chip itself
+   (`.fire.crit`), so that replaces the underline here instead of stacking
+   with it. */
+.nv-risk-accounts .nv-act {
+  border-bottom-color: transparent;
+}
+
+.nv-risk-accounts .nv-act .nv-fire {
+  color: var(--critical);
+  border-color: color-mix(in srgb, var(--critical) 45%, var(--rule));
+  background: color-mix(in srgb, var(--critical) 8%, var(--surface));
+}
+
+.nv-risk-accounts .nv-act:hover .nv-fire,
+.nv-risk-accounts .nv-act:focus-visible .nv-fire {
+  border-color: var(--critical);
 }
 
 .nv-risk-accounts .nv-renewsoon,

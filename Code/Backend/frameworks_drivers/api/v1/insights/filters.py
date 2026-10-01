@@ -47,20 +47,18 @@ ignores `request.filters`. Narrowing the options by the current selection is
 a one-way door: filter to one broker, and a bar built from the response
 offers one broker and the reader cannot widen again.
 
-## Enum filters, and the ones with no display wording
+## Enum filters, and the one with no display wording
 
 The enum-backed filters are already in the generated client, so this
 endpoint does not repeat their values — only their labels, where
-`labels.py` defines any.
+`labels.py` defines any: `outcome`, `product line`, `intent` and
+`quality band` all have real wording there now.
 
-The rest — outcome, category, product line, intent, quality band — have
-**no display wording defined anywhere**: not in `labels.py`, not in the
-workbook. `labels.py` records why for categories ("already words", straight
-from the sheet), but `RESOLVED` and `PARTIALLY RESOLVED` are codes a screen
-will have to render somehow, and nobody has said how. That is a real gap
-rather than an oversight here, so this endpoint names them in
-`unlabelledFilters` instead of inventing wording that would then be hard to
-dislodge.
+`category` is the one with **no display wording defined anywhere**: not in
+`labels.py`, not in the workbook. `labels.py` records why ("already words",
+straight from the sheet, and a label identical to its own code is not a
+label) — `category` travels as a plain string, and this endpoint names it
+in `unlabelledFilters` rather than inventing a second vocabulary for it.
 """
 
 from __future__ import annotations
@@ -69,8 +67,13 @@ from fastapi import APIRouter, status
 from pydantic import Field
 
 from application.use_cases.read_insights import FilterOptions
+from domain.value_objects.category import Category
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
+from domain.value_objects.intent_type import IntentType
+from domain.value_objects.outcome import Outcome
+from domain.value_objects.product_line import ProductLine
+from domain.value_objects.quality_band import QualityBand
 from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
 from domain.value_objects.signal_severity import SignalSeverity
@@ -135,6 +138,13 @@ class FilterOptionsResponse(CamelModel):
     touchpoints: list[str] = Field(
         description="Observed on calls, not reference data. Grows with the corpus."
     )
+    categories: list[str] = Field(
+        description=(
+            "The Call Tag Schema's own wording, like `touchpoints` — not mapped in "
+            "`labels.py` because the workbook's values are already the words a reader "
+            "wants, and a label identical to its own code is not a label."
+        )
+    )
 
     signals: list[SignalOptionResponse]
     signal_severities: list[CodedValue]
@@ -142,6 +152,10 @@ class FilterOptionsResponse(CamelModel):
     control_exception_types: list[CodedValue]
     rule_layers: list[CodedValue]
     rule_confidences: list[CodedValue]
+    product_lines: list[CodedValue]
+    outcomes: list[CodedValue]
+    intents: list[CodedValue]
+    quality_bands: list[CodedValue]
 
     corpus_period: PeriodResponse | None = Field(
         default=None,
@@ -163,7 +177,13 @@ class FilterOptionsResponse(CamelModel):
 #: Filters the client already has values for, but which nobody has defined
 #: display wording for. Listed so the absence is a stated finding rather than
 #: something each screen quietly solves its own way.
-UNLABELLED = ("outcome", "category", "productLine", "intent", "qualityBand")
+#:
+#: `outcome`, `productLine`, `intent` and `qualityBand` moved out once
+#: `labels.py` gained real wording for them — `category` stays: the
+#: workbook's values are already the words a reader wants, and (as
+#: `labels.py` puts it for `Preventable`) a label identical to its own code
+#: is not a label.
+UNLABELLED = ("category",)
 
 
 def _signal_option(signal: SignalType) -> SignalOptionResponse:
@@ -210,12 +230,17 @@ async def read_filter_options(
             for agent in options.agents
         ],
         touchpoints=list(options.touchpoints),
+        categories=[category.value for category in Category],
         signals=[_signal_option(signal) for signal in SignalType],
         signal_severities=[coded(severity) for severity in SignalSeverity],
         complaint_targets=[coded(target) for target in ComplaintAttribution],
         control_exception_types=[coded(kind) for kind in ControlExceptionType],
         rule_layers=[coded(layer) for layer in RuleLayer],
         rule_confidences=[coded(confidence) for confidence in RuleConfidence],
+        product_lines=[coded(line) for line in ProductLine],
+        outcomes=[coded(outcome) for outcome in Outcome],
+        intents=[coded(intent) for intent in IntentType],
+        quality_bands=[coded(band) for band in QualityBand],
         corpus_period=(
             PeriodResponse(**{"from": options.available_from, "to": options.available_until})
             if options.available_from is not None or options.available_until is not None

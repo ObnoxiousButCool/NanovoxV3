@@ -65,6 +65,7 @@ from domain.value_objects.outcome import Outcome
 from domain.value_objects.polarity import Polarity
 from domain.value_objects.process_gap import ProcessGapStatus, RaisedBy
 from domain.value_objects.product_line import ProductLine
+from domain.value_objects.quality_band import QualityBand
 from domain.value_objects.root_cause_owner import RootCauseOwner
 from domain.value_objects.rule_confidence import RuleConfidence
 from domain.value_objects.rule_layer import RuleLayer
@@ -228,6 +229,13 @@ LABELS: dict[Enum, str] = {
     Tier.GOOD: "Good",
     Tier.AVERAGE: "Average",
     Tier.POOR: "Poor",
+    # --- The dashboard's own quality-band filter (Call Quality Framework
+    # sheet, boundaries in `dashboard.yaml`). Same three names as `Tier`,
+    # same words for them — a different config source, not a different
+    # idea of what "good" means.
+    QualityBand.GOOD: "Good",
+    QualityBand.AVERAGE: "Average",
+    QualityBand.POOR: "Poor",
     ScoreStatus.CONFIRMED: "Confirmed",
     ScoreStatus.PROVISIONAL: "Provisional — not final",
     Polarity.POSITIVE: "Did well",
@@ -317,6 +325,7 @@ LABELLED_ENUMS: tuple[type[Enum], ...] = (
     Polarity,
     ProductLine,
     RootCauseOwner,
+    QualityBand,
 )
 
 
