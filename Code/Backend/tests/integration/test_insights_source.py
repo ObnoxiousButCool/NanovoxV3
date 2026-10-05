@@ -10,6 +10,7 @@ takes a denominator with it.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from unittest import mock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -528,3 +529,78 @@ class TestCaveats:
         caveats = (await SqlInsightsSource(session_factory).load(CorpusQuery())).caveats()
 
         assert caveats == ()
+
+
+class TestReferenceCaching:
+    """Employers, brokers, agents, callers and rules are re-queried on every
+    `load()` were it not for the cache — eight endpoints, each repeating five
+    queries nothing in the application ever changes. One `SqlInsightsSource`
+    serves every request for the life of the process (see `get_container`),
+    so the cache lives on the instance, not per call.
+    """
+
+    async def test_reference_data_is_queried_once_across_two_loads(
+        self, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await seed(session_factory)
+        source = SqlInsightsSource(session_factory)
+        with (
+            mock.patch.object(
+                source, "_reference_data", wraps=source._reference_data
+            ) as reference_data,
+            mock.patch.object(source, "_agents", wraps=source._agents) as agents,
+            mock.patch.object(source, "_callers", wraps=source._callers) as callers,
+            mock.patch.object(source, "_rules", wraps=source._rules) as rules,
+        ):
+            await source.load(CorpusQuery())
+            await source.load(CorpusQuery())
+
+        assert reference_data.call_count == 1
+        assert agents.call_count == 1
+        assert callers.call_count == 1
+        assert rules.call_count == 1
+
+    async def test_calls_and_extent_are_still_queried_on_every_load(
+        self, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        """The cache is for reference data only — a repeat visit with a
+        different period filter must still see the right calls."""
+        await seed(session_factory)
+        source = SqlInsightsSource(session_factory)
+        with (
+            mock.patch.object(source, "_calls", wraps=source._calls) as calls,
+            mock.patch.object(source, "_extent", wraps=source._extent) as extent,
+        ):
+            await source.load(CorpusQuery())
+            await source.load(CorpusQuery())
+
+        assert calls.call_count == 2
+        assert extent.call_count == 2
+
+    async def test_a_second_instance_gets_its_own_cache(
+        self, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        """The cache is not a module-level global — a second source (a
+        second test, a second process) starts cold."""
+        await seed(session_factory)
+
+        first = (await SqlInsightsSource(session_factory).load(CorpusQuery())).employers
+        second = (await SqlInsightsSource(session_factory).load(CorpusQuery())).employers
+
+        assert first == second
+        assert len(first) == 1
+
+    async def test_two_loads_on_one_instance_return_the_same_reference_data(
+        self, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        await seed(session_factory)
+        source = SqlInsightsSource(session_factory)
+
+        first = await source.load(CorpusQuery())
+        second = await source.load(CorpusQuery())
+
+        assert first.employers == second.employers
+        assert first.brokers == second.brokers
+        assert first.agents == second.agents
+        assert first.callers == second.callers
+        assert first.rules == second.rules

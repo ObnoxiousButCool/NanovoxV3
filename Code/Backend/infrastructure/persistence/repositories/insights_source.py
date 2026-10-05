@@ -38,6 +38,8 @@ for why each is fatal to a figure rather than merely untidy.
 
 from __future__ import annotations
 
+import asyncio
+from dataclasses import dataclass
 from datetime import date, datetime, time, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, TypeVar
@@ -100,32 +102,76 @@ _EnumT = TypeVar("_EnumT", bound=Enum)
 #: nobody made. Such a call puts the field in this list instead.
 
 
+@dataclass(frozen=True)
+class _ReferenceBundle:
+    """Employers, brokers, agents, callers and rules — reference data no
+    application code path ever writes to. `IngestTranscripts` resolves a
+    call against the agent, member or employer contact already on file and
+    marks the call unresolved rather than inventing a new one; nothing
+    inserts a row into these five tables outside a migration or a seed.
+    Safe to load once per process and never again.
+    """
+
+    employers: tuple[EmployerFacts, ...]
+    brokers: tuple[BrokerFacts, ...]
+    agents: tuple[AgentFacts, ...]
+    callers: tuple[CallerFacts, ...]
+    rules: tuple[RuleFacts, ...]
+
+
 class SqlInsightsSource(InsightsSource):
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
         self._session_factory = session_factory
+        # `load()` ran six queries for every one of the eight insight
+        # endpoints, on every request, including these five that cannot
+        # change between them (see `_ReferenceBundle`). Cached for the life
+        # of this instance — one per process, built once at startup — rather
+        # than per request. The lock exists only so that several requests
+        # landing before the first one finishes don't each pay for their own
+        # redundant fill; the cached value itself needs no invalidation.
+        self._reference: _ReferenceBundle | None = None
+        self._reference_lock = asyncio.Lock()
 
     async def load(self, query: CorpusQuery) -> CorpusSlice:
         async with self._session_factory() as session:
-            employers, brokers = await self._reference_data(session)
-            agents = await self._agents(session)
-            callers = await self._callers(session)
-            rules = await self._rules(session)
+            reference = await self._cached_reference(session)
             calls, undated, unanalysed, unavailable = await self._calls(session, query)
             available_from, available_until = await self._extent(session, query)
 
         return CorpusSlice(
             calls=calls,
-            employers=employers,
-            brokers=brokers,
-            agents=agents,
-            callers=callers,
-            rules=rules,
+            employers=reference.employers,
+            brokers=reference.brokers,
+            agents=reference.agents,
+            callers=reference.callers,
+            rules=reference.rules,
             undated=undated,
             unanalysed=unanalysed,
             available_from=available_from,
             available_until=available_until,
             unavailable_fields=unavailable,
         )
+
+    async def _cached_reference(self, session: AsyncSession) -> _ReferenceBundle:
+        if self._reference is not None:
+            return self._reference
+        async with self._reference_lock:
+            # Re-checked under the lock: a second request may have been
+            # waiting on the same fill and should reuse it rather than
+            # querying again.
+            if self._reference is None:
+                employers, brokers = await self._reference_data(session)
+                agents = await self._agents(session)
+                callers = await self._callers(session)
+                rules = await self._rules(session)
+                self._reference = _ReferenceBundle(
+                    employers=employers,
+                    brokers=brokers,
+                    agents=agents,
+                    callers=callers,
+                    rules=rules,
+                )
+        return self._reference
 
     async def _extent(
         self, session: AsyncSession, query: CorpusQuery
