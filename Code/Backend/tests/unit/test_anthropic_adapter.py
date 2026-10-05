@@ -51,7 +51,16 @@ def provider_with(handler: httpx.MockTransport) -> AnthropicProvider:
         max_retries=0,
         max_output_tokens=512,
         audit=LlmAuditLog(),
-        client=AsyncAnthropic(api_key="test", http_client=httpx.AsyncClient(transport=handler)),
+        client=AsyncAnthropic(
+            api_key="test",
+            http_client=httpx.AsyncClient(transport=handler),
+            # As the provider builds it. Without this the SDK runs its own
+            # retry loop on top of the base class's -- which is what the
+            # provider's own comment says must not happen -- and a 429
+            # carrying `retry-after: 12` slept twice for 24 seconds in a
+            # unit test, against a configuration production never uses.
+            max_retries=0,
+        ),
     )
 
 
