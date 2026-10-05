@@ -654,9 +654,17 @@ function DidItWorkPanel({
       title={panel.question}
       chip={<EpistemicChip kind="inference" />}
     >
+      {/* The reason this panel is empty is the panel's whole content, so it
+          goes in the empty state rather than in a note beside it.
+          "No outcome recorded yet" said something else and something
+          untrue: that nobody had got round to recording one. The question
+          cannot be answered from this corpus at all — insight 22 needs a
+          window before a change and a comparable one after it, and a single
+          batch has no after. `why` and `unlockedBy` have been on the wire
+          all along; only the sentence that showed them was lost. */}
       {measured.length === 0 ? (
-        <Empty title="No outcome recorded yet">
-          An action records one when it reaches a closed lane.
+        <Empty title="Not answerable from this corpus">
+          {panel.why} Unlocked by {panel.unlockedBy}.
         </Empty>
       ) : (
         <ul className="nv-movements">
