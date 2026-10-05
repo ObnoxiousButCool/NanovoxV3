@@ -47,7 +47,12 @@ from domain.aggregation.agent_events import (
     escalations_refused,
 )
 from domain.aggregation.broker_drift import Drift, drift
-from domain.aggregation.broker_friction import BrokerFriction, ranked_book_friction
+from domain.aggregation.broker_friction import (
+    BrokerFriction,
+    NamingCoverage,
+    naming_coverage,
+    ranked_book_friction,
+)
 from domain.aggregation.call_tags import (
     AgentFacts,
     BrokerFacts,
@@ -718,6 +723,10 @@ class HierarchyView:
     #: rows on their own account pages; what the floor stops is a
     #: three-group agency topping a league table on one call.
     ranked_brokers: tuple[BrokerFriction, ...]
+    #: What every count above rests on. A broker only appears when a caller
+    #: said the name, so the screen states how often that happened rather
+    #: than letting a column of noughts speak for the book.
+    broker_naming: NamingCoverage
     window: Window
 
 
@@ -793,6 +802,7 @@ class GetHierarchy:
             ),
             complaints=complaint_ownership(calls, window),
             ranked_brokers=ranked_book_friction(self._config, scope.corpus.brokers, calls, window),
+            broker_naming=naming_coverage(calls, window),
             window=window,
         )
 

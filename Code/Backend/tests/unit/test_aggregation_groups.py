@@ -12,7 +12,11 @@ from __future__ import annotations
 import pytest
 
 from domain.aggregation.agent_events import agent_events, agent_quality, control_exception_rates
-from domain.aggregation.broker_friction import broker_friction, ranked_book_friction
+from domain.aggregation.broker_friction import (
+    broker_friction,
+    naming_coverage,
+    ranked_book_friction,
+)
 from domain.aggregation.contact_rate import peer_comparison
 from domain.aggregation.demand import (
     complaint_attributed_to_choice,
@@ -48,6 +52,7 @@ from domain.aggregation.touchpoints import (
 )
 from domain.aggregation.withheld import WITHHELD_PANELS
 from domain.dashboard_config import DashboardConfig
+from domain.value_objects.broker_sentiment import BrokerSentiment
 from domain.value_objects.category import Category
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.control_exception_type import ControlExceptionType
@@ -715,3 +720,38 @@ def test_a_broker_row_splits_its_mentions_by_touchpoint(config: DashboardConfig)
     row = broker_friction(config, broker("BRK-01"), traffic, WINDOW)
 
     assert row.by_touchpoint == (("enrolment_meeting", 2), ("broker_material", 1))
+
+
+def test_broker_naming_coverage_counts_what_the_table_rests_on() -> None:
+    """A broker row needs a caller to have said the name.
+
+    In this corpus almost nobody did -- one call in six hundred -- while
+    twenty-one raised a broker-conduct concern without naming anyone, so
+    twenty-nine of thirty agencies showed nought and read as clean. The
+    screen states the coverage instead of letting the column speak.
+    """
+    traffic = (
+        call("C-0001", broker_named="BRK-01", broker_sentiment=BrokerSentiment.ADVERSE),
+        call("C-0002", signals=frozenset({SignalType.BROKER_CONDUCT_ADVERSE})),
+        call("C-0003"),
+    )
+
+    coverage = naming_coverage(traffic, WINDOW)
+
+    assert (coverage.named, coverage.calls, coverage.unattributed) == (1, 3, 1)
+    assert not coverage.complete
+    assert "1 of the 3 calls" in coverage.note
+    assert "A further 1 call(s)" in coverage.note
+
+
+def test_a_corpus_that_names_every_broker_carries_no_caveat() -> None:
+    """A caveat printed every time stops being read. Nothing missing, nothing said."""
+    traffic = (
+        call("C-0001", broker_named="BRK-01", broker_sentiment=BrokerSentiment.ADVERSE),
+        call("C-0002", broker_named="BRK-02", broker_sentiment=BrokerSentiment.POSITIVE),
+    )
+
+    coverage = naming_coverage(traffic, WINDOW)
+
+    assert coverage.complete
+    assert coverage.note == ""

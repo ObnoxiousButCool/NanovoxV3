@@ -342,6 +342,12 @@ const HIERARCHY = {
       ratePerHundredLives: null,
     },
   ],
+  brokerNaming: {
+    named: 1,
+    calls: 3,
+    unattributed: 1,
+    note: 'A caller named a broker on 1 of the 3 calls in scope.',
+  },
   tree: [
     {
       region: 'Bay Area',
@@ -1263,6 +1269,22 @@ describe('/hierarchy', () => {
     expect(cell?.getAttribute('title')).toMatch(/below: 1 adverse mention/i)
     expect(cell?.textContent).toContain('1 employer')
     expect(screen.queryByText('Fires')).not.toBeInTheDocument()
+  })
+
+  it('says how thin the naming is, where a reader cannot miss it', async () => {
+    // Every count in this table needs a caller to have said the name, and
+    // in this corpus almost none did. Left to itself the column of noughts
+    // reads as a clean book. The sentence is the server's, and it sits
+    // above the table rather than inside the panel's (i), which a reader
+    // who has already drawn the wrong conclusion will not open.
+    renderAt('/hierarchy')
+
+    await waitFor(() => {
+      expect(screen.getByText('Marsh & Vale')).toBeInTheDocument()
+    })
+    expect(
+      screen.getByText('A caller named a broker on 1 of the 3 calls in scope.'),
+    ).toBeInTheDocument()
   })
 
   it('shows no per-broker rate at all', async () => {
