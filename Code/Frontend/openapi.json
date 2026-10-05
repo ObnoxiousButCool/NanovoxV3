@@ -2799,7 +2799,7 @@
             "type": "array"
           },
           "categories": {
-            "description": "The Call Tag Schema's own wording, like `touchpoints` \u2014 not mapped in `labels.py` because the workbook's values are already the words a reader wants, and a label identical to its own code is not a label.",
+            "description": "The Call Tag Schema's own wording \u2014 bare, not a pair, because the workbook's values are already the words a reader wants and a label identical to its own code is not a label. Unlike `touchpoints`, which are slugs and are mapped in `labels.py`.",
             "items": {
               "type": "string"
             },
@@ -2904,9 +2904,9 @@
             "type": "array"
           },
           "touchpoints": {
-            "description": "Observed on calls, not reference data. Grows with the corpus.",
+            "description": "Observed on calls, not reference data. Grows with the corpus. A pair like every other coded vocabulary here: the dropdown offered `acupuncture_chiropractic_usage` as its own label, where the calls table spelt the same touchpoint out.",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/CodedValue"
             },
             "title": "Touchpoints",
             "type": "array"
@@ -4771,8 +4771,7 @@
             "type": "string"
           },
           "touchpoint": {
-            "title": "Touchpoint",
-            "type": "string"
+            "$ref": "#/components/schemas/CodedValue"
           }
         },
         "required": [
@@ -5575,8 +5574,7 @@
             "type": "integer"
           },
           "touchpoint": {
-            "title": "Touchpoint",
-            "type": "string"
+            "$ref": "#/components/schemas/CodedValue"
           },
           "withoutComplaint": {
             "description": "Calls here with no complaint tagged. Not the same as a complaint with no attribution, which the schema does not allow.",

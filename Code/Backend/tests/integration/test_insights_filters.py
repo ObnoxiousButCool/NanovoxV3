@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from tests.integration.test_insights_calls import seed_a_tagged_call
 from tests.integration.test_insights_period_filter import AS_OF, seed
 
 if TYPE_CHECKING:
@@ -159,3 +160,25 @@ async def test_an_employer_option_carries_its_broker_for_a_dependent_filter(
     body = client.get(FILTERS, params={"asOf": AS_OF}).json()
 
     assert body["employers"][0]["brokerRef"]
+
+
+@pytest.mark.asyncio
+async def test_a_touchpoint_is_offered_in_words_and_filtered_by_reference(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """The dropdown offered `acupuncture_chiropractic_usage` as its own label.
+
+    A touchpoint is observed on calls rather than drawn from a sheet, so it
+    has no enum and was published bare — the one coded vocabulary here that
+    was not a pair, while the calls table beside the filter bar spelt the
+    same value out. The code still travels in the address: it is what this
+    endpoint's `touchpoint` parameter takes.
+    """
+    await seed_a_tagged_call(session_factory, reference="C-9130", touchpoint="denial_letter_eob")
+
+    body = client.get(FILTERS, params={"asOf": AS_OF}).json()
+
+    assert body["touchpoints"] == [{"code": "denial_letter_eob", "label": "Denial letter / EOB"}]
+    # Categories stay bare: the workbook's values are already the words a
+    # reader wants, and a label identical to its own code is not a label.
+    assert all(isinstance(category, str) for category in body["categories"])

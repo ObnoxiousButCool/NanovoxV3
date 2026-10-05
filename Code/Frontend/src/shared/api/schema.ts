@@ -1753,7 +1753,7 @@ export interface components {
             brokers: components["schemas"]["BrokerOptionResponse"][];
             /**
              * Categories
-             * @description The Call Tag Schema's own wording, like `touchpoints` — not mapped in `labels.py` because the workbook's values are already the words a reader wants, and a label identical to its own code is not a label.
+             * @description The Call Tag Schema's own wording — bare, not a pair, because the workbook's values are already the words a reader wants and a label identical to its own code is not a label. Unlike `touchpoints`, which are slugs and are mapped in `labels.py`.
              */
             categories: string[];
             /** Complainttargets */
@@ -1790,9 +1790,9 @@ export interface components {
             signals: components["schemas"]["SignalOptionResponse"][];
             /**
              * Touchpoints
-             * @description Observed on calls, not reference data. Grows with the corpus.
+             * @description Observed on calls, not reference data. Grows with the corpus. A pair like every other coded vocabulary here: the dropdown offered `acupuncture_chiropractic_usage` as its own label, where the calls table spelt the same touchpoint out.
              */
-            touchpoints: string[];
+            touchpoints: components["schemas"]["CodedValue"][];
             /**
              * Unlabelledfilters
              * @description Filters whose values have no display wording anywhere — not here, not in the workbook. A client must render the code. Named rather than silently omitted, so the gap is visible instead of being filled by invented text.
@@ -2609,8 +2609,7 @@ export interface components {
             minutes: number;
             /** Proposedchange */
             proposedChange: string;
-            /** Touchpoint */
-            touchpoint: string;
+            touchpoint: components["schemas"]["CodedValue"];
         };
         /** ProviderResponse */
         ProviderResponse: {
@@ -2984,8 +2983,7 @@ export interface components {
             callIds: string[];
             /** Calls */
             calls: number;
-            /** Touchpoint */
-            touchpoint: string;
+            touchpoint: components["schemas"]["CodedValue"];
             /**
              * Withoutcomplaint
              * @description Calls here with no complaint tagged. Not the same as a complaint with no attribution, which the schema does not allow.

@@ -296,6 +296,20 @@ def touchpoint_label(reference: str) -> str:
     return reference.replace("_", " ").capitalize()
 
 
+def coded_touchpoint(reference: str) -> CodedValue:
+    """A touchpoint as the pair every other coded vocabulary travels as.
+
+    A touchpoint is observed on calls rather than drawn from a sheet, so it
+    has no enum and `coded` cannot take it -- which is how it ended up on
+    the wire as a bare slug. The filter list offered
+    `acupuncture_chiropractic_usage` to a reader as its own label, and the
+    demand rows carried the reference under a heading the calls table spells
+    out. The code is still what the filter parameter takes; the label is
+    what a person reads, and they are never the same field.
+    """
+    return CodedValue(code=reference, label=touchpoint_label(reference))
+
+
 #: The enums this module is responsible for. The completeness test walks
 #: these, so adding one here without its members fails loudly rather than
 #: shipping blank labels to a screen.

@@ -34,7 +34,7 @@ from pydantic import Field
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetDemandDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
-from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded, coded_touchpoint
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -58,7 +58,7 @@ class AttributionCountResponse(CamelModel):
 
 
 class TouchpointRowResponse(CamelModel):
-    touchpoint: str
+    touchpoint: CodedValue
     calls: int
     call_ids: list[str]
     attribution: list[AttributionCountResponse] = Field(
@@ -73,7 +73,7 @@ class TouchpointRowResponse(CamelModel):
 
 
 class PromiseGapResponse(CamelModel):
-    touchpoint: str
+    touchpoint: CodedValue
     proposed_change: str
     calls: int
     call_ids: list[str]
@@ -135,7 +135,7 @@ async def read_demand(
         complaints_about_us=FigureResponse.of(view.complaints_about_us),
         touchpoints=[
             TouchpointRowResponse(
-                touchpoint=row.touchpoint,
+                touchpoint=coded_touchpoint(row.touchpoint),
                 calls=row.calls,
                 call_ids=list(row.call_ids),
                 attribution=[
@@ -149,7 +149,7 @@ async def read_demand(
         unattributed=list(view.unattributed),
         promise_gaps=[
             PromiseGapResponse(
-                touchpoint=gap.touchpoint,
+                touchpoint=coded_touchpoint(gap.touchpoint),
                 proposed_change=gap.proposed_change,
                 calls=gap.calls,
                 call_ids=list(gap.call_ids),

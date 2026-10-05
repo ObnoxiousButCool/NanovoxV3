@@ -22,7 +22,7 @@ const OPTIONS = {
     { ref: 'EMP-01', name: 'Northwind Traders', region: 'West', brokerRef: 'BRK-01' },
   ],
   agents: [{ ref: 'AG-01', name: 'Dana Vale', band: 'Senior' }],
-  touchpoints: ['enrolment_meeting'],
+  touchpoints: [{ code: 'enrolment_meeting', label: 'Enrolment meeting' }],
   categories: ['Coverage & Benefits'],
   signals: [{ code: 'billing_defect', label: 'Billing defect' }],
   signalSeverities: [],
@@ -198,6 +198,30 @@ describe('FilterBar', () => {
     expect(address).toContain('outcome=RESOLVED')
     expect(address).toContain('intent=market_test')
     expect(address).toContain('qualityBand=GOOD')
+  })
+
+  it('offers a touchpoint in words, and still filters on the reference', async () => {
+    // The list published bare slugs and the dropdown used each as its own
+    // label, so a reader picked from `acupuncture_chiropractic_usage` while
+    // the calls table beside it said "Acupuncture chiropractic usage". The
+    // code is still what travels in the address: it is what the endpoint
+    // takes, and a label may be reworded.
+    stubApi()
+    const user = userEvent.setup()
+    setup()
+
+    await user.click(await screen.findByRole('button', { name: /Advanced filters/ }))
+    const select = await screen.findByRole('combobox', { name: /touchpoint/i })
+    await waitFor(() => {
+      expect(select).not.toBeDisabled()
+    })
+
+    expect([...select.querySelectorAll('option')].map((o) => o.textContent)).toContain(
+      'Enrolment meeting',
+    )
+    await user.selectOptions(select, 'enrolment_meeting')
+
+    expect(screen.getByTestId('address').textContent).toContain('touchpoint=enrolment_meeting')
   })
 
   it('filters on repeat contact, in words a reader can act on', async () => {
