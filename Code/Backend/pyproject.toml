@@ -75,7 +75,9 @@ asyncio_mode = "auto"
 #
 # In addopts rather than on the command line so that CI's bare
 # `pytest --cov` and a developer's bare `pytest` are the same run. To debug
-# serially, `pytest -p no:xdist` or `-n 0`.
+# serially, `pytest -n 0` -- and only that: `-p no:xdist` turns the plugin
+# off while this line still passes it `-n`, so pytest exits on an
+# unrecognised argument rather than running anything.
 addopts = "-q --strict-markers --strict-config -n auto --dist loadfile"
 filterwarnings = [
     "error",
