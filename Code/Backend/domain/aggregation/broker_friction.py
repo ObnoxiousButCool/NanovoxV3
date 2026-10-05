@@ -20,7 +20,9 @@ They usually co-occur and are not interchangeable.
 **The caveat is part of the finding.** A broker is counted only when a
 caller says the name aloud, so silent accounts and brokers whose clients
 never call are invisible here. The v9 README parks that by decision, not
-oversight, and the caveat says so on every figure this module produces.
+oversight. `naming_coverage` measures how much of the book that hides and
+hands the screen a sentence saying so, because for a long time this module
+held the caveat as a constant and showed it to nobody.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ from domain.aggregation.figure import Figure
 from domain.aggregation.patterns import normalised_rate
 from domain.dashboard_config import DashboardConfig
 from domain.value_objects.broker_sentiment import BrokerSentiment
+from domain.value_objects.signal_type import SignalType
 
 #: Metric 2's broker-side rate is per 100 enrolled lives.
 PER_HUNDRED = 100
@@ -41,6 +44,72 @@ NAMED_ALOUD_CAVEAT = (
     "A broker is counted only where a caller said the name aloud, so silent "
     "accounts and brokers whose clients never call are not represented."
 )
+
+
+@dataclass(frozen=True)
+class NamingCoverage:
+    """How thin the naming is under every count on the broker screen.
+
+    The caveat above was written and then never shown, and the module
+    docstring claimed it rode on every figure here. It did not, and at
+    batch-1 density the omission matters: a caller named a broker on one
+    call in six hundred while twenty-one calls raised a broker-conduct
+    concern without naming anybody, so the table reads nought against
+    twenty-nine of thirty agencies. A reader takes that for a clean book.
+
+    Counted rather than asserted, so the sentence stops being alarming by
+    itself once the naming improves -- and disappears when every call in
+    scope carries a name, which is when there is nothing left to warn about.
+    """
+
+    named: int
+    calls: int
+    #: Calls raising `broker_conduct_adverse` without naming a broker. The
+    #: signal says a broker was at fault; only the tag says which, so these
+    #: are the concerns this screen cannot attribute to a row.
+    unattributed: int
+
+    @property
+    def complete(self) -> bool:
+        """True when nothing is missing: every call named, nothing unattributed."""
+        return self.named >= self.calls and self.unattributed == 0
+
+    @property
+    def note(self) -> str:
+        """The caveat with this corpus's own numbers in it, or empty."""
+        if self.complete or not self.calls:
+            return ""
+        note = (
+            f"A caller named a broker on {self.named} of the {self.calls} calls in "
+            "scope, so a nought below is a missing name rather than a finding "
+            "about the agency."
+        )
+        if self.unattributed:
+            note += (
+                f" A further {self.unattributed} call(s) raised a broker-conduct "
+                "concern without naming anyone, and are in no row here."
+            )
+        return note
+
+
+def naming_coverage(calls: Sequence[CallContext], window: Window) -> NamingCoverage:
+    """What the broker screen's counts rest on, over the window it shows."""
+    windowed = window.calls_in(tuple(calls))
+    named = {
+        call.reference
+        for call in windowed
+        if (aloud := call.tags.broker_named_aloud) is not None and aloud.present
+    }
+    return NamingCoverage(
+        named=len(named),
+        calls=len(windowed),
+        unattributed=sum(
+            1
+            for call in windowed
+            if SignalType.BROKER_CONDUCT_ADVERSE in call.tags.signals
+            and call.reference not in named
+        ),
+    )
 
 
 @dataclass(frozen=True)

@@ -414,7 +414,10 @@ class RiskScreenResponse(CamelModel):
         description="Warranted and not handled — `Escalation.missed`'s own definition."
     )
     exit_language_calls: int = Field(
-        description="Calls carrying the retention_risk signal — exit language, verbatim."
+        description=(
+            "Calls stating market-test or cancellation intent — the `exit_language` "
+            "indicator family's own test, so the tile and the drivers list agree."
+        )
     )
     newly_flagged: NewlyFlaggedResponse | None = Field(
         default=None,

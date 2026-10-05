@@ -17,6 +17,7 @@ from domain.aggregation.figure import WithheldReason
 from domain.aggregation.indicators import (
     FAMILIES,
     assessed,
+    family,
     first_indicator_on,
     newly_flagged,
     observe,
@@ -561,3 +562,27 @@ def test_a_window_too_short_to_slice_gives_absent_not_nought() -> None:
     single_day = Window(start=day(0), end=day(0))
 
     assert newly_flagged([call("C-1", on=day(0), outcome=Outcome.UNRESOLVED)], single_day) is None
+
+
+def test_exit_language_reads_stated_intent_not_the_retention_signal() -> None:
+    """One definition of exit language on the risk screen.
+
+    The headline tile counted calls carrying `retention_risk` while the
+    drivers list beside it counted this family, so the same screen reported
+    two different numbers for the same named thing and the tile linked to
+    the playbook for the other one. Both now ask the family.
+    """
+    says_exit = family("exit_language")
+
+    assert says_exit.tests(call("C-1", intent=IntentType.CANCELLATION))
+    assert says_exit.tests(call("C-2", intent=IntentType.MARKET_TEST))
+    assert not says_exit.tests(call("C-3", signals=frozenset({SignalType.RETENTION_RISK})))
+    assert not says_exit.tests(call("C-4", intent=IntentType.EXPANSION))
+
+
+def test_a_family_with_no_per_call_test_matches_nothing() -> None:
+    """Repeat contact is a relationship across an employer's calls and high
+    effort has no v9 field, so "does this call match" is False for both --
+    which is the honest answer, not a claim that they were tested."""
+    assert not family("repeat_contact").tests(call("C-1", outcome=Outcome.UNRESOLVED))
+    assert not family("high_effort").tests(call("C-1", outcome=Outcome.UNRESOLVED))

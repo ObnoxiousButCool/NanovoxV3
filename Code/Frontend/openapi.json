@@ -830,7 +830,7 @@
             "type": "array"
           },
           "escalationsMissed": {
-            "description": "Calls where an explicit escalation request went nowhere.",
+            "description": "Calls where an escalation was warranted and not handled -- `Escalation.missed`, the same set the risk screen counts.",
             "items": {
               "type": "string"
             },
@@ -1149,6 +1149,39 @@
           "pattern"
         ],
         "title": "BrokerFrictionResponse",
+        "type": "object"
+      },
+      "BrokerNamingResponse": {
+        "description": "What the broker tables rest on, for a reader looking at noughts.",
+        "properties": {
+          "calls": {
+            "description": "Calls in scope.",
+            "title": "Calls",
+            "type": "integer"
+          },
+          "named": {
+            "description": "Calls in scope where a caller named a broker aloud.",
+            "title": "Named",
+            "type": "integer"
+          },
+          "note": {
+            "description": "The caveat with these numbers in it, for the screen to show as written. Empty when nothing is missing, so a complete corpus carries no boilerplate.",
+            "title": "Note",
+            "type": "string"
+          },
+          "unattributed": {
+            "description": "Calls raising a broker-conduct concern without naming anyone. The signal says a broker was at fault; only the tag says which, so these appear in no broker row.",
+            "title": "Unattributed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "named",
+          "calls",
+          "unattributed",
+          "note"
+        ],
+        "title": "BrokerNamingResponse",
         "type": "object"
       },
       "BrokerNodeResponse": {
@@ -3060,6 +3093,10 @@
             "title": "Asof",
             "type": "string"
           },
+          "brokerNaming": {
+            "$ref": "#/components/schemas/BrokerNamingResponse",
+            "description": "How much of the book the broker tables can see. A broker is counted only where a caller said the name, so a column of noughts needs this beside it to be read correctly."
+          },
           "brokers": {
             "description": "Every broker holding an account in scope, most adverse mentions first. No ranking floor: this table publishes no rate, so a floor would only hide the small broker the pattern test exists to find.",
             "items": {
@@ -3128,7 +3165,8 @@
           "regions",
           "brokers",
           "complaints",
-          "rankedBrokers"
+          "rankedBrokers",
+          "brokerNaming"
         ],
         "title": "HierarchyResponse",
         "type": "object"
@@ -4944,7 +4982,7 @@
             "type": "integer"
           },
           "exitLanguageCalls": {
-            "description": "Calls carrying the retention_risk signal \u2014 exit language, verbatim.",
+            "description": "Calls stating market-test or cancellation intent \u2014 the `exit_language` indicator family's own test, so the tile and the drivers list agree.",
             "title": "Exitlanguagecalls",
             "type": "integer"
           },

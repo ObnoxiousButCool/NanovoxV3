@@ -32,9 +32,12 @@ from domain.value_objects.process_gap import ProcessGap, ProcessGapStatus, Raise
 from domain.value_objects.product_line import ProductLine
 from domain.value_objects.signal_type import SignalType
 
-#: The corpus's own 12-week window (batch 1: 6 Jul to 25 Sep 2026).
-WINDOW_START = date(2026, 7, 6)
-WINDOW = Window(start=WINDOW_START, end=date(2026, 9, 28))
+#: The corpus's own 12-week window (batch 1: 6 Jul to 25 Sep 2026), built
+#: the way the production code builds one so a test cannot pass against a
+#: window a screen would never construct. Spelling the dates out by hand
+#: gave this fixture eighty-five days under a name saying twelve weeks.
+WINDOW = Window.of_weeks(date(2026, 9, 28), weeks=12)
+WINDOW_START = WINDOW.start
 
 
 def day(offset: int) -> date:

@@ -165,6 +165,27 @@ class BrokerFrictionResponse(CamelModel):
     )
 
 
+class BrokerNamingResponse(CamelModel):
+    """What the broker tables rest on, for a reader looking at noughts."""
+
+    named: int = Field(description="Calls in scope where a caller named a broker aloud.")
+    calls: int = Field(description="Calls in scope.")
+    unattributed: int = Field(
+        description=(
+            "Calls raising a broker-conduct concern without naming anyone. The "
+            "signal says a broker was at fault; only the tag says which, so "
+            "these appear in no broker row."
+        )
+    )
+    note: str = Field(
+        description=(
+            "The caveat with these numbers in it, for the screen to show as "
+            "written. Empty when nothing is missing, so a complete corpus "
+            "carries no boilerplate."
+        )
+    )
+
+
 class HierarchyResponse(CamelModel):
     scope: ScopeResponse
     as_of: str
@@ -192,6 +213,13 @@ class HierarchyResponse(CamelModel):
     complaints: ComplaintOwnershipResponse
     ranked_brokers: list[BrokerFrictionResponse] = Field(
         description="Only books clearing the ranking floor in lives, worst count first."
+    )
+    broker_naming: BrokerNamingResponse = Field(
+        description=(
+            "How much of the book the broker tables can see. A broker is "
+            "counted only where a caller said the name, so a column of noughts "
+            "needs this beside it to be read correctly."
+        )
     )
 
 
@@ -295,4 +323,10 @@ async def read_hierarchy(
             )
             for row in view.ranked_brokers
         ],
+        broker_naming=BrokerNamingResponse(
+            named=view.broker_naming.named,
+            calls=view.broker_naming.calls,
+            unattributed=view.broker_naming.unattributed,
+            note=view.broker_naming.note,
+        ),
     )

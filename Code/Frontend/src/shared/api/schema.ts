@@ -834,7 +834,7 @@ export interface components {
             controlExceptions: components["schemas"]["ControlExceptionCountResponse"][];
             /**
              * Escalationsmissed
-             * @description Calls where an explicit escalation request went nowhere.
+             * @description Calls where an escalation was warranted and not handled -- `Escalation.missed`, the same set the risk screen counts.
              */
             escalationsMissed: string[];
             knowledgeErrorRate: components["schemas"]["FigureResponse"];
@@ -970,6 +970,32 @@ export interface components {
             pattern: components["schemas"]["PatternTestResponse"];
             /** @description Secondary sort only, never a headline. Null for a book under the floor. */
             ratePerHundredLives?: components["schemas"]["FigureResponse"] | null;
+        };
+        /**
+         * BrokerNamingResponse
+         * @description What the broker tables rest on, for a reader looking at noughts.
+         */
+        BrokerNamingResponse: {
+            /**
+             * Calls
+             * @description Calls in scope.
+             */
+            calls: number;
+            /**
+             * Named
+             * @description Calls in scope where a caller named a broker aloud.
+             */
+            named: number;
+            /**
+             * Note
+             * @description The caveat with these numbers in it, for the screen to show as written. Empty when nothing is missing, so a complete corpus carries no boilerplate.
+             */
+            note: string;
+            /**
+             * Unattributed
+             * @description Calls raising a broker-conduct concern without naming anyone. The signal says a broker was at fault; only the tag says which, so these appear in no broker row.
+             */
+            unattributed: number;
         };
         /** BrokerNodeResponse */
         BrokerNodeResponse: {
@@ -1838,6 +1864,8 @@ export interface components {
         HierarchyResponse: {
             /** Asof */
             asOf: string;
+            /** @description How much of the book the broker tables can see. A broker is counted only where a caller said the name, so a column of noughts needs this beside it to be read correctly. */
+            brokerNaming: components["schemas"]["BrokerNamingResponse"];
             /**
              * Brokers
              * @description Every broker holding an account in scope, most adverse mentions first. No ranking floor: this table publishes no rate, so a floor would only hide the small broker the pattern test exists to find.
@@ -2688,7 +2716,7 @@ export interface components {
             escalationsTriggered: number;
             /**
              * Exitlanguagecalls
-             * @description Calls carrying the retention_risk signal — exit language, verbatim.
+             * @description Calls stating market-test or cancellation intent — the `exit_language` indicator family's own test, so the tile and the drivers list agree.
              */
             exitLanguageCalls: number;
             exposure: components["schemas"]["ExposureResponse"];

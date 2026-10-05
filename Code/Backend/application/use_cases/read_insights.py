@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
-from datetime import date, timedelta
+from datetime import date
 from typing import TYPE_CHECKING
 
 from application.ports.insights_source import CorpusQuery
@@ -47,7 +47,12 @@ from domain.aggregation.agent_events import (
     escalations_refused,
 )
 from domain.aggregation.broker_drift import Drift, drift
-from domain.aggregation.broker_friction import BrokerFriction, ranked_book_friction
+from domain.aggregation.broker_friction import (
+    BrokerFriction,
+    NamingCoverage,
+    naming_coverage,
+    ranked_book_friction,
+)
 from domain.aggregation.call_tags import (
     AgentFacts,
     BrokerFacts,
@@ -73,7 +78,7 @@ from domain.aggregation.distributions import (
 )
 from domain.aggregation.exec_scorecard import ExecScorecard, exec_scorecard
 from domain.aggregation.filters import AppliedFilter
-from domain.aggregation.indicators import NewlyFlagged, newly_flagged, observe
+from domain.aggregation.indicators import NewlyFlagged, family, newly_flagged, observe
 from domain.aggregation.isolation import (
     BrokerRow,
     ComplaintOwnership,
@@ -129,7 +134,6 @@ from domain.aggregation.withheld import BAND_CALIBRATION, DID_IT_WORK, WithheldP
 from domain.playbooks import Playbook, PlaybookCatalogue, PlaybookSeverity
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.outcome import Outcome
-from domain.value_objects.signal_type import SignalType
 
 if TYPE_CHECKING:
     from datetime import date
@@ -592,9 +596,12 @@ class GetAccountRisk:
         missed = [
             call for call in triggered if call.tags.escalation and call.tags.escalation.missed
         ]
-        exit_language = [
-            call for call in windowed if SignalType.RETENTION_RISK in call.tags.signals
-        ]
+        # The `exit_language` family's own test, not the `retention_risk`
+        # signal. The tile sits on the same screen as the drivers list, which
+        # reads the family, and the two reported 24 and 41 for the same named
+        # thing while the tile linked to the playbook for the other one.
+        says_exit = family("exit_language")
+        exit_language = [call for call in windowed if says_exit.tests(call)]
         # `scope.corpus.calls`, not `calls`: the tile counts an account's
         # first indicator across the whole book, and the filter bar has no
         # say in when that was. Every other figure on this screen reads the
@@ -716,6 +723,10 @@ class HierarchyView:
     #: rows on their own account pages; what the floor stops is a
     #: three-group agency topping a league table on one call.
     ranked_brokers: tuple[BrokerFriction, ...]
+    #: What every count above rests on. A broker only appears when a caller
+    #: said the name, so the screen states how often that happened rather
+    #: than letting a column of noughts speak for the book.
+    broker_naming: NamingCoverage
     window: Window
 
 
@@ -773,7 +784,7 @@ class GetHierarchy:
     async def execute(self, request: InsightsRequest) -> HierarchyView:
         scope = await self._reader.scope(request)
         weeks = self._config.broker_pattern_test.window_weeks
-        window = Window(scope.as_of - timedelta(weeks=weeks), scope.as_of)
+        window = Window.of_weeks(scope.as_of, weeks)
 
         calls = scope.filtered.calls
         employers = scope.corpus.employers
@@ -791,6 +802,7 @@ class GetHierarchy:
             ),
             complaints=complaint_ownership(calls, window),
             ranked_brokers=ranked_book_friction(self._config, scope.corpus.brokers, calls, window),
+            broker_naming=naming_coverage(calls, window),
             window=window,
         )
 

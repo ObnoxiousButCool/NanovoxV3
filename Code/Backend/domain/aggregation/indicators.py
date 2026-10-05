@@ -66,6 +66,15 @@ class Family:
     #: Why it cannot be computed, for the page to show instead of a count.
     unavailable_because: str = ""
 
+    def tests(self, call: CallContext) -> bool:
+        """Whether this call matches, for a caller that has one call in hand.
+
+        False for a family that is not a per-call test, which is the honest
+        answer to "does this call match": repeat contact is a relationship
+        across an employer's calls and high effort has no field to read.
+        """
+        return self.matches is not None and self.matches(call)
+
 
 @dataclass(frozen=True)
 class Observation:
@@ -168,6 +177,21 @@ FAMILIES: tuple[Family, ...] = (
         lambda c: SignalType.BROKER_CONDUCT_ADVERSE in c.tags.signals,
     ),
 )
+
+
+def family(code: str) -> Family:
+    """One family by code, so a screen counting it cannot invent its own test.
+
+    The risk screen's exit-language tile read the `retention_risk` signal
+    while the drivers list beside it read this family's intent test, so the
+    same screen reported 24 and 41 for the same named thing and the tile
+    linked to the playbook for the other one. A caller that wants a family's
+    count asks for the family.
+    """
+    for candidate in FAMILIES:
+        if candidate.code == code:
+            return candidate
+    raise KeyError(f"No indicator family with code {code!r}.")
 
 
 def observe(

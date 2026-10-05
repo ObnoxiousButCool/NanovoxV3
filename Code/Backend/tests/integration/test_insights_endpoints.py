@@ -228,11 +228,11 @@ async def test_the_risk_screen_carries_its_headline_tile_counts(
     """Wiring, not scenario coverage: `seed()` writes every call with
     `escalation_triggered=False` and no signals, so this only confirms the
     three counts reach the wire and read as zero against zero warranted
-    escalations and zero exit-language calls — not that a real missed
-    escalation or a real retention_risk signal is counted correctly. That
-    needs `seed()` extended to accept escalation/signal data per call,
-    which is a larger change than this endpoint test should make on its
-    own; `test_call_tags.py`'s
+    escalations and no stated intent — not that a real missed escalation or
+    a real market-test statement is counted correctly. That needs `seed()`
+    extended to accept escalation/intent data per call, which is a larger
+    change than this endpoint test should make on its own;
+    `test_call_tags.py`'s
     `test_a_triggered_and_unhandled_escalation_is_missed` already covers
     the `Escalation.missed` logic this count is built from."""
     await seed(session_factory, calls_per_employer={"EMP-01": 4})

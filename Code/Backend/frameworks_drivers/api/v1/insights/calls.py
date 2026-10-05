@@ -47,6 +47,18 @@ the call's date alone, so two exports always agree on it. The ISO year
 travels with the number because a corpus spanning a new year holds two
 weeks called 1, and grouping on the bare number would add them together.
 
+**Touchpoint** is the sheet's words, matching the table this file is
+exported from, where the other coded columns carry the code. The table
+showed "Claims process" and the file beside it said `claims_process`,
+which is the divergence between a screen and its own export that this
+docstring opens by warning about, one value down from the heading.
+
+The reference is not lost: the mapping is one to one, and `touchpoint_label`
+reformats an unnamed reference reversibly. Note that `/insights/filters`,
+`/insights/demand` and the hierarchy's broker breakdown still publish the
+reference, so a touchpoint is worded in two places and coded in three. That
+is wider than this file and is not settled here.
+
 The prototype's **Caller** and **Agent** are both names; this exports
 `Caller ID` and `Agent` as references. A CSV leaves the application and
 gets mailed around, and a name in it is personal data travelling with no
@@ -449,10 +461,24 @@ def _csv(rows: tuple[CallRowView, ...]) -> io.StringIO:
     writer = csv.writer(buffer, lineterminator="\r\n")
     writer.writerow([heading for heading, _ in CSV_COLUMNS])
     for row in rows:
-        writer.writerow([_cell(getattr(row, attribute)) for _, attribute in CSV_COLUMNS])
+        writer.writerow([_cell(_export_value(row, attribute)) for _, attribute in CSV_COLUMNS])
     # The BOM goes in front of the written content rather than being the
     # first thing written, so `csv` never quotes or escapes it.
     return io.StringIO("﻿" + buffer.getvalue())
+
+
+def _export_value(row: CallRowView, attribute: str) -> object:
+    """One column's value, said the way the screen says it.
+
+    Only `touchpoint` is translated, and the module docstring says why:
+    the table this file is exported from words it, so the file words it
+    too. Every other coded column exports the code, which is what the
+    filter parameters take and what an analyst joins on.
+    """
+    value = getattr(row, attribute)
+    if attribute == "touchpoint" and value is not None:
+        return touchpoint_label(str(value))
+    return value
 
 
 def _cell(value: object) -> str:

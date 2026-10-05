@@ -291,3 +291,20 @@ def test_calls_outside_the_window_are_excluded() -> None:
     )
 
     assert [call.reference for call in window.calls_in(calls)] == ["C-0001", "C-0003"]
+
+
+def test_four_weeks_is_twenty_eight_days_not_twenty_nine() -> None:
+    """`contains` is inclusive at both ends, so the subtraction needs the day back.
+
+    Four callers built the window by hand and one of them added the day, so
+    the executive screen computed first-contact resolution over the four
+    weeks ending 25 September and drew the trend strip beneath it over a
+    different four weeks ending on the same date.
+    """
+    window = Window.of_weeks(date(2026, 9, 25), weeks=4)
+
+    assert window.start == date(2026, 8, 29)
+    assert window.end == date(2026, 9, 25)
+    assert (window.end - window.start).days + 1 == 28
+    assert not window.contains(date(2026, 8, 28))
+    assert window.contains(date(2026, 8, 29))

@@ -48,7 +48,7 @@ import { Heatmap } from '@/shared/design/charts'
 import type { HeatmapCell } from '@/shared/design/charts'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { InsightStrip } from '@/shared/insights/Insights'
-import { Empty, EpistemicChip, KpiTile, Panel, Tooltip } from '@/shared/design/primitives'
+import { Empty, EpistemicChip, KpiTile, Note, Panel, Tooltip } from '@/shared/design/primitives'
 
 type RegionRow = Hierarchy['regions'][number]
 type BrokerRow = Hierarchy['brokers'][number]
@@ -164,7 +164,7 @@ function HierarchyBody({
       </div>
 
       <div className="nv-c12">
-        <BrokerPanel rows={data.brokers} filters={filters} />
+        <BrokerPanel rows={data.brokers} naming={data.brokerNaming} filters={filters} />
       </div>
 
       <div className="nv-c12">
@@ -306,7 +306,15 @@ function RegionPanel({ rows, filters }: { rows: RegionRow[]; filters: Filters })
   )
 }
 
-function BrokerPanel({ rows, filters }: { rows: BrokerRow[]; filters: Filters }) {
+function BrokerPanel({
+  rows,
+  naming,
+  filters,
+}: {
+  rows: BrokerRow[]
+  naming: Hierarchy['brokerNaming']
+  filters: Filters
+}) {
   const [all, setAll] = useState(false)
   const selected = new Set(filters.multi.broker)
   const shown = all ? rows : rows.slice(0, TOP_BROKERS)
@@ -337,6 +345,12 @@ function BrokerPanel({ rows, filters }: { rows: BrokerRow[]; filters: Filters })
       }
       chip={<EpistemicChip kind="observed" />}
     >
+      {/* Above the table, not inside the tooltip. A reader who does not
+          open the tooltip sees a column of noughts and takes it for a clean
+          book, which is the one reading this screen must not allow. The
+          sentence is the server's, numbers and all, and is empty once every
+          call in scope carries a name. */}
+      {naming.note ? <Note suppressed>{naming.note}</Note> : null}
       {rows.length === 0 ? (
         <Empty>No broker holds an account in this scope.</Empty>
       ) : (
