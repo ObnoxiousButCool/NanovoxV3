@@ -236,7 +236,7 @@ async def test_a_window_reaching_outside_the_period_says_so(
     body = client.get(EXEC, params={"asOf": AS_OF, "from": "2026-09-21", "to": "2026-09-28"}).json()
 
     caveats = " ".join(body["scope"]["caveats"])
-    assert "reaches outside the period you asked for" in caveats
+    assert "goes beyond the period you picked" in caveats
     assert "First-contact resolution" in caveats
     assert "Escalation integrity" in caveats
 
@@ -250,7 +250,7 @@ async def test_no_caveat_when_every_window_sits_inside_the_period(
 
     body = client.get(EXEC, params={"asOf": AS_OF, "from": "2020-01-01", "to": "2030-01-01"}).json()
 
-    assert not any("reaches outside" in caveat for caveat in body["scope"]["caveats"])
+    assert not any("goes beyond" in caveat for caveat in body["scope"]["caveats"])
 
 
 @pytest.mark.asyncio
@@ -272,7 +272,7 @@ async def test_calls_a_window_leaves_out_are_counted_on_the_page(
     body = client.get(EXEC, params={"asOf": "2026-10-20"}).json()
 
     caveats = " ".join(body["scope"]["caveats"])
-    assert "leaves out 1 of the 2 calls in scope" in caveats
+    assert "so 1 of the 2 calls in scope isn't counted" in caveats
     assert body["scope"]["matched"] == 2
 
 
@@ -285,7 +285,7 @@ async def test_a_window_covering_every_call_says_nothing(
     body = client.get(RISK, params={"asOf": AS_OF}).json()
 
     assert body["scope"]["matched"] == 1
-    assert not any("leaves out" in caveat for caveat in body["scope"]["caveats"])
+    assert not any("counted in" in caveat for caveat in body["scope"]["caveats"])
 
 
 @pytest.mark.asyncio
@@ -298,11 +298,11 @@ async def test_metrics_sharing_a_window_are_named_in_one_sentence(
 
     body = client.get(EXEC, params={"asOf": "2026-10-20"}).json()
 
-    left_out = [caveat for caveat in body["scope"]["caveats"] if "leaves out" in caveat]
+    left_out = [caveat for caveat in body["scope"]["caveats"] if "counted in" in caveat]
     # One sentence, naming both metrics that share the 4-week window. The
     # 12-week metrics cover every call here, so they say nothing.
     assert len(left_out) == 1
-    assert "First-contact resolution and Knowledge failure rate are computed" in left_out[0]
+    assert "First-contact resolution and Knowledge failure rate use the last 4 weeks" in left_out[0]
 
 
 @pytest.mark.asyncio
@@ -324,13 +324,13 @@ async def test_one_sentence_per_window_even_when_both_disagreements_apply(
 
     # Window sentences only: the corpus contributes its own caveats about
     # fields it cannot record, and those are a different subject.
-    windows = [c for c in body["scope"]["caveats"] if "computed over" in c]
+    windows = [c for c in body["scope"]["caveats"] if "the last" in c]
 
     # Five metrics, two distinct windows, two sentences.
     assert len(windows) == 2
-    assert all("reaches outside the period" in caveat for caveat in windows)
+    assert all("goes beyond the period you picked" in caveat for caveat in windows)
     # And not one sentence per metric.
-    assert not any(caveat.startswith("Escalation integrity is computed") for caveat in windows)
+    assert not any(caveat.startswith("Escalation integrity uses") for caveat in windows)
 
 
 @pytest.mark.asyncio
@@ -355,9 +355,9 @@ async def test_a_window_holding_none_of_the_period_says_that_rather_than_n_of_n(
     four_week = [c for c in body["scope"]["caveats"] if "First-contact resolution" in c]
 
     assert len(four_week) == 1
-    assert "contains none of the 1 calls in scope" in four_week[0]
+    assert "so none of the 1 call in scope is counted" in four_week[0]
     # The arithmetic phrasing is gone for the all-excluded case.
-    assert "leaves out" not in four_week[0]
+    assert "of the 1 call in scope isn't" not in four_week[0]
 
 
 @pytest.mark.asyncio

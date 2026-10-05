@@ -128,39 +128,59 @@ def window_note(
     if not reaches_out and outside <= 0:
         return None
 
-    span = f"{window.start.isoformat()} to {window.end.isoformat()}"
-    clauses: list[str] = []
+    # Plain words, a reader's dates: "use the last 4 weeks (28 Aug to 25 Sep),
+    # so 419 of the 600 calls in scope aren't counted in them." The previous
+    # sentence ended on D11's own phrasing, which explained the rule and not
+    # what it meant for the figures.
+    one = len(subjects) == 1
+    weeks = round(window.weeks)
+    sentence = (
+        f"{_subject_list(subjects)} {'uses' if one else 'use'} the last "
+        f"{weeks} week{'' if weeks == 1 else 's'} ({_span(window.start, window.end)})"
+    )
     if reaches_out:
-        clauses.append(f"reaches outside the period you asked for ({_period_text(since, until)})")
+        sentence += f", which goes beyond the period you picked ({_period_text(since, until)})"
     if outside > 0:
         total = len(calls)
-        clauses.append(
-            f"contains none of the {total} calls in scope"
+        pronoun = "it" if one else "them"
+        verb_not = "isn't" if outside == 1 else "aren't"
+        sentence += (
+            f", so none of the {_calls(total)} in scope {'is' if total == 1 else 'are'} "
+            f"counted in {pronoun}"
             if outside == total
-            else f"leaves out {outside} of the {total} calls in scope"
+            else f", so {outside} of the {_calls(total)} in scope {verb_not} counted in {pronoun}"
         )
-    return (
-        f"{_subject_list(subjects)} computed over {span}, which {' and '.join(clauses)}. "
-        "The window is the metric's own and is neither narrowed to the period nor "
-        "widened to cover the corpus."
-    )
+    return f"{sentence}."
 
 
 def _subject_list(subjects: Sequence[str]) -> str:
-    """ "X is" for one, "X and Y are" for two, Oxford-free list beyond."""
+    """ "X" for one, "X and Y" for two, Oxford-free list beyond."""
     names = list(subjects)
     if len(names) == 1:
-        return f"{names[0]} is"
-    return f"{', '.join(names[:-1])} and {names[-1]} are"
+        return names[0]
+    return f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def _calls(count: int) -> str:
+    return f"{count} call" if count == 1 else f"{count} calls"
+
+
+def _day(day: date) -> str:
+    """ "28 Aug", as the filter bar's week picker writes a date."""
+    return f"{day.day} {day:%b}"
+
+
+def _span(start: date, end: date) -> str:
+    return f"{_day(start)} to {_day(end)}"
 
 
 def _period_text(since: date | None, until: date | None) -> str:
     if since is not None and until is not None:
-        return f"{since.isoformat()} to {until.isoformat()}"
+        return _span(since, until)
     if since is not None:
-        return f"from {since.isoformat()}"
+        return f"from {_day(since)}"
     if until is not None:
-        return f"up to {until.isoformat()}"
+        return f"up to {_day(until)}"
     return "the whole corpus"
 
 
