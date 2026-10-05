@@ -1001,6 +1001,22 @@ describe('the issues to act on', () => {
     expect(screen.queryByText('Compliance control exceptions')).not.toBeInTheDocument()
   })
 
+  it('says why the fix-worked panel is empty, not that nobody filled it in', async () => {
+    // It read "No outcome recorded yet", which says somebody has not got
+    // round to it. The truth is that the question cannot be answered from
+    // this corpus at all: insight 22 needs a window before a change and a
+    // comparable one after it, and a single batch has no after.
+    //
+    // `why` and `unlockedBy` are on the wire and were rendered until the
+    // sweep that removed the screens' notes took the two lines showing them.
+    renderAt('/actions')
+
+    expect(await screen.findByText('Did the fix work?')).toBeInTheDocument()
+    expect(screen.getByText(/A comparable second batch does not exist yet/)).toBeInTheDocument()
+    expect(screen.getByText(/A second batch of calls after the fix/)).toBeInTheDocument()
+    expect(screen.queryByText(/No outcome recorded yet/)).not.toBeInTheDocument()
+  })
+
   it('puts the tiles above the issues list, where the prototype has them', async () => {
     renderAt('/actions')
 
