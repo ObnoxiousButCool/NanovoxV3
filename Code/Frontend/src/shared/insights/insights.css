@@ -176,12 +176,6 @@
   color: var(--ink-3);
 }
 
-.nv-ai-by {
-  margin: 10px 0 0;
-  font-size: 11.5px;
-  color: var(--ink-3);
-}
-
 /* Reads like a withheld figure, because it is the same fact: nobody could
    say. Never an error colour — nothing has gone wrong for the reader. */
 .nv-ai-out {

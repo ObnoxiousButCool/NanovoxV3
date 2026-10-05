@@ -123,11 +123,16 @@ export function CallAnalysis({
   )
 }
 
-/** Plan §7 requires provenance on every analysis. This is where it lands. */
+/**
+ * Plan §7 requires provenance on every analysis. This is where it lands.
+ *
+ * Without the provider and model: the page names no vendor anywhere. The
+ * prompt and rubric versions and the time still say which run this was.
+ */
 function Provenance({ run }: { run: Run }) {
   return (
     <p className="nv-prov">
-      {run.provider} · {run.model} · prompt {run.promptVersion}
+      prompt {run.promptVersion}
       {run.rubricVersion === null || run.rubricVersion === undefined
         ? ''
         : ` · rubric ${run.rubricVersion}`}{' '}

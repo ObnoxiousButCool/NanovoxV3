@@ -254,13 +254,14 @@ describe('the feed', () => {
     expect(screen.getByText(/Resolution held at 74%/)).toBeInTheDocument()
   })
 
-  it('says who wrote it', () => {
+  it('names no provider or model on the page', () => {
     show(<InsightFeed data={GENERATED} />)
 
-    expect(screen.getByText(/Written by openai/)).toBeInTheDocument()
+    expect(screen.queryByText(/Written by/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/openai|gpt/i)).not.toBeInTheDocument()
   })
 
-  it('names no author when nothing was written', () => {
+  it('says why nothing was written, still without naming a provider', () => {
     show(<InsightFeed data={UNAVAILABLE} />)
 
     expect(screen.queryByText(/Written by/)).not.toBeInTheDocument()
