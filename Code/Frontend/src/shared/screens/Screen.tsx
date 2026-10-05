@@ -32,7 +32,6 @@ import '@/shared/screens/screen.css'
 
 export function Screen({
   title,
-  lede,
   scope,
   isPending,
   error,
@@ -41,7 +40,6 @@ export function Screen({
   children,
 }: {
   title: string
-  lede: string
   /** `filterBar({ compact: true })` in the prototype. See `FilterBar`. */
   compactFilters?: boolean
   /** Prototype-style sticky, collapsing page head, enabled only by Exec. */
@@ -78,9 +76,14 @@ export function Screen({
 
   const pageHead = (
     <>
+      {/* Title only. The prototype's `.q` paragraph under each heading --
+          "This page shows every risk indicator across accounts…" and its
+          equivalents -- was carried across and has been dropped on request.
+          The headings are already written as the question the page answers,
+          and the panels say what they are, so the paragraph repeated both
+          and pushed the figures down the screen. */}
       <header className="nv-pagehead">
         <h1>{title}</h1>
-        <p className="nv-lede">{lede}</p>
       </header>
 
       {scope === undefined ? (

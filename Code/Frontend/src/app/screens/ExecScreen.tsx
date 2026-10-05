@@ -108,7 +108,6 @@ export function ExecScreen() {
     <div className="nv-exec">
       <Screen
         title="Executive overview"
-        lede="The period in one page: what needs attention now, what the calls mean, what is emerging, and what is being done."
         compactFilters
         stickyHead
         scope={data?.scope}

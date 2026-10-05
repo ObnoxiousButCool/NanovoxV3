@@ -89,11 +89,6 @@ export function AgentsScreen() {
   return (
     <Screen
       title="How are agents handling calls?"
-      lede={
-        data === undefined
-          ? 'Conduct events by agent: disclosures missed, rules explained wrongly and escalations not given.'
-          : `Tracks conduct events by agent: disclosures missed, rules explained wrongly and escalations not given. Per-agent scores are held back until each agent has ${String(data.minCallsForARate ?? 0)} calls, so nobody is judged on a handful.`
-      }
       compactFilters
       scope={data?.scope}
       isPending={isPending}

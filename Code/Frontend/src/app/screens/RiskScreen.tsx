@@ -129,7 +129,6 @@ export function RiskScreen() {
     <div className="nv-risk">
       <Screen
         title="What are the risks?"
-        lede="This page shows every risk indicator across accounts, what is driving it and how calls are going. Use it to decide which accounts need attention first. Use the filters to narrow by period, region, broker or account."
         stickyHead
         scope={data?.scope}
         isPending={isPending}

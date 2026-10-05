@@ -71,7 +71,6 @@ export function HierarchyScreen() {
   return (
     <Screen
       title="Is it isolated or systemic?"
-      lede="Whether a problem sits with one account, one broker, or runs across a region or the whole book. The answer decides the fix: a conversation with one account, one broker, or a change to a process."
       scope={data?.scope}
       isPending={isPending}
       error={error}
