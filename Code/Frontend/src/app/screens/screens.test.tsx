@@ -934,13 +934,6 @@ describe('/exec, with accounts, escalations and an action board', () => {
       expect(screen.getByText('Needs attention now')).toBeInTheDocument()
     })
     const rows = screen.getByRole('list', { name: 'Flagged accounts' })
-    const card = rows.closest('section')
-    expect(card).not.toBeNull()
-    // Two of three assessed accounts are flagged; the unflagged EMP-1003
-    // never appears here even though it was assessed. Matched over the
-    // card's own text because `exec.html` bolds the figures, so the
-    // sentence is split across elements.
-    expect((card as HTMLElement).textContent).toMatch(/2 of 14 accounts|2 of 3 accounts/)
 
     const names = within(rows)
       .getAllByRole('link')
@@ -1022,9 +1015,9 @@ describe('/exec, with accounts, escalations and an action board', () => {
     await waitFor(() => {
       expect(screen.getByText('What is being done')).toBeInTheDocument()
     })
-    // 4 of 5 actions sit in an open lane (needs_action x2, in_progress x2);
-    // 2 are past due; 1 carries a measured outcome.
-    expect(screen.getByText(/4 of 5 actions open, 2 overdue, 1 with a measured outcome/)).toBeInTheDocument()
+    // The bar carries the counts; the panel no longer repeats them as a
+    // sentence under its title.
+    expect(screen.queryByText(/actions open/)).not.toBeInTheDocument()
     const key = screen.getByText('Needs action').closest('li') as HTMLElement
     expect(within(key).getByText('2')).toBeInTheDocument()
     const progressKey = screen.getByText('In progress').closest('li') as HTMLElement
@@ -1377,21 +1370,6 @@ describe('/calls', () => {
       expect(latest).toContain('region=Bay')
       expect(latest).not.toContain('page=2')
     })
-  })
-
-  it('says which columns the export leaves out, and why, beside the download', async () => {
-    // Checkpoint I2. The prototype's export has 26 columns and this one has
-    // 23; a reader who opens the file in Excel and finds a column gone has
-    // no way to tell a deliberate omission from a bug unless the screen
-    // that produced the file says so. Rendered from the response, so a
-    // column that gains a source stops being mentioned on its own.
-    renderAt('/calls')
-
-    expect(
-      await screen.findByText(/not one of the sixteen schema fields/),
-    ).toBeInTheDocument()
-    expect(screen.getByText(/a column from the Transcript Tracker/)).toBeInTheDocument()
-    expect(screen.getByText(/2 columns this one does not/)).toBeInTheDocument()
   })
 
   it('shows a missing quality score as unrecorded, never as zero', async () => {
@@ -1833,18 +1811,6 @@ describe('the account tiles and topics', () => {
     expect(
       screen.getByText('Planned contact rate above the book median'),
     ).toBeInTheDocument()
-    expect(screen.getByText(/From the workbook, not from these calls/)).toBeInTheDocument()
-  })
-
-  it('reconciles the tile counts against the calls the period holds', async () => {
-    // The tiles count the risk window; the calls panel lists the selected
-    // period. Where they differ the page must say so, or it reads as two
-    // numbers contradicting each other. Filters slice, never hide.
-    renderAt('/accounts/EMP-1001')
-
-    expect(
-      await screen.findByText(/3 of this account.s 9 calls in the selected period/),
-    ).toBeInTheDocument()
   })
 
   it('counts enrolled against eligible, and says how long to the renewal', async () => {
@@ -1871,13 +1837,6 @@ describe('the account tiles and topics', () => {
     expect(labels[1]).toContain('Billing & Premium')
   })
 
-  it('says how many calls the bars do not account for', async () => {
-    // The bars plus this number reconcile with the call count. Without it a
-    // reader would silently be shown five of six calls.
-    renderAt('/accounts/EMP-1001')
-
-    expect(await screen.findByText(/carried no category/)).toBeInTheDocument()
-  })
 })
 
 describe('which problems drive the risk', () => {
@@ -2314,7 +2273,7 @@ describe('a book-wide action on an account page', () => {
     // numbers, which is what a reader can actually misread.
     renderAt('/accounts/EMP-1001')
 
-    expect(await screen.findByText(/Book-wide actions touching this account/)).toBeInTheDocument()
+    expect(await screen.findByText('Actions for this account')).toBeInTheDocument()
     expect(screen.queryByText(/Across the book:/)).not.toBeInTheDocument()
   })
 })
@@ -2408,10 +2367,10 @@ describe('the rules screen', () => {
     // records the rule a call got wrong, never the rules it got right.
     renderAt('/rules')
 
-    const note = await screen.findByText(/This is not a list of rules we explain well/i)
+    const title = await screen.findByText('Rules no call got wrong')
     // Scoped to the panel: A-46 is also the unverified tile's meta line, and
     // an unscoped match would pass on that one instead.
-    const panel = note.closest('section')
+    const panel = title.closest('section')
     expect(panel).not.toBeNull()
     expect(within(panel as HTMLElement).getByText(/A-46/)).toBeInTheDocument()
     expect(within(panel as HTMLElement).queryByText(/P-01/)).not.toBeInTheDocument()

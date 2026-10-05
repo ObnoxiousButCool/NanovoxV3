@@ -319,12 +319,6 @@
   border: 0;
 }
 
-.nv-exec .nv-ai-feed-meta {
-  margin: -2px 0 2px;
-  color: var(--ink-3);
-  font-size: 12.5px;
-}
-
 .nv-exec .nv-ai-feed {
   gap: 10px;
 }
@@ -511,7 +505,7 @@
 .nv-exec .nv-lens header {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
-  grid-template-rows: auto auto;
+  grid-template-rows: auto;
   column-gap: 12px;
   row-gap: 0;
   align-items: center;
@@ -520,7 +514,7 @@
 
 .nv-exec .nv-lens header::before {
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 1;
   width: 34px;
   height: 34px;
   border-radius: 9px;
@@ -540,13 +534,6 @@
   font: 600 17px/1.2 var(--display);
   grid-column: 2;
   grid-row: 1;
-}
-
-.nv-exec .nv-lens header p {
-  margin: 2px 0 0;
-  font-size: 13px;
-  grid-column: 2;
-  grid-row: 2;
 }
 
 .nv-exec .nv-lens ol {
@@ -652,29 +639,15 @@
   background: var(--critical);
 }
 
-/* The title carries the panel for a screen reader and nothing for the eye,
-   the way the other panels in this column already hide theirs. */
+/* The headline sentence that sat under the title is gone, so the title
+   is the card's heading again, at the size the sentence had. */
 .nv-exec .nv-flagcard > header {
-  margin: 0;
+  margin: 0 0 8px;
 }
 
 .nv-exec .nv-flagcard > header h2 {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* `.ai-t` — the sentence is the card, so it is body size and not a caption. */
-.nv-exec .nv-flagcard > .nv-sub {
   font-size: 14px;
   line-height: 1.5;
-  color: var(--ink);
-  margin: 0 0 8px;
 }
 
 /* `.ai-meta` */

@@ -65,12 +65,8 @@ export function ActionBoardView({
           </button>
         </div>
       </header>
-      <p className="nv-sub">{board.trustNote}</p>
 
       <div className="nv-boardbar">
-        <p className="nv-sub" style={{ margin: 0 }}>
-          Select a stage to filter. Select a card to work on it.
-        </p>
         <div className="nv-fbtns">
           {stage !== null ? (
             <button type="button" className="nv-btn" onClick={() => { onStage(null) }}>

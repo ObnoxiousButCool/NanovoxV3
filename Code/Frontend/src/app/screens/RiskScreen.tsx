@@ -50,7 +50,6 @@ import {
   FigureValue,
   IndicatorCount,
   KpiTile,
-  Note,
   Panel,
   RiskPill,
   Tooltip,
@@ -192,7 +191,6 @@ function RiskBody({
         <header>
           <div>
             <h2>Across the eligible accounts</h2>
-            <p>Metric 10 over {String(data.windowWeeks)} weeks, as at {data.asOf}.</p>
           </div>
           <EpistemicChip kind="observed" />
         </header>
@@ -293,13 +291,11 @@ function RiskBody({
               />
             ) : null}
         </BigRow>
-        <Note>{data.exposure.caveat}</Note>
       </section>
 
       <div className="nv-c12 nv-risk-accounts">
         <Panel
           title="Accounts at risk"
-          sub="Select an account for its calls and evidence. Select a tag for what to do about it."
           info={
             <Tooltip>
               <p>
@@ -488,7 +484,6 @@ function RiskBody({
       <div className="nv-c6">
         <Panel
           title="Calls each week"
-          sub="Counts. A blank week is a week the corpus says nothing about."
           chip={<EpistemicChip kind="observed" />}
         >
           <VBars
@@ -514,7 +509,6 @@ function RiskBody({
       <div className="nv-c6">
         <Panel
           title="Resolved and good-quality calls"
-          sub="Shape, not level. A week under five calls is left blank rather than drawn as a swing."
           chip={<EpistemicChip kind="observed" />}
         >
           <VLine
@@ -553,7 +547,6 @@ function RiskBody({
       <div className="nv-c12">
         <Panel
           title="How calls ended"
-          sub={`${String(unresolvedCount)} of ${String(endedTotal)} calls ended unresolved.`}
           chip={<EpistemicChip kind="observed" />}
         >
           {/* The prototype splits this panel a second way, by handling
@@ -642,7 +635,6 @@ function DriversPanel({ drivers }: { drivers: RiskScreenData['drivers'] }) {
   return (
     <Panel
       title="Which problems drive the risk"
-      sub="Each driver is one of the ten indicators, counted in calls. Most common first."
       chip={<EpistemicChip kind="observed" />}
     >
       {rows.length === 0 ? (

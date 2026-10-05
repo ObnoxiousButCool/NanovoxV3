@@ -290,11 +290,6 @@ def build_account_response(detail: AccountDetail, query: InsightsQueryDep) -> Ac
             detail.scope.corpus,
             detail.scope.filtered,
             query.corpus_query(),
-            windows=[
-                ("Contact rate", detail.contact_rate_window),
-                ("Repeat rate", detail.repeat_rate_window),
-                ("The account risk flag", detail.risk_window),
-            ],
         ),
         as_of=detail.scope.as_of.isoformat(),
         facts=AccountFactsResponse(

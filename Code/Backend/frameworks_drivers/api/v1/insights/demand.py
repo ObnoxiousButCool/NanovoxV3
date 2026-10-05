@@ -123,7 +123,6 @@ async def read_demand(
             view.scope.corpus,
             view.scope.filtered,
             query.corpus_query(),
-            windows=[("Self-inflicted demand", view.window)],
         ),
         as_of=view.scope.as_of.isoformat(),
         window_weeks=round(view.window.weeks),

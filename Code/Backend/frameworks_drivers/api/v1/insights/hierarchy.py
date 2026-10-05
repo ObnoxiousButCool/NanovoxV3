@@ -212,7 +212,6 @@ async def read_hierarchy(
             view.scope.corpus,
             view.scope.filtered,
             query.corpus_query(),
-            windows=[("Broker friction", view.window)],
         ),
         as_of=view.scope.as_of.isoformat(),
         window_weeks=round(view.window.weeks),

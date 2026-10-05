@@ -66,7 +66,6 @@ export function AccountCalls({
   return (
     <Panel
       title="Calls"
-      sub="Select a call for the transcript, tags and quoted evidence."
       chip={<EpistemicChip kind="observed" />}
     >
       {error ? (
@@ -111,12 +110,6 @@ export function AccountCalls({
               </tbody>
             </table>
           </div>
-          {data.total > data.rows.length ? (
-            <Note>
-              Showing {String(data.rows.length)} of {String(data.total)} calls for this
-              account. The calls workbench carries the rest.
-            </Note>
-          ) : null}
         </>
       )}
     </Panel>
@@ -253,7 +246,6 @@ export function AccountActions({ employerRef }: { employerRef: string }) {
       // A recommendation, not an observation: C3a rules that a suggestion
       // must never be readable as something the corpus measured.
       chip={<EpistemicChip kind="recommendation" />}
-      sub="Book-wide actions touching this account, and how much of each is its own."
     >
       {error ? (
         <Note>{error.message}</Note>
@@ -302,7 +294,6 @@ export function AccountTiles({
   return (
     <Panel
       title="This account's calls"
-      sub={`Counted over the same window as the risk flag below.`}
       chip={<EpistemicChip kind="observed" />}
     >
       <BigRow>
@@ -445,13 +436,6 @@ export function AccountTopics({ profile }: { profile: AccountProfile }) {
               </li>
             ))}
           </ul>
-          {profile.uncategorised > 0 ? (
-            <Note>
-              {String(profile.uncategorised)} call
-              {profile.uncategorised === 1 ? '' : 's'} carried no category and{' '}
-              {profile.uncategorised === 1 ? 'is' : 'are'} in none of the bars above.
-            </Note>
-          ) : null}
         </>
       )}
     </Panel>

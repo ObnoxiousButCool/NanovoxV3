@@ -218,8 +218,6 @@ export function AccountsScreen() {
   // billed again, and switching account can never show the last one's
   // sentences under this one's name.
   const insights = useGeneratedInsights('account', filters.apiSearch, selected)
-  const brokerName = (ref: string) =>
-    options.data?.brokers.find((broker) => broker.ref === ref)?.agency ?? ref
 
   return (
     <Screen
@@ -285,7 +283,7 @@ export function AccountsScreen() {
                   counts, then the figures, then what it calls about. */}
               {/* `employer.html`'s order: the account, then what a model
                   makes of it, then its own counts, then the rest. */}
-              <AccountHeader data={account.data} brokerName={brokerName} />
+              <AccountHeader data={account.data} />
               <div className="nv-c12">
                 <InsightStrip data={insights.data} pending={insights.isFetching} />
               </div>

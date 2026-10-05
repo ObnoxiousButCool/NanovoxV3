@@ -190,7 +190,6 @@ async def read_agents(
             view.scope.corpus,
             view.scope.filtered,
             query.corpus_query(),
-            windows=[("Agent events", view.window)],
         ),
         as_of=view.scope.as_of.isoformat(),
         window_weeks=round(view.window.weeks),

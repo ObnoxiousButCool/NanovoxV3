@@ -153,7 +153,6 @@ function RulesBody({ data }: { data: Rules }) {
       <div className="nv-c6">
         <ByCount
           title="Where the failure originated"
-          sub="The same rule misstated at two touchpoints is two fixes, one to each piece of material."
           rows={data.byTouchpoint}
           header="Touchpoint"
         />
@@ -162,14 +161,13 @@ function RulesBody({ data }: { data: Rules }) {
       <div className="nv-c6">
         <ByCount
           title="By subject area"
-          sub="An area drawing failures across several rules points at the material rather than at any one rule."
           rows={data.byArea}
           header="Subject area"
         />
       </div>
 
       <div className="nv-c12">
-        <NothingWrong rules={rules} weeks={data.windowWeeks} />
+        <NothingWrong rules={rules} />
       </div>
     </div>
   )
@@ -202,7 +200,6 @@ function RewriteList({ rules }: { rules: RuleRow[] }) {
   return (
     <Panel
       title="Rules we stated incorrectly"
-      sub="Each row is a published rule somebody got wrong on a call. The workbook's own “commonly confused with” column is carried through, because it is the sheet's own explanation of why a rule is easy to get wrong — which is what decides whether the fix is training or a rewrite."
       chip={<EpistemicChip kind="observed" />}
       info={
         <Tooltip>
@@ -264,7 +261,6 @@ function ByLayer({ rules, counts }: { rules: RuleRow[]; counts: Count[] }) {
   return (
     <Panel
       title="By rule layer"
-      sub="Program rules are ours, administration rules are how we run it, carrier rules belong to the underwriter. Where a failure sits decides who can fix it."
       chip={<EpistemicChip kind="observed" />}
     >
       <DataTable
@@ -309,7 +305,6 @@ function ByProvenance({ rules, counts }: { rules: RuleRow[]; counts: Count[] }) 
   return (
     <Panel
       title="How sure are we of our own rules?"
-      sub="The workbook grades every rule's provenance. A rule we are unsure of that also gets misstated is a documentation problem, not a training one."
       chip={<EpistemicChip kind="reference" />}
     >
       <DataTable
@@ -330,17 +325,15 @@ function ByProvenance({ rules, counts }: { rules: RuleRow[]; counts: Count[] }) 
 /** One cut of the failures — a coded value and a count, nothing derived. */
 function ByCount({
   title,
-  sub,
   rows,
   header,
 }: {
   title: string
-  sub: string
   rows: Count[]
   header: string
 }) {
   return (
-    <Panel title={title} sub={sub} chip={<EpistemicChip kind="observed" />}>
+    <Panel title={title} chip={<EpistemicChip kind="observed" />}>
       <DataTable
         caption={`Failures by ${header.toLowerCase()}`}
         columns={[
@@ -366,25 +359,16 @@ function ByCount({
  *
  * v1 listed the rules no call *cited*, which is a stronger statement than
  * this endpoint can support: it serves failures, not citations. So this says
- * the weaker and true thing, and spends a paragraph on the difference,
- * because an unexplained list of a hundred references reads as a clean bill
- * of health for every one of them.
+ * the weaker and true thing.
  */
-function NothingWrong({ rules, weeks }: { rules: RuleRow[]; weeks: number }) {
+function NothingWrong({ rules }: { rules: RuleRow[] }) {
   const clean = rules.filter((rule) => rule.failures === 0)
 
   return (
     <Panel
       title="Rules no call got wrong"
       chip={<EpistemicChip kind="observed" />}
-      sub={`${String(clean.length)} of ${String(rules.length)} published rules carried no knowledge failure in the ${String(weeks)}-week window.`}
     >
-      <Note suppressed>
-        This is not a list of rules we explain well. A rule appears here whether it was explained
-        correctly a hundred times or never came up at all, and the two are indistinguishable from
-        here: the corpus records the rule a call got wrong, never the rules it got right. The list
-        is shown so the gap is visible rather than implied.
-      </Note>
       {clean.length === 0 ? (
         <Empty title="Every published rule was misstated at least once">
           At this volume that would be surprising enough to check the join before acting on it.

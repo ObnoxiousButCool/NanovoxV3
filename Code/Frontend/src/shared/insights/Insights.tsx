@@ -266,12 +266,10 @@ export function InsightFeed({
   data,
   title = 'What this looks like',
   badgeLabel,
-  callCount,
 }: {
   data: GeneratedInsights | undefined
   title?: string
   badgeLabel?: string
-  callCount?: number
 }) {
   const [open, setOpen] = useState<string | null>(null)
   const initialised = useRef(false)
@@ -288,11 +286,6 @@ export function InsightFeed({
   return (
     <div className={badgeLabel ? 'nv-exec-feed' : undefined}>
     <Panel title={title} chip={badgeLabel ? <AiBadge label={badgeLabel} /> : <AiBadge />}>
-      {callCount === undefined ? null : (
-        <p className="nv-ai-feed-meta">
-          Generated from {String(callCount)} calls in this period · updates with your filters
-        </p>
-      )}
       {items.length === 0 ? (
         <Unavailable reason={data.reason} />
       ) : (
@@ -379,13 +372,6 @@ export function InsightFeed({
  * The order and the labels come from the API's own coded values, so the
  * frontend is not a second place the client's taxonomy is written down.
  */
-const LENS_SUB: Record<string, string> = {
-  EMPLOYERS: 'Which kinds of account are struggling',
-  CHURN_AND_RETENTION: 'Who might leave, and when',
-  PRODUCT_AND_SERVICE: 'Which documents, lines and rules cause calls',
-  PAYER_AND_CARRIER: 'Billing, premium and carrier-owned issues',
-}
-
 export function InsightLenses({ data }: { data: GeneratedInsights | undefined }) {
   if (!data) return null
   const items = data.insights
@@ -393,12 +379,6 @@ export function InsightLenses({ data }: { data: GeneratedInsights | undefined })
   return (
     <Panel
       title="What this period means"
-      sub={
-        <>
-          Three insights per lens. Select <b>What to do</b> for the steps and the calls behind
-          them.
-        </>
-      }
       info={
         <Tooltip>
           <p>
@@ -414,15 +394,13 @@ export function InsightLenses({ data }: { data: GeneratedInsights | undefined })
       <div className="nv-lenses">
         {/* From the response, not a list held here: the taxonomy is the
             client's, and a second copy in the client is a second copy to
-            disagree. The one-line descriptions below are panel copy, which
-            D13 does keep on this side. */}
+            disagree. */}
         {data.lenses.map((lens) => {
           const mine = items.filter((insight) => insight.lens.code === lens.code)
           return (
             <article key={lens.code} className="nv-lens" data-lens={lens.code.toLowerCase()}>
               <header>
                 <h3>{lens.label}</h3>
-                <p>{LENS_SUB[lens.code]}</p>
               </header>
               {mine.length === 0 ? (
                 <p className="nv-lens-none">

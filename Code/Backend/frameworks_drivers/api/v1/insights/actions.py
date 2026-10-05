@@ -177,7 +177,6 @@ async def read_actions(
             view.scope.corpus,
             view.scope.filtered,
             query.corpus_query(),
-            windows=[("Action items", view.window)],
         ),
         as_of=view.scope.as_of.isoformat(),
         window_weeks=round(view.window.weeks),
