@@ -401,8 +401,8 @@ function CoachOrRewrite() {
           <p>
             Answering it needs schema field 8 joined to the agent who took the call.{' '}
             <b>D7</b> is open on exactly that join and forbids attributing field 8 to an
-            agent anywhere, so this page does not make it — the `knowledge_error` signal is
-            the agent-conduct event and carries no rule id.
+            agent anywhere, so this page does not make it. The knowledge-error signal is
+            the agent-conduct event, and it carries no rule id.
           </p>
         </Tooltip>
       }
