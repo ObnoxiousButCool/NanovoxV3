@@ -1112,17 +1112,7 @@
           "byTouchpoint": {
             "description": "Adverse mentions by where the failure originated, worst first.",
             "items": {
-              "maxItems": 2,
-              "minItems": 2,
-              "prefixItems": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ],
-              "type": "array"
+              "$ref": "#/components/schemas/TouchpointCountResponse"
             },
             "title": "Bytouchpoint",
             "type": "array"
@@ -5149,7 +5139,7 @@
             "type": "array"
           },
           "byTouchpoint": {
-            "description": "Where the failure originated \u2014 the same rule in two documents is two fixes.",
+            "description": "Where the failure originated \u2014 the same rule in two documents is two fixes. Worded, like every other touchpoint: the code is the reference.",
             "items": {
               "$ref": "#/components/schemas/CountResponse"
             },
@@ -5550,6 +5540,24 @@
           "calls"
         ],
         "title": "TopicCountResponse",
+        "type": "object"
+      },
+      "TouchpointCountResponse": {
+        "description": "Adverse mentions at one touchpoint.\n\nA named pair rather than the two-element array this was, so the\ntouchpoint can carry its words the way it does everywhere else and a\nreader of the response does not have to know which end is which.",
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "touchpoint": {
+            "$ref": "#/components/schemas/CodedValue"
+          }
+        },
+        "required": [
+          "touchpoint",
+          "calls"
+        ],
+        "title": "TouchpointCountResponse",
         "type": "object"
       },
       "TouchpointRowResponse": {

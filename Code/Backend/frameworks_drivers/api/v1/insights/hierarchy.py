@@ -45,6 +45,7 @@ from pydantic import Field
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import DashboardConfigDep, GetHierarchyDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded_touchpoint
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -152,10 +153,22 @@ class PatternTestResponse(CamelModel):
     call_ids: list[str]
 
 
+class TouchpointCountResponse(CamelModel):
+    """Adverse mentions at one touchpoint.
+
+    A named pair rather than the two-element array this was, so the
+    touchpoint can carry its words the way it does everywhere else and a
+    reader of the response does not have to know which end is which.
+    """
+
+    touchpoint: CodedValue
+    calls: int
+
+
 class BrokerFrictionResponse(CamelModel):
     broker_ref: str
     adverse_calls: list[str]
-    by_touchpoint: list[tuple[str, int]] = Field(
+    by_touchpoint: list[TouchpointCountResponse] = Field(
         description="Adverse mentions by where the failure originated, worst first."
     )
     pattern: PatternTestResponse
@@ -307,7 +320,10 @@ async def read_hierarchy(
             BrokerFrictionResponse(
                 broker_ref=row.broker_ref,
                 adverse_calls=list(row.adverse_calls),
-                by_touchpoint=list(row.by_touchpoint),
+                by_touchpoint=[
+                    TouchpointCountResponse(touchpoint=coded_touchpoint(point), calls=calls)
+                    for point, calls in row.by_touchpoint
+                ],
                 pattern=PatternTestResponse(
                     fires=row.pattern.fires,
                     adverse_mentions=row.pattern.adverse_mentions,
