@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import replace
-from datetime import date, timedelta
+from datetime import date
 
 from domain.aggregation.call_tags import CallContext, Window
 from domain.aggregation.figure import Figure, WithheldReason
@@ -90,7 +90,7 @@ def window_for(threshold: MetricThreshold, as_of: date) -> Window | None:
     """
     if threshold.window_weeks is None:
         return None
-    return Window(as_of - timedelta(weeks=threshold.window_weeks), as_of)
+    return Window.of_weeks(as_of, threshold.window_weeks)
 
 
 def share(

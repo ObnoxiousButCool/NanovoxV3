@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
-from datetime import date, timedelta
+from datetime import date
 from typing import TYPE_CHECKING
 
 from application.ports.insights_source import CorpusQuery
@@ -773,7 +773,7 @@ class GetHierarchy:
     async def execute(self, request: InsightsRequest) -> HierarchyView:
         scope = await self._reader.scope(request)
         weeks = self._config.broker_pattern_test.window_weeks
-        window = Window(scope.as_of - timedelta(weeks=weeks), scope.as_of)
+        window = Window.of_weeks(scope.as_of, weeks)
 
         calls = scope.filtered.calls
         employers = scope.corpus.employers

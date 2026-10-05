@@ -38,7 +38,7 @@ Two reasons, and the second is the real one:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 from domain.value_objects.broker_named_aloud import BrokerNamedAloud
 from domain.value_objects.category import Category
@@ -281,6 +281,20 @@ class Window:
     def __post_init__(self) -> None:
         if self.end < self.start:
             raise ValueError("A window cannot end before it starts.")
+
+    @classmethod
+    def of_weeks(cls, as_of: date, weeks: int) -> Window:
+        """The `weeks`-long window ending on `as_of`.
+
+        The day is added back because `contains` is inclusive at both ends:
+        `as_of - 4 weeks` to `as_of` is twenty-nine days, not twenty-eight.
+        Four callers built this subtraction by hand and one of them added
+        the day, so the executive screen computed first-contact resolution
+        over 181 calls and drew the trend strip beneath it over 174 — the
+        same four weeks, counted two ways, on one page. Built here so there
+        is one answer to "the last four weeks".
+        """
+        return cls(as_of - timedelta(weeks=weeks) + timedelta(days=1), as_of)
 
     @property
     def weeks(self) -> float:

@@ -262,4 +262,4 @@ def emerging(
 
 def as_of_window(as_of: date, weeks: int) -> Window:
     """The `weeks`-long window ending on `as_of`, inclusive."""
-    return Window(as_of - timedelta(weeks=weeks) + timedelta(days=1), as_of)
+    return Window.of_weeks(as_of, weeks)
