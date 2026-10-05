@@ -151,11 +151,19 @@ class CallRow(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     reference: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)  # C-0001
     source: Mapped[str] = mapped_column(nullable=False)  # CallSource.value
-    occurred_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Every windowed metric on every screen filters on this column — it is
+    # the one column every one of the eight insight endpoints scans the
+    # whole table by. Indexed for the corpus this will be once it is not 600
+    # rows; a full scan here costs nothing today and would cost real time
+    # once it is not.
+    occurred_at: Mapped[datetime | None] = mapped_column(nullable=True, index=True)
     aht_seconds: Mapped[int | None] = mapped_column(nullable=True)
     caller_type: Mapped[str] = mapped_column(nullable=False)  # CallerType.value
     caller_ref: Mapped[str] = mapped_column(nullable=False)
-    agent_ref: Mapped[str] = mapped_column(nullable=False)
+    # Not a foreign key — agents are looked up by reference, not row id —
+    # but `/agents` filters every call in the corpus down to one agent's,
+    # same reason as `occurred_at` above.
+    agent_ref: Mapped[str] = mapped_column(nullable=False, index=True)
     # The header's own agent name, alongside agent_ref — needed to
     # reconstruct a Transcript when a call is read back for extraction
     # (plan §8 Phase 4). Empty when there is no transcript to reconstruct
@@ -166,12 +174,18 @@ class CallRow(Base):
     resolution_reason: Mapped[str | None] = mapped_column(nullable=True)
 
     # Null exactly when that half of the join didn't resolve — never a
-    # guess standing in for a missing join.
-    member_id: Mapped[int | None] = mapped_column(ForeignKey("members.id"), nullable=True)
-    employer_contact_id: Mapped[int | None] = mapped_column(
-        ForeignKey("employer_contacts.id"), nullable=True
+    # guess standing in for a missing join. Indexed like every other foreign
+    # key in this module; these three were the one place that convention
+    # had not reached yet.
+    member_id: Mapped[int | None] = mapped_column(
+        ForeignKey("members.id"), nullable=True, index=True
     )
-    employer_id: Mapped[int | None] = mapped_column(ForeignKey("employers.id"), nullable=True)
+    employer_contact_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employer_contacts.id"), nullable=True, index=True
+    )
+    employer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employers.id"), nullable=True, index=True
+    )
 
     # selectin: async-safe eager loading. The default lazy="select" would
     # try to lazy-load this collection outside of an awaited context the
