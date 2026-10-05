@@ -212,6 +212,10 @@ class TestDemand:
         assert row["calls"] == 3
         assert len(row["callIds"]) == 3
         assert "rate" not in row
+        # A pair, like every other coded vocabulary: the row carried the
+        # reference under a heading the calls table spells out, so the two
+        # screens named the same touchpoint differently.
+        assert set(row["touchpoint"]) == {"code", "label"}
 
     async def test_untagged_touchpoints_land_in_the_residual_bucket(
         self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]

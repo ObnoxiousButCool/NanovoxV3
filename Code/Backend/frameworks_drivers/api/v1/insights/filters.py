@@ -81,7 +81,7 @@ from domain.value_objects.signal_type import SignalType, severity_of
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetFilterOptionsDep
 from frameworks_drivers.api.v1.insights.envelope import PeriodResponse
-from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded, coded_touchpoint
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -135,14 +135,20 @@ class FilterOptionsResponse(CamelModel):
             "reference — dropping them would remove a filter for calls that exist."
         )
     )
-    touchpoints: list[str] = Field(
-        description="Observed on calls, not reference data. Grows with the corpus."
+    touchpoints: list[CodedValue] = Field(
+        description=(
+            "Observed on calls, not reference data. Grows with the corpus. A pair "
+            "like every other coded vocabulary here: the dropdown offered "
+            "`acupuncture_chiropractic_usage` as its own label, where the calls "
+            "table spelt the same touchpoint out."
+        )
     )
     categories: list[str] = Field(
         description=(
-            "The Call Tag Schema's own wording, like `touchpoints` — not mapped in "
-            "`labels.py` because the workbook's values are already the words a reader "
-            "wants, and a label identical to its own code is not a label."
+            "The Call Tag Schema's own wording — bare, not a pair, because the "
+            "workbook's values are already the words a reader wants and a label "
+            "identical to its own code is not a label. Unlike `touchpoints`, which "
+            "are slugs and are mapped in `labels.py`."
         )
     )
 
@@ -229,7 +235,7 @@ async def read_filter_options(
             AgentOptionResponse(ref=agent.reference, name=agent.name, band=agent.band)
             for agent in options.agents
         ],
-        touchpoints=list(options.touchpoints),
+        touchpoints=[coded_touchpoint(point) for point in options.touchpoints],
         categories=[category.value for category in Category],
         signals=[_signal_option(signal) for signal in SignalType],
         signal_severities=[coded(severity) for severity in SignalSeverity],

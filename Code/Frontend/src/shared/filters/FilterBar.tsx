@@ -126,9 +126,11 @@ export function FilterBar({
     // took a call and is not on it. A dropdown of AGT-01 … AGT-20 is a
     // list nobody can pick from.
     agent: data?.agents.map((agent) => ({ value: agent.ref, label: agent.name })),
-    touchpoint: data?.touchpoints.map((point) => ({ value: point, label: point })),
-    // The workbook's own wording, like `touchpoint` — not a `{code, label}`
-    // pair because a label identical to its own code is not a label.
+    // A slug, so the pair: this list offered `acupuncture_chiropractic_usage`
+    // as its own label while the calls table spelt the same touchpoint out.
+    touchpoint: data?.touchpoints.map((point) => ({ value: point.code, label: point.label })),
+    // The workbook's own wording — not a `{code, label}` pair, because a
+    // label identical to its own code is not a label. Unlike `touchpoint`.
     category: data?.categories.map((category) => ({ value: category, label: category })),
     productLine: data?.productLines.map((line) => ({ value: line.code, label: line.label })),
     outcome: data?.outcomes.map((outcome) => ({ value: outcome.code, label: outcome.label })),
