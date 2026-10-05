@@ -1239,3 +1239,29 @@ async def test_the_workbench_opens_on_the_newest_call(
     # for it: a default that disagrees with its own parameter is the shape
     # this defect took.
     assert dates() == newest_first
+
+
+@pytest.mark.asyncio
+async def test_the_export_words_a_touchpoint_the_way_the_table_does(
+    client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+) -> None:
+    """The file and the screen it came from, saying the same thing.
+
+    The table showed "Denial letter / EOB" and the exported row beside it
+    said `denial_letter_eob`, so a reader comparing the two had to know
+    they were the same touchpoint. The other coded columns stay as codes:
+    those are the values the filter parameters take and what a join is
+    built on, and a touchpoint has no such parameter in this file.
+    """
+    await seed_a_tagged_call(session_factory, reference="C-9120", touchpoint="denial_letter_eob")
+
+    csv_text = client.get("/api/v1/insights/calls.csv").content.decode("utf-8")
+    row = client.get("/api/v1/insights/calls").json()["rows"][0]
+
+    lines = csv_text.lstrip("﻿").split("\r\n")
+    cell = dict(zip(lines[0].split(","), lines[1].split(","), strict=False))
+
+    assert cell["Touchpoint"] == "Denial letter / EOB"
+    assert cell["Touchpoint"] == row["touchpoint"]
+    # Unchanged, and deliberately: the code is what the filter takes.
+    assert cell["Outcome"] == row["outcome"]["code"]
