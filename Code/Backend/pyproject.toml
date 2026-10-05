@@ -65,7 +65,18 @@ minversion = "8.0"
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-q --strict-markers --strict-config"
+# `-n auto --dist loadfile`: every test builds its own SQLite file and the
+# suite shares no state between them, so it parallelises. Serial, 1,600
+# tests took about four minutes; across the machine's cores it takes one.
+# `loadfile` rather than the default `load` so a file's tests stay on one
+# worker -- the session-scoped corpus ingest in tests/integration/conftest.py
+# is then built once per worker that needs it rather than once per test that
+# happens to land somewhere new.
+#
+# In addopts rather than on the command line so that CI's bare
+# `pytest --cov` and a developer's bare `pytest` are the same run. To debug
+# serially, `pytest -p no:xdist` or `-n 0`.
+addopts = "-q --strict-markers --strict-config -n auto --dist loadfile"
 filterwarnings = [
     "error",
     "ignore::ResourceWarning",

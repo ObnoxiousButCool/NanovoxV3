@@ -11,6 +11,7 @@
 # certifi, httpcore and httpx now come in through requirements-lock.txt
 # (openai pulls httpx at runtime) — no longer listed here separately.
 coverage==7.16.0
+execnet==2.1.2
 grimp==3.17
 import-linter==2.15
 iniconfig==2.3.0
@@ -26,6 +27,7 @@ Pygments==2.21.0
 pytest==8.4.2
 pytest-asyncio==0.26.0
 pytest-cov==7.1.0
+pytest-xdist==3.8.0
 rich==15.0.0
 ruff==0.16.6
 tzdata==2026.3
