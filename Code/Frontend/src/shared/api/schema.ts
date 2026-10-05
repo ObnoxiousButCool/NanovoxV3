@@ -834,7 +834,7 @@ export interface components {
             controlExceptions: components["schemas"]["ControlExceptionCountResponse"][];
             /**
              * Escalationsmissed
-             * @description Calls where an explicit escalation request went nowhere.
+             * @description Calls where an escalation was warranted and not handled -- `Escalation.missed`, the same set the risk screen counts.
              */
             escalationsMissed: string[];
             knowledgeErrorRate: components["schemas"]["FigureResponse"];

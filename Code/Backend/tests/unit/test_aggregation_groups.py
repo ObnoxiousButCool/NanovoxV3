@@ -671,13 +671,35 @@ def test_control_exceptions_are_counted_per_agent_by_type(config: DashboardConfi
             "C-0001",
             control_exceptions=frozenset({ControlExceptionType.NO_RECORDING_DISCLOSURE}),
         ),
-        call("C-0002", signals=frozenset({SignalType.ESCALATION_MISSED})),
+        call("C-0002", escalation=Escalation(triggered=True, handled=False)),
     )
 
     events = agent_events(config, "AG-01", traffic, WINDOW)
 
     assert dict(events.control_exceptions)[ControlExceptionType.NO_RECORDING_DISCLOSURE] == 1
     assert events.escalations_missed == ("C-0002",)
+
+
+def test_a_handled_escalation_is_not_counted_against_the_agent(config: DashboardConfig) -> None:
+    """The `escalation_missed` signal is not the same set as `Escalation.missed`.
+
+    A call can carry the signal and still record the escalation as handled.
+    Counting the signal put two such calls against one agent while the risk
+    screen, the executive trend strip and the account profile — which all
+    read `missed` — counted neither. The schema states whether a warranted
+    escalation was handled, so an agent is answerable for that and not for a
+    second opinion about it.
+    """
+    traffic = (
+        call(
+            "C-0001",
+            signals=frozenset({SignalType.ESCALATION_MISSED}),
+            escalation=Escalation(triggered=True, handled=True),
+        ),
+        call("C-0002", escalation=Escalation(triggered=True, handled=False)),
+    )
+
+    assert agent_events(config, "AG-01", traffic, WINDOW).escalations_missed == ("C-0002",)
 
 
 def test_a_broker_row_splits_its_mentions_by_touchpoint(config: DashboardConfig) -> None:

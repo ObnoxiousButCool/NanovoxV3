@@ -131,7 +131,10 @@ class AgentResponse(CamelModel):
         description="Calls where this agent stated a published rule incorrectly."
     )
     escalations_missed: list[str] = Field(
-        description="Calls where an explicit escalation request went nowhere."
+        description=(
+            "Calls where an escalation was warranted and not handled -- "
+            "`Escalation.missed`, the same set the risk screen counts."
+        )
     )
     control_exceptions: list[ControlExceptionCountResponse]
     knowledge_error_rate: FigureResponse

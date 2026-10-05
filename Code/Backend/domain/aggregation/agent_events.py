@@ -89,7 +89,16 @@ def agent_events(
     mine = [call for call in window.calls_in(tuple(calls)) if call.agent_ref == agent_ref]
 
     errors = tuple(call for call in mine if SignalType.KNOWLEDGE_ERROR in call.tags.signals)
-    missed = tuple(call for call in mine if SignalType.ESCALATION_MISSED in call.tags.signals)
+    # `Escalation.missed`, not the `escalation_missed` signal. The two are
+    # not the same set: a call can carry the signal and still record the
+    # escalation as handled, and this counted two such calls against one
+    # agent while the risk screen, the executive trend strip and the account
+    # profile — all of which read `missed` — counted neither. Escalation is
+    # not the `knowledge_error` case above: there the signal is the conduct
+    # event and the schema field is the one in dispute, whereas here the
+    # schema already says whether a warranted escalation was handled, so the
+    # signal is a second opinion about a fact the data states outright.
+    missed = tuple(call for call in mine if call.tags.escalation and call.tags.escalation.missed)
 
     exceptions = dict.fromkeys(ControlExceptionType, 0)
     for call in mine:
