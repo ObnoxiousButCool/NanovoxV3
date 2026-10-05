@@ -360,12 +360,6 @@ export function InsightFeed({
           })}
         </ul>
       )}
-      {data.provider ? (
-        <p className="nv-ai-by">
-          Written by {data.provider}
-          {data.model ? ` (${data.model})` : ''}.
-        </p>
-      ) : null}
     </Panel>
     </div>
   )

@@ -373,11 +373,13 @@ describe("a call's panels", () => {
     expect(screen.getByText(/not attributed to the agent/i)).toBeInTheDocument()
   })
 
-  it('shows which model produced a layer, and when', async () => {
-    // Plan §7 requires provenance on every analysis.
+  it('shows which run produced a layer, and when, without naming the vendor', async () => {
+    // Plan §7 requires provenance on every analysis; the page names no
+    // provider or model anywhere.
     await openAnalysed()
 
-    expect(screen.getByText(/openai · gpt-test · prompt 1\.0\.0/)).toBeInTheDocument()
+    expect(screen.getAllByText(/^prompt 1\.0\.0/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/openai|gpt-test/)).not.toBeInTheDocument()
   })
 
   it('renders every panel for a call nothing has run on', async () => {

@@ -175,10 +175,6 @@
   padding-left: 10px;
 }
 
-.nv-risk-insights .nv-ai-by {
-  margin: 10px 0 0;
-}
-
 /* Keep the eligible-account context, but let the KPI strip—not an extra
    panel shell—carry the visual weight like Prototype/v2's .bigrow. */
 .nv-risk-kpis > header {
