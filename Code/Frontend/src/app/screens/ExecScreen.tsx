@@ -76,7 +76,6 @@ import {
   FigureValue,
   IndicatorCount,
   KpiTile,
-  Note,
   Panel,
   Tooltip,
 } from '@/shared/design/primitives'
@@ -152,7 +151,6 @@ function ExecBody({
           data={insights}
           title="Attention insights"
           badgeLabel="Needs attention now"
-          callCount={data.calls}
         />
       </div>
       <div className="nv-maincol nv-grid">
@@ -217,31 +215,15 @@ function NeedsAttentionPanel({
         indicatorCount(b) - indicatorCount(a) ||
         a.employerRef.localeCompare(b.employerRef),
     )
-  const renewingSoon = flagged.filter((account) => withinRenewSoon(account))
   // Six, as `exec.html` prints.
   const top = flagged.slice(0, 6)
 
   return (
-    // `exec.html` writes this as a card, not a titled panel: the sentence is
-    // the heading, the figures in it are bold, the count sits opposite a
-    // label, and the two actions are a filled button and a ghost at the foot.
-    // The title stays for screen readers, hidden the way the feed's other
-    // panels hide theirs.
+    // `exec.html` writes this as a card: the count sits opposite a label,
+    // and the two actions are a filled button and a ghost at the foot.
     <Panel
       title="Flagged accounts"
       className="nv-flagcard"
-      sub={
-        <>
-          <b>
-            {flagged.length} of {risk.assessedCount} accounts
-          </b>{' '}
-          are flagged for risk, and{' '}
-          <b>
-            {renewingSoon.length} of them renew within {RENEW_SOON_MONTHS} months
-          </b>
-          .
-        </>
-      }
       meta={
         <>
           <span className="nv-flagcard-lens">
@@ -536,7 +518,6 @@ function EmergingPanel({ emerging }: { emerging: EmergingEntry[] }) {
   return (
     <Panel
       title="Emerging issues"
-      sub="Topics, touchpoints, signals and product lines with more calls in the latest slice of the window than the first. Counts only: at batch-1 volume a share would be two or three calls."
       chip={<EpistemicChip kind="pattern" />}
     >
       <div className="nv-emgrid">
@@ -549,7 +530,6 @@ function EmergingPanel({ emerging }: { emerging: EmergingEntry[] }) {
         </div>
         <aside className="nv-easing">
           <h3>Easing</h3>
-          <p className="nv-sub">Fewer calls now than at the start of the window.</p>
           {easing.length === 0 ? (
             <Empty title="Nothing easing">Nothing fell across this window.</Empty>
           ) : (
@@ -613,28 +593,16 @@ function ActionProgressPanel({ board }: { board: ActionBoard }) {
   const counts = new Map(
     board.lanes.map((lane) => [lane.code, board.actions.filter((action) => action.status === lane.code).length]),
   )
-  const openActions = board.actions.filter((action) => findLane(board.lanes, action.status)?.open)
-  const overdue = board.actions.filter((action) => action.pastDue)
-  const measured = board.actions.filter((action) => action.outcome !== null)
-  const hasActions = board.actions.length > 0
 
   return (
     <Panel
       title="What is being done"
       sub={
-        hasActions ? (
-          <>
-            {openActions.length} of {board.actions.length} actions open, {overdue.length} overdue,{' '}
-            {measured.length} with a measured outcome.
-          </>
-        ) : (
-          'No actions have been raised on this board yet.'
-        )
+        board.actions.length > 0 ? undefined : 'No actions have been raised on this board yet.'
       }
       chip={<EpistemicChip kind="observed" />}
     >
       <ActionBar lanes={board.lanes} counts={counts} colors={colors} />
-      <Note>{board.trustNote}</Note>
       <p className="nv-cta">
         <Link to="/actions">Open the action board →</Link>{' '}
         <Link to="/risk">See every risk and driver →</Link>

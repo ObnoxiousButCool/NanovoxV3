@@ -357,11 +357,6 @@ function FocusPanel({
             <p className="nv-ownerline">
               Suggested owner: <b>{pb.ownerTeam}</b>
             </p>
-            {!pb.reviewed ? (
-              <Note>
-                Recommendation, not policy: these steps have not been reviewed by the owning team.
-              </Note>
-            ) : null}
 
             {related.length > 0 ? (
               <>
@@ -581,7 +576,6 @@ function IssuesToActOn({
   return (
     <Panel
       title={exclude !== null ? 'Other issues to act on' : 'Issues to act on'}
-      sub="Most urgent first. Select an issue to see the steps and the evidence."
       chip={<EpistemicChip kind="recommendation" />}
     >
       {issues.length === 0 ? (
@@ -659,10 +653,8 @@ function DidItWorkPanel({
   return (
     <Panel
       title={panel.question}
-      sub="What was done, and what the owner recorded afterwards."
       chip={<EpistemicChip kind="inference" />}
     >
-      <Note>{panel.why}</Note>
       {measured.length === 0 ? (
         <Empty title="No outcome recorded yet">
           An action records one when it reaches a closed lane.
@@ -678,7 +670,6 @@ function DidItWorkPanel({
           ))}
         </ul>
       )}
-      <Note>{panel.unlockedBy}</Note>
     </Panel>
   )
 }

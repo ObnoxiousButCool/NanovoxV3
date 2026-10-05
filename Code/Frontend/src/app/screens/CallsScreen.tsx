@@ -21,12 +21,8 @@
  * reader mails out is produced by the same code as the table they are
  * looking at, and a column can never appear in one and not the other.
  *
- * The prototype's export has 26 columns and this one has 24. The five it
- * does not carry are listed under the download button from `omittedColumns`
- * rather than described here, because the person who needs to know is the
- * one about to open the file in Excel and wonder where a column went.
- * Rendered from the response, so a column that gains a source stops being
- * mentioned without this screen being touched.
+ * The prototype's export has 26 columns and this one has 24. The page no
+ * longer lists the ones it leaves out.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -36,7 +32,7 @@ import { useCalls, useFilterOptions } from '@/shared/api/insights'
 import type { CallRow, CallsPage } from '@/shared/api/insights'
 import { useDrawer } from '@/shared/design/drawer'
 import { CallEvidence } from '@/shared/design/drawer/Evidence'
-import { BigRow, Empty, KpiTile, Named, Note } from '@/shared/design/primitives'
+import { BigRow, Empty, KpiTile, Named } from '@/shared/design/primitives'
 import { OUTCOME_COLOR } from '@/shared/design/outcome'
 import { getConfig } from '@/shared/config/env'
 import { useFilters } from '@/shared/filters/useFilters'
@@ -237,7 +233,6 @@ function CallsBody({
   const rows = data.rows
   // Optional on the wire, because a response that carried every prototype
   // column would send nothing here rather than an empty list.
-  const omitted = data.omittedColumns ?? []
   const onPage = rows.map((row) => row.reference)
   const allOnPageSelected = onPage.length > 0 && onPage.every((ref) => selected.has(ref))
 
@@ -292,25 +287,6 @@ function CallsBody({
               ) : null}
             </div>
           </div>
-          <Note>
-              The file is built by the server from the same query as this table, so a
-              column can never appear in one and not the other. Selecting rows narrows it;
-              it never adds a call the filters exclude.
-          </Note>
-          {omitted.length > 0 ? (
-            <>
-              <Note suppressed>
-                The prototype&rsquo;s export has {omitted.length} columns this one does not.
-                They are left out rather than written empty: a blank cell reads as
-                &ldquo;no value for this call&rdquo;, which would not be true of any of them.
-              </Note>
-              <ul className="nv-omitted">
-                {omitted.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
-            </>
-          ) : null}
 
           {rows.length === 0 ? (
             <Empty title="No call matches">

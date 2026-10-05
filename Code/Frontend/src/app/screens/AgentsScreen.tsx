@@ -232,7 +232,6 @@ function IssuesByAgent({
   return (
     <Panel
       title="Issues by agent"
-      sub="Agents with at least one event, most first. Select an agent for their calls; select a number for what to do."
       info={
         <Tooltip>
           <p>
@@ -392,7 +391,6 @@ function CoachOrRewrite() {
   return (
     <Panel
       title="Coach the agent, or fix the rule?"
-      sub="Rules stated wrongly on calls, and what that suggests."
       info={
         <Tooltip>
           <p>
@@ -422,7 +420,6 @@ function ByBand({ bands, unavailable }: { bands: Band[]; unavailable: string }) 
   return (
     <Panel
       title="By experience level"
-      sub="Grouping recovers the sample one agent lacks."
       info={
         <Tooltip>
           <p>

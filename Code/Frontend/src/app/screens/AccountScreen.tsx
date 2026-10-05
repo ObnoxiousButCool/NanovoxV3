@@ -78,9 +78,6 @@ function AccountStakes({ stakes }: { stakes: AccountDetail['stakes'] }) {
   return (
     <>
       <h3 className="nv-subhead">Account facts that raise the stakes</h3>
-      <p className="nv-sub">
-        From the workbook, not from these calls. True whether or not anyone rang.
-      </p>
       <ul className="nv-stakes">
         {stakes.map((stake) => (
           <li key={stake.code}>
@@ -150,25 +147,17 @@ function IndicatorEvidence({
  * follows it — a reader who has just picked one of ninety-five accounts
  * needs to see which one they landed on before any figure about it.
  */
-export function AccountHeader({
-  data,
-  brokerName,
-}: {
-  data: AccountDetail
-  brokerName: (ref: string) => string
-}) {
+export function AccountHeader({ data }: { data: AccountDetail }) {
   const { facts, risk } = data
   return (
     <>
       {/* `employer.html` leads with the account, not with a panel called
-          "The account": the name is the heading, the industry, broker and
-          region are the subtitle, and the five workbook facts sit under
-          them. A reader who has clicked an account out of ninety-five needs
+          "The account": the name is the heading and the five workbook facts
+          sit under it. A reader who has clicked an account out of ninety-five needs
           to see which one they landed on before anything else. */}
       <div className="nv-c12">
         <Panel
           title={facts.name}
-          sub={`${facts.industry} · ${brokerName(facts.brokerRef)} · ${facts.region}`}
           chip={<EpistemicChip kind="reference" />}
           actions={<RiskPill eligible={risk.eligible} flagged={risk.flagged} />}
           info={
@@ -233,17 +222,6 @@ export function AccountHeader({
               <RenewalCountdown months={facts.renewalInMonths} />
             </div>
           </div>
-          {/* Filters slice, never hide. The tiles count the risk window and
-              the calls panel lists the selected period; where those differ
-              the page says so rather than appearing to contradict itself. */}
-          {data.callsInPeriod > data.profile.calls ? (
-            <Note>
-              {String(data.callsInPeriod - data.profile.calls)} of this account&rsquo;s{' '}
-              {String(data.callsInPeriod)} calls in the selected period fall outside the{' '}
-              {String(data.riskWindowWeeks)}-week window the counts above use. They are in
-              the calls panel below.
-            </Note>
-          ) : null}
         </Panel>
       </div>
     </>
@@ -263,7 +241,6 @@ export function AccountBody({ data }: { data: AccountDetail }) {
       <div className="nv-c7">
         <Panel
           title="What went wrong on this account"
-          sub={`Metric 10 over ${String(data.riskWindowWeeks)} weeks, as at ${data.asOf}.`}
           chip={<EpistemicChip kind="observed" />}
           actions={<RiskPill eligible={risk.eligible} flagged={risk.flagged} />}
         >
@@ -302,10 +279,6 @@ export function AccountBody({ data }: { data: AccountDetail }) {
               ? `${String(fired.length)} of ${String(risk.observations.length)}`
               : 'not assessed'}
           </h3>
-          <p className="nv-sub">
-            Informational. These do not set the flag (D2), and the count is a count rather
-            than a level (D12).
-          </p>
           {/* Said once at the top rather than repeated on all ten rows. A
               count of nought here would read as a clean account, when what
               happened is that nobody could look. */}

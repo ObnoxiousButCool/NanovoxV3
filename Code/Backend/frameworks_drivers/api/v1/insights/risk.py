@@ -458,7 +458,6 @@ def build_risk_response(
             result.scope.corpus,
             result.scope.filtered,
             query.corpus_query(),
-            windows=[("The account risk flag", result.window)],
         ),
         as_of=result.scope.as_of.isoformat(),
         window_weeks=round(result.window.weeks),

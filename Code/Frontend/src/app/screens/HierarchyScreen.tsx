@@ -126,7 +126,6 @@ function HierarchyBody({
       <div className="nv-c7">
         <Panel
           title="Which topics show up where"
-          sub="A dark column means book-wide; a single dark cell means local."
           info={
             <Tooltip>
               <p>
@@ -237,7 +236,6 @@ function RegionPanel({ rows, filters }: { rows: RegionRow[]; filters: Filters })
   return (
     <Panel
       title="By region"
-      sub="Select a region to filter every page."
       info={
         <Tooltip>
           <p>
@@ -317,7 +315,6 @@ function BrokerPanel({ rows, filters }: { rows: BrokerRow[]; filters: Filters })
   return (
     <Panel
       title="By broker"
-      sub="Most adverse mentions first. Select a broker to filter every page."
       info={
         <Tooltip>
           <p>

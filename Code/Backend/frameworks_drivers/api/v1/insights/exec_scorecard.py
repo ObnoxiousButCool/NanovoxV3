@@ -30,7 +30,6 @@ from pydantic import Field
 
 from application.use_cases.read_insights import ExecResult, ExecTrends
 from domain.aggregation.exec_scorecard import SCORECARD_METRICS, escalation_integrity_pair
-from domain.aggregation.patterns import window_for
 from domain.dashboard_config import DashboardConfig
 from domain.value_objects.product_line import ProductLine
 from domain.value_objects.signal_type import SignalType
@@ -261,15 +260,6 @@ def build_exec_response(
             result.scope.corpus,
             result.scope.filtered,
             query.corpus_query(),
-            # One caveat per metric, because the windows differ on this one
-            # screen: first-contact resolution is 4 weeks and the repeat rate
-            # is 12. A single scope-level sentence would have to speak for
-            # both, and would be wrong about one of them.
-            windows=[
-                (config.metric(key).name, window)
-                for key in SCORECARD_METRICS
-                if (window := window_for(config.metric(key), card.as_of)) is not None
-            ],
         ),
         as_of=card.as_of.isoformat(),
         calls=card.calls,

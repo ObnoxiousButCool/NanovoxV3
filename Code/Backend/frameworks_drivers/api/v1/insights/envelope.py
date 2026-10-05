@@ -49,14 +49,11 @@ the ids and leaves the figure looking the same.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from datetime import date
 from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from domain.aggregation.call_tags import CallContext, Window
-from domain.aggregation.patterns import window_note
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
 
@@ -217,22 +214,12 @@ class ScopeResponse(CamelModel):
         corpus: CorpusSlice,
         filtered: FilteredCalls,
         query: CorpusQuery,
-        *,
-        windows: Sequence[tuple[str, Window]] = (),
     ) -> ScopeResponse:
-        """The scope, plus a caveat for every window that disagrees with it.
+        """The scope, and the corpus's own caveats.
 
-        `windows` is what this endpoint actually computed over, named as a
-        reader would name it. Passing them is how decision D11 becomes
-        visible rather than merely true: the period bounds the corpus, each
-        metric keeps its own window, and where the two disagree the response
-        says so instead of quietly publishing a narrower figure.
-
-        Two ways they disagree, and `window_note` says both in one
-        sentence: a window can reach **outside** the period asked for, and
-        it can **leave calls out** of the scope. They were two sentences
-        from two functions, one of them written per metric, and a reader
-        picking a single week met six paragraphs above the figures.
+        No sentence about metric windows: each metric keeps its own window
+        (D11), and the page no longer explains where that differs from the
+        period asked for.
         """
         return cls(
             sources=sorted(source.value for source in query.sources),
@@ -257,35 +244,5 @@ class ScopeResponse(CamelModel):
                 for entry in filtered.unmeasurable
             ],
             excluded_calls=corpus.excluded,
-            caveats=[
-                *corpus.caveats(),
-                *_window_notes(windows, filtered.calls, query.since, query.until),
-            ],
+            caveats=list(corpus.caveats()),
         )
-
-
-def _window_notes(
-    windows: Sequence[tuple[str, Window]],
-    calls: Sequence[CallContext],
-    since: date | None,
-    until: date | None,
-) -> list[str]:
-    """One sentence per distinct window, not per metric.
-
-    The executive screen's five metrics run over two windows, and a sentence
-    each put five near-identical paragraphs above the figures. Grouped by
-    the window's own bounds, in the order the endpoint listed them, so the
-    sentences stay stable between requests.
-    """
-    grouped: dict[tuple[date, date], list[str]] = {}
-    spans: dict[tuple[date, date], Window] = {}
-    for subject, window in windows:
-        key = (window.start, window.end)
-        grouped.setdefault(key, []).append(subject)
-        spans.setdefault(key, window)
-    notes = []
-    for key, subjects in grouped.items():
-        note = window_note(spans[key], calls, since, until, subjects=subjects)
-        if note is not None:
-            notes.append(note)
-    return notes
