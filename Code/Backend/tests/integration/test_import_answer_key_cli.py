@@ -28,7 +28,6 @@ from frameworks_drivers.cli.import_answer_key import (
 )
 from infrastructure.config.paths import DEFAULT_TRANSCRIPTS_DIR, DEFAULT_WORKBOOK_PATH
 from infrastructure.config.settings import get_settings
-from infrastructure.persistence.models import Base
 
 
 @pytest.fixture(autouse=True)
@@ -125,34 +124,24 @@ def test_a_long_disagreement_list_is_truncated_with_a_count(
     reason="corpus not found — expected it under Documents/ (see infrastructure/config/paths.py)",
 )
 def test_the_real_corpus_imports_and_reconciles_end_to_end(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ingested_corpus: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """Reference data, then ingestion, then the answer key — the order an
     operator runs them in, and the order `ground_truth`'s foreign key
     requires.
-    """
-    from frameworks_drivers.cli.import_reference import main as import_reference
-    from frameworks_drivers.cli.ingest_transcripts import main as ingest
 
-    db_path = tmp_path / "answer_key_cli.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
+    The first two steps come from `ingested_corpus`, which runs them once
+    for the suite; the foreign key they exist to satisfy is still what this
+    test asserts, because the answer key below fails without them.
+    """
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{ingested_corpus.as_posix()}")
     monkeypatch.setenv("WORKBOOK_PATH", str(DEFAULT_WORKBOOK_PATH))
     monkeypatch.setenv("TRANSCRIPTS_DIR", str(DEFAULT_TRANSCRIPTS_DIR))
     monkeypatch.setenv("LOG_ENABLED", "false")
     monkeypatch.setenv("FRONTEND_DIST_PATH", str(tmp_path / "no-frontend"))
-
-    from sqlalchemy import create_engine
-
-    from infrastructure.persistence import tables as _tables  # noqa: F401
-
-    engine = create_engine(f"sqlite:///{db_path.as_posix()}")
-    try:
-        Base.metadata.create_all(engine)
-    finally:
-        engine.dispose()
-
-    assert import_reference() == 0
-    assert ingest() == 0
     capsys.readouterr()
 
     assert main() == EXIT_OK
