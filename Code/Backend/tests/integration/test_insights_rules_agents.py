@@ -159,6 +159,23 @@ class TestRules:
         assert sum(row["failures"] for row in body["byProvenance"]) == 2
         assert sum(row["failures"] for row in body["byTouchpoint"]) == 2
 
+    async def test_a_touchpoint_cut_is_worded_rather_than_slugged(
+        self, client: TestClient, session_factory: async_sessionmaker[AsyncSession]
+    ) -> None:
+        """This table put `member_inquiry` in front of a reader.
+
+        It built its pair as the code repeated as its own label, which is
+        the one thing `CodedValue` says a label is not. `byArea` beside it
+        does repeat the value, correctly: an area is the sheet's own words.
+        """
+        await seed(session_factory, failed_rules=["P-14"])
+
+        body = client.get("/api/v1/insights/rules", params={"asOf": AS_OF}).json()
+
+        (row,) = body["byTouchpoint"]
+        assert row["value"]["code"] == "Enrolment"
+        assert "_" not in row["value"]["label"]
+
 
 class TestAgents:
     async def test_events_lead_and_the_score_range_sits_beside_them(

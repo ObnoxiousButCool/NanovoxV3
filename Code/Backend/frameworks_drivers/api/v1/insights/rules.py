@@ -36,7 +36,7 @@ from pydantic import Field
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import GetRulesDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
-from frameworks_drivers.api.v1.insights.labels import CodedValue, coded
+from frameworks_drivers.api.v1.insights.labels import CodedValue, coded, coded_touchpoint
 from frameworks_drivers.api.v1.insights.query import InsightsQueryDep
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -94,7 +94,10 @@ class RulesResponse(CamelModel):
         )
     )
     by_touchpoint: list[CountResponse] = Field(
-        description="Where the failure originated — the same rule in two documents is two fixes."
+        description=(
+            "Where the failure originated — the same rule in two documents is two "
+            "fixes. Worded, like every other touchpoint: the code is the reference."
+        )
     )
 
 
@@ -139,7 +142,11 @@ async def read_rules(
             CountResponse(value=coded(grade), failures=n) for grade, n in view.by_provenance
         ],
         by_touchpoint=[
-            CountResponse(value=CodedValue(code=where, label=where), failures=n)
+            # `coded_touchpoint`, not a code repeated as its own label: this
+            # table put `member_inquiry` in front of a reader. `by_area`
+            # above does repeat it, correctly -- an area is the sheet's own
+            # words, and a label identical to its code is not a label.
+            CountResponse(value=coded_touchpoint(where), failures=n)
             for where, n in view.by_touchpoint
         ],
     )

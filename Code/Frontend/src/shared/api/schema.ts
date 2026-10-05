@@ -963,10 +963,7 @@ export interface components {
              * Bytouchpoint
              * @description Adverse mentions by where the failure originated, worst first.
              */
-            byTouchpoint: [
-                string,
-                number
-            ][];
+            byTouchpoint: components["schemas"]["TouchpointCountResponse"][];
             pattern: components["schemas"]["PatternTestResponse"];
             /** @description Secondary sort only, never a headline. Null for a book under the floor. */
             ratePerHundredLives?: components["schemas"]["FigureResponse"] | null;
@@ -2790,7 +2787,7 @@ export interface components {
             byProvenance: components["schemas"]["CountResponse"][];
             /**
              * Bytouchpoint
-             * @description Where the failure originated — the same rule in two documents is two fixes.
+             * @description Where the failure originated — the same rule in two documents is two fixes. Worded, like every other touchpoint: the code is the reference.
              */
             byTouchpoint: components["schemas"]["CountResponse"][];
             /** @description Metric 8: calls carrying a knowledge failure, over all calls. About the corpus, never about one rule. */
@@ -2971,6 +2968,19 @@ export interface components {
              * @description The workbook's own wording, e.g. 'Claims & EOB'. Not a code.
              */
             category: string;
+        };
+        /**
+         * TouchpointCountResponse
+         * @description Adverse mentions at one touchpoint.
+         *
+         *     A named pair rather than the two-element array this was, so the
+         *     touchpoint can carry its words the way it does everywhere else and a
+         *     reader of the response does not have to know which end is which.
+         */
+        TouchpointCountResponse: {
+            /** Calls */
+            calls: number;
+            touchpoint: components["schemas"]["CodedValue"];
         };
         /** TouchpointRowResponse */
         TouchpointRowResponse: {
