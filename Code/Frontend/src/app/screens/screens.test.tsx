@@ -1597,6 +1597,20 @@ describe('/accounts — the picker', () => {
 
 
 describe('/agents', () => {
+  it('says nothing to the reader in markup they will see raw', async () => {
+    // The tooltip under "Coach the agent, or fix the rule?" named the
+    // knowledge-error signal in backticks. Nothing renders them, so they
+    // reached the screen as punctuation wrapped round a word.
+    //
+    // Asserted over everything the page renders rather than that one
+    // string: these are written in files whose docstrings use backticks
+    // correctly, which is exactly how one gets copied into reader text.
+    renderAt('/agents')
+    await screen.findByText('Issues by agent')
+
+    expect(document.body.textContent ?? '').not.toContain('`')
+  })
+
   it('counts an event against a person at any volume', async () => {
     // The page's whole premise: a compliance exception is a breach on that
     // call whatever the sample, so it is attributed; an average is not.
