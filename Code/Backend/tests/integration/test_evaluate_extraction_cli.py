@@ -29,7 +29,6 @@ from frameworks_drivers.cli.evaluate_extraction import EXIT_NOTHING_COMPARED, ma
 from frameworks_drivers.container import build_container, dispose_container
 from infrastructure.config.paths import DEFAULT_TRANSCRIPTS_DIR, DEFAULT_WORKBOOK_PATH
 from infrastructure.config.settings import get_settings
-from infrastructure.persistence.models import Base
 
 
 @pytest.fixture(autouse=True)
@@ -44,31 +43,19 @@ def _isolated_settings_cache() -> Iterator[None]:
     reason="corpus not found — expected it under Documents/ (see infrastructure/config/paths.py)",
 )
 def test_a_corpus_with_answers_and_no_extractions_reports_nothing_compared(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ingested_corpus: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     from frameworks_drivers.cli.import_answer_key import main as import_answer_key
-    from frameworks_drivers.cli.import_reference import main as import_reference
-    from frameworks_drivers.cli.ingest_transcripts import main as ingest
 
-    db_path = tmp_path / "evaluate.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{ingested_corpus.as_posix()}")
     monkeypatch.setenv("WORKBOOK_PATH", str(DEFAULT_WORKBOOK_PATH))
     monkeypatch.setenv("TRANSCRIPTS_DIR", str(DEFAULT_TRANSCRIPTS_DIR))
     monkeypatch.setenv("LOG_ENABLED", "false")
     monkeypatch.setenv("FRONTEND_DIST_PATH", str(tmp_path / "no-frontend"))
 
-    from sqlalchemy import create_engine
-
-    from infrastructure.persistence import tables as _tables  # noqa: F401
-
-    engine = create_engine(f"sqlite:///{db_path.as_posix()}")
-    try:
-        Base.metadata.create_all(engine)
-    finally:
-        engine.dispose()
-
-    assert import_reference() == 0
-    assert ingest() == 0
     assert import_answer_key() == 0
     capsys.readouterr()
 
@@ -90,7 +77,7 @@ def test_a_corpus_with_answers_and_no_extractions_reports_nothing_compared(
     reason="corpus not found — expected it under Documents/ (see infrastructure/config/paths.py)",
 )
 def test_the_diagnostics_read_the_real_corpus(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ingested_corpus: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The three diagnostics against real ingested data, through the
     container's own wiring rather than a fake.
@@ -99,28 +86,11 @@ def test_the_diagnostics_read_the_real_corpus(
     nothing — and each has to report the *right* nothing: no markers raised
     is not a zero refusal rate, and no run recorded is not a free run.
     """
-    from frameworks_drivers.cli.import_reference import main as import_reference
-    from frameworks_drivers.cli.ingest_transcripts import main as ingest
-
-    db_path = tmp_path / "diagnostics.db"
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{db_path.as_posix()}")
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{ingested_corpus.as_posix()}")
     monkeypatch.setenv("WORKBOOK_PATH", str(DEFAULT_WORKBOOK_PATH))
     monkeypatch.setenv("TRANSCRIPTS_DIR", str(DEFAULT_TRANSCRIPTS_DIR))
     monkeypatch.setenv("LOG_ENABLED", "false")
     monkeypatch.setenv("FRONTEND_DIST_PATH", str(tmp_path / "no-frontend"))
-
-    from sqlalchemy import create_engine
-
-    from infrastructure.persistence import tables as _tables  # noqa: F401
-
-    engine = create_engine(f"sqlite:///{db_path.as_posix()}")
-    try:
-        Base.metadata.create_all(engine)
-    finally:
-        engine.dispose()
-
-    assert import_reference() == 0
-    assert ingest() == 0
 
     diagnostics = asyncio.run(_read_diagnostics())
 

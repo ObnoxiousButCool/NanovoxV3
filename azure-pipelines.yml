@@ -138,9 +138,10 @@ jobs:
       #
       # No environment to arrange: the tests construct settings explicitly and
       # never read a developer's `.env`, and the database is SQLite created per
-      # test. `-q` and `--strict-markers` already come from
-      # `[tool.pytest.ini_options]`, so the bare command matches what runs on a
-      # developer's machine rather than drifting from it.
+      # test. `-q`, `--strict-markers` and the `-n auto` that runs the suite
+      # across the agent's cores all come from `[tool.pytest.ini_options]`, so
+      # the bare command matches what runs on a developer's machine rather than
+      # drifting from it.
       - script: pytest --cov --cov-fail-under=85
         displayName: pytest
         workingDirectory: Code/Backend

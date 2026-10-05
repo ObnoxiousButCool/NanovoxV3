@@ -7,6 +7,7 @@ cannot make the suite pass or fail.
 
 from __future__ import annotations
 
+import shutil
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
@@ -37,19 +38,43 @@ def settings(tmp_path: Path) -> Settings:
     )
 
 
-@pytest.fixture
-def schema(settings: Settings) -> None:
-    """Create the tables the application expects.
+@pytest.fixture(scope="session")
+def schema_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """An empty database with the schema in it, built once for the session.
 
-    Built from the ORM metadata rather than by running Alembic: that keeps
-    the suite fast. A synchronous engine is used because the fixture is
-    synchronous; it writes to the same file the application will open.
+    `create_all` over twenty-one tables costs about 0.14s, and it was being
+    paid by every integration test that touched a database -- some three
+    hundred of them, which is three quarters of a minute spent building the
+    same tables over and over.
+
+    Built once here and copied per test below. Copying is a file copy of a
+    few tens of kilobytes, so each test still gets its own database and
+    nothing is shared between them: the isolation is the same, only the
+    construction is not repeated.
     """
-    engine = create_engine(settings.database_url.replace("sqlite+aiosqlite", "sqlite"))
+    template = tmp_path_factory.mktemp("schema") / "template.db"
+    engine = create_engine(f"sqlite:///{template.as_posix()}")
     try:
         Base.metadata.create_all(engine)
     finally:
         engine.dispose()
+    return template
+
+
+def _database_file(settings: Settings) -> Path:
+    """The file behind a SQLite URL, for a fixture that has to copy one."""
+    return Path(settings.database_url.split("///", 1)[1])
+
+
+@pytest.fixture
+def schema(settings: Settings, schema_template: Path) -> None:
+    """The tables the application expects, copied from the session template.
+
+    Built from the ORM metadata rather than by running Alembic: that keeps
+    the suite fast, and the migrations have their own test. A copy rather
+    than a second `create_all` for the reason `schema_template` gives.
+    """
+    shutil.copyfile(schema_template, _database_file(settings))
 
 
 @pytest_asyncio.fixture
