@@ -117,7 +117,6 @@ export function ActionsScreen() {
   return (
     <Screen
       title="What should we do next?"
-      lede="Every issue the platform has flagged, with the steps to fix it, who should own it, and how far the work has got."
       scope={findings.data?.scope}
       isPending={isPending}
       error={error}

@@ -222,7 +222,6 @@ export function AccountsScreen() {
   return (
     <Screen
       title="Insights & patterns around employers"
-      lede="Pick an account to see what its members call about, which risk indicators fired, and the exact call behind each one."
       scope={account.data?.scope}
       isPending={options.isPending}
       error={options.error}

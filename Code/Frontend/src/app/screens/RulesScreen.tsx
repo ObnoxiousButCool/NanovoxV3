@@ -81,7 +81,6 @@ export function RulesScreen() {
   return (
     <Screen
       title="Rules we fail to explain"
-      lede="The published rulebook, read against the calls that cite it. A rule stated incorrectly is a knowledge failure — the one place the corpus records us getting our own product wrong."
       compactFilters
       scope={data?.scope}
       isPending={isPending}

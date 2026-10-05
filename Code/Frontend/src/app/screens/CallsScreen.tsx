@@ -165,7 +165,6 @@ export function CallsScreen() {
     <div className="nv-calls">
       <Screen
         title="All calls"
-        lede="Every call the filters admit, with the transcript behind each one."
         scope={data?.scope}
         isPending={isPending}
         error={error}
