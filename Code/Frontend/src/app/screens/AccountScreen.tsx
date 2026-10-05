@@ -349,10 +349,16 @@ export function AccountBody({ data }: { data: AccountDetail }) {
                           account nobody could assess is neither observed nor
                           absent, and "not observed" is false about it — two
                           of Junipero's three calls carry a complaint. */}
+                      {/* And a fourth: assessed, with hits, under the rate
+                          gate. "Not observed" beside four listed calls — and
+                          a tile reading "Escalations missed 4" — is false;
+                          what is true is that they did not clear the bar. */}
                       {observation.observed
                         ? `${String(observation.hits)} of ${String(observation.employerCalls)} calls`
                         : observation.assessable
-                          ? 'not observed'
+                          ? observation.hits > 0
+                            ? `${String(observation.hits)} of ${String(observation.employerCalls)} calls, under the threshold`
+                            : 'not observed'
                           : observation.hits > 0
                             ? `${String(observation.hits)} of ${String(observation.employerCalls)} calls, not assessed`
                             : 'not assessed'}
