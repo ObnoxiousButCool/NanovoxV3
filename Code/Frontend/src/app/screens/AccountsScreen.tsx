@@ -49,6 +49,8 @@ import '@/app/screens/accounts.css'
 interface RiskState {
   flagged: boolean
   indicators: number
+  /** How many families were evaluated, so the count carries its total. */
+  families: number
   calls: number
   /** Months until renewal, or null when the month could not be read. */
   monthsToRenewal: number | null
@@ -74,7 +76,18 @@ interface RiskState {
  * and next to the word "Flagged" it reads as a flag with nothing behind it.
  */
 function PickerIndicators({ state }: { state: RiskState }) {
-  return <IndicatorCount assessed={state.assessed} count={state.indicators} />
+  if (!state.assessed) return <IndicatorCount assessed={false} count={state.indicators} />
+  // Wrapped, and with its total, because bare it ran into the word as
+  // "Flagged4" — and a lone 4 beside "Flagged" reads as the flag's own
+  // conditions, when the detail says "3 of 4 conditions met". This is the
+  // other count: informational families, which do not set the flag (D2).
+  return (
+    <i
+      title={`${String(state.indicators)} of ${String(state.families)} informational indicators observed. These do not set the flag.`}
+    >
+      <IndicatorCount assessed count={state.indicators} total={state.families} />
+    </i>
+  )
 }
 
 /** An account nobody could assess is not unflagged; it sorts below both. */
@@ -152,6 +165,7 @@ export function AccountsScreen() {
       map.set(row.employerRef, {
         flagged: row.flagged,
         indicators: row.observations.filter((observation) => observation.observed).length,
+        families: row.observations.length,
         calls: row.calls,
         // The floor is on the employer, so one unassessable family means all
         // ten are. `every` over an empty list is true, which is the right

@@ -2103,6 +2103,82 @@ describe('an account flagged below the indicator floor', () => {
   })
 })
 
+// Assessed, with hits, under the rate gate: two of nine calls is 22%, but
+// the server is what decides it did not fire, and the page must say so
+// without calling the calls it lists "not observed".
+const GATED_FAMILIES = [
+  FAMILIES[0],
+  {
+    code: 'escalation_missed',
+    label: 'Escalation warranted, not handled',
+    observed: false,
+    hits: 2,
+    employerCalls: 9,
+    rate: 0.22,
+    available: true,
+    assessable: true,
+    unavailableBecause: '',
+    callIds: ['C-4', 'C-5'],
+  },
+  FAMILIES[1],
+]
+
+describe('an account with indicator hits under the threshold', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.includes('/insights/risk')
+                ? {
+                    ...RISK,
+                    assessed: [
+                      {
+                        ...ASSESSED,
+                        flagged: true,
+                        state: 'Flagged: 3 of 4 conditions met.',
+                        conditionsMet: 3,
+                        observations: GATED_FAMILIES,
+                      },
+                    ],
+                    assessedCount: 1,
+                  }
+                : input.includes('/insights/accounts/')
+                  ? { ...ACCOUNT, risk: { ...ACCOUNT.risk, observations: GATED_FAMILIES } }
+                  : routeFor(input),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+  })
+
+  it('shows the picker count with its total, apart from the word Flagged', async () => {
+    // Bare, it ran into the word as "Flagged4" beside a detail reading
+    // "3 of 4 conditions met", and read as the flag's own count.
+    renderAt('/accounts')
+
+    const picker = await screen.findByLabelText('Accounts')
+    const count = await within(picker).findByText('1 of 3')
+
+    expect(count.closest('i')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/informational indicators.*do not set the flag/),
+    )
+  })
+
+  it('says a family with hits was under the threshold, never "not observed"', async () => {
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByText('2 of 9 calls, under the threshold')).toBeInTheDocument()
+    // The family with no hits at all is still the one that says it.
+    expect(screen.getAllByText('not observed')).toHaveLength(1)
+  })
+})
+
 describe('the action board and the filter bar', () => {
   it('sends the bar’s filters to the board, not only to the findings', async () => {
     // The board was fetched unfiltered while the findings panel beside it
