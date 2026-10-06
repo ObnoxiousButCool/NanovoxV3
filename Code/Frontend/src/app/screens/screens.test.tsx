@@ -1083,7 +1083,15 @@ describe('/risk, with an account it could assess', () => {
   })
 
   it('renders the indicator count as a count, never as a level', async () => {
+    const user = userEvent.setup()
     renderAt('/risk')
+
+    // `ASSESSED` is not flagged and carries no renewal, so it sits under
+    // "Not flagged" rather than the default "Flagged, renewing soon" tab.
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /Not flagged/i })).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('tab', { name: /Not flagged/i }))
 
     await waitFor(() => {
       expect(screen.getByText('1 of 10')).toBeInTheDocument()
@@ -1096,13 +1104,21 @@ describe('/risk, with an account it could assess', () => {
   })
 
   it('names the families that fired rather than only counting them', async () => {
+    const user = userEvent.setup()
     renderAt('/risk')
 
     // Scoped to the accounts table: the drivers panel below it names the
     // same ten families book-wide, so an unscoped query matches both.
-    const assessed = await screen.findByText('Accounts at risk')
-    const panel = assessed.closest('section')
+    await screen.findByText('Accounts at risk')
+    await user.click(await screen.findByRole('tab', { name: /Not flagged/i }))
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /Not flagged/i })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+    })
 
+    const panel = screen.getByText('Accounts at risk').closest('section')
     expect(panel).not.toBeNull()
     await waitFor(() => {
       expect(within(panel as HTMLElement).getByText('Unresolved outcome')).toBeInTheDocument()
@@ -1203,6 +1219,100 @@ describe('/risk, the headline tile row', () => {
     for (const key of ['flagged', 'renew_soon', 'escalation_missed', 'exit_language']) {
       expect(focuses.some((href) => href.includes(`focus=${key}`))).toBe(true)
     }
+  })
+})
+
+function soonAccount(ref: string, overrides: Record<string, unknown> = {}) {
+  return { ...ASSESSED, employerRef: ref, flagged: true, monthsToRenewal: 2, ...overrides }
+}
+
+const MANY_SOON = Array.from({ length: 12 }, (_, index) =>
+  soonAccount(`EMP-${String(index + 1).padStart(4, '0')}`),
+)
+
+function serveRisk(risk: unknown): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: string) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(input.includes('/insights/risk') ? risk : routeFor(input)),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    ),
+  )
+}
+
+describe('/risk, the accounts-at-risk tabs and pager', () => {
+  it('paginates ten at a time and hides the pager within a page', async () => {
+    const user = userEvent.setup()
+    serveRisk({ ...RISK, assessed: MANY_SOON, assessedCount: 12 })
+    renderAt('/risk')
+
+    await waitFor(() => {
+      expect(screen.getByText('Showing 1-10 of 12 accounts')).toBeInTheDocument()
+    })
+    expect(screen.getByText('EMP-0001')).toBeInTheDocument()
+    expect(screen.queryByText('EMP-0011')).not.toBeInTheDocument()
+    // Keeps the backend's own order (conditions met, then soonest renewal)
+    // rather than resorting on the client.
+    expect(screen.getByRole('button', { name: '1' })).toHaveAttribute('aria-current', 'page')
+
+    await user.click(screen.getByRole('button', { name: 'Next →' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Showing 11-12 of 12 accounts')).toBeInTheDocument()
+    })
+    expect(screen.getByText('EMP-0011')).toBeInTheDocument()
+    expect(screen.queryByText('EMP-0001')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next →' })).toBeDisabled()
+  })
+
+  it('hides the pager entirely at ten or fewer results', async () => {
+    serveRisk({ ...RISK, assessed: MANY_SOON.slice(0, 3), assessedCount: 3 })
+    renderAt('/risk')
+
+    await waitFor(() => {
+      expect(screen.getByText('Showing 1-3 of 3 accounts')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
+  })
+
+  it('shows the not-assessed note only on that tab, and lists the ineligible accounts there', async () => {
+    const user = userEvent.setup()
+    renderAt('/risk')
+
+    expect(
+      screen.queryByText(/Not assessed does not mean not at risk/),
+    ).not.toBeInTheDocument()
+
+    await user.click(await screen.findByRole('tab', { name: /Not assessed/i }))
+
+    expect(screen.getByText(/Not assessed does not mean not at risk/)).toBeInTheDocument()
+    const table = await screen.findByRole('table', { name: /Accounts assessed/i })
+    expect(within(table).getByText('Cedar Point Workforce Partners')).toBeInTheDocument()
+  })
+
+  it('narrows the active tab to quotable accounts only, and resets to page 1', async () => {
+    const user = userEvent.setup()
+    serveRisk({ ...RISK, assessed: MANY_SOON, assessedCount: 12 })
+    renderAt('/risk')
+
+    await user.click(await screen.findByRole('button', { name: 'Next →' }))
+    await waitFor(() => {
+      expect(screen.getByText('Showing 11-12 of 12 accounts')).toBeInTheDocument()
+    })
+
+    // Every `MANY_SOON` account inherits `ASSESSED.quotable: false`, so the
+    // toggle empties the tab and the view falls back to page 1 rather than
+    // showing an empty page 2.
+    await user.click(screen.getByLabelText(/Quotable only/i))
+
+    await waitFor(() => {
+      expect(screen.getByText('No accounts match these filters')).toBeInTheDocument()
+    })
+    expect(screen.getByRole('button', { name: /Clear filters/i })).toBeInTheDocument()
   })
 })
 
@@ -1514,8 +1624,13 @@ describe('/calls', () => {
 
 describe('acting on a figure', () => {
   it('links a flagged account to what to do about it', async () => {
+    const user = userEvent.setup()
     serveWithAssessed()
     renderAt('/risk')
+
+    // `ASSESSED` is not flagged and carries no renewal, so it sits under
+    // "Not flagged" rather than the default "Flagged, renewing soon" tab.
+    await user.click(await screen.findByRole('tab', { name: /Not flagged/i }))
 
     await waitFor(() => {
       expect(screen.getByText('1 of 10')).toBeInTheDocument()
@@ -2084,7 +2199,12 @@ describe('an account flagged below the indicator floor', () => {
     // Ranjit challenged on 2026-09-30: Junipero and Blue Mesa both read as
     // flags with nothing behind them while carrying four families of real
     // hits apiece, unexamined at 3 and 4 calls.
+    const user = userEvent.setup()
     renderAt('/risk')
+
+    // Flagged, but with no renewal on the fixture, so it sits under "All
+    // flagged" rather than the default "Flagged, renewing soon" tab.
+    await user.click(await screen.findByRole('tab', { name: /All flagged/i }))
 
     const table = await screen.findByRole('table', { name: /Accounts assessed/i })
     expect(within(table).queryByText('0 of 10')).not.toBeInTheDocument()

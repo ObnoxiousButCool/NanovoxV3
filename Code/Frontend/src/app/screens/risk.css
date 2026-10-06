@@ -210,22 +210,147 @@
   table-layout: fixed;
 }
 
-/* Account, Flag, Indicators, Calls, Lives, Renews. Flag took the conditions
-   column's width when the two merged into one cell; the rest are unchanged.
-   Widths only -- the header type and the cell padding are the shared
-   `.nv-tblwrap` rule's, which is the prototype's own. */
+/* Account, Conditions, What we saw, Renews, Calls & lives. Widths only --
+   the header type and the cell padding are the shared `.nv-tblwrap` rule's,
+   which is the prototype's own. */
 .nv-risk-accounts .nv-tblwrap th:nth-child(1),
-.nv-risk-accounts .nv-tblwrap td:nth-child(1) { width: 21%; }
+.nv-risk-accounts .nv-tblwrap td:nth-child(1) { width: 22%; }
 .nv-risk-accounts .nv-tblwrap th:nth-child(2),
-.nv-risk-accounts .nv-tblwrap td:nth-child(2) { width: 16%; }
+.nv-risk-accounts .nv-tblwrap td:nth-child(2) { width: 17%; }
 .nv-risk-accounts .nv-tblwrap th:nth-child(3),
-.nv-risk-accounts .nv-tblwrap td:nth-child(3) { width: 32%; }
+.nv-risk-accounts .nv-tblwrap td:nth-child(3) { width: 33%; }
 .nv-risk-accounts .nv-tblwrap th:nth-child(4),
-.nv-risk-accounts .nv-tblwrap td:nth-child(4) { width: 8%; }
+.nv-risk-accounts .nv-tblwrap td:nth-child(4) { width: 12%; }
 .nv-risk-accounts .nv-tblwrap th:nth-child(5),
-.nv-risk-accounts .nv-tblwrap td:nth-child(5) { width: 8%; }
-.nv-risk-accounts .nv-tblwrap th:nth-child(6),
-.nv-risk-accounts .nv-tblwrap td:nth-child(6) { width: 15%; }
+.nv-risk-accounts .nv-tblwrap td:nth-child(5) { width: 16%; }
+
+/* --- Tabs: Flagged renewing soon / All flagged / Not flagged / Not assessed */
+
+.nv-risk-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.nv-risk-tab {
+  appearance: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--rule);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  border-radius: var(--r);
+  padding: 7px 12px;
+  font: 500 13px/1.2 var(--body);
+}
+
+.nv-risk-tab:hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+.nv-risk-tab:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.nv-risk-tab[aria-selected='true'] {
+  background: var(--surface);
+  border-color: var(--ink-3);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.nv-risk-tabcount {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-3);
+  font: 600 11px/1 var(--body);
+}
+
+.nv-risk-tab[aria-selected='true'] .nv-risk-tabcount {
+  background: var(--brand-soft);
+  color: var(--brand-ink);
+}
+
+/* --- The filter row: Region, Broker, Quotable toggle, ordering note --- */
+
+.nv-risk-accounts .nv-rowfilters {
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+
+.nv-risk-accounts .nv-rowfilters .nv-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.nv-risk-accounts .nv-rowfilters .nv-check input {
+  margin: 0;
+}
+
+.nv-risk-orderedby {
+  align-self: center;
+  margin-left: 4px;
+  color: var(--ink-3);
+}
+
+/* --- Condition pips: metric 10's four conditions (D12), a count a reader
+   can verify at a glance -- never a band. */
+
+.nv-condpips {
+  display: inline-flex;
+  gap: 3px;
+  margin: 3px 6px 0 0;
+  vertical-align: middle;
+}
+
+.nv-condpip {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--rule-strong);
+}
+
+.nv-condpip-met {
+  background: var(--brand);
+}
+
+/* --- "What we saw": capped observation chips, plus the overflow count -- */
+
+.nv-fire-more {
+  color: var(--ink-3);
+  background: var(--surface-2);
+}
+
+/* --- "Too few calls to quote": the dashed tag beside Calls & lives ---- */
+
+.nv-quotetag {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 3px 7px;
+  border: 1px dashed var(--rule-strong);
+  border-radius: 4px;
+  color: var(--ink-3);
+  font: 500 11px/1.2 var(--body);
+}
+
+.nv-risk-pagesummary {
+  margin: 10px 0 0;
+}
 
 .nv-risk-account-name {
   font-size: 14.5px;

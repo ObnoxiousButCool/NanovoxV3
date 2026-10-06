@@ -543,3 +543,54 @@
   color: var(--ink-3);
   font-style: italic;
 }
+
+/* `Pager`: Previous, the numbers, Next -- three flex children so the
+   numbers stay centred regardless of how wide either button's label is. */
+.nv-pagenav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.nv-pagenums {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nv-pagebtn {
+  appearance: none;
+  cursor: pointer;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid var(--rule-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  border-radius: var(--r);
+  font: 500 12.5px/1 var(--body);
+}
+
+.nv-pagebtn:hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+.nv-pagebtn:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
+
+.nv-pagebtn[aria-current='page'] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+
+.nv-pagegap {
+  color: var(--ink-3);
+  padding: 0 2px;
+}

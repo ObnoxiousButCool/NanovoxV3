@@ -30,7 +30,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { useFilterOptions, useGeneratedInsights, useRisk } from '@/shared/api/insights'
-import type { RiskScreen as RiskScreenData } from '@/shared/api/insights'
+import type { FilterOptions, RiskScreen as RiskScreenData } from '@/shared/api/insights'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { issueHref } from '@/shared/actions/issueHref'
 import { BarCell, VBars, VLine } from '@/shared/design/charts'
@@ -50,13 +50,36 @@ import {
   FigureValue,
   IndicatorCount,
   KpiTile,
+  Note,
+  Pager,
   Panel,
   RiskPill,
+  StatusPill,
   Tooltip,
 } from '@/shared/design/primitives'
+import type { Row } from '@/shared/design/primitives'
 
 type AssessedAccount = RiskScreenData['assessed'][number]
-type AccountContext = { name: string; broker: string; region: string }
+type AccountContext = { name: string; broker: string; brokerRef: string; region: string }
+
+/** The four tabs the accounts list reads through, in reading order. Every
+ * list here is derived from fields the API already returns — no score, no
+ * band, and the ten informational observations never rank or flag anything
+ * (§2A.4, D12). */
+type AccountTab = 'soon' | 'flagged' | 'unflagged' | 'unassessed'
+
+const TAB_ORDER: { key: AccountTab; label: string }[] = [
+  { key: 'soon', label: 'Flagged, renewing soon' },
+  { key: 'flagged', label: 'All flagged' },
+  { key: 'unflagged', label: 'Not flagged' },
+  { key: 'unassessed', label: 'Not assessed' },
+]
+
+const ACCOUNTS_PER_PAGE = 10
+
+/** "Up to 2... plus a '+n' for the rest" — the row design's own cap on how
+ * many of the ten informational observations show as chips. */
+const CHIP_LIMIT = 2
 
 /** Whether an account's renewal falls inside the shared soon-window — the
  * same test `/exec`'s needs-attention panel uses, so the two screens cannot
@@ -73,23 +96,23 @@ const percent = (value: number) => `${String(Math.round(value * 100))}%`
 
 export function RiskScreen() {
   const filters = useFilters()
-  // The two row filters live in the URL beside the corpus filters, but they
-  // are not part of `useFilters`: that hook is the shared filter bar, and
-  // these mean something on this screen alone. Reading them here keeps them
-  // shareable in a link without pretending they narrow any other screen.
+  // The accounts-at-risk tab, its region/broker/quotable narrowing and its
+  // page live in the URL beside the corpus filters, but are not part of
+  // `useFilters`: that hook is the shared filter bar, and these mean
+  // something on this screen alone. Reading them here keeps a view of "all
+  // flagged accounts renewing in the West" shareable in a link.
   const [params, setParams] = useSearchParams()
-  const flagged = params.get('flagged')
-  const minIndicators = params.get('minIndicators')
+  const tab = (params.get('accountTab') as AccountTab | null) ?? 'soon'
+  const region = params.get('accountRegion')
+  const broker = params.get('accountBroker')
+  const quotableOnly = params.get('accountQuotable') === 'true'
+  const page = Math.max(1, Number(params.get('accountPage') ?? '1') || 1)
 
-  const search = new URLSearchParams(filters.apiSearch)
-  if (flagged !== null) search.set('flagged', flagged)
-  if (minIndicators !== null) search.set('minIndicators', minIndicators)
-
-  const { data, isPending, error } = useRisk(search.toString())
-  // Deliberately the filter-bar search, not `search`: the row filters
-  // above select rows, and every figure the insights read is computed
-  // over all eligible employers regardless (D12). Keying on `search`
-  // would make a new query for facts that had not moved.
+  // Deliberately `filters.apiSearch` alone, with no `flagged`/`minIndicators`
+  // appended: every account the window could assess arrives, and the four
+  // tabs, the region/broker toggles and the pager all read it client-side.
+  // That is what lets the tab counts update together without four fetches.
+  const { data, isPending, error } = useRisk(filters.apiSearch)
   const insights = useGeneratedInsights('risk', filters.apiSearch)
   // The same query the filter bar already made, so React Query serves it
   // from cache rather than fetching twice. An employer reference is a code,
@@ -105,12 +128,13 @@ export function RiskScreen() {
       {
         name: employer.name,
         broker: brokerNames.get(employer.brokerRef) ?? '',
+        brokerRef: employer.brokerRef,
         region: employer.region,
       },
     ]),
   )
 
-  const setRow = (key: string, value: string | null) => {
+  const setAccountParam = (key: string, value: string | null) => {
     // One write, like the period control. Two `setParams` calls in a handler
     // both navigate from the same router state and the second discards the
     // first — the bug the filter bar already carries a comment about.
@@ -119,6 +143,10 @@ export function RiskScreen() {
         const next = new URLSearchParams(previous)
         if (value === null || value === '') next.delete(key)
         else next.set(key, value)
+        // Any change other than turning the page itself goes back to page
+        // 1 — staying on page 4 of a tab that now has two pages shows an
+        // empty list, which reads as "no matches" rather than "past the end".
+        if (key !== 'accountPage') next.delete('accountPage')
         return next
       },
       { replace: false },
@@ -141,9 +169,13 @@ export function RiskScreen() {
           <RiskBody
             data={data}
             names={names}
-            flagged={flagged}
-            minIndicators={minIndicators}
-            onChange={setRow}
+            options={options.data}
+            tab={tab}
+            region={region}
+            broker={broker}
+            quotableOnly={quotableOnly}
+            page={page}
+            onChange={setAccountParam}
           />
         )}
       </Screen>
@@ -154,16 +186,27 @@ export function RiskScreen() {
 function RiskBody({
   data,
   names,
-  flagged,
-  minIndicators,
+  options,
+  tab,
+  region,
+  broker,
+  quotableOnly,
+  page,
   onChange,
 }: {
   data: RiskScreenData
   /** Employer context from filter options. Falls back to reference while
       the options are still loading. */
   names: Map<string, AccountContext>
-  flagged: string | null
-  minIndicators: string | null
+  /** Undefined until the filter options land; the region/broker selects
+      read the corpus-wide lists off it rather than only what this window's
+      accounts happen to cover. */
+  options: FilterOptions | undefined
+  tab: AccountTab
+  region: string | null
+  broker: string | null
+  quotableOnly: boolean
+  page: number
   onChange: (key: string, value: string | null) => void
 }) {
   // Optional on the wire, so each is read once with a default rather than
@@ -183,6 +226,51 @@ function RiskBody({
       account.monthsToRenewal !== undefined &&
       account.monthsToRenewal <= RENEW_SOON_MONTHS,
   )
+
+  // Region and broker read off the same filter-options join `names` already
+  // carries; quotable reads the field the server already computed (whether
+  // there are enough calls to quote the account as a figure) rather than
+  // re-deriving a call-count floor here.
+  const matchesLocalFilters = (employerRef: string): boolean => {
+    const context = names.get(employerRef)
+    if (region !== null && context?.region !== region) return false
+    if (broker !== null && context?.brokerRef !== broker) return false
+    return true
+  }
+  const matchesQuotable = (account: AssessedAccount): boolean =>
+    !quotableOnly || account.quotable
+
+  const narrowedAssessed = assessed.filter(
+    (account) => matchesLocalFilters(account.employerRef) && matchesQuotable(account),
+  )
+  const soonTab = narrowedAssessed.filter(
+    (account) => account.flagged && isRenewSoon(account),
+  )
+  const flaggedTab = narrowedAssessed.filter((account) => account.flagged)
+  const unflaggedTab = narrowedAssessed.filter((account) => !account.flagged)
+  // Not assessed does not carry `quotable` — too few calls to assess is a
+  // stronger statement than "not enough to quote" already, so the toggle
+  // has nothing to add here and narrows only by region and broker.
+  const unassessedTab = (quotableOnly ? [] : data.ineligible).filter(matchesLocalFilters)
+
+  const tabCounts: Record<AccountTab, number> = {
+    soon: soonTab.length,
+    flagged: flaggedTab.length,
+    unflagged: unflaggedTab.length,
+    unassessed: unassessedTab.length,
+  }
+  const activeAssessed =
+    tab === 'soon' ? soonTab : tab === 'flagged' ? flaggedTab : tab === 'unflagged' ? unflaggedTab : []
+  const activeUnassessed = tab === 'unassessed' ? unassessedTab : []
+  const activeTotal = tab === 'unassessed' ? activeUnassessed.length : activeAssessed.length
+
+  const pageCount = Math.max(1, Math.ceil(activeTotal / ACCOUNTS_PER_PAGE))
+  const currentPage = Math.min(page, pageCount)
+  const pageStart = (currentPage - 1) * ACCOUNTS_PER_PAGE
+  const pagedAssessed = activeAssessed.slice(pageStart, pageStart + ACCOUNTS_PER_PAGE)
+  const pagedUnassessed = activeUnassessed.slice(pageStart, pageStart + ACCOUNTS_PER_PAGE)
+
+  const hasAnyLocalFilter = region !== null || broker !== null || quotableOnly
 
   return (
     <div className="nv-grid">
@@ -315,168 +403,137 @@ function RiskBody({
             </Tooltip>
           }
           chip={<EpistemicChip kind="observed" />}
-          actions={
-            <div className="nv-rowfilters">
-              <label>
-                <span>Flag</span>
-                <select
-                  value={flagged ?? ''}
-                  onChange={(event) => {
-                    onChange('flagged', event.target.value || null)
-                  }}
-                >
-                  <option value="">Either</option>
-                  <option value="true">Flagged</option>
-                  <option value="false">Not flagged</option>
-                </select>
-              </label>
-              <label>
-                <span>Min indicators</span>
-                <select
-                  value={minIndicators ?? ''}
-                  onChange={(event) => {
-                    onChange('minIndicators', event.target.value || null)
-                  }}
-                >
-                  <option value="">Any</option>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={String(n)}>
-                      {n}+
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          }
         >
-          {data.assessed.length === 0 ? (
+          <div className="nv-risk-tabs" role="tablist" aria-label="Accounts at risk, by tab">
+            {TAB_ORDER.map((entry) => (
+              <button
+                key={entry.key}
+                type="button"
+                role="tab"
+                aria-selected={tab === entry.key}
+                className="nv-risk-tab"
+                onClick={() => {
+                  onChange('accountTab', entry.key === 'soon' ? null : entry.key)
+                }}
+              >
+                {entry.label}
+                <span className="nv-risk-tabcount">{tabCounts[entry.key]}</span>
+              </button>
+            ))}
+          </div>
+
+          {tab === 'unassessed' ? (
+            <Note>
+              Not assessed does not mean not at risk. These accounts do not have enough calls
+              yet.
+            </Note>
+          ) : null}
+
+          <div className="nv-rowfilters">
+            <label>
+              <span>Region</span>
+              <select
+                value={region ?? ''}
+                onChange={(event) => {
+                  onChange('accountRegion', event.target.value || null)
+                }}
+              >
+                <option value="">Any region</option>
+                {(options?.regions ?? []).map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Broker</span>
+              <select
+                value={broker ?? ''}
+                onChange={(event) => {
+                  onChange('accountBroker', event.target.value || null)
+                }}
+              >
+                <option value="">Any broker</option>
+                {(options?.brokers ?? []).map((entry) => (
+                  <option key={entry.ref} value={entry.ref}>
+                    {entry.agency}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="nv-check">
+              <input
+                type="checkbox"
+                checked={quotableOnly}
+                onChange={(event) => {
+                  onChange('accountQuotable', event.target.checked ? 'true' : null)
+                }}
+              />
+              <span>Quotable only (10+ calls)</span>
+            </label>
+            <span className="nv-indcount nv-risk-orderedby">
+              Ordered by conditions met, then soonest renewal
+            </span>
+          </div>
+
+          {activeTotal === 0 && data.assessedCount === 0 && tab !== 'unassessed' ? (
+            // Nothing in the whole book could be assessed — true regardless
+            // of tab or filter, so it is said instead of "no matches",
+            // which would read as a question worth narrowing further.
             <Empty>
-              {data.assessedCount === 0
-                ? 'No employer reached the eligibility floor in this window. That is not a finding of low risk — there is not enough here to assess.'
-                : 'No assessed account matches these row filters. Widen them to see the rest.'}
+              No employer reached the eligibility floor in this window. That is not a finding
+              of low risk — there is not enough here to assess.
+            </Empty>
+          ) : activeTotal === 0 ? (
+            <Empty title="No accounts match these filters">
+              {hasAnyLocalFilter ? (
+                <button
+                  type="button"
+                  className="nv-linkbtn"
+                  onClick={() => {
+                    onChange('accountRegion', null)
+                    onChange('accountBroker', null)
+                    onChange('accountQuotable', null)
+                  }}
+                >
+                  Clear filters
+                </button>
+              ) : tab === 'unassessed' ? (
+                'Every account in scope reached the eligibility floor.'
+              ) : (
+                'Widen the tab or the period to see the rest.'
+              )}
             </Empty>
           ) : (
-            <DataTable
-              caption="Accounts assessed for risk"
-              columns={[
-                { key: 'account', header: 'Account' },
-                // The flag and the conditions it was met on are one metric,
-                // so they share a cell -- the way `index.html` puts its band
-                // and its count together. That frees the sixth column for
-                // lives without blurring D12: the flag stays its own column,
-                // the ten families stay theirs, and nothing suggests the
-                // families set the flag.
-                { key: 'flag', header: 'Flag' },
-                { key: 'indicators', header: 'Indicators' },
-                { key: 'calls', header: 'Calls', numeric: true },
-                { key: 'lives', header: 'Lives', numeric: true },
-                { key: 'renews', header: 'Renews' },
-              ]}
-              rows={data.assessed.map((account) => {
-                const fired = account.observations.filter((o) => o.observed)
-                const context = names.get(account.employerRef)
-                return {
-                  key: account.employerRef,
-                  // The prototype's `data-href` on the row: the whole row
-                  // navigates, and the links inside it (the flag, the fired
-                  // indicators) still win over the row's own navigation.
-                  href: `/accounts/${encodeURIComponent(account.employerRef)}`,
-                  cells: [
-                    <>
-                      <span className="nv-risk-account-name">
-                        {context?.name ?? account.employerRef}
-                      </span>
-                      {context ? (
-                        <small>
-                          {[context.broker, context.region].filter(Boolean).join(' · ')}
-                        </small>
-                      ) : null}
-                    </>,
-                    // A flagged account is the clearest case of a figure
-                    // that should lead somewhere: the pill says what is
-                    // true, the link says what to do.
-                    <>
-                      {account.flagged ? (
-                        <IssueValue issue="flagged" scope={{ employer: account.employerRef }}>
-                          <RiskPill eligible={account.eligible} flagged={account.flagged} />
-                        </IssueValue>
-                      ) : (
-                        <RiskPill eligible={account.eligible} flagged={account.flagged} />
-                      )}
-                      <small className="nv-indcount">
-                        {account.conditionsMet} of {account.conditions.length} conditions
-                      </small>
-                    </>,
-                    <>
-                      {/* A count and the names behind it. Never a level: the
-                          families are informational and do not set the flag
-                          (D2, D12).
-
-                          `IndicatorCount`, not a bare number: this table
-                          printed "0 of 10" beside "Flagged" for accounts
-                          nobody had assessed, which reads as a flag with
-                          nothing behind it. */}
-                      <span className="nv-indcount">
-                        <IndicatorCount
-                          assessed={account.observations.every((o) => o.assessable)}
-                          count={fired.length}
-                          // Ten, fixed: `domain/aggregation/indicators.py`
-                          // defines exactly ten families and the server
-                          // returns all of them, the ones that cleared
-                          // included. Not `observations.length`, which would
-                          // quietly restate the denominator as whatever
-                          // happened to arrive.
-                          total={10}
-                        />
-                      </span>
-                      {fired.length > 0 ? (
-                        <div className="nv-fires">
-                          {fired.map((observation) =>
-                            // Only the families the action view has a
-                            // playbook for become links. The rest stay
-                            // chips rather than routing to a page that
-                            // would shrug at them.
-                            isIssue(observation.code) ? (
-                              <IssueValue
-                                key={observation.code}
-                                issue={observation.code}
-                                scope={{ employer: account.employerRef }}
-                                tone="warm"
-                              >
-                                <span className="nv-fire">{observation.label}</span>
-                              </IssueValue>
-                            ) : (
-                              <span key={observation.code} className="nv-fire">
-                                {observation.label}
-                              </span>
-                            ),
-                          )}
-                        </div>
-                      ) : null}
-                    </>,
-                    account.calls,
-                    // `index.html` prints lives beside the flag: two flagged
-                    // accounts are not the same finding when one covers 8
-                    // lives and the other 800. Never totalled here — the
-                    // exposure note under the tiles is the only sum.
-                    //
-                    // Said rather than left blank when reference data has no
-                    // size: an empty cell reads as a rendering fault, and 0
-                    // would read as an account covering nobody.
-                    account.lives ?? <span className="nv-none">Not recorded</span>,
-                    <span className="nv-indcount">
-                      {account.renewalMonth ?? 'unknown'}
-                      {account.monthsToRenewal === null || account.monthsToRenewal === undefined ? null : (
-                        <span className={isRenewSoon(account) ? 'nv-renewsoon' : 'nv-renewlater'}>
-                          {isRenewSoon(account) ? 'in ' : ''}
-                          {account.monthsToRenewal} mo
-                        </span>
-                      )}
-                    </span>,
-                  ],
+            <>
+              <DataTable
+                caption="Accounts assessed for risk"
+                columns={[
+                  { key: 'account', header: 'Account' },
+                  { key: 'conditions', header: 'Conditions' },
+                  { key: 'observed', header: 'What we saw' },
+                  { key: 'renews', header: 'Renews' },
+                  { key: 'calls', header: 'Calls & lives' },
+                ]}
+                rows={
+                  tab === 'unassessed'
+                    ? pagedUnassessed.map((employerRef) => ineligibleRow(employerRef, names))
+                    : pagedAssessed.map((account) => assessedRow(account, names))
                 }
-              })}
-            />
+              />
+              <p className="nv-indcount nv-risk-pagesummary">
+                Showing {String(pageStart + 1)}-{String(Math.min(pageStart + ACCOUNTS_PER_PAGE, activeTotal))}{' '}
+                of {String(activeTotal)} accounts
+              </p>
+              <Pager
+                page={currentPage}
+                pageCount={pageCount}
+                onChange={(next) => {
+                  onChange('accountPage', next === 1 ? null : String(next))
+                }}
+              />
+            </>
           )}
         </Panel>
       </div>
@@ -615,6 +672,150 @@ function OutcomeBar({ outcomes }: { outcomes: NonNullable<RiskScreenData['outcom
 /** An indicator family the action view has a playbook for. */
 function isIssue(code: string): code is IssueKey {
   return (ISSUE_KEYS as readonly string[]).includes(code)
+}
+
+/** One assessed account, as a `DataTable` row. */
+function assessedRow(account: AssessedAccount, names: Map<string, AccountContext>): Row {
+  const fired = account.observations.filter((o) => o.observed)
+  const shownChips = fired.slice(0, CHIP_LIMIT)
+  const overflow = fired.length - shownChips.length
+  const context = names.get(account.employerRef)
+
+  return {
+    key: account.employerRef,
+    // The prototype's `data-href` on the row: the whole row navigates, and
+    // the links inside it (the flag, the fired indicators) still win over
+    // the row's own navigation.
+    href: `/accounts/${encodeURIComponent(account.employerRef)}`,
+    cells: [
+      <>
+        <span className="nv-risk-account-name">{context?.name ?? account.employerRef}</span>
+        {context ? (
+          <small>{[context.broker, context.region].filter(Boolean).join(' · ')}</small>
+        ) : null}
+      </>,
+      // A flagged account is the clearest case of a figure that should lead
+      // somewhere: the pill says what is true, the link says what to do.
+      // The four pips are metric 10's own conditions (D12): a count a
+      // reader can verify at a glance, never a band.
+      <>
+        {account.flagged ? (
+          <IssueValue issue="flagged" scope={{ employer: account.employerRef }}>
+            <RiskPill eligible={account.eligible} flagged={account.flagged} />
+          </IssueValue>
+        ) : (
+          <RiskPill eligible={account.eligible} flagged={account.flagged} />
+        )}
+        <div className="nv-condpips" aria-hidden="true">
+          {account.conditions.map((condition) => (
+            <i
+              key={condition.code}
+              className={`nv-condpip${condition.met ? ' nv-condpip-met' : ''}`}
+              title={condition.label}
+            />
+          ))}
+        </div>
+        <small className="nv-indcount">
+          {account.conditionsMet} of {account.conditions.length} conditions
+        </small>
+      </>,
+      <>
+        {/* A count and the names behind it. Never a level: the families
+            are informational and do not set the flag (D2, D12).
+
+            `IndicatorCount`, not a bare number: this table printed "0 of
+            10" beside "Flagged" for accounts nobody had assessed, which
+            reads as a flag with nothing behind it. */}
+        <span className="nv-indcount">
+          <IndicatorCount
+            assessed={account.observations.every((o) => o.assessable)}
+            count={fired.length}
+            // Ten, fixed: `domain/aggregation/indicators.py` defines
+            // exactly ten families and the server returns all of them, the
+            // ones that cleared included. Not `observations.length`, which
+            // would quietly restate the denominator as whatever arrived.
+            total={10}
+          />
+        </span>
+        {shownChips.length > 0 ? (
+          <div className="nv-fires">
+            {shownChips.map((observation) =>
+              // Only the families the action view has a playbook for
+              // become links. The rest stay chips rather than routing to a
+              // page that would shrug at them.
+              isIssue(observation.code) ? (
+                <IssueValue
+                  key={observation.code}
+                  issue={observation.code}
+                  scope={{ employer: account.employerRef }}
+                  tone="warm"
+                >
+                  <span className="nv-fire">{observation.label}</span>
+                </IssueValue>
+              ) : (
+                <span key={observation.code} className="nv-fire">
+                  {observation.label}
+                </span>
+              ),
+            )}
+            {overflow > 0 ? (
+              <span className="nv-fire nv-fire-more" title={`${String(overflow)} more observed`}>
+                +{overflow}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </>,
+      <span className="nv-indcount">
+        {account.renewalMonth ?? 'unknown'}
+        {account.monthsToRenewal === null || account.monthsToRenewal === undefined ? null : (
+          <span className={isRenewSoon(account) ? 'nv-renewsoon' : 'nv-renewlater'}>
+            {isRenewSoon(account) ? 'in ' : ''}
+            {account.monthsToRenewal} mo
+          </span>
+        )}
+      </span>,
+      <>
+        <span className="nv-indcount">
+          {String(account.calls)} calls ·{' '}
+          {/* Said rather than left blank when reference data has no size:
+              an empty cell reads as a rendering fault, and 0 would read as
+              an account covering nobody. */}
+          {account.lives === null || account.lives === undefined ? (
+            <span className="nv-none">lives not recorded</span>
+          ) : (
+            `${String(account.lives)} lives`
+          )}
+        </span>
+        {account.quotable ? null : (
+          <span className="nv-quotetag">Too few calls to quote</span>
+        )}
+      </>,
+    ],
+  }
+}
+
+/** An ineligible employer, as a `DataTable` row -- no `AccountRiskResponse`
+ * exists for it, so every cell beyond identity says so rather than
+ * inventing a count, a renewal or a condition nobody tested. */
+function ineligibleRow(employerRef: string, names: Map<string, AccountContext>): Row {
+  const context = names.get(employerRef)
+  return {
+    key: employerRef,
+    href: `/accounts/${encodeURIComponent(employerRef)}`,
+    cells: [
+      <>
+        <span className="nv-risk-account-name">{context?.name ?? employerRef}</span>
+        {context ? (
+          <small>{[context.broker, context.region].filter(Boolean).join(' · ')}</small>
+        ) : null}
+      </>,
+      <StatusPill tone="ineligible" />,
+      <span className="nv-none">Too few calls to assess</span>,
+      <span className="nv-none">—</span>,
+      <span className="nv-none">—</span>,
+    ],
+  }
 }
 
 /**
