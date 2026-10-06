@@ -362,3 +362,46 @@ def hedged_tail(sentence: str) -> str | None:
     if _WITHHELD_PHRASE.search(sentence) is not None and _DIGIT.search(sentence) is not None:
         return "cannot be given, beside a figure"
     return None
+
+
+#: A trimmed sentence has to still be one. Three words is not a grammar
+#: check -- nothing here parses English -- but it separates "115 calls ended
+#: unresolved" from the stump a sentence opening on its hedge would leave.
+_MIN_WORDS_AFTER_TRIM = 3
+
+
+def without_hedged_tail(sentence: str) -> str | None:
+    """The sentence with its hedged tail cut off, or `None` if that cannot help.
+
+    The tail is the claim; the clause in front of it is a figure the screen
+    already published and a reader can check. Dropping the whole sentence
+    threw away the second to be rid of the first, and on a real run that
+    emptied panels: five of six sentences in one batch died for a trailing
+    "indicating ...", each in front of a sound count.
+
+    This is editing the model's own words, not writing them. U2 (D14) refuses
+    templated copy standing in for generated text, and a sentence cut short
+    at the model's own comma is still the model's sentence -- nothing here
+    composes prose, and a sentence with nothing left in front of its hedge
+    is refused rather than filled in.
+
+    `None` for the two faults a cut cannot repair:
+
+    - **No hedge.** Nothing to trim, so the caller's own check still decides.
+    - **An equals sign, or a figure quoted and withheld in one breath.**
+      Neither is a tail bolted on at a comma; both are the sentence being
+      wrong throughout, and a prefix of a self-contradictory sentence is not
+      a true one.
+    """
+    hedge = _HEDGE.search(sentence)
+    if hedge is None:
+        return None
+
+    head = sentence[: hedge.start()].strip().rstrip(",;:-— ").strip()
+    if len(head.split()) < _MIN_WORDS_AFTER_TRIM:
+        return None
+
+    trimmed = head if head.endswith((".", "!", "?")) else f"{head}."
+    # The head is re-checked rather than assumed clean: the cut removes what
+    # followed the first comma and says nothing about what came before it.
+    return None if hedged_tail(trimmed) is not None else trimmed

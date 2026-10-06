@@ -47,7 +47,12 @@ from application.dto.insight_response import InsightItem, InsightsResponse
 from application.ports.insight_cache import InsightCache, InsightCacheKey
 from application.ports.llm_provider import LLMProvider, LlmRequest
 from application.ports.prompts import PromptSource
-from domain.insights.facts import FactSet, hedged_tail, spelled_numbers
+from domain.insights.facts import (
+    FactSet,
+    hedged_tail,
+    spelled_numbers,
+    without_hedged_tail,
+)
 from domain.insights.generated import (
     GeneratedInsights,
     Insight,
@@ -206,21 +211,41 @@ class GenerateInsights:
                 )
                 return None
 
-            # A hedge drops its own sentence rather than the panel. The
-            # prompt's own remedy is "leave it out", and two sound sentences
-            # beside a dropped one is a better screen than none; a fabricated
-            # number is a different matter and still poisons everything.
-            hedge = hedged_tail(item.sentence)
+            # A hedge costs its own sentence at most, never the panel. A
+            # fabricated number is a different matter and still poisons
+            # everything.
+            #
+            # The tail is cut where it can be, rather than the sentence
+            # thrown away: in front of "indicating ..." there is usually a
+            # figure the screen already published, and discarding both to be
+            # rid of one emptied panels on a real run -- five of six
+            # sentences in a single batch, each a sound count with a claim
+            # bolted on. Still the model's words, cut at the model's own
+            # comma; nothing here composes prose (U2).
+            sentence = item.sentence
+            hedge = hedged_tail(sentence)
             if hedge is not None:
+                trimmed = without_hedged_tail(sentence)
+                if trimmed is None:
+                    logger.warning(
+                        "Insight dropped: added a claim the figures do not carry",
+                        extra={
+                            "subject": facts.subject,
+                            "phrase": hedge,
+                            "sentence": sentence,
+                        },
+                    )
+                    continue
                 logger.warning(
-                    "Insight dropped: added a claim the figures do not carry",
+                    "Insight trimmed: cut a claim the figures do not carry",
                     extra={
                         "subject": facts.subject,
                         "phrase": hedge,
-                        "sentence": item.sentence,
+                        "sentence": sentence,
+                        "kept": trimmed,
                     },
                 )
-                continue
+                sentence = trimmed
 
             cited = tuple(key for key in item.fact_keys if key in known)
             if not cited:
@@ -235,7 +260,7 @@ class GenerateInsights:
             accepted.append(
                 Insight(
                     key=item.key,
-                    sentence=item.sentence.strip(),
+                    sentence=sentence.strip(),
                     kind=InsightKind(item.kind),
                     severity=Severity(item.severity),
                     lens=Lens(item.lens),

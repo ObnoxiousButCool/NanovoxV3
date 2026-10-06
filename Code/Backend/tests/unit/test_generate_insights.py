@@ -239,10 +239,49 @@ class TestRefusing:
         # supports is refused further up as an invented figure, which
         # reaches GUARDRAIL_REJECTED by the other road and would let this
         # test pass without the behaviour it is here to pin down.
+        #
+        # Nothing in front of either hedge, equally deliberately. A tail
+        # with a sound clause before it is now cut rather than dropped, so
+        # a sentence that still has to die is one the cut cannot save.
         provider = _answering(
-            _item(key="a", sentence="Resolution held where it was, indicating weak handling."),
-            _item(key="b", sentence="Knowledge failures persisted, highlighting a training gap."),
+            _item(key="a", sentence="Resolution, indicating weak handling."),
+            _item(key="b", sentence="Failures, highlighting a training gap."),
         )
+
+        result = await _run(service, provider)
+
+        assert result.status is InsightsStatus.UNAVAILABLE
+        assert result.reason is UnavailableReason.GUARDRAIL_REJECTED
+
+    async def test_a_hedged_tail_is_cut_and_the_figure_in_front_of_it_kept(
+        self, service: GenerateInsights
+    ) -> None:
+        """The claim is the tail; the clause before it is a published figure.
+
+        Dropping both to be rid of one emptied panels on a real run — five
+        of six sentences in a single batch, each a sound count carrying a
+        trailing "indicating ...". What is kept is the model's own words,
+        cut at the model's own comma, so U2 is untouched.
+        """
+        provider = _answering(
+            _item(sentence="Resolution held at 74% across the period, indicating weak handling.")
+        )
+
+        result = await _run(service, provider)
+
+        assert result.status is InsightsStatus.GENERATED
+        (insight,) = result.insights
+        assert insight.sentence == "Resolution held at 74% across the period."
+        # The citation survives the cut: it was never in the tail.
+        assert insight.fact_keys == ("first_contact_resolution",)
+
+    async def test_a_figure_quoted_and_withheld_in_one_breath_is_not_trimmed(
+        self, service: GenerateInsights
+    ) -> None:
+        """A cut repairs a tail bolted on at a comma, not a sentence that is
+        wrong throughout. "74%, which cannot be given yet" states a figure and
+        denies it; its prefix is not a true sentence waiting to be rescued."""
+        provider = _answering(_item(sentence="Resolution held at 74%, which cannot be given yet."))
 
         result = await _run(service, provider)
 

@@ -16,6 +16,7 @@ from domain.insights.facts import (
     normalise_number,
     numbers_in,
     spelled_numbers,
+    without_hedged_tail,
 )
 
 
@@ -301,3 +302,59 @@ def test_a_figure_cannot_be_quoted_and_withheld_in_one_breath() -> None:
 )
 def test_a_sentence_a_person_would_write_survives(sentence: str) -> None:
     assert hedged_tail(sentence) is None
+
+
+@pytest.mark.parametrize(
+    ("sentence", "kept"),
+    [
+        # The four the live run lost, each a published count with a claim
+        # bolted on at the comma.
+        (
+            "25% of assessable accounts were flagged, indicating a significant portion "
+            "may require further attention.",
+            "25% of assessable accounts were flagged.",
+        ),
+        (
+            "1432 lives are behind the flagged accounts, highlighting the potential impact.",
+            "1432 lives are behind the flagged accounts.",
+        ),
+        (
+            "32 calls ended escalated, suggesting that some issues were not resolved.",
+            "32 calls ended escalated.",
+        ),
+        (
+            "8 rules were stated wrongly, which may affect the accuracy of information.",
+            "8 rules were stated wrongly.",
+        ),
+    ],
+)
+def test_a_hedged_tail_is_cut_and_the_figure_kept(sentence: str, kept: str) -> None:
+    """The tail is the claim; what stands in front of it is checkable."""
+    assert without_hedged_tail(sentence) == kept
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        # Wrong throughout rather than wrong after the comma: a prefix of a
+        # self-contradictory sentence is not a true one.
+        "115 calls ended unresolved, which cannot be given yet.",
+        # The equals sign is in the head, so the cut does not reach it. The
+        # head is re-checked for exactly this.
+        "Brokers named adversely = 0, indicating no adverse mentions.",
+        # Nothing in front of the hedge to keep.
+        "Indicating, which may be a problem.",
+        # No hedge at all: the caller's own check decides, not this.
+        "Commercial intent routed cannot be given yet.",
+        "44 accounts could not be assessed, each with fewer than 3 calls.",
+    ],
+)
+def test_a_sentence_a_cut_cannot_save_is_refused(sentence: str) -> None:
+    assert without_hedged_tail(sentence) is None
+
+
+def test_a_cut_sentence_ends_in_a_full_stop() -> None:
+    """The cut lands mid-sentence, where there is no punctuation to inherit."""
+    kept = without_hedged_tail("3 accounts renew within 4 months, indicating urgency")
+
+    assert kept == "3 accounts renew within 4 months."
