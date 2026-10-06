@@ -1028,6 +1028,35 @@ describe('the issues to act on', () => {
     if (tiles === null || issues === null) throw new Error('the tiles and the issues list must both render')
     expect(tiles.compareDocumentPosition(issues) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
+
+  it('accents High priority open and Outcome measured like their neighbours, not left plain', async () => {
+    // The fixture's one action is open, high priority, and has no recorded
+    // outcome -- exactly the state each tile exists to flag.
+    renderAt('/actions')
+
+    await waitFor(() => {
+      expect(screen.getByText('High priority open')).toBeInTheDocument()
+    })
+    const highPriority = screen.getByText('High priority open').closest('.nv-big')
+    const measured = screen.getByText('Outcome measured').closest('.nv-big')
+    expect((highPriority as HTMLElement).className).toContain('nv-hot')
+    expect((measured as HTMLElement).className).toContain('nv-warm')
+  })
+
+  it('leaves High priority open and Outcome measured plain once neither condition holds', async () => {
+    store.actions = [
+      makeAction({ id: 1, priority: 'medium', outcome: 'Fixed the billing rule.' }),
+    ]
+    renderAt('/actions')
+
+    await waitFor(() => {
+      expect(screen.getByText('High priority open')).toBeInTheDocument()
+    })
+    const highPriority = screen.getByText('High priority open').closest('.nv-big')
+    const measured = screen.getByText('Outcome measured').closest('.nv-big')
+    expect((highPriority as HTMLElement).className).not.toContain('nv-hot')
+    expect((measured as HTMLElement).className).not.toContain('nv-warm')
+  })
 })
 
 describe('no browser storage', () => {

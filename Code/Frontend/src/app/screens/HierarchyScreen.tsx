@@ -219,11 +219,16 @@ function HierarchyTiles({ data }: { data: Hierarchy }) {
             </p>
           </Tooltip>
         }
+        tone={firing > 0 ? 'warm' : 'plain'}
       />
       <KpiTile
         label="Regions with flagged accounts"
         value={`${String(withFlagged)} of ${String(data.regions.length)}`}
         meta={<span className="nv-indcount">flagged in every region = book-wide</span>}
+        // The page's own question is isolated-or-systemic, and the meta line
+        // already names the systemic reading: every region carrying a
+        // flagged account, not merely one or two.
+        tone={data.regions.length > 0 && withFlagged === data.regions.length ? 'warm' : 'plain'}
       />
     </div>
   )

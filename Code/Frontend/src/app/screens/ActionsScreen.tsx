@@ -537,11 +537,17 @@ function ActionTiles({ board }: { board: ActionBoard }) {
         label="High priority open"
         value={String(highOpen.length)}
         meta={<span className="nv-indcount">of {open.length} open</span>}
+        tone={highOpen.length > 0 ? 'hot' : 'plain'}
       />
       <KpiTile
         label="Outcome measured"
         value={String(measured.length)}
         meta={<span className="nv-indcount">of {raised} actions</span>}
+        // The gap worth flagging is zero coverage, not partial coverage: a
+        // team that has measured even one outcome is doing the thing this
+        // tile checks for, so only "raised actions and nobody has recorded
+        // whether any of them worked" gets the accent.
+        tone={raised > 0 && measured.length === 0 ? 'warm' : 'plain'}
       />
     </div>
   )
