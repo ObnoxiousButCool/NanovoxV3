@@ -14,19 +14,19 @@ aggregation is by touchpoint and proposed change rather than by call.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from domain.errors import ValidationError
 
 
-class ProcessGapStatus(str, Enum):
+class ProcessGapStatus(StrEnum):
     UNVALIDATED = "UNVALIDATED"
     VALIDATED = "VALIDATED"
     ACTIONED = "ACTIONED"
     REJECTED = "REJECTED"
 
 
-class RaisedBy(str, Enum):
+class RaisedBy(StrEnum):
     AGENT = "AGENT"
     CALLER = "CALLER"
 

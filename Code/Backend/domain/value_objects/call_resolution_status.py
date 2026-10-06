@@ -8,10 +8,10 @@ the exclusion rather than the call quietly not existing.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class CallResolutionStatus(str, Enum):
+class CallResolutionStatus(StrEnum):
     #: Speaker roles, the agent and the caller all resolved.
     RESOLVED = "RESOLVED"
     #: Speaker roles resolved, but caller_ref doesn't match a known member

@@ -10,10 +10,10 @@ produces it (see ``domain/extraction/l1_deterministic.py``).
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ControlExceptionType(str, Enum):
+class ControlExceptionType(StrEnum):
     NO_RECORDING_DISCLOSURE = "no_recording_disclosure"
     DISCLOSURE_BEFORE_VERIFICATION = "disclosure_before_verification"
     MISSING_BENEFIT_DISCLOSURE = "missing_benefit_disclosure"

@@ -29,7 +29,6 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Coroutine
 from dataclasses import dataclass
-from typing import TypeVar
 
 from application.ports.call_extraction_repository import CallExtractionRepository
 from application.ports.llm_provider import LLMProvider
@@ -40,8 +39,6 @@ from domain.layers import ESSENTIAL_LAYERS, Layer
 from domain.value_objects.escalation_trigger_type import EscalationTriggerType
 from domain.value_objects.score import ScoreStatus
 from domain.value_objects.token_usage import TokenUsage
-
-T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -106,7 +103,9 @@ class ExtractionPipeline:
 
         return ExtractionPipelineResult(l2=l2_result, l3=l3_result, l4=l4_result, degraded=degraded)
 
-    async def _run(self, layer: Layer, coro: Coroutine[object, object, T]) -> tuple[T | None, bool]:
+    async def _run[T](
+        self, layer: Layer, coro: Coroutine[object, object, T]
+    ) -> tuple[T | None, bool]:
         try:
             return (await coro), False
         except Exception:

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from application.ports.clock import Clock
 from application.ports.health_probe import HealthProbe
 from application.use_cases.get_health import GetHealth
 from domain.value_objects.health import ComponentHealth, ComponentStatus
 
-_NOW = datetime(2026, 9, 22, 12, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 9, 22, 12, 0, tzinfo=UTC)
 
 
 class FixedClock(Clock):

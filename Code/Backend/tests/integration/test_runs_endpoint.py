@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -16,7 +16,7 @@ from frameworks_drivers.api.dependencies import get_run_extraction_over_corpus_u
 
 RUNS_URL = "/api/v1/runs"
 
-_CREATED_AT = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+_CREATED_AT = datetime(2026, 9, 23, 12, 0, tzinfo=UTC)
 
 
 class _StubUseCase(RunExtractionOverCorpus):

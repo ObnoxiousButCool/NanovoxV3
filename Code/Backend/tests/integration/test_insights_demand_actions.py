@@ -8,7 +8,7 @@ than blended.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -59,7 +59,7 @@ async def seed_signals(
             call = CallRow(
                 reference=f"C-{index:04d}",
                 source=CallSource.CORPUS_PDF.value,
-                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
                 aht_seconds=300,
                 caller_type="MEMBER",
                 caller_ref="MEM-1",

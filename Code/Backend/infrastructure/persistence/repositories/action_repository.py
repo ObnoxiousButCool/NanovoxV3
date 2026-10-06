@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import ColumnElement, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -269,4 +269,4 @@ async def _hydrate(session: AsyncSession, rows: list[ActionRow]) -> list[Action]
 def _utc(value: datetime) -> datetime:
     """SQLite stores no zone, and the clock only ever writes UTC. Read back
     as UTC so a stored timestamp serialises the same as a fresh one."""
-    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)

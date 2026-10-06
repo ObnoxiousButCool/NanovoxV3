@@ -319,7 +319,12 @@ def _to_domain(
         complaint=complaint,
         intent=tuple(
             IntentStatement(
-                type=IntentType(item["type"]),
+                # `str(...)` like the two below it: the row is JSON out of the
+                # database, so every value arrives as `str | int` whatever the
+                # column meant. `StrEnum` takes a `str` where `(str, Enum)`
+                # accepted the union, which is the conversion noticing that the
+                # coercion was always implicit here and never stated.
+                type=IntentType(str(item["type"])),
                 quote=str(item["quote"]),
                 turn_seq=int(item["turn_seq"]),
             )

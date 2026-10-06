@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Polarity(str, Enum):
+class Polarity(StrEnum):
     """Whether a rubric marker counts for or against the score."""
 
     POSITIVE = "POSITIVE"

@@ -36,7 +36,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from domain.entities.touchpoint import Touchpoint
 from domain.errors import ValidationError
@@ -46,7 +46,7 @@ from domain.value_objects.product_line import ProductLine
 from domain.value_objects.signal_type import SignalType, owner_team_of
 
 
-class PlaybookUnit(str, Enum):
+class PlaybookUnit(StrEnum):
     """What the issue counts."""
 
     CALLS = "calls"
@@ -54,12 +54,12 @@ class PlaybookUnit(str, Enum):
     ACTIONS = "actions"
 
 
-class PlaybookSeverity(str, Enum):
+class PlaybookSeverity(StrEnum):
     HIGH = "high"
     MEDIUM = "medium"
 
 
-class DynamicKind(str, Enum):
+class DynamicKind(StrEnum):
     """The prefix of a dynamic key, before the underscore."""
 
     TOUCHPOINT = "tp"

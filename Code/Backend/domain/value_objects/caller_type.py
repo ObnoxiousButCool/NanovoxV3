@@ -8,9 +8,9 @@ not a silent pick of one over the other.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class CallerType(str, Enum):
+class CallerType(StrEnum):
     MEMBER = "MEMBER"
     EMPLOYER = "EMPLOYER"

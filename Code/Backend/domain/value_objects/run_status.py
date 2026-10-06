@@ -13,10 +13,10 @@ that is resumable.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     """Lifecycle of a whole run."""
 
     PENDING = "PENDING"
@@ -48,7 +48,7 @@ class RunStatus(str, Enum):
         return self in _RESUMABLE
 
 
-class RunItemStatus(str, Enum):
+class RunItemStatus(StrEnum):
     """Lifecycle of one item within a run."""
 
     PENDING = "PENDING"

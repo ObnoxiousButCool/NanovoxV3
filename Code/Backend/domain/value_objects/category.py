@@ -6,10 +6,10 @@ Pharmacy is deliberately absent — ChoiceBuilder has no pharmacy line
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Category(str, Enum):
+class Category(StrEnum):
     COVERAGE_AND_BENEFITS = "Coverage & Benefits"
     CLAIMS_AND_EOB = "Claims & EOB"
     PROVIDER_NETWORK = "Provider Network"

@@ -10,10 +10,10 @@ remains"; UNRESOLVED is the default when none of the above hold.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Outcome(str, Enum):
+class Outcome(StrEnum):
     RESOLVED = "RESOLVED"
     PARTIALLY_RESOLVED = "PARTIALLY_RESOLVED"
     ESCALATED = "ESCALATED"

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -19,7 +19,7 @@ from infrastructure.persistence.repositories.action_repository import SqlActionR
 from infrastructure.persistence.repositories.call_repository import SqlCallRepository
 from infrastructure.system_clock import SystemClock
 
-_AT = datetime(2026, 9, 25, 9, 0, tzinfo=timezone.utc)
+_AT = datetime(2026, 9, 25, 9, 0, tzinfo=UTC)
 
 
 def _call(reference: str) -> IngestedCall:
@@ -146,7 +146,7 @@ async def test_an_unknown_action_is_none(repository: SqlActionRepository) -> Non
 
 
 async def test_timezone_aware_timestamps_are_accepted(repository: SqlActionRepository) -> None:
-    aware = datetime(2026, 9, 25, 9, 0, tzinfo=timezone.utc)
+    aware = datetime(2026, 9, 25, 9, 0, tzinfo=UTC)
     created = await repository.create(_new(created_at=aware, log=(LogEntry(aware, "x"),)))
 
     assert created.log[0].text == "x"

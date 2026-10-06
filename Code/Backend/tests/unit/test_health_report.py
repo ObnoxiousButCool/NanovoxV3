@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from domain.value_objects.health import ComponentHealth, ComponentStatus, HealthReport
 
-_NOW = datetime(2026, 9, 22, 12, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 9, 22, 12, 0, tzinfo=UTC)
 
 
 def test_healthy_when_every_component_is_up() -> None:

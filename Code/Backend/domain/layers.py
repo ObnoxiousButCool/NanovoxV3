@@ -20,10 +20,10 @@ test fails instead of that metric silently under-serving withheld data.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Layer(str, Enum):
+class Layer(StrEnum):
     """An extraction layer, named exactly as the Call Tag Schema names it."""
 
     L1 = "L1"

@@ -163,5 +163,5 @@ def _retry_after_of(error: anthropic.APIStatusError) -> float | None:
         return None
     try:
         return float(headers.get("retry-after"))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None

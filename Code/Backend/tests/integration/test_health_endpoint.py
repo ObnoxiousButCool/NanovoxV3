@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -20,7 +20,7 @@ HEALTH_URL = "/api/v1/health"
 
 class _FixedClock(Clock):
     def now(self) -> datetime:
-        return datetime(2026, 9, 22, 12, 0, tzinfo=timezone.utc)
+        return datetime(2026, 9, 22, 12, 0, tzinfo=UTC)
 
 
 class _DownProbe(HealthProbe):

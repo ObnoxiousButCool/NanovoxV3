@@ -78,7 +78,7 @@ def _resolve(dist: Path, requested: str) -> Path | None:
         return None
     try:
         candidate = (dist / requested).resolve()
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return None
     if not candidate.is_file():
         return None

@@ -158,5 +158,5 @@ def _model_names(body: object) -> set[str]:
 def _body_excerpt(response: httpx.Response, limit: int = 200) -> str:
     try:
         return response.text[:limit]
-    except (UnicodeDecodeError, RuntimeError):  # pragma: no cover - defensive
+    except UnicodeDecodeError, RuntimeError:  # pragma: no cover - defensive
         return "<unreadable response body>"

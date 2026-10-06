@@ -13,10 +13,10 @@ knowledge-failure/process-gap touchpoint mapping in §7A).
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class RuleLayer(str, Enum):
+class RuleLayer(StrEnum):
     PROGRAM = "P"
     ADMINISTRATION = "A"
     CARRIER = "C"

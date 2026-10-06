@@ -14,7 +14,6 @@ by the single `upsert()` entry point, not left to the caller to get right.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import TypeVar
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -38,8 +37,6 @@ from infrastructure.persistence.tables import (
     RuleRow,
     TouchpointRow,
 )
-
-_Row = TypeVar("_Row")
 
 
 class SqlReferenceRepository(ReferenceRepository):
@@ -68,9 +65,9 @@ class SqlReferenceRepository(ReferenceRepository):
             touchpoints=touchpoint_count,
         )
 
-    async def _get_or_create(
-        self, session: AsyncSession, row_type: type[_Row], reference: str
-    ) -> _Row:
+    async def _get_or_create[Row](
+        self, session: AsyncSession, row_type: type[Row], reference: str
+    ) -> Row:
         result = await session.execute(
             select(row_type).where(row_type.reference == reference)  # type: ignore[attr-defined]
         )

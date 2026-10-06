@@ -9,7 +9,7 @@ recreated.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -44,7 +44,7 @@ from infrastructure.config.paths import DEFAULT_CONFIG_DIR
 from infrastructure.config.playbook_loader import load_playbooks
 from tests.fixtures.tagged_calls import call, day
 
-_NOW = datetime(2026, 9, 28, 9, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 9, 28, 9, 0, tzinfo=UTC)
 
 
 class _FixedClock(Clock):
