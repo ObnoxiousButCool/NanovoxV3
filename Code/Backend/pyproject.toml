@@ -83,6 +83,20 @@ filterwarnings = [
     "error",
     "ignore::ResourceWarning",
     "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+    # aiosqlite runs each connection on its own thread. When a worker is
+    # still draining its queue as the loop that owns its futures closes,
+    # `call_soon_threadsafe` raises inside that thread, pytest turns the
+    # thread exception into a warning, and `error` above turns it into a
+    # failed run on whichever test happened to be in flight. It is a
+    # teardown race in a dependency, not a leak here: a serial run of the
+    # integration suite under `-W default::ResourceWarning` reports no
+    # connection deleted before being closed. Running across cores made it
+    # likely enough to hit CI, so it is named rather than left to flake.
+    #
+    # Deliberately matched on that one thread. Any other thread raising
+    # still fails the run, which a test in `tests/unit` would otherwise be
+    # the only way to notice.
+    'ignore:Exception in thread Thread-\d+ \(_connection_worker_thread\):pytest.PytestUnhandledThreadExceptionWarning',
 ]
 
 [tool.coverage.run]

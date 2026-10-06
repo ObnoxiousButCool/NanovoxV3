@@ -38,8 +38,9 @@ version: "1.0.0"
 # The sheet qualifies three of these — "10 calls", "30 triggers", "10 calls per
 # employer" — and leaves the rest bare; a bare number counts calls. Flattening
 # them all to a plain integer is how escalation integrity ends up gated on 30
-# calls instead of 30 warranted escalations, which is a much weaker test: at
-# batch-1 volume there are 100 calls and 11 triggers.
+# calls instead of 30 warranted escalations, which is a much weaker test: the
+# corpus holds 600 calls and 77 warranted escalations, so the two gates are an
+# order of magnitude apart.
 #
 # `window_weeks` is the rolling window the metric is computed over. `null`
 # means the row has no window of its own — metric 12 is scored per call, and
@@ -217,9 +218,13 @@ broker:
   # one that can attribute a mention to a particular broker. The
   # `broker_conduct_adverse` signal co-occurs with it but names no broker.
   #
-  # Render fired AND unfired, with what it reached (insight 13). At batch-1
-  # density it cannot fire, and "below — needs 3 from 2 employers" is itself
-  # the finding: separate incidents, not one broker underserving a book.
+  # Render fired AND unfired, with what it reached (insight 13). It fires for
+  # nobody in this corpus, and "below — needs 3 from 2 employers" is itself the
+  # finding. Read it carefully though: the limit is no longer call volume but
+  # the tag's own coverage. `broker_named_aloud` is present on 1 of 600 calls
+  # while 20 others raise `broker_conduct_adverse` without naming anyone, so a
+  # nought here is a missing name rather than a clean book — which is what
+  # `naming_coverage` states on the screen.
   pattern_test:
     min_adverse_mentions: 3
     min_distinct_employers: 2
@@ -254,10 +259,16 @@ quality_bands:
 #
 #   eligibility_min_calls  the sheet's denominator, "Employers with >=3 calls
 #                          in window". Below it an employer is NOT ELIGIBLE,
-#                          which is not the same as not flagged. At batch-1
-#                          volume most of the 92 employers with calls have a
-#                          single call, so most are ineligible — the page has
-#                          to say that rather than show 90 reassuring rows.
+#                          which is not the same as not flagged: the four
+#                          conditions cannot be tested on one or two calls —
+#                          there is no month-on-month to compare and a lone
+#                          call cannot be a repeat.
+#                          At 600 calls, 44 of the 95 employers are under the
+#                          floor (11 with one call, 33 with two) and 51 are
+#                          assessed. Those 44 made 77 calls between them. The
+#                          split moves with each batch, so the page states
+#                          both counts rather than letting 13-of-51 read as
+#                          13-of-95.
 #
 #   flag_threshold         >=2 of the sheet's four named conditions: complaint
 #                          rate up month-on-month · a failure-driven repeat ·
