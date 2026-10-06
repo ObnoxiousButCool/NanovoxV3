@@ -1,0 +1,47 @@
+# Keep the build context small and the image free of host state.
+#
+# node_modules and .venv are the two that matter: both are large, both are
+# platform-specific, and both are rebuilt inside the image. Copying a Windows
+# .venv into a Linux container produces an image that fails on the first
+# import, which is a slow thing to diagnose.
+
+.git
+.gitignore
+
+# Rebuilt in the image.
+**/node_modules
+**/.venv
+**/dist
+**/__pycache__
+**/*.pyc
+
+# Host state and caches.
+**/.mypy_cache
+**/.ruff_cache
+**/.pytest_cache
+**/.vscode
+**/.idea
+.claude
+
+# Local artefacts: the SQLite database, its backups and the logs. The database
+# is mounted at runtime, never baked in — an image carrying a corpus snapshot
+# would ship stale figures to every deployment that pulled it.
+data/
+
+# Secrets. These must arrive as platform configuration, never in a layer:
+# anything copied into an image is readable by anyone who can pull it.
+**/.env
+**/.env.*
+!Code/Frontend/.env.production
+
+# Tests and tooling, not needed to serve.
+Code/Backend/tests
+Code/Backend/htmlcov
+Code/Backend/.coverage
+Code/Backend/requirements-dev.txt
+
+# Documentation and the prototype, none of it served.
+*.md
+Prototype*
+Documents/
+scripts/

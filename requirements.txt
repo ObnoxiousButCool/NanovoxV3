@@ -1,0 +1,14 @@
+# Repo-root requirements, for build systems that only look here.
+#
+# The real list is Code/Backend/requirements.txt and stays there: the backend
+# is run as an application from that directory, and a second copy of the pins
+# would drift from it the first time one of them was edited alone.
+#
+# Azure App Service (Oryx), Render and most buildpack-style platforms detect a
+# Python app by a requirements.txt at the repository root and will not look
+# into Code/Backend without extra configuration. This file is that pointer, and
+# nothing else.
+#
+# The Dockerfile does not use this — it installs from Code/Backend directly.
+
+-r Code/Backend/requirements.txt
