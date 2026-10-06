@@ -17,13 +17,18 @@ FRONTEND="$ROOT/Code/Frontend"
 
 echo "=== NanoVox Insights setup (macOS/Linux) ==="
 
-# --- Locate a Python interpreter ---
-if command -v python3 >/dev/null 2>&1; then
+# --- Locate a Python 3.14 interpreter ---
+# The backend is written in 3.14's idioms (StrEnum, datetime.UTC, PEP 695
+# generics) and will not run on an earlier one, so this looks for 3.14
+# specifically rather than whatever "python3" happens to resolve to first on
+# PATH -- a machine with several versions installed otherwise silently
+# creates the venv with the wrong one.
+if command -v python3.14 >/dev/null 2>&1; then
+    PY=python3.14
+elif command -v python3 >/dev/null 2>&1 && [[ "$(python3 -c 'import sys; print(sys.version_info[:2])')" == "(3, 14)" ]]; then
     PY=python3
-elif command -v python >/dev/null 2>&1; then
-    PY=python
 else
-    echo "ERROR: Python 3.13+ was not found on PATH. Install it and re-run this script."
+    echo "ERROR: Python 3.14 was not found on PATH. Install it and re-run this script."
     exit 1
 fi
 

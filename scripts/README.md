@@ -138,8 +138,9 @@ Code/Backend/.venv/Scripts/pip install -r Code/Backend/requirements-dev.txt
 
 ## Prerequisites
 
-- **Python 3.10+** on `PATH`. The backend deliberately avoids 3.11-only syntax
-  so it runs on the interpreter most machines already have.
+- **Python 3.14** on `PATH`. The codebase is written in 3.14's idioms (`StrEnum`,
+  `datetime.UTC`, PEP 695 generics) rather than a lower floor nobody deploys —
+  an earlier interpreter will not run it.
 - **Node.js 18+** on `PATH` (CI uses 20).
 
 ## Configuration

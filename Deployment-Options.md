@@ -47,7 +47,7 @@ the only thing worth spending the extra on.
 |---|---|---|
 | Resource group | — | $0 |
 | App Service plan, **Linux** | **B1** | **~$6.50** |
-| App Service (Web App) | Python 3.10 | included |
+| App Service (Web App) | Python 3.14 | included |
 | | | **~$7** |
 
 No Container Registry. No Azure Disk. No Postgres. No Static Web App — the API
@@ -71,7 +71,7 @@ az appservice plan create --name nanovox-plan --resource-group nanovox-demo \
   --sku B1 --is-linux
 
 az webapp create --name nanovox-insights --resource-group nanovox-demo \
-  --plan nanovox-plan --runtime "PYTHON:3.10"
+  --plan nanovox-plan --runtime "PYTHON:3.14"
 ```
 
 **3. Configure.** The root `requirements.txt` in this repo is a pointer to
@@ -179,7 +179,7 @@ on the wrong path for this app. There is nothing to answer.
 
 | | |
 |---|---|
-| Runtime | Python **3.10** (`.venv` is 3.10.11; ruff targets `py310`) |
+| Runtime | Python **3.14** (`.venv` is 3.14.0; ruff targets `py314`) |
 | Web server | uvicorn, ASGI |
 | Database | SQLite file, **4 MB** (`data/db/nanovox_insights.db`) |
 | Frontend | Vite build → `Code/Frontend/dist`, served by the API process |
@@ -363,7 +363,7 @@ Dockerfile — Azure builds from source with Oryx.
 |---|---|---|
 | Resource group | — | one container for everything, so teardown is one delete |
 | App Service plan | **Linux, B1** | Always On, 1 core, 1.75 GB; persistent `/home` |
-| App Service (Web App) | Python 3.10 | the app itself |
+| App Service (Web App) | Python 3.14 | the app itself |
 | *(optional)* Log Analytics | pay-as-you-go | only if you want retained logs |
 
 You do **not** need: Static Web Apps, API Management, Front Door, Application
@@ -401,7 +401,7 @@ az appservice plan create \
 
 az webapp create \
   --name nanovox-insights --resource-group nanovox-demo \
-  --plan nanovox-plan --runtime "PYTHON:3.10"
+  --plan nanovox-plan --runtime "PYTHON:3.14"
 ```
 
 **3. Set configuration.** These are App Settings, never a `.env` file in the
@@ -644,7 +644,7 @@ this page I would call a hard requirement:
 
 **Prerequisites**
 
-- Python 3.10 and Node installed locally for the build.
+- Python 3.14 and Node installed locally for the build.
 - The 4 MB database file to hand (section 3).
 - An API key for whichever provider you point `LLM_PROVIDER` at.
 - `az login` against the right subscription.
@@ -664,7 +664,7 @@ two-week demo turns into a twelve-month line item.
 ## 10. Gaps in the repo
 
 1. ~~**No Dockerfile.**~~ **Added and verified** — builds to 381 MB, runs, serves
-   the real corpus. Multi-stage: Node 20 builds the frontend, `python:3.10-slim`
+   the real corpus. Multi-stage: Node 20 builds the frontend, `python:3.14-slim`
    runs it, and the image keeps the checkout's directory shape because
    `paths.py` derives every location from `__file__` and would otherwise find no
    `dist`.

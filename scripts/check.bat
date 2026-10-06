@@ -15,7 +15,7 @@ set "FAILED="
 
 if not exist "%BACKEND%\.venv" (
     echo ERROR: backend virtual environment missing.
-    echo   cd Code\Backend ^&^& python -m venv .venv
+    echo   cd Code\Backend ^&^& py -3.14 -m venv .venv
     echo   .venv\Scripts\pip install -r requirements-dev.txt
     exit /b 1
 )
