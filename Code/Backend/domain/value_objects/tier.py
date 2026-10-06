@@ -9,13 +9,13 @@ code.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from domain.errors import ValidationError
 from domain.value_objects.score import MAX_SCORE, MIN_SCORE, Score
 
 
-class Tier(str, Enum):
+class Tier(StrEnum):
     """GOOD at 86 and above, AVERAGE at 60 and above, POOR below 60
     (Call Quality Framework sheet)."""
 

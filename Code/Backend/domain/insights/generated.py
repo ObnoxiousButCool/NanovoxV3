@@ -45,12 +45,12 @@ reason.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from domain.errors import ValidationError
 
 
-class InsightKind(str, Enum):
+class InsightKind(StrEnum):
     """What a sentence is doing. Never OBSERVED — see the module docstring."""
 
     #: Reads the figures and says what they appear to mean.
@@ -59,7 +59,7 @@ class InsightKind(str, Enum):
     RECOMMENDATION = "RECOMMENDATION"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Reading order for generated prose. Never a risk band — see D12.
 
     The values say reading order rather than HIGH/MEDIUM/LOW for two
@@ -76,7 +76,7 @@ class Severity(str, Enum):
     BACKGROUND = "BACKGROUND"
 
 
-class Lens(str, Enum):
+class Lens(StrEnum):
     """The four readings the exec page groups insights under.
 
     **U1 (D14, 2026-09-25, Minnie): a client requirement.** Not a
@@ -97,12 +97,12 @@ class Lens(str, Enum):
     PAYER_AND_CARRIER = "PAYER_AND_CARRIER"
 
 
-class InsightsStatus(str, Enum):
+class InsightsStatus(StrEnum):
     GENERATED = "GENERATED"
     UNAVAILABLE = "UNAVAILABLE"
 
 
-class UnavailableReason(str, Enum):
+class UnavailableReason(StrEnum):
     """Why there is no generated text, in the reader's terms.
 
     Each value is a different thing to do about it, which is the test for

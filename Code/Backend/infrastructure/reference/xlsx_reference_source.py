@@ -80,14 +80,14 @@ def _rows_with_prefix(rows: list[list[str]], header_row: int, prefix: str) -> li
 def _as_int(value: str) -> int:
     try:
         return int(float(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0
 
 
 def _as_float(value: str) -> float | None:
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

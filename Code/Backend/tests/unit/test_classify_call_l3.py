@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -48,7 +48,7 @@ from infrastructure.llm.prompts import PromptLibrary
 from tests.support.llm import FakeProvider
 from tests.support.rubric import dimension, rubric
 
-_NOW = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 9, 23, 12, 0, tzinfo=UTC)
 
 _DENTAL_RULE = Rule(
     reference="C-01",

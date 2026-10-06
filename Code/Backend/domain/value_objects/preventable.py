@@ -14,10 +14,10 @@ See `domain/derivations/root_cause.py` for the mapping.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Preventable(str, Enum):
+class Preventable(StrEnum):
     YES = "Yes"
     PARTLY = "Partly"
     NO = "No"

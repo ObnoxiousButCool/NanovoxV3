@@ -7,7 +7,7 @@ real database, plus every refusal the lifecycle makes.
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -320,7 +320,7 @@ async def _analyse(
             .all()
         )
         for row in rows:
-            row.occurred_at = datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc)
+            row.occurred_at = datetime(2026, 9, 20, 10, 0, tzinfo=UTC)
             session.add(
                 CallExtractionRow(
                     call_id=row.id,

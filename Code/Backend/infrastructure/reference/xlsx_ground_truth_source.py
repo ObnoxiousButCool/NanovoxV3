@@ -89,7 +89,7 @@ def _cell(row: list[str], index: int | None) -> str:
 def _as_int(value: str) -> int | None:
     try:
         return int(float(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

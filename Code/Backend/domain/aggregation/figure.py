@@ -62,12 +62,12 @@ thing again: the *rule's* provenance grade, about a different object.)
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from domain.dashboard_config import MetricThreshold
 
 
-class Basis(str, Enum):
+class Basis(StrEnum):
     """Where a number came from. Never whether it is shown."""
 
     #: Counted from the Call Tag Schema's own fields.
@@ -79,7 +79,7 @@ class Basis(str, Enum):
     REFERENCE = "REFERENCE"
 
 
-class WithheldReason(str, Enum):
+class WithheldReason(StrEnum):
     #: Fewer than the metric's own min n. The commonest case, and the one
     #: that resolves itself as the corpus grows.
     BELOW_MIN_N = "BELOW_MIN_N"

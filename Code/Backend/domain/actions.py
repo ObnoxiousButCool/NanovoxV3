@@ -34,13 +34,13 @@ from __future__ import annotations
 from collections.abc import Container, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 
 from domain.errors import ValidationError
 from domain.value_objects.action_source_kind import ActionSourceKind
 
 
-class Requirement(str, Enum):
+class Requirement(StrEnum):
     """What an action must carry to be in a given state."""
 
     ACTION_TAKEN = "action_taken"
@@ -48,7 +48,7 @@ class Requirement(str, Enum):
     OUTCOME = "outcome"
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"

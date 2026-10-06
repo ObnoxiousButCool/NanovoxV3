@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class BrokerSentiment(str, Enum):
+class BrokerSentiment(StrEnum):
     ADVERSE = "ADVERSE"
     POSITIVE = "POSITIVE"

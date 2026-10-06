@@ -32,7 +32,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from application.use_cases.read_insights import InsightsRequest
@@ -59,7 +59,7 @@ MAX_PER_PAGE = 100
 DEFAULT_PER_PAGE = 25
 
 
-class Sort(str, Enum):
+class Sort(StrEnum):
     """The six sortable columns, named on the wire rather than by index.
 
     Column indices would silently re-point at a different column the first

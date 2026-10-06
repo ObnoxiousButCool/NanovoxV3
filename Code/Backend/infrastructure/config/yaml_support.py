@@ -10,13 +10,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import TypeVar
 
 import yaml
 
 from domain.errors import ConfigurationError
-
-T = TypeVar("T")
 
 
 def load_yaml_mapping(path: Path, *, description: str) -> dict[str, object]:
@@ -128,7 +125,7 @@ class YamlReader:
             )
         return readers
 
-    def enum(self, key: str, factory: Callable[[str], T], *, expected: str) -> T:
+    def enum[T](self, key: str, factory: Callable[[str], T], *, expected: str) -> T:
         """Read a string and convert it through an enum constructor."""
         value = self.string(key)
         try:

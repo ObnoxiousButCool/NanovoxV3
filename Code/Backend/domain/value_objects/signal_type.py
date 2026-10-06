@@ -22,12 +22,12 @@ quietly smaller.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from domain.value_objects.signal_severity import SignalSeverity
 
 
-class SignalType(str, Enum):
+class SignalType(StrEnum):
     MEMBER_COMMUNICATION_GAP = "member_communication_gap"
     PROCESS_BREAKDOWN = "process_breakdown"
     COMPLIANCE_DISCLOSURE_MISSING = "compliance_disclosure_missing"

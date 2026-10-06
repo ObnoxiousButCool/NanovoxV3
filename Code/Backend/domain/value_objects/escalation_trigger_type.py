@@ -9,10 +9,10 @@ it across the two layers.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class EscalationTriggerType(str, Enum):
+class EscalationTriggerType(StrEnum):
     #: The caller explicitly asks for a supervisor, a manager or someone
     #: senior. Deterministic — verbatim phrase with turn reference.
     CALLER_REQUEST = "caller_request"

@@ -7,10 +7,10 @@ value: that's the v10 proposal in plan §7A, not built.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ComplaintAttribution(str, Enum):
+class ComplaintAttribution(StrEnum):
     CHOICE = "CHOICE"
     BROKER = "BROKER"
     CARRIER = "CARRIER"

@@ -222,7 +222,7 @@ class Container:
         """
         try:
             return self.provider_registry.create()
-        except (ConfigurationError, NotFoundError):
+        except ConfigurationError, NotFoundError:
             return None
 
     def list_playbooks(self) -> ListPlaybooks:

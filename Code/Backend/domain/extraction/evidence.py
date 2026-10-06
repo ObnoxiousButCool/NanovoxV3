@@ -17,8 +17,8 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from enum import Enum
-from typing import Generic, Protocol, TypeVar
+from enum import StrEnum
+from typing import Protocol
 
 from domain.entities.transcript import Transcript
 
@@ -42,10 +42,7 @@ class CitesEvidence(Protocol):
     def turn_seq(self) -> int: ...
 
 
-T = TypeVar("T", bound=CitesEvidence)
-
-
-class EvidenceRejection(str, Enum):
+class EvidenceRejection(StrEnum):
     """Why a piece of cited evidence was refused."""
 
     MISSING_TURN = "missing_turn"
@@ -61,7 +58,7 @@ class EvidenceRejection(str, Enum):
 
 
 @dataclass(frozen=True)
-class RejectedEvidence(Generic[T]):
+class RejectedEvidence[T: CitesEvidence]:
     """A cited item that was refused, and why."""
 
     item: T
@@ -79,7 +76,7 @@ class RejectedEvidence(Generic[T]):
 
 
 @dataclass(frozen=True)
-class EvidenceValidation(Generic[T]):
+class EvidenceValidation[T: CitesEvidence]:
     """The outcome of validating a batch of cited items."""
 
     accepted: tuple[T, ...]
@@ -115,7 +112,9 @@ def _reject_reason(item: CitesEvidence, transcript: Transcript) -> EvidenceRejec
     return None
 
 
-def validate_evidence(items: Iterable[T], transcript: Transcript) -> EvidenceValidation[T]:
+def validate_evidence[T: CitesEvidence](
+    items: Iterable[T], transcript: Transcript
+) -> EvidenceValidation[T]:
     """Keep only the cited items whose quote genuinely appears in the transcript."""
     accepted: list[T] = []
     rejected: list[RejectedEvidence[T]] = []
@@ -130,7 +129,7 @@ def validate_evidence(items: Iterable[T], transcript: Transcript) -> EvidenceVal
     return EvidenceValidation(accepted=tuple(accepted), rejected=tuple(rejected))
 
 
-def also_rejected(
+def also_rejected[T: CitesEvidence](
     validation: EvidenceValidation[T],
     items: Sequence[T],
     reason: EvidenceRejection,

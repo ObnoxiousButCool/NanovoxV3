@@ -6,7 +6,7 @@ the seam the essential/degradable tests need.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import BaseModel
@@ -63,7 +63,7 @@ from infrastructure.llm.prompt_source import FilePromptSource
 from infrastructure.llm.prompts import PromptLibrary
 from tests.support.rubric import dimension, rubric
 
-_NOW = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 9, 23, 12, 0, tzinfo=UTC)
 
 _TRANSCRIPT = Transcript(
     reference="C-0001",

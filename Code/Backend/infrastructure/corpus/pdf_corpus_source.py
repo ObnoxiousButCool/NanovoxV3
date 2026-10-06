@@ -13,7 +13,7 @@ answer key" in `pyproject.toml` forbids it structurally.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from application.ports.transcript_source import RawCallRecord, TranscriptSource
@@ -53,7 +53,7 @@ def _parse_when(raw: str) -> datetime | None:
     the real-world zone a call happened in.
     """
     try:
-        return datetime.strptime(raw, _WHEN_FORMAT).replace(tzinfo=timezone.utc)
+        return datetime.strptime(raw, _WHEN_FORMAT).replace(tzinfo=UTC)
     except ValueError:
         return None
 

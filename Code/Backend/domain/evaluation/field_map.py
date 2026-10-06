@@ -62,7 +62,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from domain.entities.call_extraction import CallExtraction
 from domain.entities.ground_truth import GroundTruth
@@ -79,7 +79,7 @@ from domain.value_objects.control_exception_type import ControlExceptionType
 from domain.value_objects.impact_scope import ImpactScope, ImpactScopeBucket
 
 
-class Layer(str, Enum):
+class Layer(StrEnum):
     """Which extraction layer owns the field — §8's "agreement per layer"."""
 
     L1 = "L1"

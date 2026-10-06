@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -45,7 +45,7 @@ from infrastructure.llm.prompt_source import FilePromptSource
 from infrastructure.llm.prompts import PromptLibrary
 from tests.support.llm import FakeProvider
 
-_NOW = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 9, 23, 12, 0, tzinfo=UTC)
 
 _MARCUS_TRENT = Broker(
     reference="BRK-02",

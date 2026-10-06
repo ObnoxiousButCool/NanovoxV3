@@ -8,10 +8,10 @@ so the names live in the domain and the numbers do not.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class QualityBand(str, Enum):
+class QualityBand(StrEnum):
     GOOD = "GOOD"
     AVERAGE = "AVERAGE"
     POOR = "POOR"

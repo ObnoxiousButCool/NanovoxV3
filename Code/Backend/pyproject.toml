@@ -9,14 +9,14 @@
 
 [tool.ruff]
 line-length = 100
-# Deliberately behind the interpreter. The runtime moved to 3.14; this stays at
-# the old floor because raising it turns on pyupgrade's modernisations — 113 of
-# them, and they are not cosmetic. `(str, Enum)` -> `StrEnum` changes how 51
-# enums behave, and ruff's own PEP 695 rewrite renames a type parameter in the
-# signature while leaving the body referring to the old name, which mypy rejects
-# as broken code. None of that belongs in a version bump; raise this in a change
-# that can be reviewed on its own merits.
-target-version = "py310"
+# The interpreter the code runs on, so pyupgrade may assume 3.14 and the
+# codebase is written in its idioms rather than in a floor nobody deploys.
+#
+# Raising this from py310 was not cosmetic: it rewrote 51 enums to `StrEnum`,
+# every `timezone.utc` to `datetime.UTC`, and the generics to PEP 695. The enum
+# change in particular reaches the wire, so it was accepted only after every
+# insight endpoint was compared byte for byte against the previous build.
+target-version = "py314"
 src = ["."]
 
 [tool.ruff.lint]

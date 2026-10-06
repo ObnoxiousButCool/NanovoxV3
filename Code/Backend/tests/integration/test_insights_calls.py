@@ -9,7 +9,7 @@ text leaves it.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -76,7 +76,7 @@ async def seed_with_turns(
         call = CallRow(
             reference=reference,
             source=CallSource.CORPUS_PDF.value,
-            occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+            occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
             aht_seconds=400,
             caller_type="MEMBER",
             caller_ref="MEM-9",
@@ -106,7 +106,7 @@ async def seed_with_turns(
                 l2_provider="openai",
                 l2_model="gpt-test",
                 l2_prompt_version="1.0.0",
-                l2_completed_at=datetime(2026, 9, 20, 10, 5, tzinfo=timezone.utc),
+                l2_completed_at=datetime(2026, 9, 20, 10, 5, tzinfo=UTC),
             )
         )
 
@@ -209,16 +209,16 @@ LAYER_RUNS: dict[str, object] = {
     "l2_provider": "openai",
     "l2_model": "test-model",
     "l2_prompt_version": "v1",
-    "l2_completed_at": datetime(2026, 9, 20, 11, 0, tzinfo=timezone.utc),
+    "l2_completed_at": datetime(2026, 9, 20, 11, 0, tzinfo=UTC),
     "l3_provider": "openai",
     "l3_model": "test-model",
     "l3_prompt_version": "v1",
     "rubric_version": "v1",
-    "l3_completed_at": datetime(2026, 9, 20, 11, 0, tzinfo=timezone.utc),
+    "l3_completed_at": datetime(2026, 9, 20, 11, 0, tzinfo=UTC),
     "l4_provider": "openai",
     "l4_model": "test-model",
     "l4_prompt_version": "v1",
-    "l4_completed_at": datetime(2026, 9, 20, 11, 0, tzinfo=timezone.utc),
+    "l4_completed_at": datetime(2026, 9, 20, 11, 0, tzinfo=UTC),
 }
 
 
@@ -252,7 +252,7 @@ async def seed_a_tagged_call(
         call = CallRow(
             reference=reference,
             source=CallSource.CORPUS_PDF.value,
-            occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+            occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
             aht_seconds=400,
             caller_type="MEMBER",
             caller_ref="MEM-91",
@@ -306,7 +306,7 @@ async def test_the_evidence_response_carries_the_signals_this_call_raised(
         call = CallRow(
             reference="C-9102",
             source=CallSource.CORPUS_PDF.value,
-            occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+            occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
             aht_seconds=400,
             caller_type="MEMBER",
             caller_ref="MEM-92",
@@ -580,7 +580,7 @@ async def test_the_headline_aggregates_cover_every_matching_call_not_only_the_pa
             call = CallRow(
                 reference=reference,
                 source=CallSource.CORPUS_PDF.value,
-                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
                 aht_seconds=400,
                 caller_type="MEMBER",
                 caller_ref="MEM-93",
@@ -1055,14 +1055,14 @@ async def _analyse_fully(session_factory: async_sessionmaker[AsyncSession]) -> N
         row.l3_provider = "openai"
         row.l3_model = "gpt-test"
         row.l3_prompt_version = "1.1.0"
-        row.l3_completed_at = datetime(2026, 9, 20, 10, 6, tzinfo=timezone.utc)
+        row.l3_completed_at = datetime(2026, 9, 20, 10, 6, tzinfo=UTC)
         row.escalation_handled = False
         row.root_cause_owner = RootCauseOwner.CHOICE.value
         row.preventable = Preventable.YES.value
         row.l4_provider = "openai"
         row.l4_model = "gpt-test"
         row.l4_prompt_version = "1.2.0"
-        row.l4_completed_at = datetime(2026, 9, 20, 10, 7, tzinfo=timezone.utc)
+        row.l4_completed_at = datetime(2026, 9, 20, 10, 7, tzinfo=UTC)
         session.add(
             ScoreMarkerRow(
                 call_id=call_id,
@@ -1206,7 +1206,7 @@ async def test_the_workbench_opens_on_the_newest_call(
             call = CallRow(
                 reference=f"C-77{index:02d}",
                 source=CallSource.CORPUS_PDF.value,
-                occurred_at=datetime(2026, 9, day, 10, 0, tzinfo=timezone.utc),
+                occurred_at=datetime(2026, 9, day, 10, 0, tzinfo=UTC),
                 aht_seconds=400,
                 caller_type="MEMBER",
                 caller_ref="MEM-77",
