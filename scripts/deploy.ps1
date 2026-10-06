@@ -195,13 +195,28 @@ if ($BindAddress -eq '127.0.0.1') {
     Note "Open it yourself: New-NetFirewallRule -DisplayName '$FirewallRule' -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow"
 } else {
     Step 'Opening the firewall'
+    # Run with strict mode off, in a child scope so the rest of the script
+    # keeps it. The NetSecurity cmdlets are generated from CDXML rather than
+    # written, and the script they generate is not strict-mode clean on every
+    # Windows build: a deploy on Server reported
+    #
+    #     The property 'Statement' cannot be found on this object.
+    #     FullyQualifiedErrorId : PropertyNotFoundStrict
+    #
+    # from inside them, with no line number, while the same calls are clean
+    # on Windows 11. Their own internals are not this script's business to
+    # be strict about.
+    #
     # Removed and recreated rather than edited: a redeploy on a different port
     # would otherwise leave the old port open and the new one shut, which is
     # both a hole and a failure at once.
-    Get-NetFirewallRule -DisplayName $FirewallRule -ErrorAction SilentlyContinue |
-        Remove-NetFirewallRule -ErrorAction SilentlyContinue
-    New-NetFirewallRule -DisplayName $FirewallRule -Direction Inbound `
-        -Protocol TCP -LocalPort $Port -Action Allow -Profile Any | Out-Null
+    & {
+        Set-StrictMode -Off
+        Get-NetFirewallRule -DisplayName $FirewallRule -ErrorAction SilentlyContinue |
+            Remove-NetFirewallRule -ErrorAction SilentlyContinue
+        New-NetFirewallRule -DisplayName $FirewallRule -Direction Inbound `
+            -Protocol TCP -LocalPort $Port -Action Allow -Profile Any | Out-Null
+    }
     Note "Inbound TCP $Port allowed as '$FirewallRule'"
 }
 
@@ -216,26 +231,33 @@ if ($NoService) {
 Step 'Registering the startup task'
 # Task Scheduler rather than a service wrapper: it is built into Windows,
 # survives reboots and restarts the process if it dies.
-$action = New-ScheduledTaskAction -Execute $Python `
-    -Argument "-m uvicorn frameworks_drivers.main:app --host $BindAddress --port $Port" `
-    -WorkingDirectory $Backend
+# Strict mode off inside, for the same reason as the firewall block above:
+# the ScheduledTasks cmdlets are CDXML-generated and their own internals are
+# not strict-mode clean on every Windows build.
+& {
+    Set-StrictMode -Off
 
-$settings = New-ScheduledTaskSettingsSet `
-    -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
-    -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) `
-    -ExecutionTimeLimit ([TimeSpan]::Zero) `
-    -MultipleInstances IgnoreNew
+    $action = New-ScheduledTaskAction -Execute $Python `
+        -Argument "-m uvicorn frameworks_drivers.main:app --host $BindAddress --port $Port" `
+        -WorkingDirectory $Backend
 
-Register-ScheduledTask -TaskName $TaskName -Force `
-    -Action $action `
-    -Trigger (New-ScheduledTaskTrigger -AtStartup) `
-    -Principal (New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest) `
-    -Settings $settings | Out-Null
+    $settings = New-ScheduledTaskSettingsSet `
+        -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+        -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) `
+        -ExecutionTimeLimit ([TimeSpan]::Zero) `
+        -MultipleInstances IgnoreNew
 
-# Stop before start: a redeploy must not leave the previous build running.
-Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 2
-Start-ScheduledTask -TaskName $TaskName
+    Register-ScheduledTask -TaskName $TaskName -Force `
+        -Action $action `
+        -Trigger (New-ScheduledTaskTrigger -AtStartup) `
+        -Principal (New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest) `
+        -Settings $settings | Out-Null
+
+    # Stop before start: a redeploy must not leave the previous build running.
+    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+    Start-ScheduledTask -TaskName $TaskName
+}
 
 # --- 8. Verify -------------------------------------------------------------
 Step 'Verifying'
@@ -261,9 +283,12 @@ $page = Invoke-WebRequest "$base/calls" -TimeoutSec 5
 if ($page.StatusCode -ne 200) { throw "Client-side route /calls returned $($page.StatusCode)." }
 Note 'Client-side routing works'
 
-$addresses = @(Get-NetIPAddress -AddressFamily IPv4 |
-    Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' } |
-    Select-Object -ExpandProperty IPAddress)
+$addresses = @(& {
+    Set-StrictMode -Off   # NetTCPIP is CDXML too; see the firewall block.
+    Get-NetIPAddress -AddressFamily IPv4 |
+        Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' } |
+        Select-Object -ExpandProperty IPAddress
+})
 
 # Everything above this point was answered over loopback, which is the one
 # address that proves nothing: `start.bat` binds to 127.0.0.1 too, and this
