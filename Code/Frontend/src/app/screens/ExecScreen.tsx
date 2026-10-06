@@ -76,6 +76,7 @@ import {
   FigureValue,
   IndicatorCount,
   KpiTile,
+  Note,
   Panel,
   Tooltip,
 } from '@/shared/design/primitives'
@@ -500,19 +501,49 @@ function bestImprovement(movements: MovementEntry[]): MovementEntry | undefined 
 }
 
 /**
- * Curated "Emerging issues" — the top three rising items as cards with their
- * own chart, and the falling items in an "Easing" sidebar. Replaces a flat
- * dump of every tracked category, touchpoint, signal and product line.
+ * How many more calls a thing must have gained across the window to be worth a
+ * card. A threshold rather than a fixed count of cards, because the tail is
+ * mostly an artefact: touchpoints arrive as free text, so `Claim processing`,
+ * `Claims process` and `Claims status` are three rows, and a single call in
+ * the last slice makes each of them "rising" by one. At batch-1 volume more
+ * than half the risers are a single call in total. Five is the point where a
+ * rise is several calls rather than a wording difference.
+ *
+ * A fixed count hides a different number of real items every window and always
+ * shows the same number of rows; a threshold shows what cleared the bar, and
+ * the note says what did not.
+ */
+const MIN_RISE = 5
+
+/**
+ * Curated "Emerging issues" — every item that rose by at least `MIN_RISE` as a
+ * card with its own chart, and the falling items in an "Easing" sidebar.
+ * Replaces a flat dump of every tracked category, touchpoint, signal and
+ * product line.
+ *
+ * `rising` is the server's, and it is not `delta > 0`: a row that spiked and
+ * is subsiding is net up without emerging, and ranking on `delta` alone used
+ * to seat one of those second on this panel. Those rows are counted under the
+ * cards rather than dropped — a reader who cannot see that a cut happened has
+ * no reason to look for what is under it.
  */
 function EmergingPanel({ emerging }: { emerging: EmergingEntry[] }) {
-  const rising = emerging
-    .filter((item) => item.rising)
-    .sort((a, b) => b.delta - a.delta)
-    .slice(0, 3)
+  const allRising = emerging.filter((item) => item.rising).sort((a, b) => b.delta - a.delta)
+  const rising = allRising.filter((item) => item.delta >= MIN_RISE)
+  const spiked = emerging.filter((item) => item.delta > 0 && item.receded).length
   const easing = emerging
     .filter((item) => item.delta < 0)
     .sort((a, b) => a.delta - b.delta)
     .slice(0, 5)
+
+  const notes = [
+    allRising.length > rising.length
+      ? `${String(allRising.length)} items rose; the ${String(allRising.length - rising.length)} that rose by fewer than ${String(MIN_RISE)} calls are not shown.`
+      : null,
+    spiked > 0
+      ? `${String(spiked)} rose earlier in the window and are now below their peak.`
+      : null,
+  ].filter((line): line is string => line !== null)
 
   return (
     <Panel
@@ -522,10 +553,19 @@ function EmergingPanel({ emerging }: { emerging: EmergingEntry[] }) {
       <div className="nv-emgrid">
         <div>
           {rising.length === 0 ? (
-            <Empty title="Nothing rising">No tracked item rose across this window.</Empty>
+            allRising.length === 0 ? (
+              <Empty title="Nothing rising">No tracked item rose across this window.</Empty>
+            ) : (
+              // Things rose, none by enough to call emerging. Saying "nothing
+              // rose" here would be false, and the note below gives the count.
+              <Empty title="Nothing rose far enough">
+                {`No tracked item gained ${String(MIN_RISE)} or more calls across this window.`}
+              </Empty>
+            )
           ) : (
             rising.map((item) => <EmergingCard key={`${item.kind}:${item.key}`} item={item} />)
           )}
+          {notes.length > 0 && <Note suppressed>{notes.join(' ')}</Note>}
         </div>
         <aside className="nv-easing">
           <h3>Easing</h3>
