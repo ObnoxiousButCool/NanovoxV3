@@ -9,7 +9,10 @@
     no second origin, because there is only one.
 
     This is the script that makes the app reachable from another machine - a
-    laptop on the company VPN, say. `scripts\start.bat` is development mode:
+    laptop on the company VPN, say. It opens the inbound port itself, and the
+    verification at the end answers on a real interface rather than only on
+    loopback, because a deployment reachable from nowhere used to pass every
+    check here. `scripts\start.bat` is development mode:
     two servers (Vite on 5173, uvicorn on 8000), each bound to 127.0.0.1 by
     default, and the frontend's `.env` points at an absolute
     `http://127.0.0.1:8000/api/v1`. Run that on a VM and it works perfectly,
@@ -57,6 +60,7 @@ $Backend  = Join-Path $Root 'Code\Backend'
 $Frontend = Join-Path $Root 'Code\Frontend'
 $Python   = Join-Path $Backend '.venv\Scripts\python.exe'
 $TaskName = 'NanoVoxInsights'
+$FirewallRule = 'NanoVox Insights'
 
 function Step([string] $Message) { Write-Host "`n=== $Message" -ForegroundColor Cyan }
 function Note([string] $Message) { Write-Host "    $Message" -ForegroundColor DarkGray }
@@ -174,7 +178,34 @@ $dist = Join-Path $Frontend 'dist\index.html'
 if (-not (Test-Path $dist)) { throw "Frontend build produced no $dist." }
 Note 'Built. The API process will serve it.'
 
-# --- 6. Service ------------------------------------------------------------
+# --- 6. Firewall -----------------------------------------------------------
+# The .DESCRIPTION has always promised the firewall was opened for this, and
+# until now the script only printed the command at the end and left it to be
+# noticed. A default Windows Server blocks the inbound port, so the deploy
+# finished green and the application was reachable from nowhere -- the exact
+# failure this script exists to avoid, arrived at by a different road.
+#
+# Nothing to open when bound to loopback: there is no inbound traffic to allow.
+if ($BindAddress -eq '127.0.0.1') {
+    Step 'No firewall rule needed'
+    Note 'Bound to 127.0.0.1, so nothing outside this machine can reach it by design.'
+} elseif ($NoService) {
+    # -NoService does not elevate, and New-NetFirewallRule needs it.
+    Step 'Skipping the firewall rule (-NoService)'
+    Note "Open it yourself: New-NetFirewallRule -DisplayName '$FirewallRule' -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow"
+} else {
+    Step 'Opening the firewall'
+    # Removed and recreated rather than edited: a redeploy on a different port
+    # would otherwise leave the old port open and the new one shut, which is
+    # both a hole and a failure at once.
+    Get-NetFirewallRule -DisplayName $FirewallRule -ErrorAction SilentlyContinue |
+        Remove-NetFirewallRule -ErrorAction SilentlyContinue
+    New-NetFirewallRule -DisplayName $FirewallRule -Direction Inbound `
+        -Protocol TCP -LocalPort $Port -Action Allow -Profile Any | Out-Null
+    Note "Inbound TCP $Port allowed as '$FirewallRule'"
+}
+
+# --- 7. Service ------------------------------------------------------------
 if ($NoService) {
     Step 'Skipping service registration (-NoService)'
     Write-Host "`nStart it in the foreground with:" -ForegroundColor Green
@@ -206,7 +237,7 @@ Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 Start-ScheduledTask -TaskName $TaskName
 
-# --- 7. Verify -------------------------------------------------------------
+# --- 8. Verify -------------------------------------------------------------
 Step 'Verifying'
 $probe = if ($BindAddress -eq '0.0.0.0') { '127.0.0.1' } else { $BindAddress }
 $base  = "http://${probe}:$Port"
@@ -230,9 +261,33 @@ $page = Invoke-WebRequest "$base/calls" -TimeoutSec 5
 if ($page.StatusCode -ne 200) { throw "Client-side route /calls returned $($page.StatusCode)." }
 Note 'Client-side routing works'
 
-$addresses = Get-NetIPAddress -AddressFamily IPv4 |
+$addresses = @(Get-NetIPAddress -AddressFamily IPv4 |
     Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' } |
-    Select-Object -ExpandProperty IPAddress
+    Select-Object -ExpandProperty IPAddress)
+
+# Everything above this point was answered over loopback, which is the one
+# address that proves nothing: `start.bat` binds to 127.0.0.1 too, and this
+# script's whole purpose is to not be that. A deployment reachable from
+# nowhere passed every check here and printed success in green.
+#
+# What this establishes is that the process is listening on a real interface
+# rather than on loopback alone. It does NOT establish that the firewall
+# lets anyone in: traffic from this machine to its own address is handled
+# locally and does not cross the inbound rule. Only the other machine can
+# answer that, which is why the summary below asks for it rather than
+# claiming it.
+if ($BindAddress -eq '0.0.0.0' -and $addresses.Count -gt 0) {
+    $external = $addresses[0]
+    try {
+        $reached = Invoke-RestMethod "http://${external}:$Port/api/v1/health" -TimeoutSec 5
+        if (-not $reached) { throw 'no answer' }
+        Note "Listening on $external, not only on loopback"
+    } catch {
+        throw ("Healthy on 127.0.0.1 but not on $external`:$Port. The process is bound to " +
+               'loopback rather than to every interface, so no other machine can reach it. ' +
+               "Check APP_HOST in $envFile.")
+    }
+}
 
 Write-Host "`nNanoVox Insights is running." -ForegroundColor Green
 Write-Host "    Local:   $base"
@@ -246,8 +301,14 @@ Write-Host @"
 
 "@
 if ($BindAddress -ne '127.0.0.1') {
-    Write-Host "    If other machines (including over VPN) cannot reach it, open the port:" -ForegroundColor Yellow
-    Write-Host "    New-NetFirewallRule -DisplayName 'NanoVox Insights' -Direction Inbound -Protocol TCP -LocalPort $Port -Action Allow`n"
-    Write-Host "    Then from another machine on the VPN, browse to one of the Network addresses above -" -ForegroundColor Yellow
-    Write-Host "    not 127.0.0.1 or localhost, which only ever means 'this machine'.`n"
+    # The firewall rule is made above now, and the checks above prove the
+    # process is on a real interface. The one thing this machine cannot test
+    # about itself is whether anything else can get in, so that is the only
+    # thing left to ask for.
+    Write-Host "    Confirm from another machine on the network or VPN:" -ForegroundColor Yellow
+    foreach ($address in $addresses) {
+        Write-Host "        Test-NetConnection $address -Port $Port"
+    }
+    Write-Host "    then browse to one of the Network addresses above - not 127.0.0.1 or" -ForegroundColor Yellow
+    Write-Host "    localhost, which only ever means 'the machine you are sitting at'.`n"
 }
