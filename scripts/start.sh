@@ -23,7 +23,7 @@ if command -v python3 >/dev/null 2>&1; then
 elif command -v python >/dev/null 2>&1; then
     PY=python
 else
-    echo "ERROR: Python 3.10+ was not found on PATH. Install it and re-run this script."
+    echo "ERROR: Python 3.13+ was not found on PATH. Install it and re-run this script."
     exit 1
 fi
 

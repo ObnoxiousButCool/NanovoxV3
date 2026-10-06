@@ -89,14 +89,14 @@ if (-not $NoService) {
 }
 
 $pythonExe = $null
-foreach ($candidate in @('3.12', '3.11', '3.10')) {
+foreach ($candidate in @('3.14', '3.13')) {
     # The launcher reports a missing version on stderr and a non-zero exit; both
     # are expected while probing, so they must not stop the script.
     $found = & { $ErrorActionPreference = 'SilentlyContinue'; py "-$candidate" -c 'import sys; print(sys.executable)' 2>$null }
     if ($LASTEXITCODE -eq 0 -and $found) { $pythonExe = $found; Note "Python $candidate at $found"; break }
 }
 if (-not $pythonExe) {
-    throw 'No Python 3.10-3.12 found. Install one from python.org (tick "Add to PATH" and "py launcher"), then re-run.'
+    throw 'No Python 3.13-3.14 found. Install one from python.org (tick "Add to PATH" and "py launcher"), then re-run.'
 }
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {

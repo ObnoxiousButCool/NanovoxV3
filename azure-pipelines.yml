@@ -57,9 +57,15 @@ pool:
 
 variables:
   # Matches the floor in pyproject.toml and the interpreter developers actually
-  # run. Not a detail: `datetime.UTC` is 3.11+, and writing it here would have
-  # passed on a 3.12 agent while breaking every developer on 3.10.
-  pythonVersion: '3.10'
+  # run. Not a detail: a version written here that nobody runs locally passes CI
+  # while breaking every developer, which is how `datetime.UTC` (3.11+) would
+  # have slipped in when the floor was 3.10.
+  #
+  # Moved 3.10 -> 3.14 because 3.10 leaves support on 2026-10-31 and App Service
+  # already lists it as near end of life. Recreate your venv to match:
+  #   py -3.14 -m venv Code/Backend/.venv   (Windows)
+  #   python3.14 -m venv Code/Backend/.venv (macOS/Linux)
+  pythonVersion: '3.14'
   nodeVersion: '20'
 
   # Where npm keeps its cache, set as a variable rather than left at its

@@ -35,7 +35,7 @@ RUN test -f dist/index.html
 
 
 # --- Stage 2: the runtime --------------------------------------------------
-FROM python:3.10-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # PYTHONDONTWRITEBYTECODE: the source is read-only in the image.
 # PYTHONUNBUFFERED: logs reach the platform's collector as they happen rather

@@ -3,7 +3,11 @@
 -r requirements.txt
 
 pytest>=8.3,<9.0
-pytest-asyncio>=0.24,<1.0
+# 1.x, not 0.x: 0.26 calls `asyncio.get_event_loop_policy()`, which 3.14
+# deprecates, and `filterwarnings = ["error", ...]` in pyproject.toml turns that
+# into a failure in every async test — 25 errors before a single assertion runs.
+# This pin is what the interpreter upgrade actually hinged on.
+pytest-asyncio>=1.0,<2.0
 pytest-cov>=6.0,<8.0
 # The suite is ~1,600 tests and each one builds its own database file, so
 # nothing is shared and the whole thing parallelises. `-n auto` is in
