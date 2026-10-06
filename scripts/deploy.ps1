@@ -104,6 +104,31 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 }
 Note "Node $(node --version)"
 
+# `npm` on Windows is three files, and PowerShell prefers the wrong one:
+# npm.ps1 beats npm.cmd in command resolution, so `npm install` runs a
+# PowerShell script in this session rather than a process beside it. That
+# script inherits nothing useful and brings its own problems -- older ones
+# read `$MyInvocation.Statement`, which does not exist on Windows PowerShell
+# 5.1, and under the strict mode set at the top of this file that is a
+# terminating error:
+#
+#     The property 'Statement' cannot be found on this object.
+#
+# npm later guarded that line with Get-Member; a Server with an older npm
+# has no such guard, and the deploy died at "Building the frontend" with no
+# line number, because the throw came from inside npm's own shim.
+#
+# Turning strict mode off does not help: npm.ps1 sets `Set-StrictMode
+# -Version Latest` itself, on its first line. The fix is to not run it. The
+# .cmd is a native process, so none of this session's state reaches it.
+$Npm = (Get-Command 'npm.cmd' -ErrorAction SilentlyContinue |
+    Select-Object -First 1 -ExpandProperty Source)
+if (-not $Npm) {
+    throw ('npm.cmd was not found beside node. Install Node 20+ from nodejs.org rather ' +
+           'than a standalone npm, so the whole toolchain is on PATH together.')
+}
+Note "npm $(& $Npm --version)"
+
 # --- 2. Backend dependencies ----------------------------------------------
 Step 'Installing backend dependencies'
 if (-not (Test-Path $Python)) {
@@ -162,16 +187,16 @@ try {
     # dev server left running. It is therefore used only on a clean tree; an
     # existing one is updated in place, which needs no delete.
     if ((Test-Path 'package-lock.json') -and -not (Test-Path 'node_modules')) {
-        Invoke-Checked 'npm ci' { npm ci --silent }
+        Invoke-Checked 'npm ci' { & $Npm ci --silent }
     } else {
-        Invoke-Checked 'npm install' { npm install --silent }
+        Invoke-Checked 'npm install' { & $Npm install --silent }
     }
     # .env.production sets VITE_API_BASE_URL=/api/v1 - the API is this same
     # process, so the bundle is host-independent and never needs rebuilding
     # because an address changed. Without it, the build falls back to .env's
     # absolute http://127.0.0.1:8000/api/v1, which works from this machine and
     # from nowhere else - the exact failure this script exists to avoid.
-    Invoke-Checked 'npm run build' { npm run build }
+    Invoke-Checked 'npm run build' { & $Npm run build }
 } finally { Pop-Location }
 
 $dist = Join-Path $Frontend 'dist\index.html'
