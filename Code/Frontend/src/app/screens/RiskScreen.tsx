@@ -194,22 +194,12 @@ function RiskBody({
           <EpistemicChip kind="observed" />
         </header>
         <BigRow>
-            <KpiTile
-              label="Accounts flagged"
-              value={String(flaggedAccounts.length)}
-              tone={flaggedAccounts.length > 0 ? 'hot' : 'plain'}
-              meta={
-                <>
-                  <FigureValue figure={data.flaggedShare} format={percent} /> of{' '}
-                  {String(data.assessedCount)} assessed
-                  {data.ineligibleCount > 0
-                    ? ` · ${String(data.ineligibleCount)} could not be`
-                    : null}
-                  <br />
-                  {flaggedAccounts.length > 0 ? <IssueCue issue="flagged" /> : null}
-                </>
-              }
-            />
+            {/* The flagged count is the executive overview's tile, where it
+                opens the page. Repeating it here as a second tile said the
+                same thing twice in the same words; what this screen owns
+                that the overview does not is the denominator and the
+                accounts that could not be assessed, and those now sit on
+                the table they qualify. */}
             <KpiTile
               label="Flagged & renewing soon"
               value={String(renewingSoon.length)}
@@ -295,6 +285,23 @@ function RiskBody({
       <div className="nv-c12 nv-risk-accounts">
         <Panel
           title="Accounts at risk"
+          meta={
+            <>
+              <span>
+                {String(flaggedAccounts.length)} flagged of {String(data.assessedCount)}{' '}
+                assessed, <FigureValue figure={data.flaggedShare} format={percent} />{' '}
+                {flaggedAccounts.length > 0 ? <IssueCue issue="flagged" /> : null}
+              </span>
+              {/* Never folded into "not flagged": an account with too few
+                  calls to assess has not been found clean, and this is the
+                  only place that says so. */}
+              <span>
+                {data.ineligibleCount > 0
+                  ? `${String(data.ineligibleCount)} could not be assessed`
+                  : 'every account could be assessed'}
+              </span>
+            </>
+          }
           info={
             <Tooltip>
               <p>

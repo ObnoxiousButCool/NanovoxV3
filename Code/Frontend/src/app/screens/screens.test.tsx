@@ -1144,15 +1144,20 @@ describe('/risk, the headline tile row', () => {
     )
   })
 
-  it('counts flagged accounts, not a share, in the headline tile', async () => {
+  it('states the denominator and the unassessable accounts on the table they qualify', async () => {
+    // The flagged count is the executive overview's tile. Repeating it here
+    // as a second tile with the same label, value and share said the same
+    // thing twice; what survives is what only this screen carries -- the
+    // accounts that could not be assessed, which are never "not flagged".
     renderAt('/risk')
 
     await waitFor(() => {
-      expect(screen.getByText('Accounts flagged')).toBeInTheDocument()
+      expect(screen.getByText('Accounts at risk')).toBeInTheDocument()
     })
-    const tile = screen.getByText('Accounts flagged').closest('div')
-    expect(tile).not.toBeNull()
-    expect(within(tile as HTMLElement).getByText('1')).toBeInTheDocument()
+
+    expect(screen.queryByText('Accounts flagged')).not.toBeInTheDocument()
+    expect(screen.getByText(/1 flagged of 1 assessed/)).toBeInTheDocument()
+    expect(screen.getByText(/could not be assessed/)).toBeInTheDocument()
   })
 
   it('counts flagged accounts renewing within the shared soon-window', async () => {
