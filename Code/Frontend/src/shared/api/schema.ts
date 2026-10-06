@@ -1564,7 +1564,15 @@ export interface components {
              * @description The words for `key`. Categories arrive from the workbook as prose already; touchpoints, signals and product lines are coded values and this is what `labels.py` says a reader should see for them.
              */
             label: string;
-            /** Rising */
+            /**
+             * Receded
+             * @description The latest slice is below the window's highest. Read with `delta`: negative and receded is easing, positive and receded is a spike coming back down.
+             */
+            receded: boolean;
+            /**
+             * Rising
+             * @description Up across the window and not down from its own peak. Not the same as `delta > 0`: a row that spiked and is subsiding is net up and not emerging, and `receded` tells the two apart.
+             */
             rising: boolean;
         };
         /** EmployerNodeResponse */

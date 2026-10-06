@@ -175,6 +175,22 @@ class Emerging:
     Counts only, deliberately. `plan.md` §9's emerging view notes that at
     about eight calls a week a *share* would be two or three calls, so a
     percentage would imply a precision the corpus cannot support.
+
+    ## Why the middle slices decide direction
+
+    `delta` compares the ends and ignores everything between them, which is
+    the right measure of net change and the wrong one for the word
+    "emerging". A series of 19, 36, 30 is net up eleven and six below its
+    own peak: still worth knowing, no longer emerging. Ranking on `delta`
+    alone put exactly that series second on the executive screen's emerging
+    panel, above things genuinely still climbing — a reader was told an
+    issue was growing while it receded.
+
+    So direction is `receded`, which reads every slice, and `rising` is net
+    growth that has not turned back. The two together leave a third state,
+    `delta > 0` while receding, which is neither emerging nor easing; it is
+    `receded` and the screens report it as its own thing rather than
+    dropping it, because a spike that is subsiding is a real finding.
     """
 
     key: str
@@ -189,8 +205,25 @@ class Emerging:
         return self.buckets[-1].hits - self.buckets[0].hits
 
     @property
+    def peak(self) -> int:
+        """The highest slice. Zero when there are no slices at all."""
+        return max((bucket.hits for bucket in self.buckets), default=0)
+
+    @property
+    def receded(self) -> bool:
+        """Whether the latest slice sits below the window's highest.
+
+        False for a flat series and for one that peaks at the end, so a
+        row that is level or still climbing is never called receding.
+        """
+        if not self.buckets:
+            return False
+        return self.buckets[-1].hits < self.peak
+
+    @property
     def rising(self) -> bool:
-        return self.delta > 0
+        """Up on the window, and not down from its own peak."""
+        return self.delta > 0 and not self.receded
 
 
 def slice_window(window: Window, parts: int) -> tuple[Window, ...]:

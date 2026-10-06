@@ -137,7 +137,20 @@ class EmergingResponse(CamelModel):
     )
     buckets: list[BucketResponse]
     delta: int = Field(description="Latest slice minus earliest.")
-    rising: bool
+    rising: bool = Field(
+        description=(
+            "Up across the window and not down from its own peak. Not the "
+            "same as `delta > 0`: a row that spiked and is subsiding is net "
+            "up and not emerging, and `receded` tells the two apart."
+        )
+    )
+    receded: bool = Field(
+        description=(
+            "The latest slice is below the window's highest. Read with "
+            "`delta`: negative and receded is easing, positive and receded "
+            "is a spike coming back down."
+        )
+    )
 
 
 class CategoryConcernResponse(CamelModel):
@@ -342,6 +355,7 @@ def _trends(trends: ExecTrends) -> TrendsResponse:
                 ],
                 delta=row.delta,
                 rising=row.rising,
+                receded=row.receded,
             )
             for row in trends.emerging
         ],

@@ -95,13 +95,17 @@ ACCOUNT_INSIGHTS = 2
 #: lens each and left the subtitle making a promise the API could not keep.
 EXEC_INSIGHTS = 12
 
-#: Emerging entries the exec screen actually draws: the three strongest
-#: risers as cards and the five largest fallers in the "Easing" aside.
-#: Mirrors `EmergingPanel` in `ExecScreen.tsx` — the selection lives there
-#: because the panel owns its own layout, and a fact the reader cannot see
-#: is the one thing a generated sentence may never rest on. If that panel's
-#: slice changes, this changes with it.
-RISING_SHOWN = 3
+#: Emerging entries the exec screen actually draws: every riser that gained
+#: at least `MIN_RISE` calls as a card, and the five largest fallers in the
+#: "Easing" aside. Mirrors `EmergingPanel` in `ExecScreen.tsx` — the
+#: selection lives there because the panel owns its own layout, and a fact
+#: the reader cannot see is the one thing a generated sentence may never
+#: rest on. If that panel's rule changes, this changes with it.
+#:
+#: A threshold and not a count: the panel takes everything that clears the
+#: bar, so a run with six risers draws six cards and a cap of three here
+#: would starve the model of two of them.
+MIN_RISE = 5
 EASING_SHOWN = 5
 
 
@@ -362,9 +366,14 @@ def _emerging_facts(trends: TrendsResponse) -> list[Fact]:
     """The "Emerging issues" panel, as facts — and only the rows it draws.
 
     `trends.emerging` carries every tracked category, touchpoint, signal and
-    product line; the panel draws the three strongest risers and the five
-    largest fallers. Offering the whole list would licence the model to
-    quote a count sitting in no panel on the page.
+    product line; the panel draws every riser that gained `MIN_RISE` calls or
+    more, and the five largest fallers. Offering the whole list would licence
+    the model to quote a count sitting in no panel on the page.
+
+    A row that rose and has since fallen back is not here, because `rising`
+    excludes it and the panel gives it no card — only a line saying how many
+    there were. A sentence about one of those would be about something the
+    reader cannot point at.
 
     A riser carries both ends of its own bars, so "rose from two to five" is
     two facts the reader can see rather than a subtraction the model
@@ -372,9 +381,9 @@ def _emerging_facts(trends: TrendsResponse) -> list[Fact]:
     count and the change chip, not a sparkline to read a first slice off.
     """
     rising = sorted(
-        (entry for entry in trends.emerging if entry.rising),
+        (entry for entry in trends.emerging if entry.rising and entry.delta >= MIN_RISE),
         key=lambda entry: -entry.delta,
-    )[:RISING_SHOWN]
+    )
     easing = sorted(
         (entry for entry in trends.emerging if entry.delta < 0),
         key=lambda entry: entry.delta,
