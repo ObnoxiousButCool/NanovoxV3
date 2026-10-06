@@ -5,10 +5,147 @@ against the code, and the file points at the line that settles it. The
 container section is checked against an image that was built and run, not
 against how a Dockerfile usually behaves.
 
-> **Revised after building it.** Two findings moved the recommendation:
-> SQLite does not survive a network-backed mount, and the action board writes
-> at runtime so the database cannot be baked in read-only. Section 2A has the
-> evidence; section 4 and the ranking in section 8 changed because of it.
+> **Decision: Azure.** The comparison sections are kept for the reasoning, but
+> the answer is **section 0**. Everything else is background.
+
+---
+
+## 0. The decision — App Service B1 Linux, SQLite on `/tmp`
+
+**~$7 for a fortnight, one resource, no registry, no database server, HTTPS
+included.** It is the cheapest option on this page that actually works, and it
+works because of one trick.
+
+### The trick
+
+Section 2A found SQLite dies on a protocol-backed mount, and App Service's
+persistent `/home` is exactly that — an SMB share. The usual conclusion is "add
+Postgres" (+$13/month) or "move to Container Apps" (+$5/month registry).
+
+Neither is necessary. **`/tmp` on App Service is container-local disk, not the
+share.** So:
+
+- the pristine 4 MB database sits on `/home`, where it persists — a plain file,
+  never opened by SQLite there, so SMB's locking is irrelevant;
+- the startup command copies it to `/tmp`, a real block device;
+- SQLite runs there and behaves correctly.
+
+### What you give up
+
+Writes land on `/tmp` and are lost when the app restarts. In practice that means
+**action-board changes reset on restart**, because the corpus comes back from
+the pristine copy each time.
+
+For a two-week demo this is a reasonable trade and arguably a feature — every
+restart is a clean demo. If the client must keep their action edits across a
+restart, add Postgres Flexible Server B1ms and skip the copy entirely; that is
+the only thing worth spending the extra on.
+
+### Resources
+
+| Resource | SKU | Two weeks |
+|---|---|---|
+| Resource group | — | $0 |
+| App Service plan, **Linux** | **B1** | **~$6.50** |
+| App Service (Web App) | Python 3.10 | included |
+| | | **~$7** |
+
+No Container Registry. No Azure Disk. No Postgres. No Static Web App — the API
+process serves the frontend (section 1), so there is nothing to host separately.
+
+### Steps
+
+**1. Build the frontend locally.** Oryx will not run `npm run build` for a
+Python app, so `dist` must be in what you push.
+
+```bash
+cd Code/Frontend && npm ci && npm run build
+```
+
+**2. Create the resources.**
+
+```bash
+az group create --name nanovox-demo --location eastus
+
+az appservice plan create --name nanovox-plan --resource-group nanovox-demo \
+  --sku B1 --is-linux
+
+az webapp create --name nanovox-insights --resource-group nanovox-demo \
+  --plan nanovox-plan --runtime "PYTHON:3.10"
+```
+
+**3. Configure.** The root `requirements.txt` in this repo is a pointer to
+`Code/Backend/requirements.txt`, which is what lets Oryx find the dependencies.
+
+```bash
+az webapp config appsettings set --name nanovox-insights --resource-group nanovox-demo \
+  --settings \
+    APP_ENV=prod \
+    LLM_PROVIDER=openai \
+    OPENAI_API_KEY='<paste>' \
+    DATABASE_URL='sqlite+aiosqlite:////tmp/nanovox/nanovox_insights.db' \
+    FRONTEND_DIST_PATH=/home/site/wwwroot/Code/Frontend/dist \
+    SCM_DO_BUILD_DURING_DEPLOYMENT=true
+```
+
+Four slashes in the SQLite URL: `sqlite+aiosqlite:///` plus the absolute
+`/tmp/...`. `FRONTEND_DIST_PATH` is set explicitly because `paths.py` derives the
+default from its own `__file__`, and App Service's layout is not the checkout's.
+
+**4. Startup command** — the copy, then the server.
+
+```bash
+az webapp config set --name nanovox-insights --resource-group nanovox-demo \
+  --startup-file "mkdir -p /tmp/nanovox && cp /home/data/nanovox_insights.db /tmp/nanovox/ && cd /home/site/wwwroot/Code/Backend && python -m uvicorn frameworks_drivers.main:app --host 0.0.0.0 --port 8000"
+```
+
+No `alembic upgrade head`: the shipped database already carries the schema, and
+nothing at startup needs alembic (`main.py`'s lifespan does not call it).
+
+**5. Always On.** Without it the app unloads when idle and the first visitor
+waits 30+ seconds.
+
+```bash
+az webapp config set --name nanovox-insights --resource-group nanovox-demo --always-on true
+```
+
+**6. Deploy, then put the database on `/home`.**
+
+```bash
+az webapp up --name nanovox-insights --resource-group nanovox-demo
+
+# the 4 MB corpus, to the persistent share
+az webapp ssh --name nanovox-insights --resource-group nanovox-demo \
+  --command "mkdir -p /home/data"
+# then upload data/db/nanovox_insights.db to /home/data via the Kudu console:
+#   https://nanovox-insights.scm.azurewebsites.net/newui/fileManager
+
+az webapp restart --name nanovox-insights --resource-group nanovox-demo
+```
+
+**7. Verify from outside the host.**
+
+```bash
+curl -s https://nanovox-insights.azurewebsites.net/api/v1/health
+curl -s https://nanovox-insights.azurewebsites.net/api/v1/insights/exec | head -c 120
+curl -s -o /dev/null -w '%{http_code}\n' https://nanovox-insights.azurewebsites.net/risk
+```
+
+Expect `"application":"NanoVox Insights"`, `"calls":600` in the second, and
+`200` from the third. **Then click an action on "What should we do next?"** — a
+health check proves the connection, not that the database is writable, and
+section 2A's failure mode is invisible until something writes.
+
+### Honest caveat
+
+I verified the SQLite-on-a-protocol-mount failure by reproducing it, and the
+container path end to end. **I have not been able to test App Service itself
+from here** — no subscription access. The `/tmp` reasoning is sound and standard,
+but treat step 7's write test as the real acceptance gate, not a formality.
+
+If `/tmp` turns out to be unwritable or the copy fails, the fallback is one
+setting: point `DATABASE_URL` at a Postgres Flexible Server B1ms and delete the
+`cp` from the startup command. Everything else stays.
 
 ---
 
