@@ -239,11 +239,29 @@ stages:
                     #
                     # No `alembic upgrade head`: the shipped database already
                     # carries the schema, and nothing at startup needs Alembic.
+                    # $APP_PATH, not /home/site/wwwroot. Oryx builds Python
+                    # with CompressDestinationDir="true", so wwwroot holds an
+                    # output.tar.zst and nothing else the app can run from; the
+                    # platform extracts it to a fresh /tmp/<id> each deployment
+                    # and sets APP_PATH and the working directory to it. The
+                    # first deployment proved this the hard way — the container
+                    # exited 2 within 15s because `cd /home/site/wwwroot/
+                    # Code/Backend` was a directory that has never existed.
+                    #
+                    # A diagnostic run reported:
+                    #   PWD      = /tmp/8df24447d077ea4
+                    #   APP_PATH = /tmp/8df24447d077ea4
+                    #   PORT     = 8000
+                    #   python   = $APP_PATH/antenv/bin/python
+                    #
+                    # So the virtualenv is already active and PORT is already
+                    # right; the id changes per build, which is why it has to
+                    # be the variable rather than the path it resolved to.
                     startUpCommand: >-
                       mkdir -p /tmp/nanovox &&
                       cp /home/data/nanovox_insights.db /tmp/nanovox/ &&
-                      cd /home/site/wwwroot/Code/Backend &&
-                      python -m uvicorn frameworks_drivers.main:app --host 0.0.0.0 --port 8000
+                      cd "$APP_PATH/Code/Backend" &&
+                      python -m uvicorn frameworks_drivers.main:app --host 0.0.0.0 --port ${PORT:-8000}
 
                 # AzureCLI@2 rather than a bare script: `az` on the agent is
                 # not signed in, and this is the task that authenticates it
@@ -267,17 +285,24 @@ stages:
                       echo "Smoke-testing https://$HOST"
 
                       for attempt in $(seq 1 30); do
+                        # The fallback is a separate assignment: `|| echo 000`
+                        # appends to curl's own "000" on a connection failure,
+                        # which is why the first run logged "HTTP 000000".
                         code=$(curl -s -o /dev/null -w '%{http_code}' \
-                          --max-time 20 "https://$HOST/api/v1/health" || echo 000)
+                          --max-time 20 "https://$HOST/api/v1/health") || code=000
                         echo "  attempt $attempt: HTTP $code"
-                        # 200 is the health payload. 302 is Easy Auth
-                        # redirecting to sign-in, which means the app is up AND
-                        # protected. Both pass, and 302 is the expected answer
-                        # once authentication is switched on — a smoke test
-                        # that insisted on 200 would start failing the day the
-                        # app was secured.
+                        # 200 is the health payload. 302 and 401 are both Easy
+                        # Auth refusing an unauthenticated caller, which means
+                        # the app is up AND protected — which of the two you get
+                        # depends on the "unauthenticated requests" setting, and
+                        # a deployment smoke test should not care.
+                        #
+                        # Insisting on 200 would have started failing the day
+                        # the app was secured; allowing only 302 failed the day
+                        # it was secured with 401 instead, which is what
+                        # happened here.
                         case "$code" in
-                          200|302) echo "Up (HTTP $code)."; exit 0 ;;
+                          200|302|401) echo "Up (HTTP $code)."; exit 0 ;;
                         esac
                         sleep 10
                       done
