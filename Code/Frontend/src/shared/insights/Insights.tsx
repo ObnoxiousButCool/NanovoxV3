@@ -8,14 +8,27 @@
  * screen's own published figures before it left the server, and a sentence
  * that failed that check took the whole surface down with it.
  *
- * ## Unavailable is rendered, not hidden
+ * ## An empty surface is not rendered at all
  *
- * **U2 (D14):** when the provider is unavailable the surface shows an
- * explicit unavailable state, like the withheld panels — not templated copy
- * standing in for generated text, and not a silently hidden panel. So there
- * is no fallback prose in this file. A reader who cannot have insights is
- * told so, in the same visual language a withheld figure uses, because the
- * two facts are the same fact: nobody could say.
+ * All three components return `null` when nothing was generated, so the card
+ * is absent rather than present and empty.
+ *
+ * **This reverses half of U2 (D14)**, which asked for an explicit unavailable
+ * state and said "not a silently hidden panel". `plan.md` records the reversal
+ * and its date; this comment exists so the next reader finds the change here
+ * rather than inferring that the decision was forgotten.
+ *
+ * The other half of U2 still holds, and is the half that protects the reader:
+ * **there is no fallback prose in this file.** Nothing templated stands in for
+ * generated text. The choice is between a real sentence and no surface — never
+ * between a real sentence and an invented one.
+ *
+ * What is lost is worth naming. The empty state carried the API's own reason,
+ * and "no model is configured" and "the model stated a figure we did not
+ * measure" are different facts with different owners — the second meaning a
+ * guardrail caught the model inventing a number. That now shows nowhere on the
+ * screen. `GET /api/v1/insights/generated` still carries `reason`, so it is
+ * visible to anyone who looks, but not to a reader of the page.
  *
  * ## The badge is not decoration
  *
@@ -61,26 +74,6 @@ function AiBadge({ label = 'AI insights' }: { label?: string }) {
   )
 }
 
-/**
- * Why there is nothing to read, in the reader's terms.
- *
- * The API's own label, not wording invented here — for the same reason
- * `Withheld` uses the API's: "no model is configured" and "the model stated
- * a figure we did not measure" are different facts with different owners,
- * and flattening them into "unavailable" loses the one that matters.
- */
-function Unavailable({ reason }: { reason: GeneratedInsights['reason'] }) {
-  return (
-    <p className="nv-ai-out">
-      <span className="nv-ai-out-mark" aria-hidden="true">
-        –
-      </span>
-      <span>
-        No insights for this screen. {reason?.label ?? 'The reason was not given.'}
-      </span>
-    </p>
-  )
-}
 
 /** One sentence, with what it read and what to do about it. */
 function InsightBody({
@@ -224,6 +217,9 @@ export function InsightStrip({
     )
   }
   const items = data.insights
+  // Nothing generated means no card at all (see the note at the top of
+  // this file): the surface is absent rather than present-and-empty.
+  if (items.length === 0) return null
 
   return (
     <section className="nv-ai-strip" aria-label="Generated insights">
@@ -231,9 +227,6 @@ export function InsightStrip({
         <h2>What this looks like</h2>
         <AiBadge />
       </header>
-      {items.length === 0 ? (
-        <Unavailable reason={data.reason} />
-      ) : (
         <ul>
           {items.map((insight) => (
             <li
@@ -250,7 +243,6 @@ export function InsightStrip({
             </li>
           ))}
         </ul>
-      )}
     </section>
   )
 }
@@ -276,13 +268,13 @@ export function InsightFeed({
 
   if (!data) return null
   const items = data.insights
+  // Nothing generated means no card at all (see the note at the top of
+  // this file): the surface is absent rather than present-and-empty.
+  if (items.length === 0) return null
 
   return (
     <div className={badgeLabel ? 'nv-exec-feed' : undefined}>
     <Panel title={title} chip={badgeLabel ? <AiBadge label={badgeLabel} /> : <AiBadge />}>
-      {items.length === 0 ? (
-        <Unavailable reason={data.reason} />
-      ) : (
         <ul className="nv-ai-feed">
           {items.map((insight) => {
             const expanded = open === insight.key
@@ -346,7 +338,6 @@ export function InsightFeed({
             )
           })}
         </ul>
-      )}
     </Panel>
     </div>
   )
@@ -369,13 +360,15 @@ export function InsightFeed({
 export function InsightLenses({ data }: { data: GeneratedInsights | undefined }) {
   if (!data) return null
   const items = data.insights
+  // Nothing generated means no card at all (see the note at the top of
+  // this file): the surface is absent rather than present-and-empty.
+  if (items.length === 0) return null
 
   return (
     <Panel
       title="What this period means"
       chip={<AiBadge />}
     >
-      {items.length === 0 ? <Unavailable reason={data.reason} /> : null}
       <div className="nv-lenses">
         {/* From the response, not a list held here: the taxonomy is the
             client's, and a second copy in the client is a second copy to
