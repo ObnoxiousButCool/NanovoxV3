@@ -741,7 +741,22 @@ the reasoning for each is already written beside it there.
 | **C6** `/demand` | **Ships.** | Insights 16 and 19 have no other home. |
 | **G9** `/value-pack` | **Deferred.** | Insights 30–32 stay PARTIAL and are recorded as not built, not as cut. |
 | **U1** The four exec lens groupings | **A client requirement.** | The exec response is shaped around Employers · Churn & retention · Product & service · Payer & carrier, and they are not reorganised as a presentational choice. |
-| **U2** AI surfaces when the provider is unavailable | **Show an explicit "unavailable" state**, like the withheld panels. | Not templated copy standing in for generated text, and not a silently hidden panel. |
+| **U2** AI surfaces when the provider is unavailable | ~~Show an explicit "unavailable" state~~ → **Hide the surface entirely** (revised 2026-10-07). | Still not templated copy standing in for generated text. The choice is a real sentence or no surface, never an invented one. |
+
+> **U2 revised, 2026-10-07.** The original asked for an explicit unavailable
+> state and said "not a silently hidden panel". The three insight components
+> now return `null` when nothing was generated, so the card is absent rather
+> than present and empty.
+>
+> The half that protects the reader is unchanged: there is still no fallback
+> prose anywhere, and nothing templated ever stands in for generated text.
+>
+> What it costs: the empty state carried the API's own `reason`, and "no model
+> is configured" and "the model stated a figure we did not measure" are
+> different facts — the second means a guardrail caught the model inventing a
+> number. That no longer appears on any screen. `GET
+> /api/v1/insights/generated` still returns `reason`, so it is visible to
+> anyone who looks for it, but not to a reader of the page.
 | **U3** The seven-lane action lifecycle | **STILL OPEN — asked of the client.** Nobody on the team knows whether it is the client's process. | Until answered, Phase 4 keeps the lifecycle states in configuration rather than in code, so a different answer is a config change and a migration of existing rows, not a rewrite. |
 
 ---

@@ -954,10 +954,10 @@ describe('/exec, with accounts, escalations and an action board', () => {
   it('lists the flagged accounts soonest renewal first, as exec.html does', async () => {
     renderAt('/exec')
 
-    await waitFor(() => {
-      expect(screen.getByText('Needs attention now')).toBeInTheDocument()
-    })
-    const rows = screen.getByRole('list', { name: 'Flagged accounts' })
+    // Waits on the list this test is about, not on the insight feed's badge:
+    // that feed is now absent when nothing was generated, and a readiness
+    // signal that can vanish is not a readiness signal.
+    const rows = await screen.findByRole('list', { name: 'Flagged accounts' })
 
     const names = within(rows)
       .getAllByRole('link')
@@ -2033,15 +2033,17 @@ describe('the insight strip on an account', () => {
     expect(generatedCalls().every((url) => url.includes('employerRef=EMP-1001'))).toBe(true)
   })
 
-  it('renders the unavailable state rather than hiding it', async () => {
-    // U2: an explicit state, never a hidden panel — and the figures below
-    // are unaffected either way.
+  it('hides the strip rather than rendering an unavailable state', async () => {
+    // U2 revised 2026-10-07: absent, not present and empty. The assertion
+    // that matters is the second one — the account's own figures are
+    // unaffected by the strip going, which is what made the change safe.
     renderAt('/accounts/EMP-1001')
 
-    expect(await screen.findByText(/No model is configured/)).toBeInTheDocument()
     expect(
-      screen.getByText('Cedar Point Workforce Partners', { selector: 'h2' }),
+      await screen.findByText('Cedar Point Workforce Partners', { selector: 'h2' }),
     ).toBeInTheDocument()
+    expect(screen.queryByText(/No model is configured/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Generated insights')).not.toBeInTheDocument()
   })
 })
 

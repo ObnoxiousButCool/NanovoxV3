@@ -90,12 +90,14 @@ describe('the strip', () => {
     expect(screen.getByText('What this suggests')).toBeInTheDocument()
   })
 
-  it('says so when there is nothing, rather than disappearing', () => {
-    // U2: an explicit unavailable state, never a silently hidden panel.
+  it('disappears when there is nothing, rather than saying so', () => {
+    // U2 revised 2026-10-07: the surface is absent rather than present and
+    // empty. The half of U2 that still holds is tested below — nothing
+    // templated ever stands in for a generated sentence.
     show(<InsightStrip data={UNAVAILABLE} />)
 
-    expect(screen.getByLabelText('Generated insights')).toBeInTheDocument()
-    expect(screen.getByText(/No model is configured/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Generated insights')).not.toBeInTheDocument()
+    expect(screen.queryByText(/No model is configured/)).not.toBeInTheDocument()
   })
 
   it('names no figure it could not write about', () => {
@@ -104,7 +106,9 @@ describe('the strip', () => {
     expect(screen.queryByText(/%/)).not.toBeInTheDocument()
   })
 
-  it('carries the badge in both states', () => {
+  it('carries the badge whenever it is on screen at all', () => {
+    // There is only one state to carry it in now: a surface with sentences.
+    // An empty one is not rendered, so there is no badge to check for.
     const { unmount } = render(
       <MemoryRouter>
         <InsightStrip data={GENERATED} />
@@ -114,7 +118,7 @@ describe('the strip', () => {
     unmount()
 
     show(<InsightStrip data={UNAVAILABLE} />)
-    expect(screen.getByText('AI insights')).toBeInTheDocument()
+    expect(screen.queryByText('AI insights')).not.toBeInTheDocument()
   })
 
   it('renders nothing at all before the query resolves', () => {
@@ -261,11 +265,17 @@ describe('the feed', () => {
     expect(screen.queryByText(/openai|gpt/i)).not.toBeInTheDocument()
   })
 
-  it('says why nothing was written, still without naming a provider', () => {
-    show(<InsightFeed data={UNAVAILABLE} />)
+  it('renders no panel at all when nothing was written', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <InsightFeed data={UNAVAILABLE} />
+      </MemoryRouter>,
+    )
 
+    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByText(/No model is configured/)).not.toBeInTheDocument()
+    // The half of U2 that still holds: nothing templated stood in for it.
     expect(screen.queryByText(/Written by/)).not.toBeInTheDocument()
-    expect(screen.getByText(/No model is configured/)).toBeInTheDocument()
   })
 })
 
@@ -301,13 +311,20 @@ describe('the four lenses', () => {
     expect(within(employers as HTMLElement).getByText(/Resolution held at 74%/)).toBeInTheDocument()
   })
 
-  it('still carries the badge and the promise when the model is down', () => {
-    show(<InsightLenses data={UNAVAILABLE} />)
+  it('renders nothing when the model is down, grid included', () => {
+    // The grid used to survive the sentences, so a reader could tell
+    // "nothing to say about churn" from "churn was not considered". With the
+    // panel gone there is no grid to hold that distinction, and no claim
+    // about churn either — which is the trade U2's revision accepted.
+    const { container } = render(
+      <MemoryRouter>
+        <InsightLenses data={UNAVAILABLE} />
+      </MemoryRouter>,
+    )
 
-    expect(screen.getByText('AI insights')).toBeInTheDocument()
-    expect(screen.getByText(/No model is configured/)).toBeInTheDocument()
-    // The grid does not vanish with the sentences.
-    expect(screen.getByRole('heading', { name: 'Payer & carrier' })).toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByText('AI insights')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Payer & carrier' })).not.toBeInTheDocument()
   })
 })
 
