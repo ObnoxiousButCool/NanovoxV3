@@ -76,18 +76,43 @@ class NamingCoverage:
 
     @property
     def note(self) -> str:
-        """The caveat with this corpus's own numbers in it, or empty."""
+        """The caveat with this corpus's own numbers in it, or empty.
+
+        Short sentences on purpose. The sentence a reader must not skim is the
+        second one — that a zero is a gap and not a clean book — so it is a
+        sentence of its own rather than a clause hanging off a subordinate
+        clause at the end of the first.
+
+        Plain words throughout, because the reader this is written for is an
+        operations manager rather than an analyst: "callers named a broker"
+        rather than naming coverage, "a broker problem" rather than a
+        broker-conduct concern, "missing from this table" rather than in no
+        row. "The broker is doing well" rather than "the agency is clean" —
+        clean is the kind of word a reader skims past agreeing with, without
+        noticing it was the claim being denied.
+
+        `call(s)` is gone too. A figure that cannot decide whether it is
+        singular reads as something nobody proof-read, and this note is asking
+        to be believed about a number.
+        """
         if self.complete or not self.calls:
             return ""
         note = (
-            f"A caller named a broker on {self.named} of the {self.calls} calls in "
-            "scope, so a nought below is a missing name rather than a finding "
-            "about the agency."
+            f"Callers named a broker in only {self.named} of {self.calls} calls. "
+            "A zero below means no one was named, not that the broker is doing well."
         )
-        if self.unattributed:
+        if self.unattributed == 1:
+            # Spelled out rather than "Another 1 call", and "it" rather than
+            # "they": the count reaching one is exactly when a reader is most
+            # likely to be reading closely.
             note += (
-                f" A further {self.unattributed} call(s) raised a broker-conduct "
-                "concern without naming anyone, and are in no row here."
+                " One more call raised a broker problem without naming anyone, "
+                "so it is missing from this table."
+            )
+        elif self.unattributed:
+            note += (
+                f" Another {self.unattributed} calls raised a broker problem "
+                "without naming anyone, so they are missing from this table."
             )
         return note
 
