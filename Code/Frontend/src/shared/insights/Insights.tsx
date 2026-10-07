@@ -30,15 +30,11 @@
  * screen. `GET /api/v1/insights/generated` still carries `reason`, so it is
  * visible to anyone who looks, but not to a reader of the page.
  *
- * ## The badge and the standing tooltip are not decoration
+ * ## The badge is not decoration
  *
- * Every surface carries both, always, on generated and unavailable alike.
- * The tooltip states the two promises the prototype's README asks for in
- * its own words — that this never calculates, forecasts or adds a number of
- * its own, and that where an insight and a figure disagree the figure is
- * right. They are the reason a reader is allowed to trust the panel at all,
- * so they are part of the component rather than something a screen
- * remembers to add.
+ * Every surface carries it, always, on generated and unavailable alike. It
+ * is the reason a reader is allowed to trust the panel at all, so it is
+ * part of the component rather than something a screen remembers to add.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -46,10 +42,10 @@ import { useEffect, useRef, useState } from 'react'
 import { IssueCue } from '@/shared/actions/IssueLink'
 import { isIssueKey } from '@/shared/actions/issueHref'
 import type { Fact, GeneratedInsights, Insight } from '@/shared/api/insights'
-import { Panel, Tooltip } from '@/shared/design/primitives'
+import { Panel } from '@/shared/design/primitives'
 import '@/shared/insights/insights.css'
 
-/** The promises the surface makes, shown wherever it appears. */
+/** The promises the surface makes. */
 export const AI_PROMISE =
   'Written from the figures on this page. It never calculates, forecasts or adds a ' +
   'number of its own. If an insight and a figure disagree, the figure is right.'
@@ -58,9 +54,8 @@ export const AI_PROMISE =
  * `NV.aiBadge`: the spark, and the words, on the violet gradient.
  *
  * The gradient is the only colour in the application that means "a model
- * wrote this". It is never the only signal — the label says AI and the
- * tooltip says what that does and does not permit — because the whole set
- * has to survive being read in greyscale.
+ * wrote this". It is never the only signal — the label says AI — because
+ * the whole set has to survive being read in greyscale.
  */
 function AiBadge({ label = 'AI insights' }: { label?: string }) {
   return (
@@ -75,7 +70,6 @@ function AiBadge({ label = 'AI insights' }: { label?: string }) {
         </svg>
         {label}
       </span>
-      <Tooltip align="right">{AI_PROMISE}</Tooltip>
     </span>
   )
 }
@@ -373,15 +367,6 @@ export function InsightLenses({ data }: { data: GeneratedInsights | undefined })
   return (
     <Panel
       title="What this period means"
-      info={
-        <Tooltip>
-          <p>
-            The same calls read through four lenses. Each insight names what the numbers mean and
-            what to do next.
-          </p>
-          <p>Written from the figures on this page; the insight never adds a number of its own.</p>
-        </Tooltip>
-      }
       chip={<AiBadge />}
     >
       <div className="nv-lenses">

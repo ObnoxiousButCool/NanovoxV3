@@ -31,7 +31,7 @@ import { CallEvidence } from '@/shared/design/drawer/Evidence'
 import { useDrawer } from '@/shared/design/drawer'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { BarCell } from '@/shared/design/charts'
-import { BigRow, DataTable, Empty, EpistemicChip, KpiTile, Named, Note, Panel, Tooltip, Withheld } from '@/shared/design/primitives'
+import { BigRow, DataTable, Empty, EpistemicChip, KpiTile, Named, Note, Panel, Withheld } from '@/shared/design/primitives'
 import type { Column, Row } from '@/shared/design/primitives'
 
 /** One page of calls, as the prototype shows. The workbench has the rest. */
@@ -338,17 +338,6 @@ export function AccountTiles({
             profile.scoredCalls === 0
               ? 'No call here carries a score'
               : `${String(profile.scoredCalls)} of ${String(profile.calls)} calls scored — each one below`
-          }
-          info={
-            <Tooltip>
-              <p>
-                <b>Why there is no average call quality</b>
-              </p>
-              Metric 12 is a property of the call and the agent. The Metrics sheet says
-              it is never averaged to an employer, product line or broker, so this
-              account has no quality score of its own — the per-call scores in the calls
-              panel are the figure, and they are not summed into one.
-            </Tooltip>
           }
         />
       </BigRow>

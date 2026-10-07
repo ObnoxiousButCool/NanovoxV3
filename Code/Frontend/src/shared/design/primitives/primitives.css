@@ -439,55 +439,6 @@
   outline-offset: -2px;
 }
 
-/* --- tooltip. Fixed to the viewport so a scrolling panel cannot clip it. --- */
-.nv-info {
-  position: relative;
-  display: inline-flex;
-  vertical-align: middle;
-}
-
-.nv-info > button {
-  appearance: none;
-  cursor: help;
-  border: 1px solid var(--rule-strong);
-  background: var(--surface);
-  width: 19px;
-  height: 19px;
-  border-radius: 999px;
-  padding: 0;
-  font:
-    600 11.5px/1 var(--display);
-  color: var(--ink-3);
-  display: grid;
-  place-items: center;
-}
-
-.nv-info > button:hover,
-.nv-info > button:focus-visible {
-  color: var(--brand);
-  border-color: var(--brand);
-}
-
-.nv-tip {
-  position: fixed;
-  z-index: 40;
-  width: min(400px, 78vw);
-  padding: 12px 14px;
-  border-radius: var(--r);
-  background: var(--ink);
-  color: var(--ground);
-  font:
-    400 13px/1.5 var(--body);
-  letter-spacing: 0;
-  text-transform: none;
-  box-shadow: 0 10px 30px rgb(11 11 11 / 25%);
-  white-space: normal;
-}
-
-.nv-tip[hidden] {
-  display: none;
-}
-
 .nv-visually-hidden {
   position: absolute;
   width: 1px;

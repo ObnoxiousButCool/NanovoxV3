@@ -34,7 +34,6 @@ import {
   EpistemicChip,
   KpiTile,
   Panel,
-  Tooltip,
 } from '@/shared/design/primitives'
 
 type Roster = Agents['roster'][number]
@@ -207,15 +206,6 @@ function AgentTiles({ data }: { data: Agents }) {
           </span>
         }
         tone="withheld"
-        info={
-          <Tooltip>
-            <p>
-              The roster sets {minimum ?? '—'} calls as the minimum for an agent-level rate.
-              At batch-1 volume no agent is there yet, so per-agent scores are withheld
-              rather than shown on a handful of calls.
-            </p>
-          </Tooltip>
-        }
       />
     </div>
   )
@@ -233,15 +223,6 @@ function IssuesByAgent({
   return (
     <Panel
       title="Issues by agent"
-      info={
-        <Tooltip>
-          <p>
-            A <b>compliance exception</b> is a breach on that call, whatever the sample. So
-            are a rule stated wrongly and a warranted escalation not given. These can be
-            attributed to a person at any volume; averages cannot.
-          </p>
-        </Tooltip>
-      }
       chip={<EpistemicChip kind="observed" />}
     >
       {agents.length === 0 ? (
@@ -388,17 +369,6 @@ function ByBand({ bands, unavailable }: { bands: Band[]; unavailable: string }) 
   return (
     <Panel
       title="By experience level"
-      info={
-        <Tooltip>
-          <p>
-            A band pools thirty-odd calls, enough to publish a median where one agent&rsquo;s
-            handful is not. Admissible where an employer roll-up is not: the Metrics sheet
-            forbids averaging metric 12 to employer, product line or broker, and a band is
-            none of those.
-          </p>
-          <p>{unavailable}</p>
-        </Tooltip>
-      }
       chip={<EpistemicChip kind="observed" />}
     >
       {bands.length === 0 ? (

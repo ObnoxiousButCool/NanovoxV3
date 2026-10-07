@@ -34,7 +34,6 @@ import {
   Note,
   Panel,
   RiskPill,
-  Tooltip,
 } from '@/shared/design/primitives'
 
 const percent = (value: number) => `${String(Math.round(value * 100))}%`
@@ -160,35 +159,6 @@ export function AccountHeader({ data }: { data: AccountDetail }) {
           title={facts.name}
           chip={<EpistemicChip kind="reference" />}
           actions={<RiskPill eligible={risk.eligible} flagged={risk.flagged} />}
-          info={
-            <Tooltip>
-              <p>
-                <b>More account facts</b>
-              </p>
-              <p>
-                COBRA: {facts.cobraRegime === '' ? 'not recorded' : facts.cobraRegime}
-                <br />
-                Dental:{' '}
-                {facts.dentalSponsorship === 'ER'
-                  ? 'employer-sponsored'
-                  : facts.dentalSponsorship === ''
-                    ? 'not recorded'
-                    : 'voluntary'}
-                <br />
-                Annual premium:{' '}
-                {facts.annualPremium === null || facts.annualPremium === undefined
-                  ? 'not recorded'
-                  : `$${facts.annualPremium.toLocaleString()}`}
-                <br />
-                Planned calls at full corpus: {String(facts.plannedCalls)}
-              </p>
-              <p>
-                Planned calls are the workbook&rsquo;s design for this account. The corpus
-                is a sample of them, so the calls below will be fewer, and the two are
-                never the same number.
-              </p>
-            </Tooltip>
-          }
         >
           {/* The prototype's five, in its order. */}
           <div className="nv-figrow">
