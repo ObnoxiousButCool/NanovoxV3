@@ -346,7 +346,8 @@ const HIERARCHY = {
     named: 1,
     calls: 3,
     unattributed: 1,
-    note: 'A caller named a broker on 1 of the 3 calls in scope.',
+    note:
+      'Callers named a broker in only 1 of 3 calls. A zero below means no one was named, not that the broker is doing well.',
   },
   tree: [
     {
@@ -953,10 +954,10 @@ describe('/exec, with accounts, escalations and an action board', () => {
   it('lists the flagged accounts soonest renewal first, as exec.html does', async () => {
     renderAt('/exec')
 
-    await waitFor(() => {
-      expect(screen.getByText('Needs attention now')).toBeInTheDocument()
-    })
-    const rows = screen.getByRole('list', { name: 'Flagged accounts' })
+    // Waits on the list this test is about, not on the insight feed's badge:
+    // that feed is now absent when nothing was generated, and a readiness
+    // signal that can vanish is not a readiness signal.
+    const rows = await screen.findByRole('list', { name: 'Flagged accounts' })
 
     const names = within(rows)
       .getAllByRole('link')
@@ -1322,7 +1323,9 @@ describe('/hierarchy', () => {
       expect(screen.getByText('Marsh & Vale')).toBeInTheDocument()
     })
     expect(
-      screen.getByText('A caller named a broker on 1 of the 3 calls in scope.'),
+      screen.getByText(
+        'Callers named a broker in only 1 of 3 calls. A zero below means no one was named, not that the broker is doing well.',
+      ),
     ).toBeInTheDocument()
   })
 
@@ -1706,9 +1709,8 @@ describe('/accounts — the picker', () => {
 
 describe('/agents', () => {
   it('says nothing to the reader in markup they will see raw', async () => {
-    // The tooltip under "Coach the agent, or fix the rule?" named the
-    // knowledge-error signal in backticks. Nothing renders them, so they
-    // reached the screen as punctuation wrapped round a word.
+    // A panel once named a signal in backticks. Nothing renders them, so
+    // they reached the screen as punctuation wrapped round a word.
     //
     // Asserted over everything the page renders rather than that one
     // string: these are written in files whose docstrings use backticks
@@ -1807,21 +1809,6 @@ describe('/agents', () => {
     expect(rows[0]?.textContent).toContain('Senior')
     expect(rows[0]?.querySelector('td:last-child')?.textContent).toBe('–')
     expect(rows[1]?.querySelector('td:last-child')?.textContent).toBe('88')
-  })
-
-  it('points the rule question at /rules rather than answering it here', async () => {
-    // "Coach the agent or fix the rule?" needs schema field 8 joined to the
-    // agent who took the call, which D7 forbids. It is not a plumbing gap.
-    renderAt('/agents')
-
-    const link = await screen.findByRole('link', { name: /rules we fail to explain/i })
-
-    expect(link).toHaveAttribute('href', '/rules')
-    // The panel body names the decision, so a reader sees why the answer
-    // is absent without opening the tooltip — which also names it, hence
-    // scoping this to the panel rather than the page.
-    const panel = screen.getByText('Coach the agent, or fix the rule?').closest('section')
-    expect(within(panel as HTMLElement).getByText(/D7 is open/)).toBeInTheDocument()
   })
 
   it('lines the insight cards up with the tiles below them', async () => {
@@ -2119,15 +2106,17 @@ describe('the insight strip on an account', () => {
     expect(generatedCalls().every((url) => url.includes('employerRef=EMP-1001'))).toBe(true)
   })
 
-  it('renders the unavailable state rather than hiding it', async () => {
-    // U2: an explicit state, never a hidden panel — and the figures below
-    // are unaffected either way.
+  it('hides the strip rather than rendering an unavailable state', async () => {
+    // U2 revised 2026-10-07: absent, not present and empty. The assertion
+    // that matters is the second one — the account's own figures are
+    // unaffected by the strip going, which is what made the change safe.
     renderAt('/accounts/EMP-1001')
 
-    expect(await screen.findByText(/No model is configured/)).toBeInTheDocument()
     expect(
-      screen.getByText('Cedar Point Workforce Partners', { selector: 'h2' }),
+      await screen.findByText('Cedar Point Workforce Partners', { selector: 'h2' }),
     ).toBeInTheDocument()
+    expect(screen.queryByText(/No model is configured/)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Generated insights')).not.toBeInTheDocument()
   })
 })
 

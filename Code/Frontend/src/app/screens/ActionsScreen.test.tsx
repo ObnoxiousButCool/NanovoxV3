@@ -996,24 +996,29 @@ describe('the issues to act on', () => {
       expect(screen.getByText('Issues to act on')).toBeInTheDocument()
     })
     const headings = [...document.querySelectorAll('.nv-grid h2')].map((h) => h.textContent)
-    expect(headings).toEqual(['Issues to act on', 'Action board', 'Did the fix work?'])
+    expect(headings).toEqual(['Issues to act on', 'Action board'])
     expect(screen.queryByText('By team')).not.toBeInTheDocument()
     expect(screen.queryByText('Compliance control exceptions')).not.toBeInTheDocument()
   })
 
-  it('says why the fix-worked panel is empty, not that nobody filled it in', async () => {
-    // It read "No outcome recorded yet", which says somebody has not got
-    // round to it. The truth is that the question cannot be answered from
-    // this corpus at all: insight 22 needs a window before a change and a
-    // comparable one after it, and a single batch has no after.
+  it('does not draw insight 22, the one withheld panel that is only waiting', async () => {
+    // The panel used to close this screen, saying the question cannot be
+    // answered from a single batch. It is gone, and that is deliberate:
+    // `withheld.py` says the other two need a field that does not exist and
+    // "no amount of corpus growth changes any of them", while 22 only wants
+    // a second batch. "Ask again later" does not earn permanent space.
     //
-    // `why` and `unlockedBy` are on the wire and were rendered until the
-    // sweep that removed the screens' notes took the two lines showing them.
+    // The server still sends `didItWork` — this screen just stops drawing
+    // it — so the fixture keeps the panel and the assertion is about what
+    // the reader sees.
     renderAt('/actions')
 
-    expect(await screen.findByText('Did the fix work?')).toBeInTheDocument()
-    expect(screen.getByText(/A comparable second batch does not exist yet/)).toBeInTheDocument()
-    expect(screen.getByText(/A second batch of calls after the fix/)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Issues to act on')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Did the fix work?')).not.toBeInTheDocument()
+    expect(screen.queryByText(/A comparable second batch does not exist yet/)).not.toBeInTheDocument()
+    // And nothing took its place: no empty state left stranded behind it.
     expect(screen.queryByText(/No outcome recorded yet/)).not.toBeInTheDocument()
   })
 

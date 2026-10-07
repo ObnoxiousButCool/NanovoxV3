@@ -740,8 +740,15 @@ def test_broker_naming_coverage_counts_what_the_table_rests_on() -> None:
 
     assert (coverage.named, coverage.calls, coverage.unattributed) == (1, 3, 1)
     assert not coverage.complete
-    assert "1 of the 3 calls" in coverage.note
-    assert "A further 1 call(s)" in coverage.note
+    assert "Callers named a broker in only 1 of 3 calls." in coverage.note
+    # The sentence that must not be skimmed, stated as its own sentence.
+    assert (
+        "A zero below means no one was named, not that the broker is doing well." in coverage.note
+    )
+    # Singular, and agreeing with itself: not "Another 1 call ... they".
+    assert "One more call raised a broker problem" in coverage.note
+    assert "so it is missing from this table." in coverage.note
+    assert "call(s)" not in coverage.note
 
 
 def test_a_corpus_that_names_every_broker_carries_no_caveat() -> None:

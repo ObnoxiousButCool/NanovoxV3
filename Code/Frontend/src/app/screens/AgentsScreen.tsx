@@ -19,22 +19,7 @@
  * from it, so an agent matching their expected score is the data agreeing
  * with itself. It sits in the roster beside what happened, and the panel
  * says so in words.
- *
- * ## One prototype panel asks a question this page refuses to answer
- *
- * **"Coach the agent, or fix the rule?"** asks how many distinct agents got
- * each rule wrong. That answer comes from schema field 8, which **D7
- * forbids attributing to an agent anywhere**; the `knowledge_error` signal
- * is the agent-conduct event and carries no rule id.
- *
- * The panel is **rendered, and withheld in words** — the question, why it
- * cannot be joined, and a link to `/rules`, where the rule-level counts do
- * live. It was absent entirely until `/rules` shipped, and dropping a
- * panel the prototype has is indistinguishable, to a reader, from
- * forgetting it.
  */
-
-import { Link } from 'react-router-dom'
 
 import { useAgents, useGeneratedInsights } from '@/shared/api/insights'
 import type { Agent, Agents, GeneratedInsights, Insight } from '@/shared/api/insights'
@@ -154,11 +139,7 @@ function AgentsBody({
         <IssuesByAgent agents={withEvents} names={names} />
       </div>
 
-      <div className="nv-c6">
-        <CoachOrRewrite />
-      </div>
-
-      <div className="nv-c6">
+      <div className="nv-c12">
         <ByBand bands={data.bands} unavailable={data.complexityUnavailable} />
       </div>
 
@@ -400,39 +381,6 @@ function AgentDrawer({ agent, entry }: { agent: Agent; entry: Roster | undefined
         <CallList callIds={agent.calls} />
       </div>
     </>
-  )
-}
-
-/**
- * The prototype's "Coach the agent, or fix the rule?", and why it is a
- * pointer rather than a panel.
- */
-function CoachOrRewrite() {
-  return (
-    <Panel
-      title="Coach the agent, or fix the rule?"
-      info={
-        <Tooltip>
-          <p>
-            A rule one agent gets wrong is probably training. The same rule misstated by{' '}
-            <b>more than one</b> agent, especially across bands, points at the rule&rsquo;s
-            own wording.
-          </p>
-          <p>
-            Answering it needs schema field 8 joined to the agent who took the call.{' '}
-            <b>D7</b> is open on exactly that join and forbids attributing field 8 to an
-            agent anywhere, so this page does not make it. The knowledge-error signal is
-            the agent-conduct event, and it carries no rule id.
-          </p>
-        </Tooltip>
-      }
-      chip={<EpistemicChip kind="inference" />}
-    >
-      <Empty title="Not answered here, by decision">
-        D7 is open on attributing a misstated rule to an agent. The same failures roll up by
-        rule and by touchpoint on <Link to="/rules">the rules we fail to explain</Link>.
-      </Empty>
-    </Panel>
   )
 }
 
