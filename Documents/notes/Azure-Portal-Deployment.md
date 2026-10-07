@@ -155,29 +155,44 @@ and nothing at startup needs Alembic.
 
 ## Step 5 — Deploy the code
 
-**Deployment → Deployment Center**
+**Use zip-deploy. Do not try Deployment Center → Continuous Deployment (CI/CD)
+with Azure Repos as the source — it fails for this project, confirmed, and
+costs you a round trip to discover.** Setting it up asks App Service to create
+a service hook on the Azure DevOps project, which needs **Project
+Administrator** rights there — a permission on the DevOps project itself, not
+on the Azure resource group, and separate from the Owner role this deployment
+otherwise only needs. The save fails with:
 
-1. Source: **Azure Repos**
-2. Organization `technossus` · Project **Nanovox - Call center analytics** ·
-   Repository **NanoVox-V3** · Branch **main**
-3. Build provider: **App Service build service**
-4. **Save**
+```
+Vso AddWebHook: Failed because you are not an administrator on the VSTS
+project. Access Denied: ... needs the following permission(s) on the resource
+PublisherSecurity/... to perform this action: Edit Subscription
+```
 
-This builds from the repo-root `requirements.txt`, which is a one-line pointer
-to `Code/Backend/requirements.txt` — that file exists only so builders that
-look at the root can find the dependencies.
+If you land on that screen, click **Discard** and use the path below instead
+— it needs no Azure DevOps permission at all, only the Owner role already
+confirmed in "Checked before you start."
 
-**The frontend `dist` is the catch.** `Code/Frontend/dist` is git-ignored, so a
-repo deployment does not carry it. Either:
+**Zip-deploy, from the repo root in PowerShell:**
 
-- **Simplest:** zip-deploy instead. In PowerShell, from the repo root:
-  ```powershell
-  Compress-Archive -Path * -DestinationPath ..\nanovox.zip -Force
-  az webapp deploy --resource-group RG-NanoVox-POC --name nanovox-insights --src-path ..\nanovox.zip --type zip
-  ```
-  The zip includes your locally built `dist`.
-- **Or:** upload `dist` separately through the Kudu file manager in step 6,
-  into `/home/site/wwwroot/Code/Frontend/dist`.
+```powershell
+cd C:\Technossus\Code\NanoVox-V3
+Compress-Archive -Path * -DestinationPath ..\nanovox.zip -Force
+az login
+az webapp deploy --resource-group RG-NanoVox-POC --name nanovox-insights --src-path ..\nanovox.zip --type zip
+```
+
+This is also what settles the frontend `dist` problem: `Code/Frontend/dist` is
+git-ignored, so a repository-based deployment (CI/CD, had it worked) would not
+have carried it at all. The zip includes your locally built `dist` because
+`Compress-Archive` just zips what's on disk, built artifacts included — no
+separate upload step needed. If you ever do need to upload it separately
+(for instance, redeploying only the frontend), the Kudu file manager in
+step 6 reaches `/home/site/wwwroot/Code/Frontend/dist` directly.
+
+`az webapp deploy --type zip` builds from the repo-root `requirements.txt`,
+which is a one-line pointer to `Code/Backend/requirements.txt` — that file
+exists only so builders that look at the root can find the dependencies.
 
 Watch **Deployment Center → Logs** until it reports success.
 
