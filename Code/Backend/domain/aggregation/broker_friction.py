@@ -83,6 +83,14 @@ class NamingCoverage:
         sentence of its own rather than a clause hanging off a subordinate
         clause at the end of the first.
 
+        Plain words throughout, because the reader this is written for is an
+        operations manager rather than an analyst: "callers named a broker"
+        rather than naming coverage, "a broker problem" rather than a
+        broker-conduct concern, "missing from this table" rather than in no
+        row. "The broker is doing well" rather than "the agency is clean" —
+        clean is the kind of word a reader skims past agreeing with, without
+        noticing it was the claim being denied.
+
         `call(s)` is gone too. A figure that cannot decide whether it is
         singular reads as something nobody proof-read, and this note is asking
         to be believed about a number.
@@ -90,21 +98,21 @@ class NamingCoverage:
         if self.complete or not self.calls:
             return ""
         note = (
-            f"Only {self.named} of {self.calls} calls named a broker. "
-            "A zero below means nobody was named, not that the agency is clean."
+            f"Callers named a broker in only {self.named} of {self.calls} calls. "
+            "A zero below means no one was named, not that the broker is doing well."
         )
         if self.unattributed == 1:
             # Spelled out rather than "Another 1 call", and "it" rather than
             # "they": the count reaching one is exactly when a reader is most
             # likely to be reading closely.
             note += (
-                " One further call raised a broker concern without naming "
-                "anyone, so it appears in no row."
+                " One more call raised a broker problem without naming anyone, "
+                "so it is missing from this table."
             )
         elif self.unattributed:
             note += (
-                f" Another {self.unattributed} calls raised a broker concern "
-                "without naming anyone, so they appear in no row."
+                f" Another {self.unattributed} calls raised a broker problem "
+                "without naming anyone, so they are missing from this table."
             )
         return note
 

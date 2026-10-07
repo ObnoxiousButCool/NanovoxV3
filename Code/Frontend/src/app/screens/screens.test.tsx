@@ -347,7 +347,7 @@ const HIERARCHY = {
     calls: 3,
     unattributed: 1,
     note:
-      'Only 1 of 3 calls named a broker. A zero below means nobody was named, not that the agency is clean.',
+      'Callers named a broker in only 1 of 3 calls. A zero below means no one was named, not that the broker is doing well.',
   },
   tree: [
     {
@@ -1324,7 +1324,7 @@ describe('/hierarchy', () => {
     })
     expect(
       screen.getByText(
-        'Only 1 of 3 calls named a broker. A zero below means nobody was named, not that the agency is clean.',
+        'Callers named a broker in only 1 of 3 calls. A zero below means no one was named, not that the broker is doing well.',
       ),
     ).toBeInTheDocument()
   })
