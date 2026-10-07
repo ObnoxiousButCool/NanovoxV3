@@ -11,7 +11,7 @@ FAILED=0
 
 if [ ! -d "$BACKEND/.venv" ]; then
   echo "ERROR: backend virtual environment missing."
-  echo "  cd Code/Backend && python -m venv .venv"
+  echo "  cd Code/Backend && python3.14 -m venv .venv   (or: py -3.14 -m venv .venv)"
   echo "  ./.venv/Scripts/pip install -r requirements-dev.txt"
   exit 1
 fi
