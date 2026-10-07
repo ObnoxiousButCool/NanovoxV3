@@ -20,14 +20,12 @@ export function KpiTile({
   value,
   meta,
   tone = 'plain',
-  info,
   todo,
 }: {
   label: ReactNode
   value: ReactNode
   meta?: ReactNode
   tone?: TileTone
-  info?: ReactNode
   /**
    * The route from a number to the step that answers it — `.big .todo` in
    * `v2.css`, which the prototype puts on every tile carrying an issue.
@@ -38,10 +36,7 @@ export function KpiTile({
 }) {
   return (
     <div className={`nv-big${tone === 'plain' ? '' : ` nv-${tone}`}`}>
-      <span className="nv-k">
-        {label}
-        {info}
-      </span>
+      <span className="nv-k">{label}</span>
       <span className="nv-v">{value}</span>
       {meta ? <span className="nv-m">{meta}</span> : null}
       {todo}

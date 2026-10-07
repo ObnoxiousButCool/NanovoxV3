@@ -58,7 +58,6 @@ import {
   Note,
   Panel,
   Provenance,
-  Tooltip,
 } from '@/shared/design/primitives'
 import type { Row } from '@/shared/design/primitives'
 
@@ -116,13 +115,6 @@ function RulesBody({ data }: { data: Rules }) {
             label="Calls carrying a knowledge failure"
             value={<FigureValue figure={data.overallRate} format={percent} />}
             meta={<FigureSample figure={data.overallRate} />}
-            info={
-              <Tooltip>
-                Metric 8, over the {String(data.windowWeeks)}-week window ending {data.asOf}. It
-                is a figure about the corpus and never about one rule: dividing it down would
-                need a count of the calls each rule was relevant to, which nothing records.
-              </Tooltip>
-            }
           />
           <KpiTile
             label="Unverified in the workbook"
@@ -200,14 +192,6 @@ function RewriteList({ rules }: { rules: RuleRow[] }) {
     <Panel
       title="Rules we stated incorrectly"
       chip={<EpistemicChip kind="observed" />}
-      info={
-        <Tooltip>
-          A rule misstated twice is two calls, not a percentage. The denominator a rate would
-          need is the number of calls where that rule was relevant, and the v9 schema does not
-          record it, so this column counts and stops. Nothing here is attributed to an agent:
-          schema field 8 is organisational wherever it fires (D7).
-        </Tooltip>
-      }
     >
       <DataTable
         caption="Published rules stated incorrectly, worst first"

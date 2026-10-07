@@ -78,7 +78,6 @@ import {
   KpiTile,
   Note,
   Panel,
-  Tooltip,
 } from '@/shared/design/primitives'
 
 const percent = (value: number) => `${String(Math.round(value * 100))}%`
@@ -331,10 +330,6 @@ function SummaryTilesPanel({
   const openActions = board.actions.filter((action) => findLane(board.lanes, action.status)?.open)
   const overdue = board.actions.filter((action) => action.pastDue)
 
-  // The same figure the gauge's own tooltip quotes back at the reader, so
-  // "measured against all calls this would look fine" is a real number
-  // from this response rather than an illustrative one.
-  const warrantedOfAll = data.escalation.find((entry) => entry.label.startsWith('Escalations warranted'))
   const integrity = data.escalation.find((entry) => entry.label.startsWith('Handled'))
   const integrityFigure = integrity?.figure
   const triggered = integrityFigure?.n ?? 0
@@ -353,21 +348,6 @@ function SummaryTilesPanel({
     <BigRow>
       <KpiTile
         label="Accounts flagged"
-        // `exec.html` puts a tooltip here and we had none. Its wording is not
-        // portable: it describes the four-level band off a count of
-        // indicators and says "Three or more is High" — the scoring D12
-        // replaced with metric 10's flag. Same slot, this product's own
-        // definition.
-        info={
-          <Tooltip>
-            Flagged means metric 10 and nothing else: 2 or more of its 4 conditions met, on an
-            account with at least 3 calls in the window. The ten indicator families are shown
-            beside it as a count and never set it.
-            <br />
-            A condition worth a conversation, not a prediction that anyone will leave — no
-            termination outcomes exist here to validate one against.
-          </Tooltip>
-        }
         tone={flagged.length > 0 ? 'warm' : 'plain'}
         value={String(flagged.length)}
         meta={
@@ -392,22 +372,7 @@ function SummaryTilesPanel({
         }
       />
       <div className={`nv-big nv-gaugetile${missed > 0 ? ' nv-hot' : ''}`}>
-        <span className="nv-k">
-          Escalation integrity
-          <Tooltip>
-            <p>Escalations handled ÷ escalations warranted.</p>
-            <p>
-              Never ÷ all calls: on that denominator the same evidence reads as{' '}
-              {warrantedOfAll ? (
-                <FigureValue figure={warrantedOfAll.figure} format={percent} />
-              ) : (
-                'a much smaller share'
-              )}{' '}
-              and looks fine.
-            </p>
-            <p>Green is 90% and above.</p>
-          </Tooltip>
-        </span>
+        <span className="nv-k">Escalation integrity</span>
         <Gauge
           value={gaugeValue}
           label={gaugeValue === null ? '–' : `${String(gaugeValue)}%`}

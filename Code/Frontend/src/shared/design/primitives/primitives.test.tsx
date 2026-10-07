@@ -12,7 +12,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 
-import { DataTable, Delta, Empty, EpistemicChip, FigureValue, KpiTile, MAX_COLUMNS, Named, Quote, RiskPill, Tooltip, Withheld, basisFromApi } from '@/shared/design/primitives'
+import { DataTable, Delta, Empty, EpistemicChip, FigureValue, KpiTile, MAX_COLUMNS, Named, Quote, RiskPill, Withheld, basisFromApi } from '@/shared/design/primitives'
 import type { Column, Figure, Row } from '@/shared/design/primitives'
 
 function figure(over: Partial<Figure> = {}): Figure {
@@ -222,25 +222,6 @@ describe('DataTable', () => {
     await user.keyboard('{Enter}')
 
     expect(screen.getByText('arrived')).toBeInTheDocument()
-  })
-})
-
-describe('Tooltip', () => {
-  it('is reachable and readable by keyboard', async () => {
-    // An explanation only a mouse can reach is an explanation half the
-    // readers never get.
-    const user = userEvent.setup()
-    render(<Tooltip>Escalations handled ÷ escalations warranted.</Tooltip>)
-
-    await user.tab()
-
-    expect(screen.getByRole('tooltip')).toBeVisible()
-  })
-
-  it('stays hidden until asked for', () => {
-    render(<Tooltip>Explanation</Tooltip>)
-
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 })
 

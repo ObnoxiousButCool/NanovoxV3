@@ -13,7 +13,6 @@ export function Panel({
   sub,
   chip,
   actions,
-  info,
   meta,
   footer,
   className,
@@ -23,13 +22,6 @@ export function Panel({
   sub?: ReactNode
   chip?: ReactNode
   actions?: ReactNode
-  /**
-   * The (i) tooltip, rendered inside the heading as `v2` has it. One of
-   * v2's stated changes is that explanations move out of the page body, so
-   * a panel with more to say than its subtitle carries puts it here rather
-   * than in a paragraph nobody reads.
-   */
-  info?: ReactNode
   /**
    * A line between the subtitle and the contents, laid out as two ends —
    * `.ai-meta` in `v2.css`, where the left names what the card is about and
@@ -50,10 +42,7 @@ export function Panel({
     <section className={className === undefined ? 'nv-panel' : `nv-panel ${className}`}>
       <header>
         <div>
-          <h2>
-            {title}
-            {info}
-          </h2>
+          <h2>{title}</h2>
         </div>
         {chip ?? actions ? (
           <div className="nv-panel-aside">

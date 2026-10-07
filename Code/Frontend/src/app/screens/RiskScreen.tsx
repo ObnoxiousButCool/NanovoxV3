@@ -52,7 +52,6 @@ import {
   KpiTile,
   Panel,
   RiskPill,
-  Tooltip,
 } from '@/shared/design/primitives'
 
 type AssessedAccount = RiskScreenData['assessed'][number]
@@ -228,11 +227,6 @@ function RiskBody({
             />
             <KpiTile
               label="Escalations missed"
-              info={
-                <Tooltip>
-                  Escalation integrity is handled ÷ warranted, never ÷ all calls.
-                </Tooltip>
-              }
               value={String(data.escalationsMissed)}
               tone={data.escalationsMissed > 0 ? 'hot' : 'plain'}
               meta={
@@ -264,13 +258,6 @@ function RiskBody({
             {data.newlyFlagged ? (
               <KpiTile
                 label="Newly flagged"
-                info={
-                  <Tooltip>
-                    Counted across the whole book. This is the one figure here the filter
-                    bar does not touch: an account&rsquo;s first indicator is a fact about
-                    the account, not about the slice you are looking through.
-                  </Tooltip>
-                }
                 value={String(data.newlyFlagged.count)}
                 meta={
                   <span className="nv-indcount">
@@ -301,18 +288,6 @@ function RiskBody({
                   : 'every account could be assessed'}
               </span>
             </>
-          }
-          info={
-            <Tooltip>
-              <p>
-                Ranked by how many <b>unrelated</b> indicators the account&rsquo;s calls raise,
-                then by how soon it renews.
-              </p>
-              <p>
-                Risk movement per account (improving or worsening) is withheld: most accounts
-                have one call in batch 1, so there is no earlier period to compare against.
-              </p>
-            </Tooltip>
           }
           chip={<EpistemicChip kind="observed" />}
           actions={

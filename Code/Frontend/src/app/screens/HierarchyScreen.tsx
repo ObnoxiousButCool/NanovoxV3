@@ -48,7 +48,7 @@ import { Heatmap } from '@/shared/design/charts'
 import type { HeatmapCell } from '@/shared/design/charts'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { InsightStrip } from '@/shared/insights/Insights'
-import { Empty, EpistemicChip, KpiTile, Note, Panel, Tooltip } from '@/shared/design/primitives'
+import { Empty, EpistemicChip, KpiTile, Note, Panel } from '@/shared/design/primitives'
 
 type RegionRow = Hierarchy['regions'][number]
 type BrokerRow = Hierarchy['brokers'][number]
@@ -125,25 +125,6 @@ function HierarchyBody({
       <div className="nv-c7">
         <Panel
           title="Which topics show up where"
-          info={
-            <Tooltip>
-              <p>
-                Darker means more calls. A column dark across every row is a book-wide topic,
-                which points at a process. One dark cell is local, which points at an account
-                or broker.
-              </p>
-              <p>
-                Counts, not shares — at this volume a share would be two or three calls.{' '}
-                {data.windowWeeks} weeks to {data.asOf}.
-              </p>
-              {data.systemic.length > 0 ? (
-                <p>
-                  Present in every region: {data.systemic.join(', ')}. A presence test, not a
-                  volume threshold.
-                </p>
-              ) : null}
-            </Tooltip>
-          }
           chip={<EpistemicChip kind="pattern" />}
         >
           {cells.length === 0 ? (
@@ -211,14 +192,6 @@ function HierarchyTiles({ data }: { data: Hierarchy }) {
         label="Broker pattern alerts"
         value={`${String(firing)} of ${String(data.brokers.length)}`}
         meta={<span className="nv-indcount">needs 3 mentions from 2 employers</span>}
-        info={
-          <Tooltip>
-            <p>
-              At batch-1 volume the test is unlikely to fire; it is sized for the full 600
-              calls.
-            </p>
-          </Tooltip>
-        }
         tone={firing > 0 ? 'warm' : 'plain'}
       />
       <KpiTile
@@ -240,15 +213,6 @@ function RegionPanel({ rows, filters }: { rows: RegionRow[]; filters: Filters })
   return (
     <Panel
       title="By region"
-      info={
-        <Tooltip>
-          <p>
-            Six regions of about sixteen employers each. Counts, not rates: a region holds
-            about sixteen calls in batch 1.
-          </p>
-          <p>Accounts is every employer in the region, not every one that called.</p>
-        </Tooltip>
-      }
       chip={<EpistemicChip kind="observed" />}
     >
       {rows.length === 0 ? (
@@ -327,27 +291,6 @@ function BrokerPanel({
   return (
     <Panel
       title="By broker"
-      info={
-        <Tooltip>
-          <p>
-            <b>Groups in book</b> comes from the broker sheet, never from call counts, so the
-            denominator is not built from the numerator.
-          </p>
-          <p>
-            The pattern test fires when one broker is named adversely three times across two
-            of its employers. No per-broker rate is shown: a three-group broker has about ten
-            calls, too few for a rate.
-          </p>
-          {/* Field 14, not the signal of the same name. The two disagree,
-              and a reader comparing this column with the actions screen
-              should be able to find out which one they are looking at. */}
-          <p>
-            Named adversely counts only where a caller said that broker&rsquo;s name aloud
-            and L1 could corroborate it in their own words. The broker-conduct signal on the
-            calls and actions screens is a different field and can carry a different number.
-          </p>
-        </Tooltip>
-      }
       chip={<EpistemicChip kind="observed" />}
     >
       {/* Above the table, not inside the tooltip. A reader who does not

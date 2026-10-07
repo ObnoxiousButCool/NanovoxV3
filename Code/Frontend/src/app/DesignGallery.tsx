@@ -39,7 +39,6 @@ import {
   RiskPill,
   SeverityLabel,
   StatusPill,
-  Tooltip,
   Withheld,
 } from '@/shared/design/primitives'
 import type { EpistemicKind, Figure } from '@/shared/design/primitives'
@@ -107,17 +106,7 @@ export function DesignGallery() {
       </header>
 
       <Panel
-        title={
-          <>
-            Figures
-            <Tooltip>
-              <p>
-                Every published number goes through one component, so a withheld figure cannot
-                reach a formatter and be rendered as a zero.
-              </p>
-            </Tooltip>
-          </>
-        }
+        title="Figures"
         sub="A withheld figure is never a zero, and the reason it was withheld is part of it."
         chip={<EpistemicChip kind="observed" />}
       >
