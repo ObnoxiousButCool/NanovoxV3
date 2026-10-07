@@ -37,7 +37,7 @@
 import { Link } from 'react-router-dom'
 
 import { useAgents, useGeneratedInsights } from '@/shared/api/insights'
-import type { Agent, Agents } from '@/shared/api/insights'
+import type { Agent, Agents, GeneratedInsights, Insight } from '@/shared/api/insights'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { InsightStrip } from '@/shared/insights/Insights'
 import { useDrawer } from '@/shared/design/drawer'
@@ -79,6 +79,31 @@ function clearsTheBar(agent: Agent, minimum: number | null | undefined): boolean
   return agent.calls.length >= minimum
 }
 
+/**
+ * The order `AgentTiles` already renders in. The model picks its own
+ * sentence order, which does not agree with it, so the strip above reads
+ * compliance-rules-escalations-score while the tiles below read something
+ * else — matched by eye, not by column.
+ *
+ * Keyed on `factKeys`, the one thing a sentence cannot paraphrase away,
+ * rather than on the sentence text itself.
+ */
+const AGENT_INSIGHT_ORDER = [
+  'compliance_exceptions',
+  'rules_stated_wrongly',
+  'escalations_missed',
+  'agents_with_enough_calls',
+]
+
+function orderedForTiles(data: GeneratedInsights | undefined): GeneratedInsights | undefined {
+  if (!data) return data
+  const rank = (insight: Insight) => {
+    const index = AGENT_INSIGHT_ORDER.findIndex((key) => insight.factKeys.includes(key))
+    return index === -1 ? AGENT_INSIGHT_ORDER.length : index
+  }
+  return { ...data, insights: [...data.insights].sort((a, b) => rank(a) - rank(b)) }
+}
+
 export function AgentsScreen() {
   const filters = useFilters()
   const { data, isPending, error } = useAgents(filters.apiSearch)
@@ -118,7 +143,7 @@ function AgentsBody({
   return (
     <div className="nv-grid">
       <div className="nv-c12">
-        <InsightStrip data={insights.data} pending={insights.isFetching} />
+        <InsightStrip data={orderedForTiles(insights.data)} pending={insights.isFetching} />
       </div>
 
       <div className="nv-c12">
