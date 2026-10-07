@@ -7,40 +7,49 @@ Microsoft Learn on the revision date; anything not checked is marked
 **unverified**, and no dollar figures are quoted because none were checked.
 
 > **Status.** Nothing in this guide has been run against a real Azure
-> subscription. The container image has been built and run locally (see
-> section 3), but every `az` command below is a sketch to be proven, not a
-> record of something that worked. Section 9 lists what has to be true before
-> anyone calls it deployed.
+> subscription. The container image behind section 8.2 has been built and run
+> locally (section 3); the App Service / Oryx path behind the section 0
+> recommendation has not, and section 3 says so explicitly. Every `az`
+> command below is a sketch to be proven, not a record of something that
+> worked. Section 9 lists what has to be true before anyone calls it
+> deployed.
 
 ---
 
 ## 0. Recommendation
 
-**Azure Container Apps + Azure Database for PostgreSQL (Flexible Server),
-with the image in Azure Container Registry.** One container, one replica,
-durable storage in Postgres, secrets outside the image.
+**Azure App Service (Linux, B1), running the app's own SQLite database copied
+to `/tmp` at startup.** One resource, no database server, no registry, HTTPS
+and built-in sign-in included.
 
 | | Needed | Why |
 |---|---|---|
 | Resource group | Yes | One teardown unit |
-| Azure Container Registry (Basic) | Yes | Holds the image built from the repo `Dockerfile` |
-| Container Apps environment + Container App | Yes | Runs the single process on port 8000 |
-| Azure Database for PostgreSQL Flexible Server | Yes | The only durable store that works on Azure for this app (section 2) |
-| Log Analytics workspace | Yes | Container Apps ships console logs there; the app logs JSON to stdout |
-| Key Vault (or Container Apps secrets) | Yes | `OPENAI_API_KEY` / `DATABASE_URL` must not be in the image or in git |
+| App Service plan, **Linux** (B1 or higher) | Yes | Always On; the Free tier unloads when idle (section 9) |
+| App Service (Web App), `PYTHON\|3.14` | Yes | Runs the app from an Oryx source build |
 | Authentication or network restriction | **Yes, before any real data goes on it** | The app has no login (section 1) |
 | Azure OpenAI resource + model deployment | Optional | Keeps transcript content inside your tenant; needs no code change in principle (section 6) |
-| Application Insights | Optional | The app has no App Insights SDK; Log Analytics already gets stdout |
+| Application Insights | Optional | The app has no App Insights SDK; App Service's own log stream already gets stdout |
 | Front Door / Application Gateway + WAF | Optional | Only if the client wants a WAF or a custom domain with managed certificates |
 
-**You do not need:** Static Web Apps, a separate API host, API Management, a
-storage account, Azure Files, Azure Disk, a second app, nginx, or CORS
-configuration. The API process serves the frontend.
+**You do not need:** a database server, Azure Container Registry, Static Web
+Apps, a separate API host, API Management, a storage account, Azure Files,
+Azure Disk, a second app, nginx, or CORS configuration. The API process serves
+the frontend, and the database that already ships with the repo is the one
+that runs in production.
 
-**The alternative** is App Service for Linux (Python 3.14 runtime) plus the same
-Postgres server. It needs no registry and gives HTTPS and built-in Entra ID
-sign-in with no code, at the cost of an Oryx source build instead of the tested
-image. Section 8 covers it.
+**The trick, and its one cost.** App Service's persistent `/home` is an SMB
+share, which SQLite cannot write to safely (section 2); `/tmp` is real
+container-local disk. The startup command copies the pristine database there
+before `uvicorn` starts, so SQLite runs the way it is designed to. The cost:
+**action-board edits do not survive a restart** — each restart starts again
+from the pristine copy. For a two-week demo that is a reasonable trade, and
+arguably a feature: every restart is a clean demo.
+
+**The alternative**, if writes have to survive a restart, is Azure Container
+Apps running the tested Docker image, with Azure Database for PostgreSQL for
+storage — a registry and a database server, for durability App Service's
+free tier of this trick cannot give. Section 8 covers both.
 
 ---
 
@@ -52,7 +61,7 @@ image. Section 8 covers it.
 | Python 3.14 | Image, pipeline and scripts all moved to 3.14. | `Dockerfile`, `azure-pipelines.yml` |
 | Node 20 at build time only | Frontend is built in the image's first stage. | `Dockerfile` |
 | Port comes from `$PORT` | The container `CMD` binds `0.0.0.0:${PORT}`, default 8000. `APP_PORT` is not what the container uses. | `Dockerfile` |
-| Migrations run on start | `alembic upgrade head` precedes uvicorn, so an empty Postgres gets its schema on first boot. | `Dockerfile` `CMD` |
+| Migrations run on start **in the container image** | `alembic upgrade head` precedes uvicorn, so an empty Postgres gets its schema on first boot. The App Service startup command (section 8.1) deliberately skips this — the shipped SQLite file already carries the schema it was tested against. | `Dockerfile` `CMD` |
 | Health endpoint | `GET /api/v1/health`, per-component, 503 when a component is down. | `frameworks_drivers/api/v1/health.py` |
 | Database | SQLite (default) or Postgres via `DATABASE_URL`. **Only** `sqlite+aiosqlite:` and `postgresql+asyncpg:` are accepted; anything else fails at startup. SQL Server is not supported. | `infrastructure/config/settings.py` |
 | The database is written to | The action board has `POST` and `PATCH` endpoints. It cannot be baked in read-only. | `frameworks_drivers/api/v1/insights/action_board.py` |
@@ -64,8 +73,8 @@ image. Section 8 covers it.
 
 ### The authentication gap matters on Azure
 
-D14 assumed a trusted network. A Container App with external ingress is on the
-public internet. That has two consequences:
+D14 assumed a trusted network. An app reachable at a public `.azurewebsites.net`
+(or Container Apps) URL is on the public internet. That has two consequences:
 
 1. The data is member call transcripts and insights derived from them, readable
    by anyone with the URL.
@@ -73,40 +82,48 @@ public internet. That has two consequences:
    `/api/v1/reference` are unauthenticated. The run endpoints start LLM work, so
    an anonymous caller can spend the provider budget.
 
-Pick one before the URL goes to anyone: platform authentication (App Service
-built-in Entra ID sign-in needs no code change; the Container Apps equivalent is
-**unverified** here), restricting ingress to known IP ranges, putting the app on
-a private network reachable by VPN, or fronting it with Front Door and WAF. This
-is a decision for the project, because D14 is Minnie's call and was made for a
-different environment.
+Pick one before the URL goes to anyone: platform authentication (App Service's
+built-in Entra ID sign-in needs no code change and is configured on the app
+itself; the Container Apps equivalent is **unverified** here), restricting
+ingress to known IP ranges, putting the app on a private network reachable by
+VPN, or fronting it with Front Door and WAF. This is a decision for the
+project, because D14 is Minnie's call and was made for a different environment.
 
 ---
 
-## 2. Storage: why Postgres, not SQLite
+## 2. Storage: SQLite on `/tmp`, or Postgres
 
 The rule that governs everything here: **SQLite needs a real block device and
-exactly one writer.** Azure offers no such mount for either candidate service:
+exactly one writer.** Whether that is available depends on which of the two
+candidate services is running the app.
 
-- **Container Apps** supports container-scoped (ephemeral) storage,
-  replica-scoped (EmptyDir) storage, and Azure Files over SMB or NFS. **Azure
-  Disk is not supported.** Blob and Azure NetApp Files mounts are not supported
-  either. An earlier revision of this file recommended an Azure Disk mount;
-  that option does not exist.
-- **App Service for Linux** documents Azure Files mounts and says plainly: *"We
-  don't recommend that you use storage mounts for local databases, such as
-  SQLite, or for any other applications and components that rely on file handles
-  and locks."*
-- A local test of SQLite on a protocol-backed mount (Docker Desktop's gRPC-FUSE
-  bind mount) failed with `disk I/O error`. SQLite's byte-range locking needs
-  POSIX semantics that SMB and NFS shares do not reliably provide.
+**App Service for Linux has one.** `/home` is an SMB share and App Service's
+own docs say plainly not to put a file-locking database like SQLite on a
+storage mount: *"We don't recommend that you use storage mounts for local
+databases, such as SQLite, or for any other applications and components that
+rely on file handles and locks."* **`/tmp`, however, is container-local disk,
+not the share** — so the recommendation (section 0) copies the pristine
+database there at startup and SQLite runs on a real block device, exactly as
+it expects. The one cost is durability: `/tmp` does not survive a restart, so
+neither does an action-board edit. A local test of SQLite on a
+protocol-backed mount (Docker Desktop's gRPC-FUSE bind mount) failed outright
+with `disk I/O error` — confirming the docs' warning is not theoretical,
+which is also why `/tmp` and not a storage mount is the part that makes this
+work at all.
 
-Without a durable mount, SQLite on ephemeral container disk loses every
-action-board change on restart and every restart starts from whatever copy
-shipped. That is acceptable for a throwaway demo and wrong for a client pitch.
+**Container Apps has no equivalent.** It supports container-scoped
+(ephemeral) storage, replica-scoped (EmptyDir) storage, and Azure Files over
+SMB or NFS. **Azure Disk is not supported.** Blob and Azure NetApp Files
+mounts are not supported either. An earlier revision of this file recommended
+an Azure Disk mount; that option does not exist. Without a durable mount,
+SQLite on Container Apps' own ephemeral disk loses every action-board change
+on restart with no `/tmp`-style trick available to avoid it — so a Container
+Apps deployment that needs writes to survive a restart has to move the
+database off the container entirely.
 
-**So: Postgres.** The code already supports it (`asyncpg` is in
-`requirements.txt`, and `engine.py` disables asyncpg's statement cache for
-pooled endpoints). Two caveats, both unproven on Azure:
+**So, for Container Apps: Postgres.** The code already supports it (`asyncpg`
+is in `requirements.txt`, and `engine.py` disables asyncpg's statement cache
+for pooled endpoints). Two caveats, both unproven on Azure:
 
 - The test suite touches Postgres only at the unit level (settings and engine
   construction). I found no test that runs the 16 Alembic migrations or the
@@ -117,26 +134,28 @@ pooled endpoints). Two caveats, both unproven on Azure:
   (`database_write_lock.py`) are no-ops for Postgres. Backups become Azure's
   job (Flexible Server automated backups).
 
-**Burstable tier.** B1ms (1 vCore, 2 GiB), B2s (2 vCores, 4 GiB) and larger
-Burstable sizes exist. Microsoft describes Burstable as suited to proof of
-concept and development, not recommended for production, with a CPU-credit model
-that degrades when credits run out. That fits a POC pitched to a client; if this
-becomes the client's production system, move to General Purpose.
+**Burstable tier**, if Postgres is the path taken. B1ms (1 vCore, 2 GiB), B2s
+(2 vCores, 4 GiB) and larger Burstable sizes exist. Microsoft describes
+Burstable as suited to proof of concept and development, not recommended for
+production, with a CPU-credit model that degrades when credits run out. That
+fits a POC pitched to a client; if this becomes the client's production
+system, move to General Purpose.
 
 ---
 
 ## 3. What has been proven locally
 
-The `Dockerfile` builds a multi-stage image (Node 20 builds the frontend,
-`python:3.14-slim` runs it). The image runs as uid 10001, exposes 8000, declares
-`/app/data` as a volume and has a `HEALTHCHECK` on `/api/v1/health`. The layout
-is load-bearing: `paths.py` derives `PROJECT_ROOT` from `__file__`, so the image
-keeps `/app/Code/Backend` and `/app/Code/Frontend/dist`. Flattening it makes the
-process serve the API alone and 404 every page.
+**The container image, which is the Container Apps path.** The `Dockerfile`
+builds a multi-stage image (Node 20 builds the frontend, `python:3.14-slim`
+runs it). The image runs as uid 10001, exposes 8000, declares `/app/data` as a
+volume and has a `HEALTHCHECK` on `/api/v1/health`. The layout is
+load-bearing: `paths.py` derives `PROJECT_ROOT` from `__file__`, so the image
+keeps `/app/Code/Backend` and `/app/Code/Frontend/dist`. Flattening it makes
+the process serve the API alone and 404 every page.
 
 `release/` holds a packaged image tarball with `run.sh` and `run.ps1` for
-running it on any machine with Docker. That is the tested path today, and it is
-not an Azure path.
+running it on any machine with Docker. That is the tested path today, and it
+is not an Azure path.
 
 Two findings from running it that still apply:
 
@@ -144,6 +163,14 @@ Two findings from running it that still apply:
   SQLite file into it must end with `chown -R 10001:10001 /app/data`. This only
   matters for SQLite deployments.
 - The action board writes, so "read-only database" is not an option.
+
+**The App Service / Oryx path is not covered by the above.** Oryx does a
+source build (installs from `requirements.txt`, does not read the
+`Dockerfile`), so none of the container testing validates it. Nothing in this
+repo has run `python -m venv` plus `pip install` the way Oryx does, or
+confirmed Oryx detects this as a Python app from the root `requirements.txt`
+pointer. Treat the App Service deploy in section 8.1 as the thing section 9
+exists to prove, same as everything else on this page.
 
 ---
 
@@ -169,13 +196,32 @@ withheld state (0 calls, no accounts). That looks like a broken app and is the
 app behaving correctly.
 
 **Gaps to close for an Azure deployment:** an `az` (or Bicep) provisioning
-script, a data-load step (section 7), and optionally a pipeline stage that runs
-`az acr build` and updates the Container App. All three are changes to the repo
-and are not made here.
+script, a data-load step (section 7), and optionally a pipeline stage that
+redeploys on push — `az webapp up` for App Service, or `az acr build` plus a
+Container App update for the alternative. All are changes to the repo and are
+not made here.
 
 ---
 
 ## 5. Architecture
+
+```
+ Browser ──HTTPS──> [ auth / network restriction ]
+                              │
+                      App Service (Linux, B1)
+                    ┌───────────────────────────┐
+                    │ uvicorn: API + built SPA │── console ──> Log stream
+                    │  sqlite file, copied      │
+                    │  /home ──copy──> /tmp      │              (section 6)
+                    └─────────────┬─────────────┘
+                                  │ HTTPS
+                                  ▼
+                          OpenAI / Anthropic
+                           or Azure OpenAI
+                              (optional)
+```
+
+**The alternative (Container Apps + Postgres):**
 
 ```
  Browser ──HTTPS──> [ auth / network restriction ]
@@ -195,31 +241,43 @@ and are not made here.
    Key Vault / app secrets  ──secrets─> Container App
 ```
 
-Keep **min and max replicas at 1**. With Postgres the database no longer forces
-this, but the insight cache and the background runner are per-process, so a
-second replica means duplicate LLM spend and a run that is "in flight" on one
-replica and invisible to the other.
+Keep **min and max replicas / instances at 1** on either path. App Service's
+`/tmp` copy is per-instance, so a second instance starts from its own pristine
+copy and the two disagree the moment either one gets a write; on Container
+Apps with Postgres the database no longer forces this, but the insight cache
+and the background runner are per-process either way, so a second
+replica/instance means duplicate LLM spend and a run that is "in flight" on
+one and invisible to the other.
 
 ---
 
 ## 6. Configuration
 
-All settings are environment variables read in `infrastructure/config/settings.py`.
-Set them as Container App environment variables and secrets, never as a `.env`
-file in the image (`.dockerignore` already excludes `.env*`).
+All settings are environment variables read in
+`infrastructure/config/settings.py`. On App Service these are App Settings; on
+Container Apps, environment variables and secrets. Never a `.env` file shipped
+with the code (`.dockerignore` already excludes `.env*`).
 
-| Variable | Value on Azure | Notes |
+| Variable | Value for App Service + SQLite | Notes |
 |---|---|---|
-| `APP_ENV` | `prod` | The image already sets it. Disables `/docs`. |
-| `DATABASE_URL` | `postgresql+asyncpg://<user>:<password>@<server>.postgres.database.azure.com:5432/<db>` | **Secret.** URL-encode special characters in the password. Flexible Server requires TLS by default; asyncpg takes `?ssl=require` (**unverified**, check on first connect). |
+| `APP_ENV` | `prod` | Disables `/docs`. |
+| `DATABASE_URL` | `sqlite+aiosqlite:////tmp/nanovox/nanovox_insights.db` | Four slashes: `sqlite+aiosqlite:///` plus the absolute `/tmp/...` path. The startup command (section 8.1) is what puts a database file there. |
 | `LLM_PROVIDER` | `openai`, `anthropic`, or `ollama` | `ollama` makes the AI panels show their designed "unavailable" state and costs nothing. |
 | `OPENAI_API_KEY` | key | **Secret.** |
 | `OPENAI_MODEL` | `gpt-4o-mini` default | With Azure OpenAI this is the **deployment name**. |
 | `OPENAI_BASE_URL` | empty, or `https://<resource>.openai.azure.com/openai/v1/` | See below. |
 | `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | if using Anthropic | **Secret** key. |
-| `LOG_LEVEL`, `LOG_FORMAT=json`, `LOG_TO_CONSOLE=true` | defaults are fine | Console output is what Log Analytics collects. File logs under `/app/data/logs` are lost on restart. |
+| `LOG_LEVEL`, `LOG_FORMAT=json`, `LOG_TO_CONSOLE=true` | defaults are fine | Console output is what App Service's log stream (or Log Analytics, on Container Apps) collects. File logs under `.../data/logs` are lost on restart either way. |
 | `LOG_LLM_PROMPTS` | leave `false` | Transcripts are member conversations. |
-| `FRONTEND_DIST_PATH` | not needed in the container | Needed on App Service source builds (section 8). |
+| `FRONTEND_DIST_PATH` | the built `dist`'s absolute path on the host, e.g. `/home/site/wwwroot/Code/Frontend/dist` | `paths.py` derives a default from its own `__file__`, and App Service's Oryx layout is not the checkout's — set this explicitly or the API serves with no frontend. |
+| `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` | Tells Oryx to run the build step (installs from the root `requirements.txt` pointer) rather than serve the push as-is. |
+
+**On the Container Apps + Postgres alternative**, `DATABASE_URL` instead reads
+`postgresql+asyncpg://<user>:<password>@<server>.postgres.database.azure.com:5432/<db>`
+(**secret**; URL-encode special characters in the password — Flexible Server
+requires TLS by default, and asyncpg takes `?ssl=require`, **unverified**,
+check on first connect), and `FRONTEND_DIST_PATH` is not needed because the
+image already has the built frontend baked in at a fixed path.
 
 **Azure OpenAI without code changes (unverified end to end).** The OpenAI
 adapter passes `OPENAI_BASE_URL` to the SDK. Microsoft documents the v1 API as
@@ -235,28 +293,125 @@ shapes. Keys can be replaced with Entra ID tokens only with a code change.
 
 ---
 
-## 7. Getting data into Postgres
+## 7. Getting the data onto the host
 
-This is the part with no existing tooling, and the real work item.
+**Do not rebuild the corpus on Azure either way.** Doing it means
+`frameworks_drivers.cli.run_extraction`, which sends every call through an
+LLM: hours of runtime and real spend. The existing database already has it.
 
-- **Do not rebuild the corpus on Azure.** Doing it means
-  `frameworks_drivers.cli.run_extraction`, which sends every call through an LLM:
-  hours of runtime and real spend.
-- **Copy the data instead.** The corpus database is about 2.7 MB. The CLI
-  folder has `import_reference.py`, `import_answer_key.py`, `ingest_transcripts.py`
-  and `seed_actions.py`, but nothing that copies an existing SQLite database into
-  Postgres. A one-off copy script (or a tool like pgloader) is needed, followed by
-  checking row counts per table and one click-through of the action board.
-- **Order matters.** Start the app once so the container's `alembic upgrade head`
-  creates the schema, then load data into it. Alembic's version table must end up
-  consistent with the loaded schema, or the next start will try to re-migrate.
-- **Check afterwards.** `/api/v1/insights/exec` should report 600 calls.
+**App Service + SQLite: copy the file, nothing more.** The corpus database is
+about 2.7 MB (`data/db/nanovox_insights.db`). Upload it to the app's persistent
+`/home` once (the Kudu console's file manager, or `az webapp ssh`), and the
+startup command in section 8.1 copies it onto `/tmp` on every boot. No
+Alembic, no row-count reconciliation — the shipped file already carries the
+schema the app was tested against, and `main.py`'s lifespan does not run
+migrations at startup.
+
+**Container Apps + Postgres: there is no existing tooling for this, and it is
+the real work item of that path.** The CLI folder has `import_reference.py`,
+`import_answer_key.py`, `ingest_transcripts.py` and `seed_actions.py`, but
+nothing that copies an existing SQLite database into Postgres. A one-off copy
+script (or a tool like pgloader) is needed, followed by checking row counts
+per table and one click-through of the action board. Order matters here in a
+way it does not for SQLite: start the app once so `alembic upgrade head`
+creates the schema, then load data into it — Alembic's version table has to
+end up consistent with the loaded schema, or the next start tries to
+re-migrate.
+
+**Check afterwards, on either path.** `/api/v1/insights/exec` should report
+600 calls.
 
 ---
 
 ## 8. Steps (a sketch, not a record)
 
-### 8.1 Container Apps path
+### 8.1 App Service + SQLite path (the recommendation)
+
+**1. Build the frontend locally.** Oryx will not run `npm run build` for a
+Python app, so `dist` must exist in what gets built.
+
+```bash
+cd Code/Frontend && npm ci && npm run build
+```
+
+**2. Create the resources.**
+
+```bash
+az login
+az group create --name nanovox-demo --location <region>
+
+az appservice plan create --name nanovox-plan --resource-group nanovox-demo \
+  --sku B1 --is-linux
+
+az webapp create --name nanovox-insights --resource-group nanovox-demo \
+  --plan nanovox-plan --runtime "PYTHON:3.14"
+```
+
+**3. Configure** (section 6's table, App Service column).
+
+```bash
+az webapp config appsettings set --name nanovox-insights --resource-group nanovox-demo \
+  --settings \
+    APP_ENV=prod \
+    LLM_PROVIDER=openai \
+    OPENAI_API_KEY='<paste>' \
+    DATABASE_URL='sqlite+aiosqlite:////tmp/nanovox/nanovox_insights.db' \
+    FRONTEND_DIST_PATH=/home/site/wwwroot/Code/Frontend/dist \
+    SCM_DO_BUILD_DURING_DEPLOYMENT=true
+```
+
+**4. Startup command** — the `/tmp` copy, then the server, no Alembic. The
+shipped database already carries the schema it was tested against, and
+`main.py`'s lifespan does not call Alembic at startup.
+
+```bash
+az webapp config set --name nanovox-insights --resource-group nanovox-demo \
+  --startup-file "mkdir -p /tmp/nanovox && cp /home/data/nanovox_insights.db /tmp/nanovox/ && cd /home/site/wwwroot/Code/Backend && python -m uvicorn frameworks_drivers.main:app --host 0.0.0.0 --port 8000"
+```
+
+**Unverified**: Microsoft Learn notes that with build automation the code can
+be served from a temp path exposed as `APP_PATH` rather than
+`/home/site/wwwroot`. Resolve the actual path on first deploy rather than
+trusting the path above.
+
+**5. Always On** — without it the app unloads when idle and the first visitor
+waits 30+ seconds for a cold start.
+
+```bash
+az webapp config set --name nanovox-insights --resource-group nanovox-demo --always-on true
+```
+
+**6. Deploy, then put the database on `/home`** (section 7).
+
+```bash
+az webapp up --name nanovox-insights --resource-group nanovox-demo
+
+az webapp ssh --name nanovox-insights --resource-group nanovox-demo \
+  --command "mkdir -p /home/data"
+# then upload data/db/nanovox_insights.db to /home/data via the Kudu console:
+#   https://nanovox-insights.scm.azurewebsites.net/newui/fileManager
+
+az webapp restart --name nanovox-insights --resource-group nanovox-demo
+```
+
+**7. Verify from outside the host** — section 9 is the real version of this
+step; at minimum:
+
+```bash
+curl -s https://nanovox-insights.azurewebsites.net/api/v1/health
+curl -s https://nanovox-insights.azurewebsites.net/api/v1/insights/exec | head -c 120
+```
+
+Built-in authentication (Entra ID) is configured on the app itself, with no
+code change; by default any user in the tenant can sign in, and restricting to
+named users is a separate Entra step (section 1).
+
+**If `/tmp` turns out to be unwritable or the copy fails**, the fallback is one
+setting: point `DATABASE_URL` at a Postgres Flexible Server and delete the `cp`
+from the startup command — which is section 8.2 in miniature, without
+switching the whole app off App Service.
+
+### 8.2 Container Apps + Postgres path (the alternative, for durable writes)
 
 ```bash
 az login
@@ -296,27 +451,6 @@ firewall to the Container Apps environment (or using VNet integration, which is
 the production answer), and the authentication decision from section 1. Check
 the exact flags against `az containerapp create --help` before running.
 
-### 8.2 App Service for Linux path
-
-Python 3.14 is listed as a supported runtime on App Service Linux, so the
-Python 3.10 commands in earlier revisions of this file must not be used (3.10
-leaves support on 2026-10-31).
-
-- Create a Linux plan (B1 or higher; the Free tier has no Always On) and a web
-  app on the `PYTHON|3.14` runtime, plus the same Postgres server.
-- Oryx builds from source when `SCM_DO_BUILD_DURING_DEPLOYMENT=1`. The repo-root
-  `requirements.txt` is a one-line pointer to `Code/Backend/requirements.txt`
-  for exactly this.
-- Per the earlier revision, Oryx does not run `npm run build` for a Python app,
-  so `Code/Frontend/dist` has to be built beforehand and included (it is
-  git-ignored, so this needs a deliberate step). **Unverified.** Set
-  `FRONTEND_DIST_PATH` explicitly, because `paths.py` derives its default from
-  the checkout layout, which App Service does not preserve.
-- Startup command: `cd <app path>/Code/Backend && python -m alembic upgrade head && python -m uvicorn frameworks_drivers.main:app --host 0.0.0.0 --port 8000`. Learn notes that with build automation the code is served from a temp path exposed as `APP_PATH`, not `/home/site/wwwroot`, so resolve the path rather than hard-coding it.
-- Built-in authentication (Entra ID) is configured on the app with no code
-  change. By default any user in the tenant can sign in; restricting to named
-  users is a separate Entra step.
-
 ---
 
 ## 9. Acceptance: what "deployed" means
@@ -330,12 +464,16 @@ it does not prove the data is there. All of these, from outside the host:
 3. A client-side route such as `/risk` returns 200 `text/html` (the SPA fallback
    works).
 4. **Move an action on "What should we do next?", then restart the app and
-   confirm the change is still there.** This is the test that distinguishes a
-   working Postgres deployment from an ephemeral one.
+   check whether the change is still there.** On the recommended App Service +
+   SQLite path, **it should not be** — that is the trade section 0 names, and
+   seeing the change survive would mean `/tmp` was never actually in play. On
+   the Container Apps + Postgres alternative, the change surviving is exactly
+   what proves the deployment is durable rather than ephemeral.
 5. Unauthenticated access is refused or restricted the way section 1 decided.
 6. If a provider is configured: `GET /api/v1/providers` reports it reachable,
    and one AI panel renders generated text.
-7. Logs appear in Log Analytics.
+7. Logs appear in the App Service log stream (or Log Analytics, on Container
+   Apps).
 
 Every Azure-specific claim in this file stays unverified until 1 to 4 pass on a
 real subscription.
@@ -349,12 +487,15 @@ real subscription.
 2. **Region and data residency** for member transcripts.
 3. **Which LLM provider**: OpenAI direct, Anthropic, or Azure OpenAI. This is a
    data-handling decision as much as a cost one.
-4. **Container Apps or App Service.** Container Apps runs the tested image;
-   App Service is simpler to expose with sign-in.
-5. **Postgres tier**: Burstable for a POC, General Purpose if this becomes the
-   system of record.
-6. **Who loads the data**, and with what: a one-off script, pgloader, or a CLI
-   added to the repo.
+4. **Whether action-board edits need to survive a restart.** If not, section
+   0's App Service + SQLite path is the whole answer. If they do, that is what
+   pulls in Postgres and Container Apps (section 8.2), not a preference
+   between the two services on their own merits.
+5. **Postgres tier**, only if section 10.4 says durability is needed:
+   Burstable for a POC, General Purpose if this becomes the system of record.
+6. **Who loads the data into Postgres**, and with what, only on that same
+   path: a one-off script, pgloader, or a CLI added to the repo. The SQLite
+   path's data step (section 7) has no open question.
 7. **Whether to add IaC and a pipeline deploy stage** now, or deploy by hand
    once and codify later.
 
@@ -393,6 +534,14 @@ way a demo becomes a standing cost.
 Changes from the previous revision, so a reader of the old file knows what no
 longer holds:
 
+- **App Service + SQLite on `/tmp` is the recommendation again, Postgres is
+  the alternative.** The previous revision (below) flipped this the other
+  way; the app never needed Postgres to begin with — SQLite is the database
+  that ships with the repo, Postgres was only added for a temporary
+  deployment on Neon — and App Service's `/tmp` gives SQLite a real block
+  device for no extra resource, at the cost of losing writes on restart
+  (section 0, section 2). Container Apps + Postgres stays in the document as
+  the path to take if that cost is not acceptable, not as a default.
 - **Container Apps with an Azure Disk mount was wrong.** Container Apps does not
   support Azure Disk. Removed, along with the cost table built on it.
 - **Python 3.10 is replaced by 3.14** throughout, matching the image, pipeline
