@@ -49,7 +49,7 @@ def discover_batch_pdfs(directory: Path) -> tuple[Path, ...]:
     """Every current batch's PDF in `directory`, sorted by name.
 
     Non-recursive: a superseded revision kept in `directory/superseded/`
-    (Corpus-v10-Schema-Update.md) is deliberately not found by this glob,
+    (Documents/notes/Corpus-v10-Schema-Update.md) is deliberately not found by this glob,
     so it can sit in the tree as a regression fixture without ever being
     ingested alongside its replacement.
     """

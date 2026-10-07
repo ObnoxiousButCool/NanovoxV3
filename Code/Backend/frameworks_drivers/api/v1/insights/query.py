@@ -121,7 +121,7 @@ class InsightsQuery:
         ),
     ] = None
     #: The requested period. It bounds which calls enter the corpus slice and
-    #: does **not** redefine any metric's window — decision D11 in `plan.md`
+    #: does **not** redefine any metric's window — decision D11 in `Documents/notes/plan.md`
     #: §5. `dashboard.yaml` sets `window_weeks` per metric and they differ on
     #: one screen (contact rate 12, first-contact resolution 4), so a single
     #: period could not stand in for all of them without silently making some

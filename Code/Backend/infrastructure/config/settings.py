@@ -77,7 +77,7 @@ class Settings(BaseSettings):
     workbook_path: Path = DEFAULT_WORKBOOK_PATH
     # A directory, not one file: the corpus arrives in batches short of a
     # 600-call target, and every current batch's PDF sits directly in here
-    # (Corpus-v10-Schema-Update.md). A superseded revision lives in
+    # (Documents/notes/Corpus-v10-Schema-Update.md). A superseded revision lives in
     # `<dir>/superseded/` instead, so it is kept as a fixture without ever
     # being ingested alongside its replacement.
     transcripts_dir: Path = DEFAULT_TRANSCRIPTS_DIR

@@ -1,6 +1,6 @@
 """The shape every insights response shares.
 
-`Backend-Stream-B-Measurement.md` states the requirement for all nine
+`Documents/notes/Backend-Stream-B-Measurement.md` states the requirement for all nine
 endpoints at once: "Every response carries the epistemic class, `n`, **the
 call ids behind each figure**, and withheld reasons." That is a property of
 every figure on every screen, so it is one model here rather than nine

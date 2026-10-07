@@ -8,7 +8,7 @@ CSS class. The reason is quotable-out-of-context: a suggested action that
 travels into a report without its screen must still say it was suggested,
 or it reads as something the corpus measured.
 
-`Revised-Implementation-Plan.md` §9 Phase 5 says this phase "needs no enum
+`Documents/notes/Revised-Implementation-Plan.md` §9 Phase 5 says this phase "needs no enum
 from the backend, unless C3a closes the other way". It closed the other
 way.
 

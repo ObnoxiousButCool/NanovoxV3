@@ -273,7 +273,7 @@ class StageCacheEntryRow(Base):
 class CallExtractionRow(Base):
     """The pipeline's own output for one call — the Call Tag Schema's
     twenty fields (sixteen since Phase 4, plus the four v10 added —
-    `Corpus-v10-Schema-Update.md` §3), filled in as L1 → L2 → (L3 ∥ L4) run
+    `Documents/notes/Corpus-v10-Schema-Update.md` §3), filled in as L1 → L2 → (L3 ∥ L4) run
     (plan §7, §8 Phase 4). One row per call (Data Model sheet: the call is
     the fact table); separate from `CallRow`, which is Phase 2's ingestion
     record and never touched again once a call is resolved.
@@ -312,7 +312,7 @@ class CallExtractionRow(Base):
     touchpoint: Mapped[str | None] = mapped_column(nullable=True)
     summary: Mapped[str | None] = mapped_column(nullable=True)
     #: Call Tag Schema field 19 (v10). Free text, never validated against a
-    #: vocabulary — see `Corpus-v10-Decisions.md` item C.
+    #: vocabulary — see `Documents/notes/Corpus-v10-Decisions.md` item C.
     primary_issue: Mapped[str | None] = mapped_column(nullable=True)
     secondary_issues: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     #: Call Tag Schema field 20 (v10). `ImpactScopeBucket.value`, or `None`
@@ -519,7 +519,7 @@ class GroundTruthRow(Base):
     repeat_of_reference: Mapped[str | None] = mapped_column(nullable=True)
     repeat_of_note: Mapped[str | None] = mapped_column(nullable=True)
 
-    # --- v10: the four new schema fields (`Corpus-v10-Schema-Update.md` §3) --
+    # --- v10: the four new schema fields (`Documents/notes/Corpus-v10-Schema-Update.md` §3) --
     root_cause_owner: Mapped[str | None] = mapped_column(nullable=True)  # RootCauseOwner.value
     preventable: Mapped[str | None] = mapped_column(nullable=True)  # Preventable.value
     primary_issue: Mapped[str] = mapped_column(nullable=False, default="")

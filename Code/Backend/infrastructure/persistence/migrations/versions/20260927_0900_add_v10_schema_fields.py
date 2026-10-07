@@ -4,7 +4,7 @@ Revision ID: c7d91c38c451
 Revises: 0a81454dcf36
 Created: 2026-09-27 09:00:00.000000+00:00
 
-The Call Tag Schema grew from 16 fields to 20 (`Corpus-v10-Schema-Update.md`
+The Call Tag Schema grew from 16 fields to 20 (`Documents/notes/Corpus-v10-Schema-Update.md`
 §3). Storage for all four new fields, on both sides of Phase 5's comparison:
 
 - `call_extractions` gains `primary_issue`, `secondary_issues` (L2) and

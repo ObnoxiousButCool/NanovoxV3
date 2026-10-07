@@ -339,7 +339,7 @@ class DriverResponse(CamelModel):
 
 
 class WithheldPanelResponse(CamelModel):
-    """Insight 9 — withheld unconditionally (plan.md's Phase 8 note): no gate
+    """Insight 9 — withheld unconditionally (Documents/notes/plan.md's Phase 8 note): no gate
     unlocks it, only a schema change nobody has made."""
 
     insight: int

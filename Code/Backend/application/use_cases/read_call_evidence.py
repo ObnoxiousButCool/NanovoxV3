@@ -1,7 +1,7 @@
 """One call, with the turns behind it — the evidence a figure opens onto.
 
 **This is the only read path in the application that serves transcript
-text.** `plan.md` §6.3 calls label stripping "the single most important
+text.** `Documents/notes/plan.md` §6.3 calls label stripping "the single most important
 safety property", and until now that property was enforced at ingestion:
 the corpus PDF carries a CALL TAGS block under each transcript, and
 ingestion drops it so the extraction model cannot read the answer it is

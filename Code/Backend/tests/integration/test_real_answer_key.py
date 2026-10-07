@@ -13,7 +13,7 @@ and is tracked. A skip here would be the same silent nothing the corpus
 tests used to produce.
 
 The corpus arrives in batches short of a 600-call target
-(Corpus-v10-Schema-Update.md); only the batch-1-specific tests below pin an
+(Documents/notes/Corpus-v10-Schema-Update.md); only the batch-1-specific tests below pin an
 exact count, because they cross-check figures the prototype's own tooling
 published for that batch alone. Everything else asserts a floor.
 """

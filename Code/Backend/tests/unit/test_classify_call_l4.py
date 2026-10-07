@@ -480,7 +480,7 @@ class TestRootCauseOwnerAndPreventable:
     async def test_a_blameless_call_still_gets_an_owner_and_a_preventable_value(self) -> None:
         """§9's own gap statement: a third of calls carried no owner at all
         — `MEMBER_MISUNDERSTANDING` closes it, on every call, not only
-        complaint calls (`Corpus-v10-Decisions.md` item A)."""
+        complaint calls (`Documents/notes/Corpus-v10-Decisions.md` item A)."""
         calls = _FakeCalls((_call(),))
         use_case, extractions = _use_case(calls=calls, lookup=_FakeLookup(), l2=_l2())
 

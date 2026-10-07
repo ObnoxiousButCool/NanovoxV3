@@ -16,7 +16,7 @@ forbids `domain.entities.answer_key`.
 
 Distinct from `AnswerKey`, which is the *PDF's* five-field version of the
 same truth. The tracker carries twenty-nine columns (twenty-four plus the
-five v10 added — `Corpus-v10-Schema-Update.md` §3) and the PDF header
+five v10 added — `Documents/notes/Corpus-v10-Schema-Update.md` §3) and the PDF header
 carries five; the five overlap, which is exactly what makes them worth
 cross-checking (`ImportAnswerKey`). Two sources, two entities, one
 reconciliation — not one entity pretending the two sources agree.
@@ -106,7 +106,7 @@ class GroundTruth:
     repeat_of_reference: str | None = None
     repeat_of_note: str | None = None
 
-    # --- v10: the four new schema fields (`Corpus-v10-Schema-Update.md` §3) --
+    # --- v10: the four new schema fields (`Documents/notes/Corpus-v10-Schema-Update.md` §3) --
     root_cause_owner: RootCauseOwner | None = None
     preventable: Preventable | None = None
     primary_issue: str = ""

@@ -11,7 +11,7 @@ calls are already in the database. Progress is printed as the run
 proceeds; interrupting the process (a crash, a kill) leaves the run
 resumable — run again with ``--resume <id>``.
 
-Three safety measures wrap the run itself (``Corpus-v10-Schema-Update.md``'s
+Three safety measures wrap the run itself (``Documents/notes/Corpus-v10-Schema-Update.md``'s
 finding: a run once left the database failing ``PRAGMA integrity_check``,
 with tables reading back each other's rows). A write lock refuses to start
 if another invocation's heartbeat is still fresh; the database is backed up

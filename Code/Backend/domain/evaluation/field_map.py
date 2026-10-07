@@ -348,7 +348,7 @@ def _signals(truth: GroundTruth, call: CallExtraction | None) -> SetComparison:
 
 def _primary_issue(truth: GroundTruth, call: CallExtraction | None) -> Comparison:
     """Case-insensitive text equality — the only free-text field with no
-    controlled vocabulary (`Corpus-v10-Decisions.md` item C), so an exact
+    controlled vocabulary (`Documents/notes/Corpus-v10-Decisions.md` item C), so an exact
     case match would fail on capitalisation alone rather than on substance.
     """
     expected = _blank(truth.primary_issue)

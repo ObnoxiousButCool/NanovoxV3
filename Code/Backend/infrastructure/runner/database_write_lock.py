@@ -1,5 +1,5 @@
 """Guards a SQLite database file against two processes writing to it at
-once (`Corpus-v10-Schema-Update.md`'s DB-corruption finding: an extraction
+once (`Documents/notes/Corpus-v10-Schema-Update.md`'s DB-corruption finding: an extraction
 run left the database failing `PRAGMA integrity_check`, tables reading
 back each other's rows).
 

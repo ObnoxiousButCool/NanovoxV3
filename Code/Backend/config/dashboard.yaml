@@ -10,7 +10,7 @@
 #
 # The `metrics` block below is a transcription of the workbook's **Metrics**
 # sheet — its Window and Min n columns, row for row, including the two base
-# measures. It is not an interpretation of them. plan.md §8 Phase 6 lists ten
+# measures. It is not an interpretation of them. Documents/notes/plan.md §8 Phase 6 lists ten
 # of these values inline as an "e.g."; that list is a cross-check, not the
 # source, and it is incomplete — it omits metric 11 and both base measures.
 #
@@ -316,7 +316,7 @@ risk_flag:
 #   min_rate            is ours, with NO source behind it at all. The
 #                       prototype gates the families on neither a floor nor a
 #                       rate: `indicatorsFor` shows any family with a single
-#                       hit. plan.md §8 asks for "an absolute floor AND a
+#                       hit. Documents/notes/plan.md §8 asks for "an absolute floor AND a
 #                       rate", so a rate exists, but nobody has said what it
 #                       should be. 0.2 means an employer with twenty calls
 #                       needs four rather than two. It needs calibrating
