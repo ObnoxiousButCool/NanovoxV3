@@ -76,18 +76,35 @@ class NamingCoverage:
 
     @property
     def note(self) -> str:
-        """The caveat with this corpus's own numbers in it, or empty."""
+        """The caveat with this corpus's own numbers in it, or empty.
+
+        Short sentences on purpose. The sentence a reader must not skim is the
+        second one — that a zero is a gap and not a clean book — so it is a
+        sentence of its own rather than a clause hanging off a subordinate
+        clause at the end of the first.
+
+        `call(s)` is gone too. A figure that cannot decide whether it is
+        singular reads as something nobody proof-read, and this note is asking
+        to be believed about a number.
+        """
         if self.complete or not self.calls:
             return ""
         note = (
-            f"A caller named a broker on {self.named} of the {self.calls} calls in "
-            "scope, so a nought below is a missing name rather than a finding "
-            "about the agency."
+            f"Only {self.named} of {self.calls} calls named a broker. "
+            "A zero below means nobody was named, not that the agency is clean."
         )
-        if self.unattributed:
+        if self.unattributed == 1:
+            # Spelled out rather than "Another 1 call", and "it" rather than
+            # "they": the count reaching one is exactly when a reader is most
+            # likely to be reading closely.
             note += (
-                f" A further {self.unattributed} call(s) raised a broker-conduct "
-                "concern without naming anyone, and are in no row here."
+                " One further call raised a broker concern without naming "
+                "anyone, so it appears in no row."
+            )
+        elif self.unattributed:
+            note += (
+                f" Another {self.unattributed} calls raised a broker concern "
+                "without naming anyone, so they appear in no row."
             )
         return note
 

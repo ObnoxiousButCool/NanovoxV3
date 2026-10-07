@@ -346,7 +346,8 @@ const HIERARCHY = {
     named: 1,
     calls: 3,
     unattributed: 1,
-    note: 'A caller named a broker on 1 of the 3 calls in scope.',
+    note:
+      'Only 1 of 3 calls named a broker. A zero below means nobody was named, not that the agency is clean.',
   },
   tree: [
     {
@@ -1322,7 +1323,9 @@ describe('/hierarchy', () => {
       expect(screen.getByText('Marsh & Vale')).toBeInTheDocument()
     })
     expect(
-      screen.getByText('A caller named a broker on 1 of the 3 calls in scope.'),
+      screen.getByText(
+        'Only 1 of 3 calls named a broker. A zero below means nobody was named, not that the agency is clean.',
+      ),
     ).toBeInTheDocument()
   })
 
