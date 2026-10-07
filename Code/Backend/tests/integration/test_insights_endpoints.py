@@ -304,7 +304,7 @@ async def test_a_period_filter_does_not_move_the_as_of(
 async def test_the_risk_screen_carries_insight_9_withheld(
     client: TestClient, session_factory: async_sessionmaker[AsyncSession]
 ) -> None:
-    """Insight 9 renders withheld unconditionally (plan.md's Phase 8 note) —
+    """Insight 9 renders withheld unconditionally (Documents/notes/plan.md's Phase 8 note) —
     no filter or corpus state changes this, since no gate unlocks it."""
     await seed(session_factory, calls_per_employer={"EMP-01": 4})
 

@@ -19,7 +19,7 @@
  *
  * `rules.html` already carries three-way chip logic (`is-secondary`,
  * `is-unverified`) and `app.css` has no rule for `.conf` at all, which
- * `plan.md` recorded rather than papering over. This is that gap closed in
+ * `Documents/notes/plan.md` recorded rather than papering over. This is that gap closed in
  * the shared vocabulary, not a new one invented for one screen.
  */
 

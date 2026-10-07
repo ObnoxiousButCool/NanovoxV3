@@ -25,7 +25,7 @@ sheet actually contains, not against what it might reasonably contain:
 
 Two of the five v10 columns need no splitting at all: `Primary issue` and
 `Impact scope` are read as plain strings — the first because it has no
-vocabulary yet (`Corpus-v10-Decisions.md` item C), the second because the
+vocabulary yet (`Documents/notes/Corpus-v10-Decisions.md` item C), the second because the
 tracker's own free text is deliberately kept raw rather than force-parsed
 (see `domain/value_objects/impact_scope.py`).
 

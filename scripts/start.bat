@@ -18,17 +18,25 @@ set "FRONTEND=%ROOT%\Code\Frontend"
 
 echo === NanoVox Insights setup (Windows) ===
 
-rem --- Locate a Python interpreter ---
-where python >nul 2>nul
-if errorlevel 1 (
-    where py >nul 2>nul
-    if errorlevel 1 (
-        echo ERROR: Python was not found on PATH. Install Python 3.10+ from python.org and re-run this script.
-        exit /b 1
-    )
-    set "PY=py"
-) else (
-    set "PY=python"
+rem --- Locate a Python 3.14 interpreter ---
+rem The backend is written in 3.14's idioms (StrEnum, datetime.UTC, PEP 695
+rem generics) and will not run on an earlier one, so this looks for 3.14
+rem specifically rather than whatever "python" happens to resolve to first on
+rem PATH -- a machine with several versions installed otherwise silently
+rem creates the venv with the wrong one.
+set "PY="
+where py >nul 2>nul
+if not errorlevel 1 (
+    py -3.14 --version >nul 2>nul
+    if not errorlevel 1 set "PY=py -3.14"
+)
+if not defined PY (
+    where python3.14 >nul 2>nul
+    if not errorlevel 1 set "PY=python3.14"
+)
+if not defined PY (
+    echo ERROR: Python 3.14 was not found. Install it from python.org and re-run this script.
+    exit /b 1
 )
 
 rem --- Backend: venv + dependencies ---

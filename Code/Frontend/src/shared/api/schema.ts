@@ -531,7 +531,7 @@ export interface components {
          *     that rolling it up to an employer is forbidden by the Metrics sheet. The
          *     v2 prototype shows an "Average call quality" tile on this page; the
          *     prototype wins on presentation and the workbook wins on definitions
-         *     (`plan.md` §3.0), so that tile is carried as a conflict rather than
+         *     (`Documents/notes/plan.md` §3.0), so that tile is carried as a conflict rather than
          *     served.
          *
          *     `scored_calls` is not that figure in disguise. It counts how many calls
@@ -3159,7 +3159,7 @@ export interface components {
         };
         /**
          * WithheldPanelResponse
-         * @description Insight 9 — withheld unconditionally (plan.md's Phase 8 note): no gate
+         * @description Insight 9 — withheld unconditionally (Documents/notes/plan.md's Phase 8 note): no gate
          *     unlocks it, only a schema change nobody has made.
          */
         frameworks_drivers__api__v1__insights__risk__WithheldPanelResponse: {

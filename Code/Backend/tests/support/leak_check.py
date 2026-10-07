@@ -40,7 +40,7 @@ def assert_text_carries_no_answer_key(rendered: str, where: str) -> None:
     `GET /insights/calls/{reference}` returns, and a stripping bug, a
     re-ingest from another source, or a fixture loaded straight into the
     database would each pass an ingestion-only check and still put the
-    answer key on a screen. `plan.md` §6.3 calls this "the single most
+    answer key on a screen. `Documents/notes/plan.md` §6.3 calls this "the single most
     important safety property", so it is asserted where the text leaves
     the application, not only where it enters.
     """

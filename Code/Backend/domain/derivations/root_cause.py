@@ -1,7 +1,7 @@
 """`root_cause_owner` and `preventable` (Call Tag Schema fields 17-18, v10) —
 computed, not extracted.
 
-`Corpus-v10-Decisions.md` items A/B and the schema's own note: "Derived
+`Documents/notes/Corpus-v10-Decisions.md` items A/B and the schema's own note: "Derived
 from complaint attribution first, then the dominant signal's owner."
 Read as an algorithm over fields the pipeline already extracts, not a
 new model judgement — the same shape as metric 4's repeat-contact and
@@ -23,7 +23,7 @@ supposed to summarise; a pure function cannot.
    make the function total: the schema's own gap statement — "a third of
    calls carried no owner at all" — is closed by this exact case, and it is
    the single largest bucket in the real corpus (45%). A resolved,
-   blameless call still gets an owner (`Corpus-v10-Decisions.md` item A):
+   blameless call still gets an owner (`Documents/notes/Corpus-v10-Decisions.md` item A):
    otherwise the field would still leave the calls it exists to cover
    unaccounted for.
 

@@ -2,7 +2,7 @@
 affected, in the schema's own four buckets, plus the count itself where
 the bucket needs one.
 
-`Corpus-v10-Decisions.md` item D: capture both. The schema's own example
+`Documents/notes/Corpus-v10-Decisions.md` item D: capture both. The schema's own example
 for why the field matters — "eleven of my people cannot find a
 provider" — loses the eleven if only the bucket is stored, and the bucket
 alone cannot turn "one member confused" into "a group-level incident" the

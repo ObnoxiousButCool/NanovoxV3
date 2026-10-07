@@ -22,7 +22,7 @@ like a plausible corpus:
             tracker's " — OVER-ESCALATION" annotation on an otherwise
             untriggered row (first seen on C-0120, batch 2a)
 
-Five more columns, added for the v10 schema fields (`Corpus-v10-Schema-Update.md`
+Five more columns, added for the v10 schema fields (`Documents/notes/Corpus-v10-Schema-Update.md`
 §3): `Root cause owner`, `Preventable`, `Primary issue`, `Secondary issues`,
 `Impact scope`. C-9003 also exercises `Preventable`'s "Partly — lever" shape.
 """

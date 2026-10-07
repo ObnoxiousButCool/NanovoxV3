@@ -129,7 +129,7 @@ describe('FilterBar', () => {
   })
 
   it('always states the scope, so a narrow screen is not read as an empty one', async () => {
-    // plan.md §9: filters slice, never hide.
+    // Documents/notes/plan.md §9: filters slice, never hide.
     stubApi()
     setup('/exec?region=West')
 

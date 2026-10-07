@@ -318,7 +318,7 @@ class RiskResult:
     #: decided what counts as exit language, so this counts its own tag
     #: rather than re-reading transcript text.
     exit_language_calls: int
-    #: Insight 9, withheld unconditionally (plan.md §8's Phase 8 note) —
+    #: Insight 9, withheld unconditionally (Documents/notes/plan.md §8's Phase 8 note) —
     #: no gate that unlocks it, only a schema change (a termination/renewal
     #: outcome per employer) nobody has made.
     band_calibration: WithheldPanel

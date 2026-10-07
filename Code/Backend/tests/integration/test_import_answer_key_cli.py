@@ -148,7 +148,7 @@ def test_the_real_corpus_imports_and_reconciles_end_to_end(
 
     output = capsys.readouterr().out
     # Not a fixed count: the corpus arrives in batches short of a 600-call
-    # target (Corpus-v10-Schema-Update.md), so only the shape is pinned.
+    # target (Documents/notes/Corpus-v10-Schema-Update.md), so only the shape is pinned.
     assert re.search(r"Imported \d+ answer-key rows\.", output)
     assert "Reconciled: the tracker and the PDF agree on every shared field." in output
     assert "warning:" not in output

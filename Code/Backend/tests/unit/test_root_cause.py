@@ -78,7 +78,7 @@ def test_signals_that_are_not_failures_do_not_attribute_a_fault(signal_type: Sig
 def test_a_call_with_no_complaint_and_no_owned_signal_is_member_misunderstanding() -> None:
     """The fallback the schema's own gap statement describes: 'a third of
     calls carried no owner at all.' A blameless, resolved call still gets
-    one (Corpus-v10-Decisions.md item A)."""
+    one (Documents/notes/Corpus-v10-Decisions.md item A)."""
     assert root_cause_owner(_NO_COMPLAINT, ()) is RootCauseOwner.MEMBER_MISUNDERSTANDING
 
 

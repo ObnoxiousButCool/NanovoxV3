@@ -2,7 +2,7 @@
 
 A corrupted SQLite file does not announce itself — the next query against
 whichever page happens to be damaged fails, or worse, returns another
-table's rows (`Corpus-v10-Schema-Update.md`'s finding: `employers` reading
+table's rows (`Documents/notes/Corpus-v10-Schema-Update.md`'s finding: `employers` reading
 back `members`' rows after a run that failed 94 of 100 calls). Nothing else
 in this codebase checks for that on its own; this is the one place that
 does, run right after the one kind of process most likely to write enough
@@ -33,7 +33,7 @@ async def check_integrity(engine: AsyncEngine) -> str:
     print it without a branch for "did this even run".
 
     Corruption severe enough to break the query itself — the exact
-    "database disk image is malformed" `Corpus-v10-Schema-Update.md`
+    "database disk image is malformed" `Documents/notes/Corpus-v10-Schema-Update.md`
     reports — is caught rather than left to propagate: the failure to run
     the check is itself the finding, not a reason to skip reporting one.
     """

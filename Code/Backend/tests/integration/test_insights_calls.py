@@ -1,7 +1,7 @@
 """`/insights/calls`, the export, and the evidence endpoint.
 
 The assertion this file exists for is the last one: **the leak check runs
-against the evidence response**. `plan.md` §6.3 calls label stripping "the
+against the evidence response**. `Documents/notes/plan.md` §6.3 calls label stripping "the
 single most important safety property", and until Phase 3 it was asserted
 only where text entered the application. The evidence endpoint is where
 text leaves it.

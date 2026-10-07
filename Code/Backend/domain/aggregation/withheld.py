@@ -4,7 +4,7 @@ Insights 9, 22 and 25 render withheld panels. (6 and 17 used to be here too —
 `domain/derivations/root_cause.py`'s `root_cause_owner` closed both, and this
 module dropping them the same day is that decision's other half: a panel
 still claiming a question is unanswerable after the field that answers it
-ships is the exact failure mode `Backend-Stream-B-Measurement.md` warns
+ships is the exact failure mode `Documents/notes/Backend-Stream-B-Measurement.md` warns
 about, just pointed the other way.) That doc is blunt about why this module
 exists: "Do not build a partial version to fill the space." A panel that
 answers three-quarters of a question, with no label saying which quarter is
@@ -54,7 +54,7 @@ class WithheldPanel:
         )
 
 
-#: Insight 9. `plan.md` §9: no termination or lapse outcome exists anywhere
+#: Insight 9. `Documents/notes/plan.md` §9: no termination or lapse outcome exists anywhere
 #: in the corpus — v9 records what a call was about, never what an account
 #: went on to do. Unlike 22, more calls in the *same* shape of batch cannot
 #: unlock this: it needs a fact the schema does not carry at all, which is

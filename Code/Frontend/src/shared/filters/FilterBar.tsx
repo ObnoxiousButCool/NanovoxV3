@@ -7,7 +7,7 @@
  *
  * ## The scope line, and the one thing v2 dropped that this keeps
  *
- * v2 removed the scope line. `plan.md` §9 lists "filters slice, never hide"
+ * v2 removed the scope line. `Documents/notes/plan.md` §9 lists "filters slice, never hide"
  * as a standing practice and requires the applied row to "always show scope
  * and count" — conflict **C2** in the revised plan. The resolution recorded
  * there is to take v2's chip row *and* keep the count, which is what this

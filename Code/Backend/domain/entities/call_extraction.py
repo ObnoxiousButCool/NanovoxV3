@@ -61,7 +61,7 @@ class CallExtraction:
     touchpoint: str | None = None
     summary: str | None = None
     #: Call Tag Schema field 19 (v10) — what the call is fundamentally
-    #: about. Free text, deliberately: `Corpus-v10-Decisions.md` item C
+    #: about. Free text, deliberately: `Documents/notes/Corpus-v10-Decisions.md` item C
     #: leaves it unaggregated until a controlled vocabulary is defined.
     primary_issue: str | None = None
     #: Everything else the call also raised, besides `primary_issue`.

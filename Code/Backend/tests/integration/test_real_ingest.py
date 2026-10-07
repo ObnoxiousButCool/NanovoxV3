@@ -9,7 +9,7 @@ longer fire here, and a skip is now a signal that something is wrong rather
 than the normal state.
 
 The corpus arrives in batches short of a 600-call target
-(Corpus-v10-Schema-Update.md), so nothing here hardcodes a call count —
+(Documents/notes/Corpus-v10-Schema-Update.md), so nothing here hardcodes a call count —
 only a floor, so a corpus that silently lost calls (a batch file removed, a
 glob that stopped matching) still fails loudly rather than passing quietly
 on fewer calls than last time.

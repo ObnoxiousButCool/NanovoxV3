@@ -16,7 +16,7 @@
  *
  * ## The scope line sits above the content, always
  *
- * `plan.md` §9: filters slice, never hide. The count of what survived the
+ * `Documents/notes/plan.md` §9: filters slice, never hide. The count of what survived the
  * filters is part of the frame rather than a panel a screen might forget,
  * and the server's own `caveats` are rendered verbatim beneath it — they
  * are computed from the numbers, and a screen that dropped them would be

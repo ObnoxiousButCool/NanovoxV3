@@ -165,10 +165,10 @@ INSIGHTS: tuple[Insight, ...] = (
 #: which no agreement figure can change.
 #:
 #: 6 and 17 moved off this list once `root_cause_owner` (v10) shipped — see
-#: `Corpus-v10-Schema-Update.md` §3's own table: `EMPLOYER` is precisely the
+#: `Documents/notes/Corpus-v10-Schema-Update.md` §3's own table: `EMPLOYER` is precisely the
 #: value insight 6 was withheld for lack of, and `root_cause_owner` is the
 #: second, root-level record insight 17 was missing. 25 stays withheld
-#: (`Corpus-v10-Decisions.md` item F: `MEMBER_MISUNDERSTANDING` is adjacent
+#: (`Documents/notes/Corpus-v10-Decisions.md` item F: `MEMBER_MISUNDERSTANDING` is adjacent
 #: in spirit but not the `PLAN_AS_DESIGNED`/`MEMBER_COMPREHENSION` pair the
 #: insight specifies).
 WITHHELD_INSIGHTS: tuple[int, ...] = (9, 22, 25, 26)

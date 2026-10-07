@@ -10,7 +10,7 @@ yes/no flag turns back into the band D2 removed.
 ## Three things the port changed, all of them deliberate
 
 **1. They are gated now.** The prototype's `indicatorsFor` keeps any family
-with a single hit. plan.md §8 asks for "an absolute floor **and** a rate",
+with a single hit. Documents/notes/plan.md §8 asks for "an absolute floor **and** a rate",
 so `IndicatorGates` applies both. The floor of five calls is the
 prototype's own — `agents.html` calls it "the five-call floor the rest of
 the cockpit uses" — but the rate has no source at all and is the weakest

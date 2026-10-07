@@ -8,7 +8,7 @@ API produces a consistent snapshot regardless of what is or is not
 checkpointed — the same guarantee a live `.backup` command in the `sqlite3`
 CLI gives.
 
-Exists because of `Corpus-v10-Schema-Update.md`'s finding: a run left the
+Exists because of `Documents/notes/Corpus-v10-Schema-Update.md`'s finding: a run left the
 database failing `PRAGMA integrity_check`, and the only intact copy was one
 someone happened to have taken by hand just before. Taking that
 automatically, before anything writes, means a corruption is a restore

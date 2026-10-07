@@ -2,7 +2,7 @@
 
 ## Why facts are a type rather than a dict
 
-`Revised-Implementation-Plan.md` §9 Phase 5 says the insight service takes
+`Documents/notes/Revised-Implementation-Plan.md` §9 Phase 5 says the insight service takes
 "already-computed response DTOs". It cannot literally do that: response
 models live in `frameworks_drivers`, and the layers contract points inward,
 so an application use case importing one would break the build. The

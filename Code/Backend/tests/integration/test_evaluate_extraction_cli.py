@@ -64,7 +64,7 @@ def test_a_corpus_with_answers_and_no_extractions_reports_nothing_compared(
     output = capsys.readouterr().out
     assert exit_code == EXIT_NOTHING_COMPARED, "no extraction has run, so nothing is comparable"
     # Not a fixed call count: the corpus arrives in batches short of a
-    # 600-call target (Corpus-v10-Schema-Update.md).
+    # 600-call target (Documents/notes/Corpus-v10-Schema-Update.md).
     assert re.search(r"Scored 0 of \d+ call\(s\) with an answer key \(0% coverage\)\.", output)
     assert "NOTHING COMPARED" in output
     assert "Run the extraction first." in output

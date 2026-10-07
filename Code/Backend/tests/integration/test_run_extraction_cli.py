@@ -1,6 +1,6 @@
 """The run CLI's write-lock guard, against a real (temporary) database.
 
-`Corpus-v10-Schema-Update.md`'s finding: an extraction run once left the
+`Documents/notes/Corpus-v10-Schema-Update.md`'s finding: an extraction run once left the
 database failing `PRAGMA integrity_check`. This checks the one mitigation
 that has to work through the real CLI entry point rather than in isolation
 — refusing to start a second run while another's lock is still fresh. The

@@ -16,7 +16,7 @@ not, and no amount of asking will make it: `agent_quality` in
     broker is forbidden by the Metrics sheet, and there is no function here
     that would let a caller do it by accident.
 
-An account-level average is exactly that rollup. `plan.md` §3.0 gives the
+An account-level average is exactly that rollup. `Documents/notes/plan.md` §3.0 gives the
 prototype the presentation authority and the workbook the definitions, and
 this is a definition. Recorded as a conflict rather than quietly built.
 

@@ -117,7 +117,7 @@
         "type": "object"
       },
       "AccountProfileResponse": {
-        "description": "The account's own calls, counted.\n\nCounts, never rates, so none of these is suppressed: zero unresolved out\nof four calls is a true statement where a zero *rate* over four is not.\n\n**There is no average quality here, and there will not be one.** Metric\n12 is defined per agent, and `domain/aggregation/agent_events.py` states\nthat rolling it up to an employer is forbidden by the Metrics sheet. The\nv2 prototype shows an \"Average call quality\" tile on this page; the\nprototype wins on presentation and the workbook wins on definitions\n(`plan.md` \u00a73.0), so that tile is carried as a conflict rather than\nserved.\n\n`scored_calls` is not that figure in disguise. It counts how many calls\ncarry a score, which is coverage of a per-call figure the calls table\nalready prints; it says nothing about how high those scores are. It is\nsent so the screen can state the withholding with a number behind it\nrather than leaving a silent hole where the prototype has a tile.",
+        "description": "The account's own calls, counted.\n\nCounts, never rates, so none of these is suppressed: zero unresolved out\nof four calls is a true statement where a zero *rate* over four is not.\n\n**There is no average quality here, and there will not be one.** Metric\n12 is defined per agent, and `domain/aggregation/agent_events.py` states\nthat rolling it up to an employer is forbidden by the Metrics sheet. The\nv2 prototype shows an \"Average call quality\" tile on this page; the\nprototype wins on presentation and the workbook wins on definitions\n(`Documents/notes/plan.md` \u00a73.0), so that tile is carried as a conflict rather than\nserved.\n\n`scored_calls` is not that figure in disguise. It counts how many calls\ncarry a score, which is coverage of a per-call figure the calls table\nalready prints; it says nothing about how high those scores are. It is\nsent so the screen can state the withholding with a number behind it\nrather than leaving a silent hole where the prototype has a tile.",
         "properties": {
           "calls": {
             "description": "This account's calls in the risk window.",
@@ -5980,7 +5980,7 @@
         "type": "object"
       },
       "frameworks_drivers__api__v1__insights__risk__WithheldPanelResponse": {
-        "description": "Insight 9 \u2014 withheld unconditionally (plan.md's Phase 8 note): no gate\nunlocks it, only a schema change nobody has made.",
+        "description": "Insight 9 \u2014 withheld unconditionally (Documents/notes/plan.md's Phase 8 note): no gate\nunlocks it, only a schema change nobody has made.",
         "properties": {
           "insight": {
             "title": "Insight",

@@ -5,12 +5,12 @@
  * one of the deliberate changes in the v2 prototype, which wins on
  * presentation (plan §3.0). The labels are its own wording, not a paraphrase.
  *
- * Routes come from `plan.md` §8, which is the authority on paths; the
+ * Routes come from `Documents/notes/plan.md` §8, which is the authority on paths; the
  * prototype's filenames are not URLs.
  */
 
 export interface NavItem {
-  /** Route path. `plan.md` §8. */
+  /** Route path. `Documents/notes/plan.md` §8. */
   to: string
   /** The question this page answers. `nv2.js` PAGES, verbatim. */
   label: string

@@ -172,7 +172,7 @@ class Bucket:
 class Emerging:
     """A thing counted across equal slices, earliest first.
 
-    Counts only, deliberately. `plan.md` §9's emerging view notes that at
+    Counts only, deliberately. `Documents/notes/plan.md` §9's emerging view notes that at
     about eight calls a week a *share* would be two or three calls, so a
     percentage would imply a precision the corpus cannot support.
 
