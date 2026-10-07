@@ -1810,6 +1810,79 @@ describe('/agents', () => {
     expect(rows[0]?.querySelector('td:last-child')?.textContent).toBe('–')
     expect(rows[1]?.querySelector('td:last-child')?.textContent).toBe('88')
   })
+
+  it('lines the insight cards up with the tiles below them', async () => {
+    // The model writes its sentences in whatever order it chooses; this
+    // fixture deliberately scrambles it so the test fails if the screen
+    // ever renders the model's order verbatim.
+    const scrambled = {
+      status: { code: 'GENERATED', label: 'Generated' },
+      lenses: NO_INSIGHTS.lenses,
+      insights: [
+        {
+          key: 'score',
+          sentence: '0 agents with enough calls were recorded.',
+          kind: { code: 'INFERENCE', label: 'What this suggests' },
+          severity: { code: 'READ_FIRST', label: 'Read first' },
+          lens: { code: 'EMPLOYERS', label: 'Employers' },
+          factKeys: ['agents_with_enough_calls'],
+          issueKey: null,
+        },
+        {
+          key: 'compliance',
+          sentence: '24 compliance exceptions were recorded in the calls that were read.',
+          kind: { code: 'INFERENCE', label: 'What this suggests' },
+          severity: { code: 'WORTH_READING', label: 'Worth reading' },
+          lens: { code: 'EMPLOYERS', label: 'Employers' },
+          factKeys: ['compliance_exceptions'],
+          issueKey: null,
+        },
+        {
+          key: 'escalations',
+          sentence: '10 escalations missed were recorded, showing potential gaps in escalation handling.',
+          kind: { code: 'INFERENCE', label: 'What this suggests' },
+          severity: { code: 'WORTH_READING', label: 'Worth reading' },
+          lens: { code: 'EMPLOYERS', label: 'Employers' },
+          factKeys: ['escalations_missed'],
+          issueKey: null,
+        },
+        {
+          key: 'rules',
+          sentence: '37 rules were stated wrongly by agents during the calls that were read.',
+          kind: { code: 'INFERENCE', label: 'What this suggests' },
+          severity: { code: 'WORTH_READING', label: 'Worth reading' },
+          lens: { code: 'EMPLOYERS', label: 'Employers' },
+          factKeys: ['rules_stated_wrongly'],
+          issueKey: null,
+        },
+      ],
+      reason: null,
+      provider: 'openai',
+      model: 'gpt-5',
+    }
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(input.includes('/insights/generated') ? scrambled : routeFor(input)),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+    renderAt('/agents')
+
+    await screen.findByText('What this looks like')
+    const strip = screen.getByText('What this looks like').closest('section') as HTMLElement
+    const cards = [...strip.querySelectorAll('.nv-ai-card')].map((card) => card.textContent)
+
+    expect(cards[0]).toContain('compliance exceptions')
+    expect(cards[1]).toContain('rules were stated wrongly')
+    expect(cards[2]).toContain('escalations missed')
+    expect(cards[3]).toContain('agents with enough calls')
+  })
 })
 
 describe('the account tiles and topics', () => {
