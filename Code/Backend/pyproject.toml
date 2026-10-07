@@ -9,7 +9,14 @@
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+# The interpreter the code runs on, so pyupgrade may assume 3.14 and the
+# codebase is written in its idioms rather than in a floor nobody deploys.
+#
+# Raising this from py310 was not cosmetic: it rewrote 51 enums to `StrEnum`,
+# every `timezone.utc` to `datetime.UTC`, and the generics to PEP 695. The enum
+# change in particular reaches the wire, so it was accepted only after every
+# insight endpoint was compared byte for byte against the previous build.
+target-version = "py314"
 src = ["."]
 
 [tool.ruff.lint]
@@ -46,7 +53,10 @@ ignore = [
 ban-relative-imports = "all"
 
 [tool.mypy]
-python_version = "3.10"
+# The interpreter the code actually runs on, so stdlib signatures are checked
+# against the right version. Separate from ruff's `target-version` above, which
+# governs which rewrites ruff proposes rather than what is being type-checked.
+python_version = "3.14"
 strict = true
 warn_unreachable = true
 warn_no_return = true

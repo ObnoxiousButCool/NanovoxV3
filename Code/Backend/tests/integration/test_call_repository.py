@@ -5,7 +5,7 @@ call — nothing dropped.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -24,7 +24,7 @@ from infrastructure.system_clock import SystemClock
 _TRANSCRIPT = Transcript(
     reference="C-0001",
     source=CallSource.CORPUS_PDF,
-    occurred_at=datetime(2026, 7, 6, 9, 14, tzinfo=timezone.utc),
+    occurred_at=datetime(2026, 7, 6, 9, 14, tzinfo=UTC),
     aht_seconds=380,
     caller_type=CallerType.MEMBER,
     caller_ref="CB-7700205",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -59,7 +59,7 @@ from tests.support.rubric import dimension, marker, rubric
 _TRANSCRIPT = Transcript(
     reference="C-0001",
     source=CallSource.CORPUS_PDF,
-    occurred_at=datetime(2026, 7, 6, 9, 14, tzinfo=timezone.utc),
+    occurred_at=datetime(2026, 7, 6, 9, 14, tzinfo=UTC),
     aht_seconds=380,
     caller_type=CallerType.MEMBER,
     caller_ref="CB-7700205",
@@ -85,7 +85,7 @@ _PROVENANCE = L2Provenance(
     provider="openai",
     model="gpt-4o-mini",
     prompt_version="1.0.0",
-    completed_at=datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc),
+    completed_at=datetime(2026, 9, 23, 12, 0, tzinfo=UTC),
 )
 
 
@@ -316,7 +316,7 @@ _L3_PROVENANCE = L3Provenance(
     model="gpt-4o-mini",
     prompt_version="1.0.0",
     rubric_version="test-1.0.0",
-    completed_at=datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc),
+    completed_at=datetime(2026, 9, 23, 12, 0, tzinfo=UTC),
 )
 
 _RUBRIC = rubric(dimension("empathy", negative=8, max_negative=24))
@@ -464,7 +464,7 @@ _L4_PROVENANCE = L4Provenance(
     provider="openai",
     model="gpt-4o-mini",
     prompt_version="1.0.0",
-    completed_at=datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc),
+    completed_at=datetime(2026, 9, 23, 12, 0, tzinfo=UTC),
 )
 
 _ABSENT_GAP = ProcessGap(present=False)

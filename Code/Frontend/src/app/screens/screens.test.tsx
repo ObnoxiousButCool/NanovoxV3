@@ -782,17 +782,19 @@ const EXEC_RICH = {
         kind: 'category',
         key: 'Coverage & Benefits',
         label: 'Coverage & Benefits',
-        buckets: [bucket(1), bucket(2), bucket(5)],
-        delta: 4,
+        buckets: [bucket(1), bucket(2), bucket(8)],
+        delta: 7,
         rising: true,
+        receded: false,
       },
       {
         kind: 'signal',
         key: 'retention_risk',
         label: 'Retention risk',
-        buckets: [bucket(0), bucket(1), bucket(3)],
-        delta: 3,
+        buckets: [bucket(0), bucket(1), bucket(6)],
+        delta: 6,
         rising: true,
+        receded: false,
       },
       {
         kind: 'touchpoint',
@@ -801,6 +803,19 @@ const EXEC_RICH = {
         buckets: [bucket(1), bucket(1), bucket(2)],
         delta: 1,
         rising: true,
+        receded: false,
+      },
+      {
+        // Net up five and three below its own peak: the shape that used to
+        // rank as the largest riser on this panel. Not a card, not easing,
+        // and counted in the note under the cards.
+        kind: 'signal',
+        key: 'billing_defect',
+        label: 'Billing defect',
+        buckets: [bucket(2), bucket(10), bucket(7)],
+        delta: 5,
+        rising: false,
+        receded: true,
       },
       {
         kind: 'product_line',
@@ -809,6 +824,7 @@ const EXEC_RICH = {
         buckets: [bucket(5), bucket(3), bucket(1)],
         delta: -4,
         rising: false,
+        receded: true,
       },
       {
         kind: 'category',
@@ -817,6 +833,7 @@ const EXEC_RICH = {
         buckets: [bucket(3), bucket(2), bucket(1)],
         delta: -2,
         rising: false,
+        receded: true,
       },
     ],
   },
@@ -992,27 +1009,44 @@ describe('/exec, with accounts, escalations and an action board', () => {
     expect(concernPanel.textContent).toMatch(/only 0 of 2 escalations there were handled/)
   })
 
-  it('shows only the top three rising items as cards, plus an Easing sidebar', async () => {
+  it('cards every riser that cleared the bar, and says what it left out', async () => {
     renderAt('/exec')
 
     await waitFor(() => {
       expect(screen.getByText('Emerging issues')).toBeInTheDocument()
     })
-    // The three risen furthest: Coverage & Benefits (+4), retention_risk
-    // (+3), denial_letter_eob (+1). The fourth-largest rise does not exist
-    // in this fixture — the two falling items must not appear as cards.
+    // Coverage & Benefits (+7) and Retention risk (+6) clear MIN_RISE.
     // Shown by their words, never their raw codes (a naive
     // `replace('_',' ')` is exactly the bug this guards against).
     const panel = screen.getByText('Emerging issues').closest('.nv-panel') as HTMLElement
     expect(within(panel).getByText('Coverage & Benefits')).toBeInTheDocument()
     expect(within(panel).getByText('Retention risk')).toBeInTheDocument()
-    expect(within(panel).getByText('Denial letter / EOB')).toBeInTheDocument()
+    // Denial letter / EOB rose by one. A single call in the last slice is
+    // how a free-text touchpoint spelling becomes a "rising issue", which
+    // is the whole reason the bar exists.
+    expect(within(panel).queryByText('Denial letter / EOB')).not.toBeInTheDocument()
+    expect(panel.textContent).toMatch(/3 items rose; the 1 that rose by fewer than 5 calls/)
     // Each rising card carries its own chart.
-    expect(within(panel).getAllByRole('img').length).toBeGreaterThanOrEqual(3)
+    expect(within(panel).getAllByRole('img').length).toBeGreaterThanOrEqual(2)
     // Easing: the two falling items, dental first (furthest fallen).
     expect(within(panel).getByText('Easing')).toBeInTheDocument()
     expect(within(panel).getByText('Dental')).toBeInTheDocument()
     expect(within(panel).getByText('Broker Conduct')).toBeInTheDocument()
+  })
+
+  it('keeps a spike that has turned back out of the cards, and says it is there', async () => {
+    renderAt('/exec')
+
+    await waitFor(() => {
+      expect(screen.getByText('Emerging issues')).toBeInTheDocument()
+    })
+    const panel = screen.getByText('Emerging issues').closest('.nv-panel') as HTMLElement
+    // 2 -> 10 -> 7 is the largest net rise in the fixture. Ranked on delta
+    // alone it led the panel; it is three below its own peak, so it is not
+    // an emerging issue and must not be a card.
+    expect(within(panel).queryByText('Billing defect')).not.toBeInTheDocument()
+    // Not dropped in silence either: a reader can see something was cut.
+    expect(panel.textContent).toMatch(/1 rose earlier in the window and are now below their peak/)
   })
 
   it("matches the action-status bar's counts to the fixture action board", async () => {

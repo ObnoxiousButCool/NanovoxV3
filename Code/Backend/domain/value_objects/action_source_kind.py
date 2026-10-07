@@ -8,10 +8,10 @@ action view can show "already in progress" for the issue in front of it.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ActionSourceKind(str, Enum):
+class ActionSourceKind(StrEnum):
     PROCESS_GAP = "process_gap"
     KNOWLEDGE_FAILURE = "knowledge_failure"
     ESCALATION_MISSED = "escalation_missed"

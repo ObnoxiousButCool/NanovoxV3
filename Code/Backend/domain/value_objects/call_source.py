@@ -7,10 +7,10 @@ member exists so nothing downstream has to change shape when one arrives.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class CallSource(str, Enum):
+class CallSource(StrEnum):
     CORPUS_PDF = "CORPUS_PDF"
     PASTED = "PASTED"
     AUDIO = "AUDIO"

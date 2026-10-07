@@ -8,9 +8,9 @@ counts toward the exit family from a `CAN_BIND` contact.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class Authority(str, Enum):
+class Authority(StrEnum):
     CAN_BIND = "can bind"
     CANNOT_BIND = "cannot bind"

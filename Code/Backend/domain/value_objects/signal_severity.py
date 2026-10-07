@@ -7,10 +7,10 @@ fixed mapping every signal is scored against.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class SignalSeverity(str, Enum):
+class SignalSeverity(StrEnum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"

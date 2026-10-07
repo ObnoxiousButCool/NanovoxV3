@@ -40,7 +40,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Annotated, TypeVar
+from typing import Annotated
 
 from fastapi import Depends, Query
 
@@ -56,8 +56,6 @@ from domain.value_objects.outcome import Outcome
 from domain.value_objects.product_line import ProductLine
 from domain.value_objects.quality_band import QualityBand
 from domain.value_objects.signal_type import SignalType
-
-_T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
@@ -211,7 +209,7 @@ class InsightsQuery:
         )
 
 
-def _set(values: list[_T] | None) -> frozenset[_T]:
+def _set[T](values: list[T] | None) -> frozenset[T]:
     """An unsent parameter narrows nothing, so `None` becomes empty."""
     return frozenset(values or ())
 

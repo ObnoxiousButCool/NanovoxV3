@@ -5,10 +5,10 @@ reference — "inferred intent is an opinion and will be treated as one"
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class IntentType(str, Enum):
+class IntentType(StrEnum):
     EXPANSION = "expansion"
     MARKET_TEST = "market_test"
     CANCELLATION = "cancellation"

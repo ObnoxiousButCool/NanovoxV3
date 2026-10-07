@@ -35,16 +35,16 @@ from __future__ import annotations
 
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, StrEnum
 
 
-class Verdict(str, Enum):
+class Verdict(StrEnum):
     AGREED = "AGREED"
     DISAGREED = "DISAGREED"
     NOT_COMPARABLE = "NOT_COMPARABLE"
 
 
-class MissingSide(str, Enum):
+class MissingSide(StrEnum):
     """Which side had nothing to compare. Never both-and-agreed."""
 
     #: The tracker does not record this field for this call. A limit of the

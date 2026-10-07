@@ -74,11 +74,11 @@ if [ "$NO_SERVICE" -eq 0 ] && [ "$OS" = "Darwin" ] && [ "$(id -u)" -ne 0 ]; then
 fi
 
 PYTHON_BIN=""
-for candidate in python3.12 python3.11 python3.10 python3 python; do
+for candidate in python3.14 python3.13 python3 python; do
     if command -v "$candidate" >/dev/null 2>&1; then
         # `python3` alone may be any version, so every candidate is checked
         # rather than trusted by name.
-        if "$candidate" -c 'import sys; raise SystemExit(0 if (3,10) <= sys.version_info < (3,13) else 1)'; then
+        if "$candidate" -c 'import sys; raise SystemExit(0 if (3,13) <= sys.version_info < (3,15) else 1)'; then
             PYTHON_BIN="$candidate"
             note "Python $("$candidate" -c 'import platform; print(platform.python_version())') at $(command -v "$candidate")"
             break
@@ -86,7 +86,7 @@ for candidate in python3.12 python3.11 python3.10 python3 python; do
     fi
 done
 if [ -z "$PYTHON_BIN" ]; then
-    echo "No Python 3.10-3.12 found. Install one (brew install python@3.12) and re-run." >&2
+    echo "No Python 3.13-3.14 found. Install one (brew install python@3.14) and re-run." >&2
     exit 1
 fi
 

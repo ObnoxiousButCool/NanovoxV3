@@ -13,17 +13,24 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
 from domain.value_objects.token_usage import TokenUsage
 
+#: Exported for adapters, and used nowhere in this module.
+#:
+#: The two classes below carry their own scoped type parameters, PEP 695 style.
+#: A scoped parameter cannot be imported, and every adapter types its override
+#: of `complete` and `_generate` against the same variable — so the port still
+#: publishes one, and the alternative was seven files importing `BaseModel`
+#: only to restate this bound on each method.
 TModel = TypeVar("TModel", bound=BaseModel)
 
 
 @dataclass(frozen=True)
-class LlmRequest(Generic[TModel]):
+class LlmRequest[TModel: BaseModel]:
     """One structured completion request."""
 
     prompt: str
@@ -35,7 +42,7 @@ class LlmRequest(Generic[TModel]):
 
 
 @dataclass(frozen=True)
-class StructuredResult(Generic[TModel]):
+class StructuredResult[TModel: BaseModel]:
     """A validated answer, with the provenance needed to reproduce it."""
 
     value: TModel

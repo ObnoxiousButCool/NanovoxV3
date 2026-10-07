@@ -8,7 +8,7 @@ and an account nobody could assess never appears as an account found clean.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -82,7 +82,7 @@ async def seed(
                 call = CallRow(
                     reference=f"C-{index:04d}",
                     source=CallSource.CORPUS_PDF.value,
-                    occurred_at=datetime(2026, 9, day, 10, 0, tzinfo=timezone.utc),
+                    occurred_at=datetime(2026, 9, day, 10, 0, tzinfo=UTC),
                     aht_seconds=400,
                     caller_type="MEMBER",
                     caller_ref="MEM-1",
@@ -491,7 +491,7 @@ async def _seed_with_category_and_escalation(
             call = CallRow(
                 reference=f"C-{index:04d}",
                 source=CallSource.CORPUS_PDF.value,
-                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
                 aht_seconds=400,
                 caller_type="MEMBER",
                 caller_ref="MEM-1",
@@ -594,7 +594,7 @@ async def _flagged_and_quiet(session_factory: async_sessionmaker[AsyncSession]) 
             call = CallRow(
                 reference=f"F-{index:04d}",
                 source=CallSource.CORPUS_PDF.value,
-                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
                 aht_seconds=400,
                 caller_type="MEMBER",
                 caller_ref="MEM-F",
@@ -622,7 +622,7 @@ async def _flagged_and_quiet(session_factory: async_sessionmaker[AsyncSession]) 
             call = CallRow(
                 reference=f"Q-{index:04d}",
                 source=CallSource.CORPUS_PDF.value,
-                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=timezone.utc),
+                occurred_at=datetime(2026, 9, 20, 10, 0, tzinfo=UTC),
                 aht_seconds=400,
                 caller_type="MEMBER",
                 caller_ref=f"MEM-Q{index}",

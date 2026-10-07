@@ -13,10 +13,10 @@ opinion about it. See `domain/derivations/root_cause.py`.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class RootCauseOwner(str, Enum):
+class RootCauseOwner(StrEnum):
     CHOICE = "CHOICE"
     BROKER = "BROKER"
     CARRIER = "CARRIER"

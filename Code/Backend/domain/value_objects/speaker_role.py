@@ -7,9 +7,9 @@ make every turn the agent's. See `domain/speaker_resolution.py`.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class SpeakerRole(str, Enum):
+class SpeakerRole(StrEnum):
     AGENT = "AGENT"
     CALLER = "CALLER"

@@ -8,7 +8,7 @@ re-ingested PDF); hashing the content means that's simply a cache miss.
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from domain.entities.transcript import Transcript
@@ -21,7 +21,7 @@ from domain.value_objects.speaker_role import SpeakerRole
 _BASE = Transcript(
     reference="C-0001",
     source=CallSource.CORPUS_PDF,
-    occurred_at=datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc),
+    occurred_at=datetime(2026, 9, 1, 12, 0, tzinfo=UTC),
     aht_seconds=300,
     caller_type=CallerType.MEMBER,
     caller_ref="CB-7700205",

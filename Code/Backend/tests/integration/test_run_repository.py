@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -15,8 +15,8 @@ from infrastructure.persistence.repositories.diagnostics_source import (
 )
 from infrastructure.persistence.repositories.run_repository import SqlRunRepository
 
-_CREATED_AT = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
-_STARTED_AT = datetime(2026, 9, 23, 12, 1, tzinfo=timezone.utc)
+_CREATED_AT = datetime(2026, 9, 23, 12, 0, tzinfo=UTC)
+_STARTED_AT = datetime(2026, 9, 23, 12, 1, tzinfo=UTC)
 
 
 async def test_a_new_run_has_one_pending_item_per_reference(
@@ -64,7 +64,7 @@ class TestSetStatus:
         # SQLite drops tzinfo on round trip; every timestamp in this stack
         # is UTC by convention (`Clock.now()`'s own contract).
         assert record.started_at is not None
-        assert record.started_at.replace(tzinfo=timezone.utc) == _STARTED_AT
+        assert record.started_at.replace(tzinfo=UTC) == _STARTED_AT
         assert record.finished_at is None
 
     async def test_a_terminal_status_records_finished_at(
@@ -80,7 +80,7 @@ class TestSetStatus:
 
         assert record is not None
         assert record.finished_at is not None
-        assert record.finished_at.replace(tzinfo=timezone.utc) == _STARTED_AT
+        assert record.finished_at.replace(tzinfo=UTC) == _STARTED_AT
 
     async def test_setting_status_on_an_unknown_run_is_refused(
         self, engine: AsyncEngine, session_factory: async_sessionmaker[AsyncSession]

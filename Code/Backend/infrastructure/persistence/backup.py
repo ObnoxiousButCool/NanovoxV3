@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 #: Microsecond precision, not just seconds: two backups taken in the same
@@ -47,7 +47,7 @@ def _unique_destination(backups_dir: Path, database_file: Path) -> Path:
     the timestamp is kept because it is what makes the directory
     readable, not because it alone is trusted to be unique.
     """
-    timestamp = datetime.now(timezone.utc).strftime(_TIMESTAMP_FORMAT)
+    timestamp = datetime.now(UTC).strftime(_TIMESTAMP_FORMAT)
     stem = f"{database_file.stem}.{timestamp}"
     destination = backups_dir / f"{stem}{database_file.suffix}"
     suffix = 1

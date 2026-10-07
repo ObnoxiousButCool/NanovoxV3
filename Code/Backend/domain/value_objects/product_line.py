@@ -7,10 +7,10 @@ line owns the call.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ProductLine(str, Enum):
+class ProductLine(StrEnum):
     DENTAL = "dental"
     VISION = "vision"
     LIFE = "life"

@@ -40,9 +40,9 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 from enum import Enum
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
@@ -89,7 +89,6 @@ from infrastructure.persistence.tables import (
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-_EnumT = TypeVar("_EnumT", bound=Enum)
 
 #: Call Tag Schema fields no included call carries a value for.
 #:
@@ -318,16 +317,14 @@ class SqlInsightsSource(InsightsSource):
             statement = statement.where(
                 or_(
                     CallRow.occurred_at.is_(None),
-                    CallRow.occurred_at
-                    >= datetime.combine(query.since, time.min, tzinfo=timezone.utc),
+                    CallRow.occurred_at >= datetime.combine(query.since, time.min, tzinfo=UTC),
                 )
             )
         if query.until is not None:
             statement = statement.where(
                 or_(
                     CallRow.occurred_at.is_(None),
-                    CallRow.occurred_at
-                    <= datetime.combine(query.until, time.max, tzinfo=timezone.utc),
+                    CallRow.occurred_at <= datetime.combine(query.until, time.max, tzinfo=UTC),
                 )
             )
 
@@ -504,7 +501,7 @@ def _intent(extraction: CallExtractionRow) -> tuple[IntentStatement, ...]:
     )
 
 
-def _enum(kind: type[_EnumT], value: str | None) -> _EnumT | None:
+def _enum[EnumT: Enum](kind: type[EnumT], value: str | None) -> EnumT | None:
     """A stored enum value, or `None` when the column is null.
 
     Deliberately not forgiving of an unrecognised value: a category the

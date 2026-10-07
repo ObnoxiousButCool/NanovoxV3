@@ -15,8 +15,14 @@ import pytest
 from infrastructure.runner.background_runner import BackgroundRunner
 
 
-async def _wait_for(condition: object, timeout: float = 1.0) -> None:
-    """Poll a zero-arg callable until it's true, or fail after `timeout`."""
+async def _wait_for(condition: object, timeout: float = 1.0) -> None:  # noqa: ASYNC109
+    """Poll a zero-arg callable until it's true, or fail after `timeout`.
+
+    ASYNC109 asks for `asyncio.timeout` around the caller instead. That
+    cancels the wait and raises `TimeoutError`, where the deadline here fails
+    naming the condition that never came true — the difference between
+    "something timed out" and "the run never reached RUNNING".
+    """
     assert callable(condition)
     deadline = asyncio.get_running_loop().time() + timeout
     while not condition():

@@ -44,3 +44,9 @@ Thumbs.db
 
 # Local editor and agent scaffolding, not project configuration.
 .claude/
+
+# Shipped release artefacts: a 77 MB image tarball and a copy of the
+# corpus database. Built by `docker save`, never committed.
+release/*.tar
+release/*.tar.gz
+release/*.db

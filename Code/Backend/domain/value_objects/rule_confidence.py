@@ -37,10 +37,10 @@ adapt an existing one. Flagged for Minnie; no chip style invented here.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class RuleConfidence(str, Enum):
+class RuleConfidence(StrEnum):
     VERIFIED = "VERIFIED"
     VERIFIED_SECONDARY = "VERIFIED (SECONDARY)"
     UNVERIFIED = "UNVERIFIED"

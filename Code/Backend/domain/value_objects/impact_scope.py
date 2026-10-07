@@ -23,12 +23,12 @@ tracker already wrote.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from domain.errors import ValidationError
 
 
-class ImpactScopeBucket(str, Enum):
+class ImpactScopeBucket(StrEnum):
     ONE_MEMBER = "1_member"
     ONE_GROUP = "1_group"
     N_EMPLOYEES = "n_employees"

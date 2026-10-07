@@ -10,13 +10,13 @@ workbook.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 HIGH_THRESHOLD = 60
 MEDIUM_THRESHOLD = 35
 
 
-class DerivedBand(str, Enum):
+class DerivedBand(StrEnum):
     HIGH = "High"
     MEDIUM = "Medium"
     LOW = "Low"

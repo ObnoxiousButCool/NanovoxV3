@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from domain.errors import NotFoundError, ValidationError
 from domain.value_objects.tier import TierThresholds
@@ -76,14 +76,14 @@ class Dimension:
             )
 
 
-class GateCondition(str, Enum):
+class GateCondition(StrEnum):
     """What a gate examines."""
 
     SIGNAL_PRESENT = "signal_present"
     SCORE_BELOW = "score_below"
 
 
-class GateEffect(str, Enum):
+class GateEffect(StrEnum):
     """What a gate does when it triggers."""
 
     SUSPEND_SCORE = "suspend_score"

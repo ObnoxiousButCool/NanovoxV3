@@ -50,7 +50,7 @@ class RegistryProviderProbe(ProviderProbe):
             status = await asyncio.wait_for(provider.status(), timeout=self._timeout)
         # asyncio.TimeoutError, not the builtin: they are only the same
         # object from Python 3.11, and this runs on 3.10.
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # An unreachable host does not refuse a connection, it goes
             # quiet, and the socket waits far longer than anyone looking at
             # a dropdown will. Reported as unavailable with the reason

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -23,7 +23,7 @@ from domain.actions import (
 from domain.errors import ValidationError
 from domain.value_objects.action_source_kind import ActionSourceKind
 
-_AT = datetime(2026, 9, 25, 9, 0, tzinfo=timezone.utc)
+_AT = datetime(2026, 9, 25, 9, 0, tzinfo=UTC)
 _WINDOW = MeasurementWindow(start=date(2026, 10, 1), end=date(2026, 10, 28))
 
 LIFECYCLE = Lifecycle(

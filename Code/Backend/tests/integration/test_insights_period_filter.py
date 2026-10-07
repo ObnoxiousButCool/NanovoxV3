@@ -13,7 +13,7 @@ the Metrics sheet does not carry, with nothing on screen to say so.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -83,7 +83,7 @@ async def seed(
         await session.flush()
 
         occurred: list[datetime | None] = [
-            datetime(2026, 9, day, 10, 0, tzinfo=timezone.utc) for day in days
+            datetime(2026, 9, day, 10, 0, tzinfo=UTC) for day in days
         ]
         occurred.extend([None] * undated)
 

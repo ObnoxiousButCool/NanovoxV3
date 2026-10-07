@@ -9,7 +9,7 @@ takes a denominator with it.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from unittest import mock
 
 import pytest
@@ -76,7 +76,7 @@ def call_row(
     reference: str = "C-0001",
     *,
     employer_id: int | None = None,
-    occurred_at: datetime | None = datetime(2025, 3, 1, 10, 0, tzinfo=timezone.utc),
+    occurred_at: datetime | None = datetime(2025, 3, 1, 10, 0, tzinfo=UTC),
     source: CallSource = CallSource.CORPUS_PDF,
 ) -> CallRow:
     return CallRow(

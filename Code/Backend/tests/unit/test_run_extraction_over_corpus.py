@@ -6,7 +6,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -26,7 +26,7 @@ from infrastructure.logging.llm_audit import LlmAuditLog
 from infrastructure.runner.background_runner import BackgroundRunner
 from tests.support.settings import make_settings
 
-_NOW = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+_NOW = datetime(2026, 9, 23, 12, 0, tzinfo=UTC)
 
 
 def _call(reference: str) -> IngestedCall:
@@ -209,7 +209,14 @@ def _use_case(
     return use_case, runs, fake_pipeline
 
 
-async def _wait_for(condition: Callable[[], bool], timeout: float = 1.0) -> None:
+async def _wait_for(
+    # ASYNC109 wants `asyncio.timeout` at the call site. That cancels and raises
+    # `TimeoutError`; this deadline fails naming the condition that never came
+    # true, which is the difference between "something timed out" and "the run
+    # never reached RUNNING".
+    condition: Callable[[], bool],
+    timeout: float = 1.0,  # noqa: ASYNC109
+) -> None:
     # A background task just scheduled via `BackgroundRunner.start` gets no
     # turn at all until something here actually yields — without this, a
     # run already terminal *before* the call under test (e.g. INTERRUPTED,

@@ -20,6 +20,8 @@ import pytest
 from domain.aggregation.call_tags import CallContext, CallTags, Window
 from domain.aggregation.trends import (
     NOISE_THRESHOLD,
+    Bucket,
+    Emerging,
     as_of_window,
     emerging,
     movement,
@@ -239,6 +241,70 @@ def test_emerging_counts_each_value_across_slices() -> None:
     assert rows[0].buckets[-1].hits == 2
     assert rows[0].delta == 1
     assert rows[0].rising
+
+
+def _series(*hits: int) -> Emerging:
+    """An `Emerging` with the given slice counts and nothing else that matters."""
+    day = date(2026, 9, 1)
+    return Emerging(
+        key="k",
+        kind="category",
+        buckets=tuple(Bucket(window=Window(day, day), calls=count, hits=count) for count in hits),
+    )
+
+
+def test_a_series_that_peaked_and_turned_back_is_not_rising() -> None:
+    """The defect this guards: `delta` compares the ends and skips the middle.
+
+    19, 36, 30 is net up eleven and six below its own peak. Ranked on `delta`
+    alone it sat second on the executive screen's emerging panel, telling a
+    reader an issue was growing while it receded.
+    """
+    series = _series(19, 36, 30)
+
+    assert series.delta == 11, "net change is unchanged - it is the direction that was wrong"
+    assert series.peak == 36
+    assert series.receded
+    assert not series.rising
+
+
+def test_a_series_still_at_its_peak_is_rising() -> None:
+    series = _series(17, 23, 29)
+
+    assert series.rising
+    assert not series.receded
+
+
+def test_a_series_that_climbs_then_holds_level_is_rising() -> None:
+    """Level is not a fall. The last slice equals the peak, so it stands."""
+    series = _series(7, 12, 12)
+
+    assert series.rising
+    assert not series.receded
+
+
+def test_a_falling_series_is_neither_rising_nor_confused_with_a_spike() -> None:
+    series = _series(30, 20, 10)
+
+    assert series.delta == -20
+    assert series.receded, "it is below its peak, which is where easing is read from"
+    assert not series.rising
+
+
+def test_a_flat_series_has_not_receded() -> None:
+    series = _series(5, 5, 5)
+
+    assert not series.rising
+    assert not series.receded
+
+
+def test_an_empty_series_answers_without_raising() -> None:
+    """No slices at all is the shape `slice_window` returns for a bad window."""
+    series = _series()
+
+    assert series.peak == 0
+    assert not series.receded
+    assert not series.rising
 
 
 def test_a_call_the_attribute_does_not_apply_to_is_left_out() -> None:
