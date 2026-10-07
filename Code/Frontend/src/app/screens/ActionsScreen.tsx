@@ -14,13 +14,27 @@
  *
  * ## The panels, and the ones that are not here
  *
- * Four, in `actions.html`'s order: the tiles, the issues list, the board,
- * and "Did it work?". Two that used to sit between them are gone — a "By
- * team" routing panel and an aggregated compliance-exceptions panel. The
- * prototype has neither, and neither loses anything: the owning team is on
- * every issue row and every card already, and metric 7 is reported per
- * agent on `/agents` and per call on `/calls`, where it is attached to
- * something a reader can open.
+ * Three, in `actions.html`'s order: the tiles, the issues list and the
+ * board. Two that used to sit between them are gone — a "By team" routing
+ * panel and an aggregated compliance-exceptions panel. The prototype has
+ * neither, and neither loses anything: the owning team is on every issue
+ * row and every card already, and metric 7 is reported per agent on
+ * `/agents` and per call on `/calls`, where it is attached to something a
+ * reader can open.
+ *
+ * ## "Did it work?" is not drawn
+ *
+ * Insight 22's withheld panel used to close the screen. It is the one
+ * withheld panel that is not a schema gap: `withheld.py` says the others
+ * need a field that does not exist and "no amount of corpus growth changes
+ * any of them", while 22 only wants a second batch — a window after a
+ * logged remediation. A panel saying "ask again when more data arrives" is
+ * a different thing from one saying "this cannot be answered", and only the
+ * second earns permanent space on the screen.
+ *
+ * The server still sends `findings.didItWork` and the other two panels still
+ * render. Nothing about the withheld mechanism changed; this screen stopped
+ * drawing one of its three.
  *
  * ## Every row leads to steps
  *
@@ -188,8 +202,6 @@ function ActionsBody({
     ...new Set(board.actions.map((a) => a.owner).filter((v): v is string => v !== null)),
   ].sort()
 
-  const measured = board.actions.filter((a) => a.outcome !== null)
-
   return (
     <div className="nv-grid">
       {focus !== null ? (
@@ -221,10 +233,6 @@ function ActionsBody({
           onOpenCard={onOpenCard}
           onNewCard={() => { onOpenComposer(null, employerRef) }}
         />
-      </div>
-
-      <div className="nv-c12">
-        <DidItWorkPanel panel={findings.didItWork} measured={measured} />
       </div>
 
       <ActionDialog open={modal !== null} onClose={onCloseModal}>
@@ -639,50 +647,3 @@ function AttnRow({ issue, employerRef }: { issue: Issue; employerRef: string | n
   )
 }
 
-/**
- * "Did it work?" — the outcomes recorded, and why they are not an answer.
- *
- * One panel, because the prototype has one: its "Did it work?" table is the
- * outcomes somebody typed, and its tooltip is insight 22's caveat. Two
- * panels here — a withheld note and an outcomes table under different
- * headings — let a reader take the table as the measurement, which is the
- * exact reading insight 22 is withheld to prevent.
- */
-function DidItWorkPanel({
-  panel,
-  measured,
-}: {
-  panel: ActionsFindings['didItWork']
-  measured: Action[]
-}) {
-  return (
-    <Panel
-      title={panel.question}
-      chip={<EpistemicChip kind="inference" />}
-    >
-      {/* The reason this panel is empty is the panel's whole content, so it
-          goes in the empty state rather than in a note beside it.
-          "No outcome recorded yet" said something else and something
-          untrue: that nobody had got round to recording one. The question
-          cannot be answered from this corpus at all — insight 22 needs a
-          window before a change and a comparable one after it, and a single
-          batch has no after. `why` and `unlockedBy` have been on the wire
-          all along; only the sentence that showed them was lost. */}
-      {measured.length === 0 ? (
-        <Empty title="Not answerable from this corpus">
-          {panel.why} Unlocked by {panel.unlockedBy}.
-        </Empty>
-      ) : (
-        <ul className="nv-movements">
-          {measured.map((action) => (
-            <li key={action.id}>
-              <span className="nv-nm">{action.title}</span>
-              <span>{action.actionTaken ?? '–'}</span>
-              <span>{action.outcome}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Panel>
-  )
-}
