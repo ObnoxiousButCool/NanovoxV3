@@ -127,7 +127,10 @@ checkout's — without this the frontend is not found.
 
 ## Step 4 — Startup command and Always On
 
-**Settings → Configuration → General settings**
+**Settings → Configuration**, which opens on the **General settings** tab —
+that tab does *not* have the Startup Command field. Click the **Stack
+settings** tab instead; the field sits just below the Python version
+selector.
 
 **Startup Command** — paste this as one line:
 
@@ -135,15 +138,16 @@ checkout's — without this the frontend is not found.
 mkdir -p /tmp/nanovox && cp /home/data/nanovox_insights.db /tmp/nanovox/ && cd /home/site/wwwroot/Code/Backend && python -m uvicorn frameworks_drivers.main:app --host 0.0.0.0 --port 8000
 ```
 
-It copies the corpus from the persistent share onto local disk, then serves.
-No `alembic upgrade head` — the shipped database already carries the schema,
-and nothing at startup needs Alembic.
-
-Also on this tab:
+**Save** on the Stack settings tab, then switch back to **General settings**
+for the rest:
 
 - **Always on** → **On**
 - **HTTP version** → 2.0 *(optional)*
 - **HTTPS Only** → **On**
+
+It copies the corpus from the persistent share onto local disk, then serves.
+No `alembic upgrade head` — the shipped database already carries the schema,
+and nothing at startup needs Alembic.
 
 **Save**.
 
