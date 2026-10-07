@@ -1706,9 +1706,8 @@ describe('/accounts — the picker', () => {
 
 describe('/agents', () => {
   it('says nothing to the reader in markup they will see raw', async () => {
-    // The tooltip under "Coach the agent, or fix the rule?" named the
-    // knowledge-error signal in backticks. Nothing renders them, so they
-    // reached the screen as punctuation wrapped round a word.
+    // A panel once named a signal in backticks. Nothing renders them, so
+    // they reached the screen as punctuation wrapped round a word.
     //
     // Asserted over everything the page renders rather than that one
     // string: these are written in files whose docstrings use backticks
@@ -1807,21 +1806,6 @@ describe('/agents', () => {
     expect(rows[0]?.textContent).toContain('Senior')
     expect(rows[0]?.querySelector('td:last-child')?.textContent).toBe('–')
     expect(rows[1]?.querySelector('td:last-child')?.textContent).toBe('88')
-  })
-
-  it('points the rule question at /rules rather than answering it here', async () => {
-    // "Coach the agent or fix the rule?" needs schema field 8 joined to the
-    // agent who took the call, which D7 forbids. It is not a plumbing gap.
-    renderAt('/agents')
-
-    const link = await screen.findByRole('link', { name: /rules we fail to explain/i })
-
-    expect(link).toHaveAttribute('href', '/rules')
-    // The panel body names the decision, so a reader sees why the answer
-    // is absent without opening the tooltip — which also names it, hence
-    // scoping this to the panel rather than the page.
-    const panel = screen.getByText('Coach the agent, or fix the rule?').closest('section')
-    expect(within(panel as HTMLElement).getByText(/D7 is open/)).toBeInTheDocument()
   })
 })
 
