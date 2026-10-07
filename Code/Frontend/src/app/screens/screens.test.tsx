@@ -1408,6 +1408,53 @@ describe('/hierarchy', () => {
     })
     expect(screen.getByText('of 5 complaints')).toBeInTheDocument()
   })
+
+  it('leaves Broker pattern alerts and Regions with flagged accounts plain when neither fires', async () => {
+    // The fixture: no broker's pattern fires, and only one of two regions
+    // carries a flagged account — neither tile's noteworthy case.
+    renderAt('/hierarchy')
+
+    await waitFor(() => {
+      expect(screen.getByText('Broker pattern alerts')).toBeInTheDocument()
+    })
+    const alerts = screen.getByText('Broker pattern alerts').closest('.nv-big')
+    const regions = screen.getByText('Regions with flagged accounts').closest('.nv-big')
+    expect((alerts as HTMLElement).className).not.toContain('nv-warm')
+    expect((regions as HTMLElement).className).not.toContain('nv-warm')
+  })
+
+  it('accents Broker pattern alerts and Regions with flagged accounts when they fire', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.includes('/insights/hierarchy')
+                ? {
+                    ...HIERARCHY,
+                    brokers: [{ ...HIERARCHY.brokers[0], patternFires: true }],
+                    // Every region now carries a flagged account — the
+                    // book-wide reading the meta line names.
+                    regions: HIERARCHY.regions.map((region) => ({ ...region, flagged: 1 })),
+                  }
+                : routeFor(input),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+    renderAt('/hierarchy')
+
+    await waitFor(() => {
+      expect(screen.getByText('Broker pattern alerts')).toBeInTheDocument()
+    })
+    const alerts = screen.getByText('Broker pattern alerts').closest('.nv-big')
+    const regions = screen.getByText('Regions with flagged accounts').closest('.nv-big')
+    expect((alerts as HTMLElement).className).toContain('nv-warm')
+    expect((regions as HTMLElement).className).toContain('nv-warm')
+  })
 })
 
 describe('/calls', () => {
