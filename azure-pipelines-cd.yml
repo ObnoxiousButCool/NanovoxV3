@@ -27,6 +27,20 @@
 # to rotate and no expiry to be surprised by three months from now. Creating it
 # registers an application in the technossus.com directory, which this tenant
 # permits for standard users.
+#
+# AND GRANT IT TO ALL PIPELINES. Because `azureSubscription` now comes from a
+# variable group, its value is a runtime substitution and Azure DevOps cannot
+# resolve it when it decides, at queue time, which protected resources this run
+# may touch. With a literal name it offers the familiar "this pipeline needs
+# permission" prompt; with a variable there is nothing to prompt about, and an
+# unauthorised connection fails mid-run with "service connection could not be
+# found" instead.
+#
+#   Project Settings -> Service connections -> NanoVox-Azure
+#     ... -> Security -> Grant access permission to all pipelines
+#
+# The same applies to the variable group itself, which is why it was created
+# with --authorize true.
 # ---------------------------------------------------------------------------
 
 # Deploy when main changes, and only for changes that can affect what is
@@ -51,23 +65,33 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  # Must match the service connection's name exactly.
-  azureSubscription: 'NanoVox-Azure'
-
-  # The app as actually created: West US 3, inside an East US resource group.
-  # East US had no B1 capacity at the time; a group may hold resources in any
+  # Where this deploys, held outside the file so a second environment is a
+  # second group rather than a second pipeline:
+  #
+  #   azureSubscription  NanoVox-Azure      the service connection's exact name
+  #   resourceGroupName  RG-NanoVox-POC
+  #   webAppName         nanovox-insights
+  #
+  # Pipelines -> Library -> Variable groups -> NanoVox-Shared-Config (id 43).
+  # The app itself is in West US 3 inside an East US resource group: East US
+  # had no B1 capacity when it was created, a group may hold resources in any
   # region, and both bill $0.017/hour.
-  resourceGroupName: 'RG-NanoVox-POC'
-  webAppName: 'nanovox-insights'
+  - group: NanoVox-Shared-Config
 
+  # The rest stay here, and switch to list syntax because they have to: one
+  # `- group:` entry turns the whole block into a sequence, and a `key: value`
+  # mapping mixed in after it is a parse error rather than a merge.
+  #
   # Matches pyproject.toml and the Linux runtime on the web app (PYTHON|3.14).
   # The agent's Python only builds the artifact — Oryx installs dependencies on
   # the App Service — but a mismatch here still produces a bundle built against
   # the wrong interpreter if a wheel ever gets vendored.
-  pythonVersion: '3.14'
-  nodeVersion: '20'
-
-  npm_config_cache: $(Pipeline.Workspace)/.npm
+  - name: pythonVersion
+    value: '3.14'
+  - name: nodeVersion
+    value: '20'
+  - name: npm_config_cache
+    value: $(Pipeline.Workspace)/.npm
 
 stages:
   # =========================================================================
