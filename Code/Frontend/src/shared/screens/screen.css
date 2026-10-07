@@ -339,6 +339,14 @@ a.nv-fire:hover {
   margin: 24px 0 4px;
 }
 
+/* The parenthetical beside a subhead's count — "(1 not computable)".
+   Lighter and regular weight so it reads as a qualifier on the figure rather
+   than as part of it: the count is the claim, this is its footnote. */
+.nv-subhead-aside {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
 .nv-conditions {
   list-style: none;
   margin: 0;

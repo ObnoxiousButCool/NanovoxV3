@@ -206,6 +206,17 @@ export function AccountBody({ data }: { data: AccountDetail }) {
   // that ever disagreed would show through instead of being papered over.
   const unassessed = risk.observations.find((observation) => !observation.assessable)
 
+  // The denominator is the families that could be looked at, not all ten.
+  //
+  // `available` is false where no v9 field backs the family at all — today
+  // that is high member effort, a composite Stream A's derivations would own
+  // and nobody built. Counting it in the denominator says ten were checked
+  // when nine were, which is the same false statement the row below avoids by
+  // drawing an em dash instead of a nought. Saying it in the heading and
+  // denying it in the row would be an odd way to be careful.
+  const checkable = risk.observations.filter((observation) => observation.available)
+  const notComputable = risk.observations.length - checkable.length
+
   return (
     <>
       <div className="nv-c7">
@@ -246,8 +257,14 @@ export function AccountBody({ data }: { data: AccountDetail }) {
           <h3 className="nv-subhead">
             Other conditions observed —{' '}
             {unassessed === undefined
-              ? `${String(fired.length)} of ${String(risk.observations.length)}`
+              ? `${String(fired.length)} of ${String(checkable.length)}`
               : 'not assessed'}
+            {unassessed === undefined && notComputable > 0 ? (
+              <span className="nv-subhead-aside">
+                {' '}
+                ({String(notComputable)} not computable)
+              </span>
+            ) : null}
           </h3>
           {/* Said once at the top rather than repeated on all ten rows. A
               count of nought here would read as a clean account, when what

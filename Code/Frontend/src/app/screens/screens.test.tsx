@@ -1242,6 +1242,19 @@ describe('/risk, the headline tile row', () => {
 })
 
 describe('/accounts/:ref', () => {
+  it('counts only the families it could look at, and says so', async () => {
+    // The fixture has three families: one observed, one checked and not
+    // observed, one with no v9 field behind it at all. The heading used to
+    // read "1 of 3", which says three were checked when two were — the same
+    // false statement the row avoids by drawing an em dash instead of a
+    // nought, reintroduced one line above it.
+    renderAt('/accounts/EMP-1001')
+
+    expect(await screen.findByText(/Other conditions observed — 1 of 2/)).toBeInTheDocument()
+    expect(screen.getByText(/\(1 not computable\)/)).toBeInTheDocument()
+    expect(screen.queryByText(/Other conditions observed — 1 of 3/)).not.toBeInTheDocument()
+  })
+
   it('keeps an unavailable indicator family out of "not observed"', async () => {
     renderAt('/accounts/EMP-1001')
 
