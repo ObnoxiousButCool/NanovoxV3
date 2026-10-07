@@ -4,8 +4,8 @@ Click-by-click, for the plan settled in `Deployment-Options.md` §0: one Linux
 App Service on **B1**, SQLite copied to `/tmp` at startup, and Entra ID sign-in
 in front of it.
 
-**Cost: $5.71 for a fortnight.** B1 Linux is $0.017/hour in East US on the live
-retail price API. Nothing else here bills — no
+**Cost: $5.71 for a fortnight.** B1 Linux is $0.017/hour in West US 3 on the
+live retail price API - the same as East US and West US 2. Nothing else here bills — no
 registry, no database server, no storage account.
 
 > **Sign in as** `Ranjit.Savant@technossus.com`, subscription **Dev-Testing**
@@ -19,12 +19,12 @@ registry, no database server, no storage account.
 
 | | |
 |---|---|
-| `RG-NanoVox-POC` | exists, **East US**, currently **empty** |
+| `RG-NanoVox-POC` | exists, **East US** (its resources sit in **West US 3**) |
 | Your role on it | **Owner** |
 | `Microsoft.Web` provider | **Registered** |
 | Policy assignments | none that block this |
 | App registrations by non-admins | **allowed** — step 7 needs no admin |
-| B1 Linux, East US | **$0.017/hour** → **$5.71** per fortnight |
+| B1 Linux, West US 3 | **$0.017/hour** → **$5.71** per fortnight |
 
 ---
 
@@ -52,12 +52,19 @@ screen in its withheld state.
 ## Step 1 — Resource group
 
 **Nothing to do — `RG-NanoVox-POC` already exists**, in the **Dev-Testing**
-subscription, region **East US**, and is empty. Everything below goes in it.
+subscription, region **East US**. Everything below goes in it.
+
+> East US refused to create an App Service plan when this was tried — capacity
+> for a SKU varies by region and comes and goes. **West US 3** worked and bills
+> identically, so the plan and web app live there inside an East US group,
+> which is allowed and costs nothing extra.
 
 Check the portal is on **Dev-Testing** before step 2, not `Corporate`.
 
-> The region matters only for latency and must match between the group and the
-> plan; East US and West US 2 bill identically for B1 Linux.
+> A resource group in one region can hold resources in another - the group's
+> location only records where its metadata lives. East US, West US 2 and West
+> US 3 all bill $0.017/hour for B1 Linux, so a region that refuses to create
+> costs nothing to walk away from.
 
 ---
 
@@ -71,11 +78,11 @@ Check the portal is on **Dev-Testing** before step 2, not `Corporate`.
 |---|---|
 | Subscription | **Dev-Testing** |
 | Resource Group | `RG-NanoVox-POC` |
-| Name | `nanovox-insights` *(becomes `nanovox-insights.azurewebsites.net`, must be globally unique — add a suffix if taken)* |
+| Name | `nanovox-insights` |
 | Publish | **Code** |
 | Runtime stack | **Python 3.14** |
 | Operating System | **Linux** |
-| Region | **East US** *(matching the resource group)* |
+| Region | **West US 3** |
 
 **Pricing plan** — click **Create new**, name it `nanovox-plan`, then
 **Change size** → **Dev/Test** → **B1** → **Apply**.
@@ -90,6 +97,17 @@ separately.
 
 **Review + create** → **Create**. Wait for deployment to finish, then **Go to
 resource**.
+
+> **The hostname is not what you type.** Azure now appends a random suffix and
+> the region, so `nanovox-insights` became:
+>
+> ```
+> nanovox-insights-a4cxfre7bmg3fghd.westus3-01.azurewebsites.net
+> ```
+>
+> Copy it from the app's **Overview → Default domain** rather than guessing. It
+> is used again in steps 6, 6a and 8, and the Easy Auth redirect URI is built
+> from it automatically.
 
 ---
 
@@ -151,6 +169,20 @@ Also on this tab:
 
 ## Step 5 — Deploy the code
 
+> **Prefer the CD pipeline.** `azure-pipelines-cd.yml` at the repository root
+> does everything in this step and solves the `dist` problem below — it builds
+> the frontend on the agent and ships it in the package. It also sets the
+> startup command from the pipeline, so step 4's command cannot be lost in a
+> redeploy, and smoke-tests the result.
+>
+> It needs one thing created by hand first, because no service connection
+> exists in this project yet: **Project Settings → Service connections → New →
+> Azure Resource Manager → Workload identity federation**, scoped to
+> **Dev-Testing / RG-NanoVox-POC**, named **`NanoVox-Azure`**.
+>
+> The manual route below stays documented for a one-off deploy or when the
+> pipeline is unavailable.
+
 **Deployment → Deployment Center**
 
 1. Source: **Azure Repos**
@@ -183,7 +215,7 @@ Watch **Deployment Center → Logs** until it reports success.
 
 1. **Development Tools → Advanced Tools → Go** (opens Kudu in a new tab)
 2. Top menu → **Site wwwroot** / the file manager at
-   `https://nanovox-insights.scm.azurewebsites.net/newui/fileManager`
+   `https://nanovox-insights-a4cxfre7bmg3fghd.scm.westus3-01.azurewebsites.net/newui/fileManager`
 3. Navigate to `/home`, create a folder **`data`**
 4. Drag `nanovox_insights.db` into `/home/data/`
 
@@ -232,7 +264,7 @@ answers:
   anthropic    configured=False  reachable=False  model=claude-opus-5
 ```
 
-Open `https://<app>.azurewebsites.net/api/v1/providers` **in the browser** —
+Open `https://nanovox-insights-a4cxfre7bmg3fghd.westus3-01.azurewebsites.net/api/v1/providers` **in the browser** —
 after step 7, `curl` gets a 302 to the sign-in page rather than JSON.
 
 - `configured=False` → the app setting is missing or misspelled.
@@ -319,7 +351,7 @@ Anyone at `technossus.com` can now sign in; nobody else reaches the app.
 
 ## Step 8 — Verify
 
-Open `https://nanovox-insights.azurewebsites.net` in a browser. You should be
+Open `https://nanovox-insights-a4cxfre7bmg3fghd.westus3-01.azurewebsites.net` in a browser. You should be
 redirected to a Microsoft sign-in, and land on the Executive overview
 afterwards.
 

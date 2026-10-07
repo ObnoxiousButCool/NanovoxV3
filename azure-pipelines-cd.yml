@@ -1,0 +1,266 @@
+# NanoVox CD — build the app and deploy it to the App Service.
+#
+# Separate from azure-pipelines.yml on purpose. That file is the pull-request
+# gate and runs `trigger: none` because a Build Validation branch policy starts
+# it; giving it a deployment stage would mean either deploying on every pull
+# request or tangling two unrelated trigger rules in one file. This one runs
+# after a merge, and only then.
+#
+# ---------------------------------------------------------------------------
+# BEFORE THIS PIPELINE CAN RUN: create the service connection
+#
+# There is no Azure service connection in this project — `az devops
+# service-endpoint list` returns an empty list. Without one the pipeline fails
+# at the first deployment task with "service connection could not be found",
+# and nothing in this file can create it.
+#
+#   Project Settings -> Service connections -> New service connection
+#     Type             : Azure Resource Manager
+#     Authentication   : Workload identity federation (automatic)
+#     Scope level      : Subscription
+#     Subscription     : Dev-Testing  (124ad7d7-2c62-47dc-b76d-e1eb2545b0ee)
+#     Resource group   : RG-NanoVox-POC
+#     Connection name  : NanoVox-Azure        <- must match azureSubscription below
+#     Grant access to all pipelines : yes
+#
+# Workload identity federation rather than a secret: it needs no client secret
+# to rotate and no expiry to be surprised by three months from now. Creating it
+# registers an application in the technossus.com directory, which this tenant
+# permits for standard users.
+# ---------------------------------------------------------------------------
+
+# Deploy when main changes, and only for changes that can affect what is
+# served. A pull request never triggers this — `pr: none` is ignored on Azure
+# Repos, but an explicit value keeps someone from adding one and expecting a
+# deployment preview that this file does not provide.
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    exclude:
+      - Documents/**
+      - Prototype/**
+      - README.md
+      - scripts/**
+      - release/**
+
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  # Must match the service connection's name exactly.
+  azureSubscription: 'NanoVox-Azure'
+
+  # The app as actually created: West US 3, inside an East US resource group.
+  # East US had no B1 capacity at the time; a group may hold resources in any
+  # region, and both bill $0.017/hour.
+  resourceGroupName: 'RG-NanoVox-POC'
+  webAppName: 'nanovox-insights'
+
+  # Matches pyproject.toml and the Linux runtime on the web app (PYTHON|3.14).
+  # The agent's Python only builds the artifact — Oryx installs dependencies on
+  # the App Service — but a mismatch here still produces a bundle built against
+  # the wrong interpreter if a wheel ever gets vendored.
+  pythonVersion: '3.14'
+  nodeVersion: '20'
+
+  npm_config_cache: $(Pipeline.Workspace)/.npm
+
+stages:
+  # =========================================================================
+  - stage: Build
+    displayName: Build the deployable
+    jobs:
+      - job: package
+        displayName: Build frontend and package
+        steps:
+          - task: NodeTool@0
+            displayName: Use Node $(nodeVersion)
+            inputs:
+              versionSpec: $(nodeVersion)
+
+          - task: Cache@2
+            displayName: Cache npm
+            inputs:
+              key: 'npm | "$(Agent.OS)" | Code/Frontend/package-lock.json'
+              restoreKeys: |
+                npm | "$(Agent.OS)"
+              path: $(npm_config_cache)
+
+          # `ci`, not `install`: the lockfile exactly, so what ships is what
+          # the gate tested.
+          - script: npm ci
+            displayName: Install frontend dependencies
+            workingDirectory: Code/Frontend
+
+          # The API process serves this bundle itself (frameworks_drivers/
+          # spa.py), so the deployable is one thing, not a site plus an API.
+          # .env.production sets VITE_API_BASE_URL=/api/v1 — relative — so the
+          # bundle is host-independent and needs no rebuild when the hostname
+          # changes.
+          - script: npm run build
+            displayName: Build frontend
+            workingDirectory: Code/Frontend
+
+          # Fail here rather than in production. Without dist the API starts,
+          # serves JSON, and answers every page with 404 — which reads as a
+          # routing bug and costs an hour to trace.
+          - script: |
+              set -e
+              test -f Code/Frontend/dist/index.html
+              echo "dist/index.html present: $(wc -c < Code/Frontend/dist/index.html) bytes"
+            displayName: Verify the bundle exists
+
+          # Stage what ships, then zip the staging directory.
+          #
+          # Two steps rather than one because ArchiveFiles@2 takes a single
+          # root and has no exclude list — handed the sources directory it
+          # would ship the corpus, the prototype, every test and node_modules.
+          #
+          # The directory shape is load-bearing: paths.py derives PROJECT_ROOT
+          # from its own __file__ four levels up, so Code/Backend and
+          # Code/Frontend/dist must keep their relative positions. Unzipped at
+          # /home/site/wwwroot that makes PROJECT_ROOT the wwwroot itself,
+          # which is what the app settings assume.
+          #
+          # requirements.txt at the root is the pointer Oryx needs: it reads
+          # the root only, and the real list lives in Code/Backend.
+          #
+          # Tests are excluded deliberately. They ran in the gate, and shipping
+          # them would put the corpus fixtures on a public host.
+          - task: CopyFiles@2
+            displayName: Stage what ships
+            inputs:
+              SourceFolder: '$(Build.SourcesDirectory)'
+              TargetFolder: '$(Build.BinariesDirectory)/app'
+              Contents: |
+                requirements.txt
+                Code/Backend/**
+                Code/Frontend/dist/**
+                !Code/Backend/tests/**
+                !Code/Backend/.venv/**
+                !Code/Backend/htmlcov/**
+                !Code/Backend/requirements-dev.txt
+                !**/__pycache__/**
+                !**/*.pyc
+                !**/.pytest_cache/**
+                !**/.mypy_cache/**
+                !**/.ruff_cache/**
+              CleanTargetFolder: true
+
+          - script: |
+              set -e
+              cd "$(Build.BinariesDirectory)/app"
+              echo "staged $(find . -type f | wc -l) files, $(du -sh . | cut -f1)"
+              test -f requirements.txt
+              test -f Code/Backend/frameworks_drivers/main.py
+              test -f Code/Frontend/dist/index.html
+              test ! -d Code/Backend/tests
+              echo "layout and exclusions verified"
+            displayName: Verify the staged layout
+
+          - task: ArchiveFiles@2
+            displayName: Package the application
+            inputs:
+              rootFolderOrFile: '$(Build.BinariesDirectory)/app'
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: '$(Build.ArtifactStagingDirectory)/nanovox.zip'
+              replaceExistingArchive: true
+
+          - publish: '$(Build.ArtifactStagingDirectory)/nanovox.zip'
+            artifact: nanovox
+            displayName: Publish artifact
+
+  # =========================================================================
+  - stage: Deploy
+    displayName: Deploy to App Service
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      # A `deployment` job rather than a plain one, so the run appears against
+      # an Environment. That is where an approval gate is added later, without
+      # touching this file:
+      #   Pipelines -> Environments -> nanovox-poc -> Approvals and checks
+      - deployment: deploy
+        displayName: Deploy
+        environment: nanovox-poc
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: nanovox
+
+                - task: AzureWebApp@1
+                  displayName: Deploy to $(webAppName)
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appType: webAppLinux
+                    appName: $(webAppName)
+                    resourceGroupName: $(resourceGroupName)
+                    package: '$(Pipeline.Workspace)/nanovox/nanovox.zip'
+                    # Declared here rather than left in the portal, so a
+                    # redeploy cannot quietly lose it.
+                    #
+                    # The copy is the point: /home is an Azure Files (SMB)
+                    # share and SQLite needs POSIX byte-range locks, which a
+                    # protocol-backed share cannot give — it fails with
+                    # "disk I/O error". /tmp is container-local disk. The
+                    # master copy stays on /home/data and is restored on every
+                    # start.
+                    #
+                    # No `alembic upgrade head`: the shipped database already
+                    # carries the schema, and nothing at startup needs Alembic.
+                    startUpCommand: >-
+                      mkdir -p /tmp/nanovox &&
+                      cp /home/data/nanovox_insights.db /tmp/nanovox/ &&
+                      cd /home/site/wwwroot/Code/Backend &&
+                      python -m uvicorn frameworks_drivers.main:app --host 0.0.0.0 --port 8000
+
+                # AzureCLI@2 rather than a bare script: `az` on the agent is
+                # not signed in, and this is the task that authenticates it
+                # with the same service connection used to deploy.
+                #
+                # Oryx installs dependencies on the first request after a
+                # deployment, so the app can take minutes to answer. Poll
+                # rather than sleep a fixed amount and hope.
+                - task: AzureCLI@2
+                  displayName: Smoke test
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+                      HOST=$(az webapp show \
+                        --resource-group "$(resourceGroupName)" \
+                        --name "$(webAppName)" \
+                        --query defaultHostName -o tsv)
+                      echo "Smoke-testing https://$HOST"
+
+                      for attempt in $(seq 1 30); do
+                        code=$(curl -s -o /dev/null -w '%{http_code}' \
+                          --max-time 20 "https://$HOST/api/v1/health" || echo 000)
+                        echo "  attempt $attempt: HTTP $code"
+                        # 200 is the health payload. 302 is Easy Auth
+                        # redirecting to sign-in, which means the app is up AND
+                        # protected. Both pass, and 302 is the expected answer
+                        # once authentication is switched on — a smoke test
+                        # that insisted on 200 would start failing the day the
+                        # app was secured.
+                        case "$code" in
+                          200|302) echo "Up (HTTP $code)."; exit 0 ;;
+                        esac
+                        sleep 10
+                      done
+
+                      echo "Never answered. Recent application log:" >&2
+                      az webapp log download \
+                        --resource-group "$(resourceGroupName)" \
+                        --name "$(webAppName)" \
+                        --log-file /tmp/logs.zip >&2 2>/dev/null || true
+                      exit 1
