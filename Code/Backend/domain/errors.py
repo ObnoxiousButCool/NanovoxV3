@@ -54,6 +54,16 @@ class ConflictError(NanoVoxInsightsError):
     code = "conflict"
 
 
+class AuthenticationError(NanoVoxInsightsError):
+    """A credential — an OTP code, a session token — was missing, wrong or expired.
+
+    Distinct from `ValidationError`: the request is well-formed, but what it
+    claims (the code, the session) does not hold up.
+    """
+
+    code = "authentication_error"
+
+
 class DependencyUnavailableError(NanoVoxInsightsError):
     """An external dependency (database, model provider) could not be reached."""
 

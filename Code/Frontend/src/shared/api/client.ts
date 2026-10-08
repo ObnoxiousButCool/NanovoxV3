@@ -12,6 +12,33 @@ import { getConfig } from '@/shared/config/env'
 
 export const CORRELATION_ID_HEADER = 'X-Correlation-ID'
 
+/**
+ * The session token, if one has been issued. Held here rather than read
+ * fresh off storage per request, so a logout takes effect on the very next
+ * call with no race against whichever tab last wrote it.
+ *
+ * `shared/auth` is the only thing that calls the setter — on sign-in, on
+ * logout and once at startup to restore a token saved across a reload.
+ */
+let authToken: string | null = null
+
+export function setAuthToken(token: string | null): void {
+  authToken = token
+}
+
+/**
+ * Called once a request comes back 401 — a session that was valid when the
+ * screen loaded can still expire mid-visit. `shared/auth.AuthProvider`
+ * registers its own `logout` here on mount, which is what turns an expired
+ * token into "back at the login screen" rather than a page stuck retrying
+ * a request it can never complete.
+ */
+let onUnauthorized: (() => void) | null = null
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler
+}
+
 /** RFC 9457 problem document, as returned by the backend. */
 export interface ProblemDetail {
   readonly type: string
@@ -94,10 +121,16 @@ async function request<T>(path: string, init: RequestInit, options: RequestOptio
   const baseUrl = options.baseUrl ?? getConfig().apiBaseUrl
   const doFetch = options.fetchFn ?? fetch
 
+  const headers = new Headers(init.headers)
+  if (authToken !== null) {
+    headers.set('Authorization', `Bearer ${authToken}`)
+  }
+
   let response: Response
   try {
     response = await doFetch(`${baseUrl}${path}`, {
       ...init,
+      headers,
       ...(options.signal ? { signal: options.signal } : {}),
     })
   } catch (cause) {
@@ -106,6 +139,12 @@ async function request<T>(path: string, init: RequestInit, options: RequestOptio
 
   const accepted = response.ok || (options.acceptStatuses?.includes(response.status) ?? false)
   if (!accepted) {
+    // `authToken !== null` is what tells a session that just expired apart
+    // from `/auth/otp/verify` rejecting a wrong code: the verify call is
+    // itself how a token is obtained, so it always runs without one.
+    if (response.status === 401 && authToken !== null) {
+      onUnauthorized?.()
+    }
     throw await toApiError(response)
   }
 

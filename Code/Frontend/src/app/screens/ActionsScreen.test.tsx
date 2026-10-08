@@ -23,6 +23,7 @@ import { App } from '@/app/App'
 import { createQueryClient } from '@/app/queryClient'
 import { DrawerProvider } from '@/shared/design/drawer'
 import { unrunAnalysis } from '@/shared/design/drawer/analysisFixture'
+import { AuthProvider } from '@/shared/auth/AuthProvider'
 import { ThemeProvider } from '@/shared/design/ThemeProvider'
 
 const SCOPE = {
@@ -428,11 +429,13 @@ function renderAt(path: string): void {
   render(
     <QueryClientProvider client={createQueryClient()}>
       <ThemeProvider>
-        <DrawerProvider>
-          <MemoryRouter initialEntries={[path]}>
-            <App />
-          </MemoryRouter>
-        </DrawerProvider>
+        <AuthProvider>
+          <DrawerProvider>
+            <MemoryRouter initialEntries={[path]}>
+              <App />
+            </MemoryRouter>
+          </DrawerProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>,
   )

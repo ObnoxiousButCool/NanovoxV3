@@ -7,6 +7,7 @@ import { App } from '@/app/App'
 import { createQueryClient } from '@/app/queryClient'
 import { NAV_ITEMS, OFF_RAIL_SCREENS, UNPLACED_SCREENS } from '@/shared/design/navigation'
 import { DrawerProvider } from '@/shared/design/drawer'
+import { AuthProvider } from '@/shared/auth/AuthProvider'
 import { ThemeProvider } from '@/shared/design/ThemeProvider'
 
 afterEach(() => {
@@ -21,11 +22,13 @@ function renderApp(initialPath: string): void {
   render(
     <QueryClientProvider client={createQueryClient()}>
       <ThemeProvider>
-        <DrawerProvider>
-          <MemoryRouter initialEntries={[initialPath]}>
-            <App />
-          </MemoryRouter>
-        </DrawerProvider>
+        <AuthProvider>
+          <DrawerProvider>
+            <MemoryRouter initialEntries={[initialPath]}>
+              <App />
+            </MemoryRouter>
+          </DrawerProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>,
   )

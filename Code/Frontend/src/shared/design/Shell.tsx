@@ -13,6 +13,7 @@
 import { NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
+import { useAuth } from '@/shared/auth/authContext'
 import { Drawer } from '@/shared/design/drawer'
 import { NAV_ITEMS } from '@/shared/design/navigation'
 import { ThemeControl } from '@/shared/design/ThemeControl'
@@ -29,6 +30,8 @@ export function Shell({ children }: { children: ReactNode }) {
   //
   // Only the bar's own keys travel; see `sharedSearch`.
   const search = useSharedSearch()
+  // Email-OTP login (feature/email-otp-login, not on main).
+  const { email, logout } = useAuth()
 
   return (
     <div className="nv-shell">
@@ -54,6 +57,14 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <div className="nv-foot">
           <ThemeControl />
+          {email === null ? null : (
+            <div className="nv-session">
+              <span className="nv-session-email">{email}</span>
+              <button type="button" className="nv-session-logout" onClick={logout}>
+                Sign out
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 

@@ -1,6 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { ApiError, CORRELATION_ID_HEADER, getJson, NetworkError } from '@/shared/api/client'
+import {
+  ApiError,
+  CORRELATION_ID_HEADER,
+  getJson,
+  NetworkError,
+  setAuthToken,
+  setUnauthorizedHandler,
+} from '@/shared/api/client'
 
 const BASE_URL = 'http://api.test/api/v1'
 
@@ -98,5 +105,64 @@ describe('ApiError', () => {
 describe('CORRELATION_ID_HEADER', () => {
   it('is the header name the backend sets', () => {
     expect(CORRELATION_ID_HEADER).toBe('X-Correlation-ID')
+  })
+})
+
+describe('the session token (feature/email-otp-login, not on main)', () => {
+  afterEach(() => {
+    setAuthToken(null)
+    setUnauthorizedHandler(null)
+  })
+
+  it('is attached as a bearer header once set', async () => {
+    setAuthToken('abc123')
+    const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}))
+
+    await getJson('/providers', { baseUrl: BASE_URL, fetchFn })
+
+    const [, init] = fetchFn.mock.calls[0] as [string, RequestInit]
+    const headers = init.headers as Headers
+    expect(headers.get('Authorization')).toBe('Bearer abc123')
+  })
+
+  it('is absent from a request when no token has been set', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(jsonResponse({}))
+
+    await getJson('/providers', { baseUrl: BASE_URL, fetchFn })
+
+    const [, init] = fetchFn.mock.calls[0] as [string, RequestInit]
+    const headers = init.headers as Headers
+    expect(headers.has('Authorization')).toBe(false)
+  })
+
+  it('fires the unauthorized handler on a 401 while a token is set', async () => {
+    setAuthToken('abc123')
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ title: 'Unauthorized', code: 'authentication_error' }), {
+        status: 401,
+      }),
+    )
+
+    await expect(getJson('/providers', { baseUrl: BASE_URL, fetchFn })).rejects.toThrow()
+
+    expect(handler).toHaveBeenCalledOnce()
+  })
+
+  it('does not fire the unauthorized handler on a 401 with no token set', async () => {
+    // A wrong OTP code answers 401 from an endpoint that never carried a
+    // token in the first place — not an expired session.
+    const handler = vi.fn()
+    setUnauthorizedHandler(handler)
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ title: 'Invalid code', code: 'authentication_error' }), {
+        status: 401,
+      }),
+    )
+
+    await expect(getJson('/auth/otp/verify', { baseUrl: BASE_URL, fetchFn })).rejects.toThrow()
+
+    expect(handler).not.toHaveBeenCalled()
   })
 })

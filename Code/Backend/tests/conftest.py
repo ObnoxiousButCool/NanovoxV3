@@ -18,12 +18,21 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from application.ports.session_issuer import Session
+from frameworks_drivers.api.dependencies import require_session
 from frameworks_drivers.main import create_app
 from infrastructure.config.settings import Settings
 from infrastructure.persistence import tables as _tables  # noqa: F401
 from infrastructure.persistence.engine import create_database_engine, create_session_factory
 from infrastructure.persistence.models import Base
 from tests.support.settings import make_settings
+
+#: The identity every test's requests carry unless a test says otherwise
+#: (see `app` below). Existing tests were written before sign-in existed and
+#: are about the business logic behind each route, not about auth — forcing
+#: each one to carry a token would be noise. The auth system gets its own
+#: tests, against the unmodified dependency (`tests/integration/test_auth_endpoints.py`).
+TEST_SESSION_EMAIL = "test@example.com"
 
 
 @pytest.fixture
@@ -94,8 +103,15 @@ def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
 
 @pytest.fixture
 def app(settings: Settings, schema: None) -> FastAPI:
-    """An application instance, not yet started, over a database with a schema."""
-    return create_app(settings)
+    """An application instance, not yet started, over a database with a schema.
+
+    Pre-authenticated by default — see `TEST_SESSION_EMAIL`. A test of the
+    sign-in flow itself removes this override to exercise the real
+    dependency.
+    """
+    application = create_app(settings)
+    application.dependency_overrides[require_session] = lambda: Session(email=TEST_SESSION_EMAIL)
+    return application
 
 
 @pytest.fixture

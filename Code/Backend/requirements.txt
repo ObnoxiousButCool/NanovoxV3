@@ -27,3 +27,5 @@ httpx2>=2.12,<3.0
 # relied on transitively (uvicorn[standard] pulls it in today): our own code
 # imports it, and a fresh environment that resolves it away would fail at startup.
 PyYAML>=6.0,<7.0
+# Signs the email-OTP session token (feature/email-otp-login, not on main).
+PyJWT>=2.9,<3.0

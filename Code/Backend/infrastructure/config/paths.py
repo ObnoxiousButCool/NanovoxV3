@@ -51,6 +51,8 @@ DEFAULT_WORKBOOK_PATH: Path = DEFAULT_CORPUS_DIR / "nanovox_corpus_v9_build_bibl
 DEFAULT_TRANSCRIPTS_DIR: Path = DEFAULT_CORPUS_DIR
 # L3's fixed scoring rubric (Call Quality Framework sheet).
 DEFAULT_RUBRIC_PATH: Path = DEFAULT_CONFIG_DIR / "rubric.yaml"
+# The email-OTP allowlist (feature/email-otp-login).
+DEFAULT_APPROVED_EMAILS_PATH: Path = DEFAULT_CONFIG_DIR / "approved_emails.yaml"
 
 
 def default_database_url() -> str:

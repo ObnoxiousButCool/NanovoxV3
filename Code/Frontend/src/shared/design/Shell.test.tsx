@@ -9,6 +9,7 @@ import { Shell } from '@/shared/design/Shell'
 import { THEME_STORAGE_KEY } from '@/shared/design/theme'
 import { createQueryClient } from '@/app/queryClient'
 import { DrawerProvider } from '@/shared/design/drawer'
+import { AuthProvider } from '@/shared/auth/AuthProvider'
 import { ThemeProvider } from '@/shared/design/ThemeProvider'
 
 afterEach(() => {
@@ -22,13 +23,15 @@ function renderShell(at = '/exec') {
   return render(
     <QueryClientProvider client={createQueryClient()}>
       <ThemeProvider>
-        <DrawerProvider>
-          <MemoryRouter initialEntries={[at]}>
-            <Shell>
-              <p>screen content</p>
-            </Shell>
-          </MemoryRouter>
-        </DrawerProvider>
+        <AuthProvider>
+          <DrawerProvider>
+            <MemoryRouter initialEntries={[at]}>
+              <Shell>
+                <p>screen content</p>
+              </Shell>
+            </MemoryRouter>
+          </DrawerProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>,
   )

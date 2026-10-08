@@ -78,6 +78,37 @@
   line-height: 1.45;
 }
 
+/* Email-OTP login (feature/email-otp-login, not on main). */
+.nv-session {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.nv-session-email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nv-session-logout {
+  appearance: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font: 500 11px/1.2 var(--body);
+  text-decoration: underline;
+  padding: 0;
+}
+
+.nv-session-logout:hover {
+  color: var(--brand);
+}
+
 .nv-brandmark {
   display: flex;
   align-items: center;

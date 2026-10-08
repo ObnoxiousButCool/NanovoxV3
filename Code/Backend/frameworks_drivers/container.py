@@ -29,19 +29,23 @@ from application.ports.call_extraction_repository import CallExtractionRepositor
 from application.ports.call_repository import CallRepository
 from application.ports.clock import Clock
 from application.ports.diagnostics_source import DiagnosticsSource
+from application.ports.email_sender import EmailSender
 from application.ports.ground_truth_repository import GroundTruthRepository
 from application.ports.ground_truth_source import GroundTruthSource
 from application.ports.health_probe import HealthProbe
 from application.ports.insight_cache import InsightCache
 from application.ports.insights_source import InsightsSource
 from application.ports.llm_provider import LLMProvider
+from application.ports.otp_repository import OtpRepository
 from application.ports.prompts import PromptSource
 from application.ports.reference_lookup import ReferenceLookup
 from application.ports.reference_repository import ReferenceRepository
 from application.ports.reference_source import ReferenceSource
 from application.ports.run_repository import RunRepository
+from application.ports.session_issuer import SessionIssuer
 from application.ports.stage_cache import StageCache
 from application.ports.transcript_source import TranscriptSource
+from application.use_cases.auth import RequestOtp, VerifyOtp
 from application.use_cases.classify_call_l2 import ClassifyCallL2
 from application.use_cases.classify_call_l3 import ClassifyCallL3
 from application.use_cases.classify_call_l4 import ClassifyCallL4
@@ -76,14 +80,19 @@ from domain.dashboard_config import DashboardConfig
 from domain.errors import ConfigurationError, NotFoundError
 from domain.playbooks import PlaybookCatalogue
 from domain.scoring.rubric import Rubric
+from domain.value_objects.approved_emails import ApprovedEmails
+from infrastructure.auth.jwt_session_issuer import JwtSessionIssuer
 from infrastructure.cache.insight_cache import InMemoryInsightCache
 from infrastructure.config.action_lifecycle_loader import load_action_lifecycle
+from infrastructure.config.approved_emails_loader import load_approved_emails
 from infrastructure.config.dashboard_config import load_dashboard_config
 from infrastructure.config.playbook_loader import load_playbooks
 from infrastructure.config.rubric_loader import load_rubric
 from infrastructure.config.settings import Settings
 from infrastructure.corpus.pdf_answer_key_source import PdfAnswerKeySource
 from infrastructure.corpus.pdf_corpus_source import PdfCorpusSource
+from infrastructure.email.console_email_sender import ConsoleEmailSender
+from infrastructure.email.smtp_email_sender import SmtpEmailSender
 from infrastructure.llm.prompt_source import FilePromptSource
 from infrastructure.llm.prompts import PromptLibrary
 from infrastructure.llm.provider_probe import RegistryProviderProbe
@@ -101,6 +110,7 @@ from infrastructure.persistence.repositories.ground_truth_repository import (
     SqlGroundTruthRepository,
 )
 from infrastructure.persistence.repositories.insights_source import SqlInsightsSource
+from infrastructure.persistence.repositories.otp_repository import SqlOtpRepository
 from infrastructure.persistence.repositories.reference_lookup import SqlReferenceLookup
 from infrastructure.persistence.repositories.reference_repository import SqlReferenceRepository
 from infrastructure.persistence.repositories.run_repository import SqlRunRepository
@@ -157,6 +167,11 @@ class Container:
     #: The action centre's lanes (D14, U3: config until the client confirms).
     action_lifecycle: Lifecycle
     action_repository: ActionRepository
+    # Email-OTP login (feature/email-otp-login, not on main).
+    approved_emails: ApprovedEmails
+    otp_repository: OtpRepository
+    email_sender: EmailSender
+    session_issuer: SessionIssuer
 
     def insights_reader(self) -> InsightsReader:
         return InsightsReader(
@@ -271,6 +286,24 @@ class Container:
 
     def get_health(self) -> GetHealth:
         return GetHealth(probes=self.health_probes, clock=self.clock)
+
+    def request_otp(self) -> RequestOtp:
+        return RequestOtp(
+            approved_emails=self.approved_emails,
+            otp_repository=self.otp_repository,
+            email_sender=self.email_sender,
+            clock=self.clock,
+            expiry_minutes=self.settings.otp_expiry_minutes,
+            resend_cooldown_seconds=self.settings.otp_resend_cooldown_seconds,
+        )
+
+    def verify_otp(self) -> VerifyOtp:
+        return VerifyOtp(
+            otp_repository=self.otp_repository,
+            session_issuer=self.session_issuer,
+            clock=self.clock,
+            max_attempts=self.settings.otp_max_attempts,
+        )
 
     def import_reference_data(self) -> ImportReferenceData:
         return ImportReferenceData(
@@ -399,7 +432,31 @@ def build_container(settings: Settings) -> Container:
         insight_cache=InMemoryInsightCache(),
         action_lifecycle=load_action_lifecycle(settings.action_lifecycle_path),
         action_repository=SqlActionRepository(session_factory),
+        approved_emails=load_approved_emails(settings.approved_emails_path),
+        otp_repository=SqlOtpRepository(session_factory),
+        email_sender=_build_email_sender(settings),
+        # Read once: a random fallback regenerates on every access (see the
+        # property's docstring), and the issuer must sign and verify with
+        # the same value for the life of this container.
+        session_issuer=JwtSessionIssuer(
+            secret=settings.effective_jwt_secret,
+            expiry_minutes=settings.jwt_expiry_minutes,
+            clock=clock,
+        ),
     )
+
+
+def _build_email_sender(settings: Settings) -> EmailSender:
+    if settings.email_backend == "smtp":
+        return SmtpEmailSender(
+            host=settings.smtp_host,
+            port=settings.smtp_port,
+            username=settings.smtp_username,
+            password=settings.smtp_password,
+            from_address=settings.smtp_from_address,
+            use_tls=settings.smtp_use_tls,
+        )
+    return ConsoleEmailSender()
 
 
 async def dispose_container(container: Container) -> None:

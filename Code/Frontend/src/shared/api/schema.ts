@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/v1/auth/otp/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request a one-time sign-in code */
+        post: operations["request_otp_api_v1_auth_otp_request_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/otp/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Redeem a one-time code for a session */
+        post: operations["verify_otp_api_v1_auth_otp_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -2687,6 +2721,19 @@ export interface components {
             /** Unresolved */
             unresolved: number;
         };
+        /** RequestOtpBody */
+        RequestOtpBody: {
+            /** Email */
+            email: string;
+        };
+        /** RequestOtpResponse */
+        RequestOtpResponse: {
+            /**
+             * Message
+             * @default If that address is approved, a code is on its way.
+             */
+            message: string;
+        };
         /** RiskScreenResponse */
         RiskScreenResponse: {
             /** Asof */
@@ -3101,6 +3148,20 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerifyOtpBody */
+        VerifyOtpBody: {
+            /** Code */
+            code: string;
+            /** Email */
+            email: string;
+        };
+        /** VerifyOtpResponse */
+        VerifyOtpResponse: {
+            /** Email */
+            email: string;
+            /** Token */
+            token: string;
+        };
         /**
          * WeekResponse
          * @description One week of the movement window.
@@ -3181,6 +3242,79 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    request_otp_api_v1_auth_otp_request_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestOtpBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestOtpResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_otp_api_v1_auth_otp_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyOtpBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerifyOtpResponse"];
+                };
+            };
+            /** @description The code is wrong, used or expired. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_health_api_v1_health_get: {
         parameters: {
             query?: never;
@@ -3211,7 +3345,9 @@ export interface operations {
     ingest_transcripts_api_v1_ingest_transcripts_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3224,6 +3360,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestCountsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -3264,7 +3409,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 employer_ref: string;
             };
@@ -3328,7 +3475,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3357,7 +3506,9 @@ export interface operations {
     create_action_api_v1_insights_actions_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3423,7 +3574,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3452,7 +3605,9 @@ export interface operations {
     read_action_api_v1_insights_actions__action_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 action_id: number;
             };
@@ -3483,7 +3638,9 @@ export interface operations {
     update_action_api_v1_insights_actions__action_id__patch: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 action_id: number;
             };
@@ -3551,7 +3708,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3621,7 +3780,9 @@ export interface operations {
                 /** @description Specific calls, repeated. Powers "download selected" without moving the column list into the browser. Applied after the corpus filters, so a selected call the period excludes stays excluded. */
                 ref?: string[] | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3691,7 +3852,9 @@ export interface operations {
                 /** @description Specific calls, repeated. Powers "download selected" without moving the column list into the browser. Applied after the corpus filters, so a selected call the period excludes stays excluded. */
                 ref?: string[] | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3718,7 +3881,9 @@ export interface operations {
     read_call_api_v1_insights_calls__reference__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 reference: string;
             };
@@ -3782,7 +3947,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3844,7 +4011,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3906,7 +4075,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3974,7 +4145,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4036,7 +4209,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4065,7 +4240,9 @@ export interface operations {
     list_playbooks_api_v1_insights_playbooks_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4080,12 +4257,23 @@ export interface operations {
                     "application/json": components["schemas"]["PlaybookCatalogueResponse"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_playbook_api_v1_insights_playbooks__key__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 key: string;
             };
@@ -4153,7 +4341,9 @@ export interface operations {
                 /** @description Keep accounts where at least this many of the ten indicator families fired. A count, never a risk level: the families are informational and do not set the flag (D2, D12). */
                 minIndicators?: number | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4215,7 +4405,9 @@ export interface operations {
                 /** @description The date every window ends on. Omitted means today. Supplying it makes a figure reproducible. */
                 asOf?: string | null;
             };
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4244,7 +4436,9 @@ export interface operations {
     list_providers_api_v1_providers_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4259,12 +4453,23 @@ export interface operations {
                     "application/json": components["schemas"]["ListProvidersResponse"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     import_reference_data_api_v1_reference_import_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4279,12 +4484,23 @@ export interface operations {
                     "application/json": components["schemas"]["ImportReferenceResponse"];
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     start_run_api_v1_runs_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -4317,7 +4533,9 @@ export interface operations {
     get_run_api_v1_runs__run_id__get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 run_id: number;
             };
@@ -4348,7 +4566,9 @@ export interface operations {
     cancel_run_api_v1_runs__run_id__cancel_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 run_id: number;
             };
@@ -4379,7 +4599,9 @@ export interface operations {
     resume_run_api_v1_runs__run_id__resume_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 run_id: number;
             };

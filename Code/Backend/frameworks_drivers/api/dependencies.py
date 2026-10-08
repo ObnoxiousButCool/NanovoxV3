@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import Depends, Request
+from fastapi import Depends, Header, Request
 
 from application.ports.llm_provider import LLMProvider
+from application.ports.session_issuer import Session
+from application.use_cases.auth import RequestOtp, VerifyOtp
 from application.use_cases.generate_insights import GenerateInsights
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
@@ -41,6 +43,7 @@ from application.use_cases.read_insights import (
 )
 from application.use_cases.run_extraction_over_corpus import RunExtractionOverCorpus
 from domain.dashboard_config import DashboardConfig
+from domain.errors import AuthenticationError
 from frameworks_drivers.container import Container
 from infrastructure.config.settings import Settings
 
@@ -168,6 +171,33 @@ def get_dashboard_config(container: ContainerDep) -> DashboardConfig:
     return container.dashboard_config
 
 
+def get_request_otp_use_case(container: ContainerDep) -> RequestOtp:
+    return container.request_otp()
+
+
+def get_verify_otp_use_case(container: ContainerDep) -> VerifyOtp:
+    return container.verify_otp()
+
+
+_BEARER_PREFIX = "Bearer "
+
+
+def require_session(
+    container: ContainerDep, authorization: Annotated[str | None, Header()] = None
+) -> Session:
+    """Every router but `auth` and `health` depends on this.
+
+    Raised as `AuthenticationError`, not a bare 401: the same RFC 9457 body
+    every other rejection gets, rather than a special case in the delivery
+    layer (`frameworks_drivers/api/errors.py` is the one place that maps it
+    to a status code).
+    """
+    if authorization is None or not authorization.startswith(_BEARER_PREFIX):
+        raise AuthenticationError("Sign in to continue.")
+    token = authorization.removeprefix(_BEARER_PREFIX)
+    return container.session_issuer.verify(token)
+
+
 SettingsDep = Annotated[Settings, Depends(get_settings_dep)]
 GetHealthDep = Annotated[GetHealth, Depends(get_health_use_case)]
 ImportReferenceDataDep = Annotated[ImportReferenceData, Depends(get_import_reference_data_use_case)]
@@ -197,3 +227,6 @@ ListActionsDep = Annotated[ListActions, Depends(get_list_actions_use_case)]
 ActionContextDep = Annotated[ActionContext, Depends(get_action_context)]
 GetRulesDep = Annotated[GetRules, Depends(get_rules_use_case)]
 GetAgentsDep = Annotated[GetAgents, Depends(get_agents_use_case)]
+RequestOtpDep = Annotated[RequestOtp, Depends(get_request_otp_use_case)]
+VerifyOtpDep = Annotated[VerifyOtp, Depends(get_verify_otp_use_case)]
+SessionDep = Annotated[Session, Depends(require_session)]

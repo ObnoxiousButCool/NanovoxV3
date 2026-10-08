@@ -19,7 +19,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 
+from application.ports.session_issuer import Session
 from domain.value_objects.signal_type import SignalType
+from frameworks_drivers.api.dependencies import require_session
 from frameworks_drivers.cli.seed_actions import EXIT_NOTHING_TO_SEED, EXIT_OK, main
 from frameworks_drivers.main import create_app
 from infrastructure.config.settings import get_settings
@@ -100,6 +102,10 @@ def test_seeding_twice_produces_the_same_board_not_a_doubled_one(
     assert "Skipped 2 already seeded: sig_billing_defect, sig_network_adequacy" in second_output
 
     app = create_app(settings)
+    # Built via `create_app` directly rather than the `app`/`client` fixtures
+    # in `tests/conftest.py`, so it does not inherit their pre-authenticated
+    # override — add it here too, since this test is about seeding, not auth.
+    app.dependency_overrides[require_session] = lambda: Session(email="test@example.com")
     with TestClient(app) as client:
         board = client.get(BOARD_URL).json()
 
