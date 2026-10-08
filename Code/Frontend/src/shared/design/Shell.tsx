@@ -54,12 +54,6 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <div className="nv-foot">
           <ThemeControl />
-          {/* Bare on purpose: the design system has no filter bar and no
-              corpus behind it, so a query string here would describe
-              nothing. Back returns to the filtered screen. */}
-          <NavLink to="/design" className="nv-footlink">
-            Design system
-          </NavLink>
         </div>
       </aside>
 

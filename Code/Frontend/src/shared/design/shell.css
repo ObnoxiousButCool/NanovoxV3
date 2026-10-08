@@ -251,21 +251,6 @@
   line-height: 1.55;
 }
 
-/* The gallery link. A developer surface, so it sits at the foot rather than
- * among the seven questions a reader navigates by. */
-.nv-footlink {
-  display: block;
-  margin-top: 10px;
-  font-size: 11.5px;
-  color: var(--ink-3);
-  text-decoration: none;
-}
-
-.nv-footlink:hover,
-.nv-footlink[aria-current='page'] {
-  color: var(--brand);
-}
-
 .nv-gallery {
   padding: 28px 28px 48px;
   display: flex;
