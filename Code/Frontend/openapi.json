@@ -4122,6 +4122,42 @@
         "title": "LogEntryResponse",
         "type": "object"
       },
+      "LoginBody": {
+        "properties": {
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "LoginBody",
+        "type": "object"
+      },
+      "LoginResponse": {
+        "properties": {
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "username"
+        ],
+        "title": "LoginResponse",
+        "type": "object"
+      },
       "MarkerResponse": {
         "description": "One rubric observation behind a quality score.",
         "properties": {
@@ -4934,30 +4970,6 @@
           "unresolved"
         ],
         "title": "RegionRowResponse",
-        "type": "object"
-      },
-      "RequestOtpBody": {
-        "properties": {
-          "email": {
-            "title": "Email",
-            "type": "string"
-          }
-        },
-        "required": [
-          "email"
-        ],
-        "title": "RequestOtpBody",
-        "type": "object"
-      },
-      "RequestOtpResponse": {
-        "properties": {
-          "message": {
-            "default": "If that address is approved, a code is on its way.",
-            "title": "Message",
-            "type": "string"
-          }
-        },
-        "title": "RequestOtpResponse",
         "type": "object"
       },
       "RiskScreenResponse": {
@@ -5873,42 +5885,6 @@
         "title": "ValidationError",
         "type": "object"
       },
-      "VerifyOtpBody": {
-        "properties": {
-          "code": {
-            "title": "Code",
-            "type": "string"
-          },
-          "email": {
-            "title": "Email",
-            "type": "string"
-          }
-        },
-        "required": [
-          "email",
-          "code"
-        ],
-        "title": "VerifyOtpBody",
-        "type": "object"
-      },
-      "VerifyOtpResponse": {
-        "properties": {
-          "email": {
-            "title": "Email",
-            "type": "string"
-          },
-          "token": {
-            "title": "Token",
-            "type": "string"
-          }
-        },
-        "required": [
-          "token",
-          "email"
-        ],
-        "title": "VerifyOtpResponse",
-        "type": "object"
-      },
       "WeekResponse": {
         "description": "One week of the movement window.",
         "properties": {
@@ -6077,14 +6053,14 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/api/v1/auth/otp/request": {
+    "/api/v1/auth/login": {
       "post": {
-        "operationId": "request_otp_api_v1_auth_otp_request_post",
+        "operationId": "login_api_v1_auth_login_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RequestOtpBody"
+                "$ref": "#/components/schemas/LoginBody"
               }
             }
           },
@@ -6095,55 +6071,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RequestOtpResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Request a one-time sign-in code",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/v1/auth/otp/verify": {
-      "post": {
-        "operationId": "verify_otp_api_v1_auth_otp_verify_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VerifyOtpBody"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VerifyOtpResponse"
+                  "$ref": "#/components/schemas/LoginResponse"
                 }
               }
             },
             "description": "Successful Response"
           },
           "401": {
-            "description": "The code is wrong, used or expired."
+            "description": "Incorrect username or password."
           },
           "422": {
             "content": {
@@ -6156,7 +6091,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Redeem a one-time code for a session",
+        "summary": "Sign in with the configured username and password",
         "tags": [
           "auth"
         ]

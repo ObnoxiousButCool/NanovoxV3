@@ -1,9 +1,8 @@
-"""The one `SessionIssuer` adapter: a signed JWT, HS256, email as the subject.
+"""The one `SessionIssuer` adapter: a signed JWT, HS256, username as the subject.
 
 No refresh tokens, no claims beyond `sub`/`iat`/`exp`. A session that expires
-asks the reader to sign in again — through the same OTP flow, which is cheap
-enough at this traffic that a refresh path would be complexity with nothing
-bought for it yet.
+asks the reader to sign in again, which is cheap enough at this traffic that
+a refresh path would be complexity with nothing bought for it yet.
 """
 
 from __future__ import annotations
@@ -25,10 +24,10 @@ class JwtSessionIssuer(SessionIssuer):
         self._expiry_minutes = expiry_minutes
         self._clock = clock
 
-    def issue(self, *, email: str) -> str:
+    def issue(self, *, username: str) -> str:
         now = self._clock.now()
         payload = {
-            "sub": email,
+            "sub": username,
             "iat": now,
             "exp": now + timedelta(minutes=self._expiry_minutes),
         }
@@ -42,4 +41,4 @@ class JwtSessionIssuer(SessionIssuer):
         subject = payload.get("sub")
         if not isinstance(subject, str) or not subject:
             raise AuthenticationError("Your session has expired. Sign in again.")
-        return Session(email=subject)
+        return Session(username=subject)

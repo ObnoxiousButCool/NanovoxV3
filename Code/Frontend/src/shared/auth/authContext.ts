@@ -9,15 +9,11 @@
 import { createContext, useContext } from 'react'
 
 export interface AuthContextValue {
-  /** The signed-in address, or `null` before sign-in. */
-  email: string | null
+  /** The signed-in username, or `null` before sign-in. */
+  username: string | null
   isAuthenticated: boolean
-  /** Always resolves, even for an unapproved or malformed address — see
-   * `application.use_cases.auth.RequestOtp` on why the API answers the
-   * same way either way. */
-  requestOtp: (email: string) => Promise<void>
-  /** Throws `ApiError` (401) for a wrong, used or expired code. */
-  verifyOtp: (email: string, code: string) => Promise<void>
+  /** Throws `ApiError` (401) for a wrong username, wrong password, or both. */
+  login: (username: string, password: string) => Promise<void>
   logout: () => void
 }
 

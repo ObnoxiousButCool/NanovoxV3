@@ -105,7 +105,7 @@ def test_seeding_twice_produces_the_same_board_not_a_doubled_one(
     # Built via `create_app` directly rather than the `app`/`client` fixtures
     # in `tests/conftest.py`, so it does not inherit their pre-authenticated
     # override — add it here too, since this test is about seeding, not auth.
-    app.dependency_overrides[require_session] = lambda: Session(email="test@example.com")
+    app.dependency_overrides[require_session] = lambda: Session(username="test-user")
     with TestClient(app) as client:
         board = client.get(BOARD_URL).json()
 

@@ -140,8 +140,8 @@ async function request<T>(path: string, init: RequestInit, options: RequestOptio
   const accepted = response.ok || (options.acceptStatuses?.includes(response.status) ?? false)
   if (!accepted) {
     // `authToken !== null` is what tells a session that just expired apart
-    // from `/auth/otp/verify` rejecting a wrong code: the verify call is
-    // itself how a token is obtained, so it always runs without one.
+    // from `/auth/login` rejecting a wrong username or password: the login
+    // call is itself how a token is obtained, so it always runs without one.
     if (response.status === 401 && authToken !== null) {
       onUnauthorized?.()
     }

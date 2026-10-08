@@ -1,5 +1,6 @@
 /**
- * The email-OTP sign-in endpoints.
+ * Sign-in: one shared username and password (leadership, 2026-10-08 —
+ * replaces the email-OTP flow this branch started with).
  *
  * Called directly through `postJson` rather than a `useQuery` hook: a
  * sign-in attempt is a one-shot action with no result worth caching, unlike
@@ -9,13 +10,8 @@
 import { postJson } from '@/shared/api/client'
 import type { components } from '@/shared/api/schema'
 
-export type RequestOtpResponse = components['schemas']['RequestOtpResponse']
-export type VerifyOtpResponse = components['schemas']['VerifyOtpResponse']
+export type LoginResponse = components['schemas']['LoginResponse']
 
-export async function requestOtp(email: string): Promise<RequestOtpResponse> {
-  return postJson<RequestOtpResponse>('/auth/otp/request', { email })
-}
-
-export async function verifyOtp(email: string, code: string): Promise<VerifyOtpResponse> {
-  return postJson<VerifyOtpResponse>('/auth/otp/verify', { email, code })
+export async function login(username: string, password: string): Promise<LoginResponse> {
+  return postJson<LoginResponse>('/auth/login', { username, password })
 }

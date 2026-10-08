@@ -600,33 +600,3 @@ class ActionLogRow(Base):
     action_id: Mapped[int] = mapped_column(ForeignKey("actions.id"), nullable=False, index=True)
     at: Mapped[datetime] = mapped_column(nullable=False)
     text: Mapped[str] = mapped_column(nullable=False)
-
-
-class OtpRequestRow(Base):
-    """One OTP issued to one address. Never updated except `attempts` and
-    `consumed_at` — a new request is a new row, not an overwrite of the
-    last one (see `application.ports.otp_repository`)."""
-
-    __tablename__ = "otp_requests"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(nullable=False, index=True)
-    # Only the hash is stored; see domain.value_objects.otp_code.
-    code_hash: Mapped[str] = mapped_column(nullable=False)
-    created_at: Mapped[datetime] = mapped_column(nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(nullable=False)
-    attempts: Mapped[int] = mapped_column(nullable=False, default=0)
-    consumed_at: Mapped[datetime | None] = mapped_column(nullable=True)
-
-
-class ApprovedEmailRow(Base):
-    """The email-OTP allowlist (Ranjit, 2026-10-08: a table, not a config
-    file — see `application.ports.approved_emails_repository`)."""
-
-    __tablename__ = "approved_emails"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    # Stored lowercased/trimmed, so the unique constraint is the match rule
-    # rather than something a query has to reapply.
-    email: Mapped[str] = mapped_column(nullable=False, unique=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(nullable=False)

@@ -1,6 +1,6 @@
 /**
- * The session persisted across a reload: the bearer token and the email it
- * was issued to.
+ * The session persisted across a reload: the bearer token and the username
+ * it was issued to.
  *
  * Every storage access is wrapped, the same discipline `shared/design/theme`
  * uses for the same reason: `localStorage` throws in a private window and
@@ -12,7 +12,7 @@ const SESSION_STORAGE_KEY = 'nvx-session'
 
 export interface StoredSession {
   readonly token: string
-  readonly email: string
+  readonly username: string
 }
 
 function isStoredSession(value: unknown): value is StoredSession {
@@ -20,7 +20,7 @@ function isStoredSession(value: unknown): value is StoredSession {
     typeof value === 'object' &&
     value !== null &&
     typeof (value as Partial<StoredSession>).token === 'string' &&
-    typeof (value as Partial<StoredSession>).email === 'string'
+    typeof (value as Partial<StoredSession>).username === 'string'
   )
 }
 

@@ -78,7 +78,7 @@
   line-height: 1.45;
 }
 
-/* Email-OTP login (feature/email-otp-login, not on main). */
+/* Login (feature/email-otp-login, not on main). */
 .nv-session {
   margin-top: 10px;
   display: flex;
@@ -87,7 +87,7 @@
   gap: 8px;
 }
 
-.nv-session-email {
+.nv-session-username {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

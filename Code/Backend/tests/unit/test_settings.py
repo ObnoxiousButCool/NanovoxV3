@@ -44,7 +44,12 @@ def test_database_file_is_none_for_postgres() -> None:
 
 
 def test_is_production_only_when_app_env_is_prod() -> None:
-    assert make_settings(app_env="prod", jwt_secret="test-secret").is_production  # noqa: S106
+    assert make_settings(
+        app_env="prod",
+        jwt_secret="test-secret",  # noqa: S106
+        auth_username="test-user",
+        auth_password_hash="unused$unused",  # noqa: S106
+    ).is_production
     assert not make_settings(app_env="local").is_production
 
 

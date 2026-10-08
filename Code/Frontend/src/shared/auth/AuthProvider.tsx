@@ -1,5 +1,5 @@
 /**
- * Session state for the tree: who is signed in, and the three actions that
+ * Session state for the tree: who is signed in, and the two actions that
  * change it.
  *
  * The token lives in two places on purpose. `shared/api/client` holds it in
@@ -12,37 +12,33 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 
-import { requestOtp as requestOtpRequest, verifyOtp as verifyOtpRequest } from '@/shared/api/auth'
+import { login as loginRequest } from '@/shared/api/auth'
 import { setAuthToken, setUnauthorizedHandler } from '@/shared/api/client'
 import { AuthContext } from '@/shared/auth/authContext'
 import type { AuthContextValue } from '@/shared/auth/authContext'
 import { clearStoredSession, readStoredSession, storeSession } from '@/shared/auth/session'
 
-function restoredEmail(): string | null {
+function restoredUsername(): string | null {
   const stored = readStoredSession()
   if (stored === null) return null
   setAuthToken(stored.token)
-  return stored.email
+  return stored.username
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [email, setEmail] = useState<string | null>(restoredEmail)
+  const [username, setUsername] = useState<string | null>(restoredUsername)
 
-  const requestOtp = useCallback(async (address: string) => {
-    await requestOtpRequest(address)
-  }, [])
-
-  const verifyOtp = useCallback(async (address: string, code: string) => {
-    const response = await verifyOtpRequest(address, code)
+  const login = useCallback(async (candidateUsername: string, password: string) => {
+    const response = await loginRequest(candidateUsername, password)
     setAuthToken(response.token)
-    storeSession({ token: response.token, email: response.email })
-    setEmail(response.email)
+    storeSession({ token: response.token, username: response.username })
+    setUsername(response.username)
   }, [])
 
   const logout = useCallback(() => {
     setAuthToken(null)
     clearStoredSession()
-    setEmail(null)
+    setUsername(null)
   }, [])
 
   useEffect(() => {
@@ -53,8 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [logout])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ email, isAuthenticated: email !== null, requestOtp, verifyOtp, logout }),
-    [email, requestOtp, verifyOtp, logout],
+    () => ({ username, isAuthenticated: username !== null, login, logout }),
+    [username, login, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,4 +1,4 @@
-"""Port for turning a verified email into a bearer session, and back.
+"""Port for turning a verified sign-in into a bearer session, and back.
 
 A port rather than a direct `PyJWT` call from the use case: the application
 layer asks for a session over an identity and a session's identity back, not
@@ -15,15 +15,15 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Session:
-    email: str
+    username: str
 
 
 class SessionIssuer(ABC):
     """Issues and verifies bearer sessions."""
 
     @abstractmethod
-    def issue(self, *, email: str) -> str:
-        """A bearer token asserting this email signed in, valid for the
+    def issue(self, *, username: str) -> str:
+        """A bearer token asserting this user signed in, valid for the
         issuer's configured lifetime."""
 
     @abstractmethod

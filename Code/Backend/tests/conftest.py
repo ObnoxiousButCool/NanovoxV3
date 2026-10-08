@@ -32,7 +32,7 @@ from tests.support.settings import make_settings
 #: are about the business logic behind each route, not about auth — forcing
 #: each one to carry a token would be noise. The auth system gets its own
 #: tests, against the unmodified dependency (`tests/integration/test_auth_endpoints.py`).
-TEST_SESSION_EMAIL = "test@example.com"
+TEST_SESSION_USERNAME = "test-user"
 
 
 @pytest.fixture
@@ -105,12 +105,14 @@ def session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
 def app(settings: Settings, schema: None) -> FastAPI:
     """An application instance, not yet started, over a database with a schema.
 
-    Pre-authenticated by default — see `TEST_SESSION_EMAIL`. A test of the
-    sign-in flow itself removes this override to exercise the real
+    Pre-authenticated by default — see `TEST_SESSION_USERNAME`. A test of
+    the sign-in flow itself removes this override to exercise the real
     dependency.
     """
     application = create_app(settings)
-    application.dependency_overrides[require_session] = lambda: Session(email=TEST_SESSION_EMAIL)
+    application.dependency_overrides[require_session] = lambda: Session(
+        username=TEST_SESSION_USERNAME
+    )
     return application
 
 

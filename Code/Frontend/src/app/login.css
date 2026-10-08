@@ -1,6 +1,9 @@
 /* The sign-in screen (feature/email-otp-login, not on main). Its own small
    stylesheet rather than the rail's `shell.css`: this screen renders instead
-   of the shell, never alongside it, so nothing there is loaded yet. */
+   of the shell, never alongside it, so nothing there is loaded yet.
+
+   Named after the branch it shipped on, not the current flow — a single
+   shared username and password, not email-OTP (leadership, 2026-10-08). */
 
 .nv-login {
   min-height: 100vh;
@@ -50,13 +53,6 @@
   font: 600 20px/1.2 var(--display);
   letter-spacing: -0.01em;
   color: var(--ink);
-  margin: 0 0 6px;
-}
-
-.nv-login-lede {
-  color: var(--ink-2);
-  font-size: 13px;
-  line-height: 1.5;
   margin: 0 0 18px;
 }
 
@@ -113,25 +109,4 @@
 .nv-login-submit:disabled {
   background: var(--rule-strong);
   cursor: default;
-}
-
-.nv-login-link {
-  appearance: none;
-  cursor: pointer;
-  display: block;
-  margin: 10px auto 0;
-  border: 0;
-  background: none;
-  color: var(--ink-3);
-  font: 500 12px/1.2 var(--body);
-  text-decoration: underline;
-}
-
-.nv-login-link:hover:not(:disabled) {
-  color: var(--brand);
-}
-
-.nv-login-link:disabled {
-  cursor: default;
-  text-decoration: none;
 }

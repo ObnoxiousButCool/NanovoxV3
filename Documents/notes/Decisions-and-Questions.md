@@ -1,121 +1,106 @@
-# Decisions and Questions — email-OTP login
+# Decisions and Questions — login
 
 2026-10-08 · `feature/email-otp-login`, not on main
 
-Ranjit asked for an email-OTP sign-in system: enter an address, get a
-6-digit code, enter the code, get in. This is the running record of what
-got decided while building it, and what is still genuinely open — kept here
-rather than only in commit messages and code comments, so the next person
-(including whoever eventually reviews this for main) does not have to
-reconstruct the reasoning from a diff.
+Ranjit originally asked for an email-OTP sign-in system: enter an address,
+get a 6-digit code, enter the code, get in. Leadership later changed that to
+a single shared username and password for the whole application. This is
+the running record of what got decided through both versions and what is
+still genuinely open — kept here rather than only in commit messages and
+code comments, so the next person (including whoever eventually reviews
+this for main) does not have to reconstruct the reasoning from a diff.
 
-## Decisions
+## Current approach: one shared username and password
 
-**The allowlist is a database table, not a config file.** First cut shipped
+**Leadership, 2026-10-08: skip email entirely, use a fixed username and
+password.** `Technossus` / `Tech@2026`. Not a per-person account — one
+credential gates the whole application. Replaces the email-OTP flow below
+outright; the email-sending work, the allowlist, and the OTP machinery are
+all removed, not just unused.
+
+**The credential lives in settings (`.env`), not a database.** A table made
+sense for the allowlist this replaces, because that was a list expected to
+grow. One hardcoded pair has nothing to grow — a table would be overhead
+with nothing bought for it. `AUTH_USERNAME` and `AUTH_PASSWORD_HASH` behave
+like `JWT_SECRET` already does: required outside local development, with no
+safe default.
+
+**The password is hashed with PBKDF2-HMAC-SHA256, never stored in
+plaintext.** Even a leadership-issued shared password gets the same
+treatment a per-person one would — `domain/value_objects/password_hash.py`,
+stdlib only (no new dependency). This is also why it was not reused for the
+OTP code's hashing before it: a password is long-lived and not from a
+cryptographic RNG, which is exactly what a slow, salted KDF exists to
+protect; a fast hash (right for the old OTP code) would be the wrong tool
+here.
+
+**A wrong username and a wrong password answer identically.** `Login`
+checks both before raising, rather than stopping at the first mismatch, so
+neither a timing difference nor a different message tells a caller which
+one was wrong — same principle the email-OTP flow applied to "not approved"
+vs. "wrong code."
+
+**The session mechanism is unchanged.** The JWT bearer session, the
+`require_session` gate on every router but `/health` and `/auth`, the
+frontend's whole-app gate, `localStorage` persistence, and auto-logout on a
+401 all carried over from the email-OTP build untouched — only the
+credential check in front of them changed. See below for why those were
+built the way they were.
+
+**The login page is one step now, not two.** No "enter your email, then
+enter the code" — just a username field and a password field, reusing the
+card/branding already built for the email flow.
+
+**This still stays on its own branch.** Ranjit's original instruction
+("let's work on the login page and keep it in the other branch, let's not
+merge it to main") was never reversed, and the credential-model change
+doesn't reverse it either.
+
+## Superseded: the email-OTP approach this branch started with
+
+Kept for the reasoning, not as a description of what currently runs.
+
+**The allowlist was a database table, not a config file.** First cut shipped
 as `config/approved_emails.yaml`, a developer-edited file matching the
-pattern `dashboard.yaml` and `action_lifecycle.yaml` already use. Ranjit
-asked for the database route instead (2026-10-08), so it is now the
-`approved_emails` table, managed through
-`python -m frameworks_drivers.cli.manage_approved_emails` (`add`, `remove`,
-`list`). No admin screen yet — see the open question below.
+pattern `dashboard.yaml` and `action_lifecycle.yaml` use. Ranjit asked for
+the database route instead (2026-10-08), so it briefly became the
+`approved_emails` table before the whole email approach was dropped.
 
-**Email delivery is a swappable adapter, defaulting to a console logger.**
-`EmailSender` is a port with two adapters today: `ConsoleEmailSender` (logs
-the code instead of mailing it — the default, so the whole flow runs and is
-demoable with nothing configured) and `SmtpEmailSender` (stdlib `smtplib`,
-works with any account that speaks SMTP). Switching is `EMAIL_BACKEND=smtp`
-plus credentials in `.env` — no code change. Which real account to use is
-still Ranjit's call (see questions).
+**Email delivery was a swappable adapter, defaulting to a console logger.**
+`EmailSender` was a port with two adapters: `ConsoleEmailSender` (logged the
+code instead of mailing it, so the flow was demoable with nothing
+configured) and `SmtpEmailSender` (stdlib `smtplib`). The intent — swapping
+the real sending account in later without touching anything above the port
+— is the same reasoning the current credential-storage split follows.
 
-**A code is six digits, random, and never stored in plaintext.** Generated
-with `secrets` (not `random`), hashed with SHA-256 before it touches the
-database, compared with a constant-time check. See
-`domain/value_objects/otp_code.py` for why a slow salted KDF (the right
-choice for a password) is not the right choice here.
+**Requesting a code answered the same way regardless of whether the address
+was approved, and verifying gave one message for wrong, expired, or
+never-issued.** The enumeration-resistance principle this established is
+exactly what `Login` applies to username/password today.
 
-**Requesting a code answers the same way regardless of whether the address
-is approved.** `POST /auth/otp/request` always returns the same generic
-message. The alternative — a distinct "not approved" response — turns the
-endpoint into a way to enumerate who is on the list.
-
-**Verifying a code gives one message for wrong, expired, or never-issued.**
-Same reasoning as above, one level in: a caller should not be able to tell
-"that code expired" from "no code was ever sent to this address" from "you
-got it wrong."
-
-**An OTP expires in 10 minutes, allows 5 attempts, and a resend is throttled
-to one per 30 seconds.** All three are settings
-(`OTP_EXPIRY_MINUTES`/`OTP_MAX_ATTEMPTS`/`OTP_RESEND_COOLDOWN_SECONDS`), not
-hard-coded — defaults chosen as reasonable, not measured against anything.
-
-**Sessions are a signed JWT, no refresh token, 12-hour default lifetime.**
-Bearer token in the `Authorization` header, verified by one dependency
-(`require_session`) that every router depends on except `/health` and
-`/auth` itself — gating is whole-app, not per-route. Chosen over a
-cookie-based session to avoid touching the existing CORS configuration
-(`allow_credentials=False`) for a POC-stage feature.
-
-**The frontend gates the whole app in one place.** `App.tsx` checks
-`isAuthenticated` once and renders either the login screen or everything
-else — not a per-route guard. The session is persisted to `localStorage` so
-a reload does not sign the reader out, and a 401 on any authenticated
-request logs the reader out automatically rather than leaving the screen
-stuck retrying a request it can never complete.
-
-**This stays on its own branch.** Ranjit: "let's work on the login page and
-keep it in the other branch, let's not merge it to main." Nothing here has
-been merged, and nothing should be until that changes.
+**Going through Shehbaz for email configuration is moot.** Ranjit's
+2026-10-08 reply ("connect with Shehbaz... similar to the Technossus
+Website... check whether there would be any additional cost") no longer
+needs following up — there is no email to send.
 
 ## Questions — genuinely open
 
-**Which account actually sends the email?** SMTP (a company mailbox, or a
-relay like SendGrid's) is the fast path — credentials in, working in hours.
-Azure Communication Services fits the existing Azure-first infrastructure
-but needs a verified sending domain first, which is a DNS wait measured in
-days, separate from any engineering time. This is blocking real email
-delivery; the console backend is a stand-in, not a destination.
+**Is one shared credential the end state, or will per-person accounts
+matter later?** Nobody asked for individual logins, but this system touches
+compliance-adjacent data, and "everyone is Technossus" means there is no way
+to answer "who did this" from the login alone. Worth naming now rather than
+assuming either way.
 
-*Update, 2026-10-08 — Ranjit:* go through Shehbaz (IT) for the email
-configuration, the same way the Technossus website's own sending account was
-set up. On the "handler/function to generate and send the OTP" he asked
-for — that part is already built (`application/use_cases/auth.py`'s
-`RequestOtp`, the `EmailSender` port, `SmtpEmailSender` as the real adapter);
-what is actually missing is the account to send from. Still need from
-Shehbaz: whether the Technossus website's existing setup can be reused
-outright or a new mailbox/relay is needed, the SMTP host/port, the auth
-method (a plain username+password, or an app password — Microsoft 365 in
-particular has retired basic SMTP auth on most tenants, which would mean
-OAuth2 instead and a different adapter), the from-address, and whether
-there's any added cost. `SmtpEmailSender` as built assumes basic
-username/password auth; an OAuth2-only mailbox would need a different
-adapter behind the same `EmailSender` port, not a rewrite of anything above
-it.
-
-**How does the allowlist actually get managed day to day?** Right now,
-adding or removing an approved address means someone with shell access to
-the server runs a CLI command. That is fine for a handful of internal
-testers. It is worth asking out loud whether the client is expected to
-manage their own list eventually, and if so, whether that needs a real
-admin screen rather than a command line — that is a meaningfully bigger
-piece of work than anything built so far, so it is worth deciding before it
-is assumed either way.
+**Should a sign-in be logged anywhere a human can see it?** More relevant
+with one shared credential than it would be with per-person ones: right now
+nothing records when the password was used, so "who was in the system
+Tuesday afternoon" has no answer beyond the standard request log's
+incidental detail.
 
 **Is a 12-hour session the right length?** No "remember me," no shorter
 option for a shared machine, no longer one for someone who does not want to
-re-enter a code daily. Picked as a reasonable default, not requested by
-anyone.
-
-**Should a sign-in be logged anywhere a human can see it?** Right now
-nothing records who signed in or when, beyond whatever the standard request
-log already captures incidentally. If "who has accessed this" ever matters
-(and for a system with compliance-adjacent data, it plausibly does), that is
-a deliberate gap today.
-
-**Is per-address throttling enough, or does this need IP-based rate
-limiting too?** The cooldown and attempt cap stop one address from being
-spammed or brute-forced. Nothing stops one caller from doing that across
-many different addresses at once. Not a concern for a closed pilot; worth
-revisiting before this is reachable by anyone who isn't already trusted.
+re-enter the password daily. Picked as a reasonable default, not requested
+by anyone.
 
 **The action board's `trustNote` is now wrong.** `GET /insights/actions/board`
 still carries the line "there is no sign-in, and anyone who can reach the
@@ -126,13 +111,16 @@ not a technical one, and is out of scope for this branch until someone
 signs off on the replacement wording.
 
 **Is a JWT the right call long-term, or will this need to revoke a session
-before it expires?** A JWT is only as revocable as the infrastructure around
-it — short of rotating the signing secret (which logs out everyone, not one
-person), there is no "kick this one person out right now." If that
-capability turns out to matter, the session needs to become a database row,
-not a signed token.
+before it expires?** More pointed now than it was with per-address OTP
+sessions: there is exactly one credential, so if it needs to be invalidated
+mid-use (a leak, an offboarding), rotating `JWT_SECRET` logs out everyone at
+once — there is no "kick this one session out right now" short of that. If
+that capability turns out to matter, a session needs to become a database
+row, not a signed token.
+
+**How does the password actually get rotated, and by whom?** Today that is
+an `.env` edit and a redeploy. Fine for a POC; worth asking whether that is
+still fine once this is something other than Ranjit and Shloka testing it.
 
 **Does this ship to main at all, and on what condition?** Not asked yet.
-Worth naming as a question rather than an assumption: is the plan "once
-Ranjit picks an email provider and the client confirms they want a login
-screen," or something else?
+Worth naming as a question rather than an assumption.

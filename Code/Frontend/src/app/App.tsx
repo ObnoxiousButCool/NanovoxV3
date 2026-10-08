@@ -31,9 +31,9 @@ import { useAuth } from '@/shared/auth/authContext'
 import { Shell } from '@/shared/design/Shell'
 
 export function App() {
-  // Email-OTP login (feature/email-otp-login, not on main): the whole app
-  // sits behind one gate rather than each route guarding itself, since
-  // nothing here is meant to be reachable signed out.
+  // Login (feature/email-otp-login, not on main): the whole app sits behind
+  // one gate rather than each route guarding itself, since nothing here is
+  // meant to be reachable signed out.
   const { isAuthenticated } = useAuth()
 
   if (!isAuthenticated) {

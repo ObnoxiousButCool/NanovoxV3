@@ -14,7 +14,7 @@ from fastapi import Depends, Header, Request
 
 from application.ports.llm_provider import LLMProvider
 from application.ports.session_issuer import Session
-from application.use_cases.auth import RequestOtp, VerifyOtp
+from application.use_cases.auth import Login
 from application.use_cases.generate_insights import GenerateInsights
 from application.use_cases.get_health import GetHealth
 from application.use_cases.import_reference_data import ImportReferenceData
@@ -171,12 +171,8 @@ def get_dashboard_config(container: ContainerDep) -> DashboardConfig:
     return container.dashboard_config
 
 
-def get_request_otp_use_case(container: ContainerDep) -> RequestOtp:
-    return container.request_otp()
-
-
-def get_verify_otp_use_case(container: ContainerDep) -> VerifyOtp:
-    return container.verify_otp()
+def get_login_use_case(container: ContainerDep) -> Login:
+    return container.login()
 
 
 _BEARER_PREFIX = "Bearer "
@@ -227,6 +223,5 @@ ListActionsDep = Annotated[ListActions, Depends(get_list_actions_use_case)]
 ActionContextDep = Annotated[ActionContext, Depends(get_action_context)]
 GetRulesDep = Annotated[GetRules, Depends(get_rules_use_case)]
 GetAgentsDep = Annotated[GetAgents, Depends(get_agents_use_case)]
-RequestOtpDep = Annotated[RequestOtp, Depends(get_request_otp_use_case)]
-VerifyOtpDep = Annotated[VerifyOtp, Depends(get_verify_otp_use_case)]
+LoginDep = Annotated[Login, Depends(get_login_use_case)]
 SessionDep = Annotated[Session, Depends(require_session)]

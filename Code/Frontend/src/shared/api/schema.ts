@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/v1/auth/otp/request": {
+    "/api/v1/auth/login": {
         parameters: {
             query?: never;
             header?: never;
@@ -13,25 +13,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Request a one-time sign-in code */
-        post: operations["request_otp_api_v1_auth_otp_request_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/otp/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Redeem a one-time code for a session */
-        post: operations["verify_otp_api_v1_auth_otp_verify_post"];
+        /** Sign in with the configured username and password */
+        post: operations["login_api_v1_auth_login_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2282,6 +2265,20 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** LoginBody */
+        LoginBody: {
+            /** Password */
+            password: string;
+            /** Username */
+            username: string;
+        };
+        /** LoginResponse */
+        LoginResponse: {
+            /** Token */
+            token: string;
+            /** Username */
+            username: string;
+        };
         /**
          * MarkerResponse
          * @description One rubric observation behind a quality score.
@@ -2721,19 +2718,6 @@ export interface components {
             /** Unresolved */
             unresolved: number;
         };
-        /** RequestOtpBody */
-        RequestOtpBody: {
-            /** Email */
-            email: string;
-        };
-        /** RequestOtpResponse */
-        RequestOtpResponse: {
-            /**
-             * Message
-             * @default If that address is approved, a code is on its way.
-             */
-            message: string;
-        };
         /** RiskScreenResponse */
         RiskScreenResponse: {
             /** Asof */
@@ -3148,20 +3132,6 @@ export interface components {
             /** Error Type */
             type: string;
         };
-        /** VerifyOtpBody */
-        VerifyOtpBody: {
-            /** Code */
-            code: string;
-            /** Email */
-            email: string;
-        };
-        /** VerifyOtpResponse */
-        VerifyOtpResponse: {
-            /** Email */
-            email: string;
-            /** Token */
-            token: string;
-        };
         /**
          * WeekResponse
          * @description One week of the movement window.
@@ -3242,7 +3212,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    request_otp_api_v1_auth_otp_request_post: {
+    login_api_v1_auth_login_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3251,7 +3221,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RequestOtpBody"];
+                "application/json": components["schemas"]["LoginBody"];
             };
         };
         responses: {
@@ -3261,43 +3231,10 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RequestOtpResponse"];
+                    "application/json": components["schemas"]["LoginResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    verify_otp_api_v1_auth_otp_verify_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["VerifyOtpBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["VerifyOtpResponse"];
-                };
-            };
-            /** @description The code is wrong, used or expired. */
+            /** @description Incorrect username or password. */
             401: {
                 headers: {
                     [name: string]: unknown;

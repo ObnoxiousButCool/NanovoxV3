@@ -45,16 +45,16 @@ document.addEventListener('keydown', (event) => {
 })
 
 /**
- * Email-OTP login (feature/email-otp-login, not on main): every test here
- * was written before sign-in existed and is about a screen's own behaviour,
- * not about auth, so each one starts pre-authenticated — `AuthProvider`
- * reads this back on mount the same way it would a session saved across a
- * real reload. The login flow itself clears this in its own `beforeEach`
+ * Login (feature/email-otp-login, not on main): every test here was written
+ * before sign-in existed and is about a screen's own behaviour, not about
+ * auth, so each one starts pre-authenticated — `AuthProvider` reads this
+ * back on mount the same way it would a session saved across a real reload.
+ * The login flow itself clears this in its own `beforeEach`
  * (`src/app/LoginScreen.test.tsx`), which runs after this one.
  */
 beforeEach(() => {
   localStorage.setItem(
     'nvx-session',
-    JSON.stringify({ token: 'test-token', email: 'test@example.com' }),
+    JSON.stringify({ token: 'test-token', username: 'test-user' }),
   )
 })

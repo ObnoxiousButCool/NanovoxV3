@@ -40,7 +40,6 @@ from infrastructure.config.paths import (
 AppEnv = Literal["local", "dev", "prod"]
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 LogFormat = Literal["json", "text"]
-EmailBackend = Literal["console", "smtp"]
 
 # SQLite is the default local/file-based store; Postgres (asyncpg) is what a
 # real deployment points at instead, for storage that survives a redeploy
@@ -121,29 +120,18 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-opus-5"
 
-    # --- Email-OTP login (feature/email-otp-login, not on main) ------------
-    # The allowlist itself is a database table (`approved_emails`), managed
-    # through `python -m frameworks_drivers.cli.manage_approved_emails` —
-    # Ranjit's call, 2026-10-08: see Documents/notes/Decisions-and-Questions.md.
-    # `console` logs the code instead of emailing it — the default, so the
-    # whole flow runs with nothing configured. Switch to `smtp` once an
-    # account exists to send from.
-    email_backend: EmailBackend = "console"
-    smtp_host: str = ""
-    smtp_port: int = Field(default=587, ge=1, le=65535)
-    smtp_username: str = ""
-    smtp_password: str = ""
-    smtp_from_address: str = ""
-    smtp_use_tls: bool = True
-    otp_expiry_minutes: int = Field(default=10, ge=1, le=60)
-    otp_max_attempts: int = Field(default=5, ge=1, le=20)
-    # How soon after one code the same address may be sent another. Guards
-    # against a reader mashing "resend" into a burst of emails, not against a
-    # determined attacker — that is `otp_max_attempts`' job.
-    otp_resend_cooldown_seconds: int = Field(default=30, ge=0, le=600)
+    # --- Login (feature/email-otp-login, not on main) -----------------------
+    # One shared username and password for the whole application, not a
+    # per-person account — leadership's call, 2026-10-08, replacing the
+    # email-OTP flow this branch started with (see
+    # Documents/notes/Decisions-and-Questions.md). `auth_password_hash` is
+    # produced by `domain.value_objects.password_hash.hash_password`, never
+    # the plaintext password itself.
+    auth_username: str = ""
+    auth_password_hash: str = ""
     # Signs the session token. There is no safe default: an empty secret
-    # would make every session forgeable, so this is required wherever
-    # `email_backend` is anything other than a throwaway local run.
+    # would make every session forgeable, so this is required outside a
+    # throwaway local run.
     jwt_secret: str = ""
     jwt_expiry_minutes: int = Field(default=12 * 60, ge=1, le=30 * 24 * 60)
 
@@ -200,21 +188,19 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def _smtp_backend_is_fully_configured(self) -> Settings:
-        if self.email_backend != "smtp":
+    def _login_credential_required_outside_local(self) -> Settings:
+        if self.app_env == "local":
             return self
         missing = [
             name
             for name, value in (
-                ("SMTP_HOST", self.smtp_host),
-                ("SMTP_USERNAME", self.smtp_username),
-                ("SMTP_PASSWORD", self.smtp_password),
-                ("SMTP_FROM_ADDRESS", self.smtp_from_address),
+                ("AUTH_USERNAME", self.auth_username),
+                ("AUTH_PASSWORD_HASH", self.auth_password_hash),
             )
             if not value.strip()
         ]
         if missing:
-            raise ValueError(f"EMAIL_BACKEND=smtp requires {', '.join(missing)}")
+            raise ValueError(f"{', '.join(missing)} must be set outside local development")
         return self
 
     @property

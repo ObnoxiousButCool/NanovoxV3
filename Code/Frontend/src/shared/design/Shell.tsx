@@ -30,8 +30,8 @@ export function Shell({ children }: { children: ReactNode }) {
   //
   // Only the bar's own keys travel; see `sharedSearch`.
   const search = useSharedSearch()
-  // Email-OTP login (feature/email-otp-login, not on main).
-  const { email, logout } = useAuth()
+  // Login (feature/email-otp-login, not on main).
+  const { username, logout } = useAuth()
 
   return (
     <div className="nv-shell">
@@ -57,9 +57,9 @@ export function Shell({ children }: { children: ReactNode }) {
 
         <div className="nv-foot">
           <ThemeControl />
-          {email === null ? null : (
+          {username === null ? null : (
             <div className="nv-session">
-              <span className="nv-session-email">{email}</span>
+              <span className="nv-session-username">{username}</span>
               <button type="button" className="nv-session-logout" onClick={logout}>
                 Sign out
               </button>

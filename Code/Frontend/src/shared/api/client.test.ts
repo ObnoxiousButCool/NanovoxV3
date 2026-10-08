@@ -151,17 +151,18 @@ describe('the session token (feature/email-otp-login, not on main)', () => {
   })
 
   it('does not fire the unauthorized handler on a 401 with no token set', async () => {
-    // A wrong OTP code answers 401 from an endpoint that never carried a
-    // token in the first place — not an expired session.
+    // A wrong username or password answers 401 from an endpoint that never
+    // carried a token in the first place — not an expired session.
     const handler = vi.fn()
     setUnauthorizedHandler(handler)
     const fetchFn = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ title: 'Invalid code', code: 'authentication_error' }), {
-        status: 401,
-      }),
+      new Response(
+        JSON.stringify({ title: 'Incorrect username or password.', code: 'authentication_error' }),
+        { status: 401 },
+      ),
     )
 
-    await expect(getJson('/auth/otp/verify', { baseUrl: BASE_URL, fetchFn })).rejects.toThrow()
+    await expect(getJson('/auth/login', { baseUrl: BASE_URL, fetchFn })).rejects.toThrow()
 
     expect(handler).not.toHaveBeenCalled()
   })
