@@ -75,6 +75,22 @@ but needs a verified sending domain first, which is a DNS wait measured in
 days, separate from any engineering time. This is blocking real email
 delivery; the console backend is a stand-in, not a destination.
 
+*Update, 2026-10-08 — Ranjit:* go through Shehbaz (IT) for the email
+configuration, the same way the Technossus website's own sending account was
+set up. On the "handler/function to generate and send the OTP" he asked
+for — that part is already built (`application/use_cases/auth.py`'s
+`RequestOtp`, the `EmailSender` port, `SmtpEmailSender` as the real adapter);
+what is actually missing is the account to send from. Still need from
+Shehbaz: whether the Technossus website's existing setup can be reused
+outright or a new mailbox/relay is needed, the SMTP host/port, the auth
+method (a plain username+password, or an app password — Microsoft 365 in
+particular has retired basic SMTP auth on most tenants, which would mean
+OAuth2 instead and a different adapter), the from-address, and whether
+there's any added cost. `SmtpEmailSender` as built assumes basic
+username/password auth; an OAuth2-only mailbox would need a different
+adapter behind the same `EmailSender` port, not a rewrite of anything above
+it.
+
 **How does the allowlist actually get managed day to day?** Right now,
 adding or removing an approved address means someone with shell access to
 the server runs a CLI command. That is fine for a handful of internal
