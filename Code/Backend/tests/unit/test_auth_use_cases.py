@@ -15,13 +15,13 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from application.ports.approved_emails_repository import ApprovedEmailsRepository
 from application.ports.clock import Clock
 from application.ports.email_sender import EmailSender
 from application.ports.otp_repository import OtpRepository, OtpRequestRecord
 from application.ports.session_issuer import Session, SessionIssuer
 from application.use_cases.auth import INVALID_CODE_MESSAGE, RequestOtp, VerifyOtp
 from domain.errors import AuthenticationError
-from domain.value_objects.approved_emails import approved_emails_from
 from domain.value_objects.otp_code import hash_otp_code
 
 _NOW = datetime(2026, 10, 8, 9, 0, tzinfo=UTC)
@@ -123,6 +123,30 @@ class _FakeSessionIssuer(SessionIssuer):
         raise NotImplementedError
 
 
+class _FakeApprovedEmailsRepository(ApprovedEmailsRepository):
+    """Normalises like the real `SqlApprovedEmailsRepository` does, so a
+    case/whitespace test here is testing the same rule the database enforces."""
+
+    def __init__(self, approved: list[str]) -> None:
+        self._approved = {email.strip().lower() for email in approved}
+
+    async def is_approved(self, email: str) -> bool:
+        return email.strip().lower() in self._approved
+
+    async def add(self, email: str, *, at: datetime) -> None:  # pragma: no cover - unused here
+        self._approved.add(email.strip().lower())
+
+    async def remove(self, email: str) -> bool:  # pragma: no cover - unused here
+        normalised = email.strip().lower()
+        if normalised not in self._approved:
+            return False
+        self._approved.discard(normalised)
+        return True
+
+    async def list_all(self) -> tuple[str, ...]:  # pragma: no cover - unused here
+        return tuple(self._approved)
+
+
 @pytest.fixture
 def clock() -> _MutableClock:
     return _MutableClock(_NOW)
@@ -147,7 +171,7 @@ def _request_otp(
     resend_cooldown_seconds: int = 30,
 ) -> RequestOtp:
     return RequestOtp(
-        approved_emails=approved_emails_from([_APPROVED]),
+        approved_emails=_FakeApprovedEmailsRepository([_APPROVED]),
         otp_repository=otp_repository,
         email_sender=email_sender,
         clock=clock,

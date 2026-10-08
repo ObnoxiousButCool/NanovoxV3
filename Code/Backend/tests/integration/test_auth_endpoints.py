@@ -9,6 +9,7 @@ override and exercises the real `require_session` dependency.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import shutil
@@ -32,14 +33,7 @@ _CODE_IN_LOG = re.compile(r"OTP for \S+ is (\d{6})")
 
 
 @pytest.fixture
-def approved_emails_file(tmp_path: Path) -> Path:
-    path = tmp_path / "approved_emails.yaml"
-    path.write_text(f"emails:\n  - {APPROVED_EMAIL}\n", encoding="utf-8")
-    return path
-
-
-@pytest.fixture
-def auth_settings(tmp_path: Path, approved_emails_file: Path, schema_template: Path) -> Settings:
+def auth_settings(tmp_path: Path, schema_template: Path) -> Settings:
     database = tmp_path / "test.db"
     shutil.copyfile(schema_template, database)
     return make_settings(
@@ -48,7 +42,6 @@ def auth_settings(tmp_path: Path, approved_emails_file: Path, schema_template: P
         log_enabled=False,
         log_to_console=False,
         log_dir=tmp_path / "logs",
-        approved_emails_path=approved_emails_file,
         # Zero, not the real default: several tests here request a code more
         # than once and must not trip the resend guard to see whether this
         # path works.
@@ -58,8 +51,16 @@ def auth_settings(tmp_path: Path, approved_emails_file: Path, schema_template: P
 
 @pytest.fixture
 def auth_client(auth_settings: Settings) -> Iterator[TestClient]:
-    """The real app, with no `require_session` override — unlike `tests/conftest.py`'s."""
-    with TestClient(create_app(auth_settings)) as client:
+    """The real app, with no `require_session` override — unlike `tests/conftest.py`'s.
+
+    Approves `APPROVED_EMAIL` through the real repository once the app (and
+    its database) has started, rather than through a config file — the
+    allowlist is a table now (Ranjit, 2026-10-08).
+    """
+    app = create_app(auth_settings)
+    with TestClient(app) as client:
+        container = app.state.container
+        asyncio.run(container.approved_emails.add(APPROVED_EMAIL, at=container.clock.now()))
         yield client
 
 

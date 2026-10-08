@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from application.ports.action_repository import ActionRepository
 from application.ports.answer_key_source import AnswerKeySource
+from application.ports.approved_emails_repository import ApprovedEmailsRepository
 from application.ports.call_extraction_repository import CallExtractionRepository
 from application.ports.call_repository import CallRepository
 from application.ports.clock import Clock
@@ -80,11 +81,9 @@ from domain.dashboard_config import DashboardConfig
 from domain.errors import ConfigurationError, NotFoundError
 from domain.playbooks import PlaybookCatalogue
 from domain.scoring.rubric import Rubric
-from domain.value_objects.approved_emails import ApprovedEmails
 from infrastructure.auth.jwt_session_issuer import JwtSessionIssuer
 from infrastructure.cache.insight_cache import InMemoryInsightCache
 from infrastructure.config.action_lifecycle_loader import load_action_lifecycle
-from infrastructure.config.approved_emails_loader import load_approved_emails
 from infrastructure.config.dashboard_config import load_dashboard_config
 from infrastructure.config.playbook_loader import load_playbooks
 from infrastructure.config.rubric_loader import load_rubric
@@ -101,6 +100,9 @@ from infrastructure.logging.llm_audit import LlmAuditLog
 from infrastructure.persistence.engine import create_database_engine, create_session_factory
 from infrastructure.persistence.health_probe import DatabaseHealthProbe
 from infrastructure.persistence.repositories.action_repository import SqlActionRepository
+from infrastructure.persistence.repositories.approved_emails_repository import (
+    SqlApprovedEmailsRepository,
+)
 from infrastructure.persistence.repositories.call_extraction_repository import (
     SqlCallExtractionRepository,
 )
@@ -168,7 +170,7 @@ class Container:
     action_lifecycle: Lifecycle
     action_repository: ActionRepository
     # Email-OTP login (feature/email-otp-login, not on main).
-    approved_emails: ApprovedEmails
+    approved_emails: ApprovedEmailsRepository
     otp_repository: OtpRepository
     email_sender: EmailSender
     session_issuer: SessionIssuer
@@ -432,7 +434,7 @@ def build_container(settings: Settings) -> Container:
         insight_cache=InMemoryInsightCache(),
         action_lifecycle=load_action_lifecycle(settings.action_lifecycle_path),
         action_repository=SqlActionRepository(session_factory),
-        approved_emails=load_approved_emails(settings.approved_emails_path),
+        approved_emails=SqlApprovedEmailsRepository(session_factory),
         otp_repository=SqlOtpRepository(session_factory),
         email_sender=_build_email_sender(settings),
         # Read once: a random fallback regenerates on every access (see the

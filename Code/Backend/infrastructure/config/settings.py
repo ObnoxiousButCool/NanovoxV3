@@ -28,7 +28,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from domain.errors import ConfigurationError
 from infrastructure.config.paths import (
     BACKEND_ROOT,
-    DEFAULT_APPROVED_EMAILS_PATH,
     DEFAULT_CONFIG_DIR,
     DEFAULT_FRONTEND_DIST,
     DEFAULT_LOG_DIR,
@@ -123,9 +122,9 @@ class Settings(BaseSettings):
     anthropic_model: str = "claude-opus-5"
 
     # --- Email-OTP login (feature/email-otp-login, not on main) ------------
-    # The allowlist a sign-in attempt is checked against. A config file, like
-    # the dashboard thresholds and the action lifecycle, not a database table.
-    approved_emails_path: Path = DEFAULT_APPROVED_EMAILS_PATH
+    # The allowlist itself is a database table (`approved_emails`), managed
+    # through `python -m frameworks_drivers.cli.manage_approved_emails` —
+    # Ranjit's call, 2026-10-08: see Documents/notes/Decisions-and-Questions.md.
     # `console` logs the code instead of emailing it — the default, so the
     # whole flow runs with nothing configured. Switch to `smtp` once an
     # account exists to send from.

@@ -13,12 +13,12 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from application.ports.approved_emails_repository import ApprovedEmailsRepository
 from application.ports.clock import Clock
 from application.ports.email_sender import EmailSender
 from application.ports.otp_repository import OtpRepository
 from application.ports.session_issuer import SessionIssuer
 from domain.errors import AuthenticationError
-from domain.value_objects.approved_emails import ApprovedEmails
 from domain.value_objects.otp_code import generate_otp_code, hash_otp_code, otp_code_matches
 
 INVALID_CODE_MESSAGE = "That code is not valid. Request a new one."
@@ -33,7 +33,7 @@ class RequestOtp:
 
     def __init__(
         self,
-        approved_emails: ApprovedEmails,
+        approved_emails: ApprovedEmailsRepository,
         otp_repository: OtpRepository,
         email_sender: EmailSender,
         clock: Clock,
@@ -56,7 +56,7 @@ class RequestOtp:
         422 here would be the difference a probing caller is looking for.
         """
         normalised = _normalise(email)
-        if not self._approved_emails.is_approved(normalised):
+        if not await self._approved_emails.is_approved(normalised):
             return
 
         now = self._clock.now()
