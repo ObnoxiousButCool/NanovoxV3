@@ -633,6 +633,41 @@ afterEach(() => {
 })
 
 describe('the shared screen frame', () => {
+  it('draws the exec layout while it waits, not the word Loading', async () => {
+    // Three queries gate /exec and the slowest decides, so the wait used to be
+    // the word "Loading…" on an empty page and then a full reflow. The
+    // skeleton is asserted before anything resolves, and the text state with
+    // it: a screen showing both would announce the wait twice.
+    renderAt('/exec')
+
+    const busy = document.querySelector('[aria-busy="true"]')
+    expect(busy).not.toBeNull()
+    expect(screen.getByText('Loading this screen')).toBeInTheDocument()
+    // The body's own "Loading…" state, not the filter dropdowns' — those say
+    // the same word legitimately while `/filters` is still in flight.
+    expect(document.querySelector('.nv-screenstate')).toBeNull()
+
+    // And it is boxes, never a figure a reader cannot check yet.
+    expect(busy?.textContent).toBe('Loading this screen')
+
+    // It goes when the data lands.
+    await waitFor(() => {
+      expect(screen.getByText('Emerging issues')).toBeInTheDocument()
+    })
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull()
+  })
+
+  it('puts a skip link before the rail, pointing at main', () => {
+    renderAt('/exec')
+
+    const skip = screen.getByRole('link', { name: /skip to main content/i })
+    expect(skip).toHaveAttribute('href', '#nv-main')
+    // First focusable thing in the document, or it saves nobody a tab stop.
+    const focusable = document.querySelectorAll('a[href], button, select, [tabindex]')
+    expect(focusable[0]).toBe(skip)
+    expect(document.getElementById('nv-main')).not.toBeNull()
+  })
+
   it("renders every one of the server's caveats, not just the first", async () => {
     renderAt('/exec')
 

@@ -32,6 +32,13 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="nv-shell">
+      {/* First focusable thing in the DOM, and invisible until focused.
+          Without it a keyboard reader tabs seven rail links and a theme
+          control before reaching the page, on every navigation. */}
+      <a className="nv-skiplink" href="#nv-main">
+        Skip to main content
+      </a>
+
       <aside className="nv-rail">
         <div className="nv-brandmark">
           <span className="nv-dot" aria-hidden="true">
@@ -57,7 +64,9 @@ export function Shell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <main className="nv-main">{children}</main>
+      <main className="nv-main" id="nv-main" tabIndex={-1}>
+        {children}
+      </main>
 
       {/* One drawer for the whole app: evidence opened from any screen
           stacks in the same place rather than each screen owning one. */}

@@ -494,3 +494,117 @@
   color: var(--ink-3);
   font-style: italic;
 }
+
+/* --- Skeletons ---------------------------------------------------------
+   The shape of a screen before its figures arrive. Boxes only: nothing here
+   ever renders a number, not even a greyed one, because a plausible figure
+   a reader cannot check is worse than an obvious gap.
+
+   Deliberately static. The frontend has no `transition` or `animation`
+   anywhere and no `prefers-reduced-motion` guard, so a shimmer here would be
+   the first motion in the product and the first thing to need that guard. A
+   still grey block says "not yet" perfectly well. */
+.nv-skel {
+  /* `display: block`, not grid. Its child is the screen's own layout --
+     `.nv-withai` is already a two-column grid -- and wrapping that in a second
+     grid collapsed the columns to zero width. The skeleton holds the shape; it
+     does not impose one. */
+  display: block;
+}
+
+.nv-skel-block {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.nv-skel-title {
+  height: 14px;
+  width: 38%;
+  margin-bottom: 14px;
+  border-radius: 4px;
+  background: var(--rule);
+}
+
+.nv-skel-line {
+  height: 10px;
+  margin-bottom: 9px;
+  border-radius: 4px;
+  background: var(--rule);
+  opacity: 0.6;
+}
+
+/* Narrower, so a block reads as a paragraph rather than a filled rectangle. */
+.nv-skel-line-last {
+  width: 62%;
+  margin-bottom: 0;
+}
+
+.nv-skel-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.nv-skel-tile {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.nv-skel-tile-label {
+  height: 10px;
+  width: 64%;
+  border-radius: 4px;
+  background: var(--rule);
+  opacity: 0.6;
+}
+
+.nv-skel-tile-figure {
+  height: 22px;
+  width: 42%;
+  margin-top: 12px;
+  border-radius: 4px;
+  background: var(--rule);
+}
+
+/* --- Skip link ---------------------------------------------------------
+   Off-screen rather than `display: none`: a hidden element is not focusable,
+   so it would never be reachable by the one person it exists for. */
+.nv-skiplink {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 0 0 8px 0;
+  text-decoration: none;
+  font: 600 14px/1 var(--body);
+}
+
+.nv-skiplink:focus {
+  left: 0;
+}
+
+/* --- Focus, everywhere -------------------------------------------------
+   The per-component rules stay and still win on specificity; this is the
+   floor under them. Plain `<a>` elements matched nothing before and fell back
+   to the browser's own ring, which is not guaranteed any contrast against the
+   dark theme and silently disappears the first time someone writes
+   `outline: none`. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* `main` is focused programmatically by the skip link, so it must not then
+   draw a ring around the whole page. */
+.nv-main:focus,
+.nv-main:focus-visible {
+  outline: none;
+}

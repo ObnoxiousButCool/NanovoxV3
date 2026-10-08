@@ -37,6 +37,7 @@ export function Screen({
   error,
   compactFilters = false,
   stickyHead = false,
+  skeleton,
   children,
 }: {
   title: string
@@ -48,6 +49,16 @@ export function Screen({
   scope?: Scope | undefined
   isPending: boolean
   error: unknown
+  /**
+   * What to draw while `isPending`, instead of the word "Loading…".
+   *
+   * Opt-in per screen rather than a shared default, because a useful skeleton
+   * is the shape of *that* page: a generic one is a grey rectangle that
+   * rearranges itself when the data lands, which is the reflow this exists to
+   * prevent. Screens that have not got one keep the text, which is honest
+   * about saying nothing rather than guessing at a layout.
+   */
+  skeleton?: ReactNode
   children: ReactNode
 }) {
   const [headStuck, setHeadStuck] = useState(false)
@@ -122,9 +133,14 @@ export function Screen({
           </p>
         </div>
       ) : isPending ? (
-        <div className="nv-screenstate" aria-live="polite">
-          Loading…
-        </div>
+        // The skeleton speaks for itself — it carries its own `aria-busy` and
+        // a single polite label — so it is not wrapped in the text state's
+        // live region, which would announce the wait twice.
+        (skeleton ?? (
+          <div className="nv-screenstate" aria-live="polite">
+            Loading…
+          </div>
+        ))
       ) : (
         children
       )}

@@ -76,6 +76,9 @@ import {
   FigureValue,
   IndicatorCount,
   KpiTile,
+  Skeleton,
+  SkeletonBlock,
+  SkeletonTiles,
   Note,
   Panel,
 } from '@/shared/design/primitives'
@@ -113,12 +116,56 @@ export function ExecScreen() {
         scope={data?.scope}
         isPending={isPending || risk.isPending || board.isPending}
         error={error ?? risk.error ?? board.error}
+        skeleton={<ExecSkeleton />}
       >
         {data === undefined || risk.data === undefined || board.data === undefined ? null : (
           <ExecBody data={data} risk={risk.data} board={board.data} names={names} insights={insights.data} />
         )}
       </Screen>
     </div>
+  )
+}
+
+/**
+ * The exec layout, before its figures arrive.
+ *
+ * Shaped like `ExecBody` on purpose — two columns, the attention panel and
+ * insight feed on the left, tiles and panels on the right — so the page does
+ * not rearrange itself when the data lands. Three queries gate this screen
+ * (`/exec`, `/risk`, `/insights/actions/board`) and the slowest decides, so
+ * the wait is the sum of nobody's expectations.
+ *
+ * It is not pixel-exact and should not be: matching panel heights would mean
+ * duplicating every panel's content rules here, and they would drift apart on
+ * the first change. Matching the *arrangement* is what stops the reflow.
+ */
+function ExecSkeleton() {
+  return (
+    <Skeleton>
+      <div className="nv-withai">
+        <div className="nv-feedcol">
+          <SkeletonBlock lines={6} />
+          <SkeletonBlock lines={4} />
+        </div>
+        <div className="nv-maincol nv-grid">
+          <div className="nv-c12">
+            <SkeletonTiles count={4} />
+          </div>
+          <div className="nv-c6">
+            <SkeletonBlock lines={2} />
+          </div>
+          <div className="nv-c6">
+            <SkeletonBlock lines={2} />
+          </div>
+          <div className="nv-c12">
+            <SkeletonBlock lines={4} />
+          </div>
+          <div className="nv-c12">
+            <SkeletonBlock lines={5} />
+          </div>
+        </div>
+      </div>
+    </Skeleton>
   )
 }
 
