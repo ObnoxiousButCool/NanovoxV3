@@ -8,18 +8,30 @@
  *
  * Schema fields 17-18 are computed in code and never sent to a model, and
  * the L4 panel says so where it shows them. They are written with L4 and
- * have no run, prompt or provenance to tell them apart by, so they are
- * labelled rather than given a panel of their own.
+ * have no run of their own, so they are labelled rather than given a panel
+ * of their own.
  *
  * ## Colour is never the only signal
  *
- * Each panel carries an accent colour, and each also says in words who
- * produced it ("Code" or "Model") and whether it ran. `StatusPill` in the
- * design system already makes this argument — "Shape, not only colour" — and
- * a drawer that encoded "deterministic" as blue alone would say nothing at
- * all to a reader who cannot separate blue from orange. The four layers take
- * the four categorical accents; the derived panel is deliberately neutral and
- * dashed, so the one panel that is not a layer does not look like one.
+ * Each panel carries an accent colour, and the accent is never what
+ * distinguishes it. The title names the layer and the subtitle says how it
+ * works — L1's reads "No model, and the same transcript always gives the
+ * same answer" — so a reader who cannot separate blue from orange loses
+ * nothing. `StatusPill` makes the same argument in the design system. The
+ * four layers take the four categorical accents; the derived panel is
+ * deliberately neutral and dashed, so the one panel that is not a layer does
+ * not look like one.
+ *
+ * The "Code"/"Model" badge each panel used to wear was removed on request.
+ * The subtitles carried the same distinction in longer words, which is why
+ * it could go.
+ *
+ * ## Every panel opens
+ *
+ * L3 and L4 used to arrive collapsed, because in a dialog four open panels
+ * and a transcript were an unreadable scroll. On a page with a column of its
+ * own there is room, and a reader who has navigated to one call wants to see
+ * it rather than to click four times first. They stay collapsible.
  *
  * ## An unrun layer is not a clean call
  *
@@ -50,7 +62,6 @@ type L3 = components['schemas']['L3PanelResponse']
 type L4 = components['schemas']['L4PanelResponse']
 type Coded = components['schemas']['CodedValue']
 type Evidenced = components['schemas']['EvidencedItem']
-type Run = components['schemas']['LayerRunResponse']
 
 export function CallAnalysis({
   analysis,
@@ -72,7 +83,6 @@ export function CallAnalysis({
       <h4>What we made of this call</h4>
       <DrawerPanel
         accent="l1"
-        producer="Code"
         title="L1 — Deterministic extraction"
         subtitle="A pattern match over the opening turns. No model, and the same transcript always gives the same answer."
         present={analysis.l1.ran}
@@ -84,12 +94,10 @@ export function CallAnalysis({
 
       <DrawerPanel
         accent="l2"
-        producer="Model"
         title="L2 — Classification"
         subtitle="What the call was about and how it ended."
         present={analysis.l2.ran}
         absentBecause={analysis.l2.notRunBecause}
-        footer={analysis.l2.run ? <Provenance run={analysis.l2.run} /> : null}
         openByDefault
       >
         <L2Body panel={analysis.l2} />
@@ -97,47 +105,27 @@ export function CallAnalysis({
 
       <DrawerPanel
         accent="l3"
-        producer="Model"
         title="L3 — Quality & knowledge"
         subtitle="The score, the markers behind it, and any rule stated incorrectly."
         present={analysis.l3.ran}
         absentBecause={analysis.l3.notRunBecause}
-        footer={analysis.l3.run ? <Provenance run={analysis.l3.run} /> : null}
+        openByDefault
       >
         <L3Body panel={analysis.l3} />
       </DrawerPanel>
 
       <DrawerPanel
         accent="l4"
-        producer="Model"
         title="L4 — Signals & gaps"
         subtitle="What this call is evidence of, and any process gap raised on it."
         present={analysis.l4.ran}
         absentBecause={analysis.l4.notRunBecause}
-        footer={analysis.l4.run ? <Provenance run={analysis.l4.run} /> : null}
+        openByDefault
       >
         <L4Body panel={analysis.l4} />
       </DrawerPanel>
 
     </section>
-  )
-}
-
-/**
- * Plan §7 requires provenance on every analysis. This is where it lands.
- *
- * Without the provider and model: the page names no vendor anywhere. The
- * prompt and rubric versions and the time still say which run this was.
- */
-function Provenance({ run }: { run: Run }) {
-  return (
-    <p className="nv-prov">
-      prompt {run.promptVersion}
-      {run.rubricVersion === null || run.rubricVersion === undefined
-        ? ''
-        : ` · rubric ${run.rubricVersion}`}{' '}
-      · {new Date(run.completedAt).toLocaleString()}
-    </p>
   )
 }
 
@@ -175,9 +163,8 @@ function L1Body({
 function L2Body({ panel }: { panel: L2 }) {
   return (
     <>
-      {panel.summary === null || panel.summary === undefined ? null : (
-        <p className="nv-summary">{panel.summary}</p>
-      )}
+      {/* The summary sentence leads the page, in `CallVerdict`. Printing
+          it here too would put one finding on screen twice. */}
       <dl className="nv-facts">
         <Fact label="Outcome">
           <Chip value={panel.outcome} />

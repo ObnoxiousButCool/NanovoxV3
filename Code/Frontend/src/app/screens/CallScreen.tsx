@@ -41,6 +41,7 @@ import { useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import { useCallEvidence } from '@/shared/api/insights'
+import { CallVerdict } from '@/app/screens/CallVerdict'
 import { CallAnalysis } from '@/shared/design/drawer/CallAnalysis'
 import { DrawerPanel } from '@/shared/design/drawer/DrawerPanel'
 import { Empty, EpistemicChip, Named, Skeleton, SkeletonBlock } from '@/shared/design/primitives'
@@ -149,8 +150,15 @@ function CallBody({ reference }: { reference: string }) {
 
   return (
     <div className="nv-grid">
-      {/* Who the call was between, across the top. Four short facts that
-          read as a row and would waste a column of their own. */}
+      {/* What happened, before anything is opened. The reader arrived from
+          a figure asking what this call was and whether anything is wrong
+          with it, and the answers were spread over three collapsed panels. */}
+      <div className="nv-c12">
+        <CallVerdict analysis={data.analysis} />
+      </div>
+
+      {/* Who the call was between. Below the verdict and set quietly: it is
+          what you check after you know what happened, not before. */}
       <div className="nv-c12">
         <dl className="nv-callfacts nv-callpage-facts">
           <div>
@@ -205,7 +213,6 @@ function CallBody({ reference }: { reference: string }) {
           <h4>What it was made from</h4>
           <DrawerPanel
             accent="conversation"
-            producer="Source"
             title="The conversation"
             subtitle="What was said, as it was stored. The analysis is derived from these turns."
             present={!data.transcriptMissing}

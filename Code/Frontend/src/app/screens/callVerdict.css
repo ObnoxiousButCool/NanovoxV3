@@ -1,0 +1,133 @@
+/* The verdict band.
+ *
+ * It is the first thing on the page and has to read as one object, not as
+ * three stacked panels — so it is a single surface with internal rules
+ * rather than cards, and the type does the ranking: the sentence leads at
+ * 18px, the figures sit at display weight under it, and the flags are small
+ * and dense because there may be six of them.
+ */
+
+.nv-verdict {
+  border: 1px solid var(--rule);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 18px 20px 16px;
+}
+
+/* The single most informative line on the page, and the reason the band
+   exists. Measure-capped: the band is full width and a sentence set across
+   1100px is a sentence nobody finishes. */
+.nv-verdict-summary {
+  font:
+    400 18px/1.5 var(--body);
+  color: var(--ink);
+  margin: 0;
+  max-width: 68ch;
+}
+
+.nv-verdict-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 44px;
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.nv-verdict-figures dt {
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.nv-verdict-figures dd {
+  font:
+    600 20px/1.3 var(--display);
+  color: var(--ink);
+  margin: 3px 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* "/100" is scale, not figure: same line, visibly subordinate, so the eye
+   lands on the number. */
+.nv-verdict-of {
+  font:
+    400 13px/1 var(--body);
+  color: var(--ink-3);
+  margin-left: -5px;
+}
+
+.nv-verdict-tier {
+  font:
+    400 12px/1 var(--body);
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 4px 9px;
+}
+
+/* A missing figure is said at the figures' own size, in the quietest ink.
+   Never a dash, and never a zero: this is a gap, not a value. */
+.nv-verdict-absent {
+  font:
+    400 15px/1.3 var(--body);
+  color: var(--ink-3);
+}
+
+.nv-verdict-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--rule);
+}
+
+.nv-verdict-flag {
+  font-size: 12.5px;
+  line-height: 1.2;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 5px 11px;
+}
+
+/* Serious flags are first in the list and carry a second signal besides
+   colour: a filled left cap in the critical hue, so a reader who cannot
+   separate these two greys still sees which chips are the loud ones. */
+.nv-verdict-flag-serious {
+  color: var(--critical);
+  border-color: var(--critical);
+  background: transparent;
+  font-weight: 600;
+  border-left-width: 4px;
+  padding-left: 9px;
+}
+
+.nv-verdict-clear {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--rule);
+}
+
+@media (width <= 560px) {
+  .nv-verdict {
+    padding: 15px 16px 14px;
+  }
+
+  .nv-verdict-summary {
+    font-size: 16.5px;
+  }
+
+  .nv-verdict-figures {
+    gap: 4px 28px;
+  }
+}

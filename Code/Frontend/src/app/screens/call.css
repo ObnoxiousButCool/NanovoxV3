@@ -49,15 +49,29 @@
   flex: 0 0 auto;
 }
 
-/* The facts row stands as a panel rather than as loose text under the
-   header, which is how every other screen opens. */
+/* Who the call was between. It sits under the verdict and is deliberately
+   quieter than it: a rule and some air, not a second card competing with
+   the band above for the same glance. */
 .nv-callpage-facts {
+  margin: -6px 0 0;
+  padding: 0 0 2px;
+  gap: 10px 44px;
+}
+
+.nv-callpage-facts dd {
+  font-weight: 500;
+}
+
+/* The column headings label two long scrolls, so they stay put.
+   `nv-layers` is a flex column; a sticky child needs the heading to be the
+   thing that sticks, not the section. */
+.nv-callpage .nv-layers > h4 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ground);
+  padding: 10px 0;
   margin: 0;
-  padding: 14px 16px;
-  border: 1px solid var(--rule);
-  border-radius: var(--r);
-  background: var(--surface);
-  gap: 10px 40px;
 }
 
 /* The two columns are independently tall — an open conversation runs well

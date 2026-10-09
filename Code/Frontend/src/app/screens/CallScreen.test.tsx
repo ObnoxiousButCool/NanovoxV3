@@ -14,7 +14,7 @@
  */
 
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
@@ -257,6 +257,105 @@ describe('getting back out', () => {
   })
 })
 
+describe('the verdict band', () => {
+  /** L2 warranted an escalation; what L4 says about it is the variable. */
+  const ESCALATED = {
+    ...ANALYSED,
+    analysis: {
+      ...ANALYSED.analysis,
+      l2: { ...ANALYSED.analysis.l2, escalationTriggered: true, complaintPresent: true },
+    },
+  }
+
+  function withL4(l4: Record<string, unknown>) {
+    return { ...ESCALATED, analysis: { ...ESCALATED.analysis, l4 } }
+  }
+
+  it('leads with the summary sentence', async () => {
+    await loaded()
+
+    expect(screen.getByText('Billed twice for one visit.')).toBeInTheDocument()
+  })
+
+  it('prints that sentence once, not once here and once in L2', async () => {
+    // It was moved out of the L2 panel rather than copied. One finding
+    // printed twice on one screen reads as two.
+    await loaded()
+
+    expect(screen.getAllByText('Billed twice for one visit.')).toHaveLength(1)
+  })
+
+  it('shows the outcome and the score without opening a panel', async () => {
+    await loaded()
+
+    const band = screen.getByLabelText('What happened on this call')
+    expect(within(band).getByText('Resolved')).toBeInTheDocument()
+    expect(within(band).getByText('74')).toBeInTheDocument()
+    // Provisional is "not final", a different thing from a low score.
+    expect(within(band).getByText('Provisional')).toBeInTheDocument()
+  })
+
+  it('calls an escalation missed when L4 ran and says it was not handled', async () => {
+    await loaded(withL4({ ran: true, escalationHandled: false, signals: [] }))
+
+    expect(screen.getByText('Escalation missed')).toBeInTheDocument()
+  })
+
+  it('does not call an escalation missed when L4 never looked', async () => {
+    // The whole reason this band is gated. `escalationTriggered &&
+    // !escalationHandled` is true on a call L4 never ran on, and reporting
+    // that as a miss is a finding against an agent nobody checked.
+    await loaded(withL4({ ran: false, notRunBecause: 'Not run.', signals: [] }))
+
+    expect(screen.queryByText('Escalation missed')).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Escalation warranted — handling not checked'),
+    ).toBeInTheDocument()
+  })
+
+  it('says a concern once when the fields and the signals both raise it', async () => {
+    // The structured L2/L4 fields say the escalation was missed and the
+    // signal taxonomy raises a signal of the same name, so both arrive.
+    await loaded(
+      withL4({
+        ran: true,
+        escalationHandled: false,
+        signals: [
+          {
+            type: { code: 'escalation_missed', label: 'Escalation missed' },
+            severity: { code: 'HIGH', label: 'High' },
+            quote: 'I want a supervisor.',
+            turnSeq: 4,
+          },
+        ],
+      }),
+    )
+
+    // Scoped to the band: the L4 panel below still shows the signal with
+    // its quote and turn, which is the point of having both.
+    const band = screen.getByLabelText('What happened on this call')
+    expect(within(band).getAllByText('Escalation missed')).toHaveLength(1)
+    expect(screen.getAllByText('Escalation missed').length).toBeGreaterThan(1)
+  })
+
+  it('never reports a call with unrun layers as clean', async () => {
+    // "Nothing flagged" over a pipeline that did not finish is a clean bill
+    // of health nobody issued.
+    await loaded({ ...CALL, analysis: unrunAnalysis('MEM-7') })
+
+    expect(screen.queryByText('Nothing flagged on this call.')).not.toBeInTheDocument()
+    expect(screen.getByText(/it is an unfinished one/)).toBeInTheDocument()
+  })
+
+  it('says a figure is missing rather than showing a zero', async () => {
+    await loaded({ ...CALL, analysis: unrunAnalysis('MEM-7') })
+
+    const band = screen.getByLabelText('What happened on this call')
+    expect(within(band).getByText('Not scored')).toBeInTheDocument()
+    expect(within(band).queryByText('0')).not.toBeInTheDocument()
+  })
+})
+
 describe("a call's panels", () => {
   it('offers one panel per layer, and the conversation beside them', async () => {
     await loaded()
@@ -268,19 +367,6 @@ describe("a call's panels", () => {
     // The transcript is a panel of the same kind, not a heading and a list:
     // it is one more named part of what we hold about this call.
     expect(screen.getByText('The conversation')).toBeInTheDocument()
-  })
-
-  it('names each panel’s producer in words, not only in colour', async () => {
-    // The accent colours carry the same distinction, and a reader who
-    // cannot separate them would otherwise lose it entirely. `StatusPill`
-    // makes the same argument in the design system: shape, not only colour.
-    await loaded()
-
-    expect(screen.getAllByText('Code')).toHaveLength(1)
-    expect(screen.getAllByText('Model')).toHaveLength(3)
-    // The transcript is neither computed nor inferred. Calling it "Code" to
-    // avoid a third badge would say the conversation was calculated.
-    expect(screen.getAllByText('Source')).toHaveLength(1)
   })
 
   it('says a layer has not run rather than reporting a clean call', async () => {
@@ -307,13 +393,28 @@ describe("a call's panels", () => {
     expect(screen.getByText(/not attributed to the agent/i)).toBeInTheDocument()
   })
 
-  it('shows which run produced a layer, and when, without naming the vendor', async () => {
-    // Plan §7 requires provenance on every analysis; the page names no
-    // provider or model anywhere.
+  it('names no provider or model, now that the run footer is gone', async () => {
+    // Plan §7 keeps provenance on every analysis in the database and on the
+    // wire — `run` is still in this fixture and still in the response. What
+    // was removed is the line that printed it. The rule it was carrying,
+    // that no screen names a vendor, is the one that must not lapse with it.
     await loaded()
 
-    expect(screen.getAllByText(/^prompt 1\.0\.0/).length).toBeGreaterThan(0)
     expect(screen.queryByText(/openai|gpt-test/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^prompt 1\.0\.0/)).not.toBeInTheDocument()
+  })
+
+  it('tells the layers apart in words, not only by accent colour', async () => {
+    // The "Code" / "Model" / "Source" badges were removed on request. The
+    // titles and subtitles carry the same distinction, and a reader who
+    // cannot separate the accents has to keep getting it from somewhere.
+    await loaded()
+
+    expect(screen.queryByText('Code')).not.toBeInTheDocument()
+    expect(screen.queryByText('Source')).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/No model, and the same transcript always gives the same answer/),
+    ).toBeInTheDocument()
   })
 
   it('renders every panel for a call nothing has run on', async () => {

@@ -8,42 +8,28 @@
  * here — one of them would eventually stop saying whether its contents are
  * there, which is the distinction these panels exist to carry.
  *
- * ## Producer
- *
- * Every panel says where its contents came from, in words:
- *
- * - **Code** — deterministic. The same input gives the same answer, and
- *   there is no provenance to show because there is no model to name.
- * - **Model** — an LLM layer read the transcript. Carries provenance.
- * - **Source** — what was said. Not computed and not inferred; the thing
- *   every other panel is derived from.
- *
- * Three words rather than two because the transcript is genuinely neither
- * of the first two, and calling it "Code" to avoid a third badge would say
- * the conversation was computed.
- *
  * ## Colour is never the only signal
  *
- * The accent down the left edge repeats what the badge and the "Not run"
- * pill already say. `StatusPill` makes the same argument in the design
- * system — shape, not only colour — and a drawer that encoded "this layer
- * never ran" as a hue alone would say nothing to a reader who cannot
- * separate these greys.
+ * The accent down the left edge repeats what the title, the subtitle and
+ * the "Not run" pill already say. `StatusPill` makes the same argument in
+ * the design system — shape, not only colour — and a panel that encoded
+ * "this layer never ran" as a hue alone would say nothing to a reader who
+ * cannot separate these greys.
+ *
+ * Each panel used to wear a "Code" / "Model" / "Source" badge naming what
+ * produced it. It was removed on request; the subtitles say the same thing
+ * in longer words, which is why it could go.
  */
 
 import type { ReactNode } from 'react'
 
 import { Note } from '@/shared/design/primitives'
 
-/** Where a panel's contents came from. Shown as words, not only as colour. */
-export type Producer = 'Code' | 'Model' | 'Source'
-
 /** Which accent a panel wears. One per panel, so no two are confusable. */
 export type PanelAccent = 'l1' | 'l2' | 'l3' | 'l4' | 'derived' | 'conversation'
 
 export function DrawerPanel({
   accent,
-  producer,
   title,
   subtitle,
   present,
@@ -54,7 +40,6 @@ export function DrawerPanel({
   children,
 }: {
   accent: PanelAccent
-  producer: Producer
   title: string
   subtitle: string
   /** Whether there is anything behind this panel at all. */
@@ -72,7 +57,6 @@ export function DrawerPanel({
     <details className={`nv-layer nv-layer-${accent}`} open={present && openByDefault}>
       <summary>
         <span className="nv-layer-title">{title}</span>
-        <span className={`nv-producer nv-producer-${producer.toLowerCase()}`}>{producer}</span>
         {present ? null : <span className="nv-layer-off">{absentLabel}</span>}
       </summary>
       <div className="nv-layer-body">
