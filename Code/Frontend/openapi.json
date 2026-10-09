@@ -1230,6 +1230,15 @@
         "title": "BrokerOptionResponse",
         "type": "object"
       },
+      "BrokerRiskTier": {
+        "enum": [
+          "high",
+          "medium",
+          "low"
+        ],
+        "title": "BrokerRiskTier",
+        "type": "string"
+      },
       "BrokerRowResponse": {
         "description": "One broker, as the \"By broker\" table counts it.\n\nCounts only, and no rate: a three-group broker has roughly ten calls,\nand there is not enough there to divide. `rankedBrokers` publishes a\nrate over the books big enough to carry one, and answers a different\nquestion with a different population.",
         "properties": {
@@ -1279,6 +1288,10 @@
           "region": {
             "title": "Region",
             "type": "string"
+          },
+          "risk": {
+            "$ref": "#/components/schemas/BrokerRiskTier",
+            "description": "Leadership's combined tier (2026-10-09), not a Metrics-sheet figure: high when the pattern test fires or 2+ accounts are flagged, medium on any single flagged account or adverse mention, low otherwise."
           }
         },
         "required": [
@@ -1292,7 +1305,8 @@
           "adverseEmployers",
           "patternFires",
           "patternReached",
-          "flaggedAccounts"
+          "flaggedAccounts",
+          "risk"
         ],
         "title": "BrokerRowResponse",
         "type": "object"

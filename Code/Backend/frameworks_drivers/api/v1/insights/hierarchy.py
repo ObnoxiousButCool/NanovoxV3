@@ -42,6 +42,7 @@ from __future__ import annotations
 from fastapi import APIRouter, status
 from pydantic import Field
 
+from domain.value_objects.broker_risk_tier import BrokerRiskTier
 from frameworks_drivers.api.camel import CamelModel
 from frameworks_drivers.api.dependencies import DashboardConfigDep, GetHierarchyDep
 from frameworks_drivers.api.v1.insights.envelope import FigureResponse, ScopeResponse
@@ -126,6 +127,13 @@ class BrokerRowResponse(CamelModel):
         description="What the pattern test reached, computed from the numbers, fired or not."
     )
     flagged_accounts: int
+    risk: BrokerRiskTier = Field(
+        description=(
+            "Leadership's combined tier (2026-10-09), not a Metrics-sheet figure: high "
+            "when the pattern test fires or 2+ accounts are flagged, medium on any single "
+            "flagged account or adverse mention, low otherwise."
+        )
+    )
 
 
 class ComplaintOwnershipResponse(CamelModel):
@@ -310,6 +318,7 @@ async def read_hierarchy(
                 pattern_fires=row.pattern_fires,
                 pattern_reached=row.pattern_reached,
                 flagged_accounts=row.flagged_accounts,
+                risk=row.risk,
             )
             for row in view.brokers
         ],

@@ -311,6 +311,7 @@ const HIERARCHY = {
       patternFires: false,
       patternReached: 'Below: 1 adverse mention(s) from 1 employer(s); needs 3 from 2.',
       flaggedAccounts: 2,
+      risk: 'high',
     },
     {
       brokerRef: 'BRK-09',
@@ -324,6 +325,7 @@ const HIERARCHY = {
       patternFires: false,
       patternReached: 'Below: 0 adverse mention(s) from 0 employer(s); needs 3 from 2.',
       flaggedAccounts: 0,
+      risk: 'low',
     },
   ],
   rankedBrokers: [
@@ -1357,6 +1359,24 @@ describe('/hierarchy', () => {
     expect(cell?.getAttribute('title')).toMatch(/below: 1 adverse mention/i)
     expect(cell?.textContent).toContain('1 employer')
     expect(screen.queryByText('Fires')).not.toBeInTheDocument()
+  })
+
+  it('shows each broker risk tier from the server, not recomputed in the UI', async () => {
+    // Leadership, 2026-10-09: High/Medium/Low on the Brokers table. The
+    // tier itself is the backend's call (`broker_risk_tier`) — this only
+    // checks the column renders what the response says.
+    renderAt('/hierarchy')
+
+    await waitFor(() => {
+      expect(screen.getByText('Marsh & Vale')).toBeInTheDocument()
+    })
+    const brokerTable = screen.getByText('Marsh & Vale').closest('table') as HTMLElement
+    const rows = [...brokerTable.querySelectorAll('tbody tr')]
+
+    const marshRow = rows.find((row) => row.textContent?.includes('Marsh & Vale'))
+    const trentRow = rows.find((row) => row.textContent?.includes('Trent & Associates'))
+    expect(marshRow).toHaveTextContent('High')
+    expect(trentRow).toHaveTextContent('Low')
   })
 
   it('says how thin the naming is, where a reader cannot miss it', async () => {

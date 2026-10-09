@@ -48,7 +48,7 @@ import { Heatmap } from '@/shared/design/charts'
 import type { HeatmapCell } from '@/shared/design/charts'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { InsightStrip } from '@/shared/insights/Insights'
-import { Empty, EpistemicChip, KpiTile, Note, Panel } from '@/shared/design/primitives'
+import { BrokerRiskPill, Empty, EpistemicChip, KpiTile, Note, Panel } from '@/shared/design/primitives'
 
 type RegionRow = Hierarchy['regions'][number]
 type BrokerRow = Hierarchy['brokers'][number]
@@ -322,6 +322,7 @@ function BrokerPanel({
                   <th className="nv-num" scope="col">
                     Flagged accounts
                   </th>
+                  <th scope="col">Risk</th>
                 </tr>
               </thead>
               <tbody>
@@ -372,6 +373,9 @@ function BrokerPanel({
                         scope={{ broker: row.brokerRef }}
                         blank
                       />
+                    </td>
+                    <td>
+                      <BrokerRiskPill risk={row.risk} />
                     </td>
                   </FilterRow>
                 ))}
