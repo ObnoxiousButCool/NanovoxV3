@@ -21,6 +21,7 @@ import { ActionsScreen } from '@/app/screens/ActionsScreen'
 import { ExecScreen } from '@/app/screens/ExecScreen'
 import { AccountsScreen } from '@/app/screens/AccountsScreen'
 import { AgentsScreen } from '@/app/screens/AgentsScreen'
+import { CallScreen } from '@/app/screens/CallScreen'
 import { CallsScreen } from '@/app/screens/CallsScreen'
 import { HierarchyScreen } from '@/app/screens/HierarchyScreen'
 import { RiskScreen } from '@/app/screens/RiskScreen'
@@ -44,6 +45,11 @@ export function App() {
         <Route path="/agents" element={<AgentsScreen />} />
         <Route path="/rules" element={<RulesScreen />} />
         <Route path="/calls" element={<CallsScreen />} />
+        {/* A call is a page, not a drawer frame: it is the longest thing
+            in the product and the one a reader stays in longest, so it
+            gets an address, browser Back and the page's own scroll.
+            See `shared/calls/openCall.ts`. */}
+        <Route path="/calls/:reference" element={<CallScreen />} />
         <Route path="/actions" element={<ActionsScreen />} />
         <Route path="/design" element={<DesignGallery />} />
         <Route path="/status" element={<StatusPage />} />

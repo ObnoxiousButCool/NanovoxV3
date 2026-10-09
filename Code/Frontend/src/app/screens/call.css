@@ -1,0 +1,68 @@
+/* The call page.
+ *
+ * The panels themselves are styled in `drawer.css` and are unchanged: they
+ * were never dialog chrome, only things that happened to live in one. What
+ * is here is the page frame that replaced the dialog's.
+ *
+ * ## It is a full-width screen, like every other screen
+ *
+ * The page carries `nv-screen` for the gutter and lays its contents on
+ * `nv-grid`, so the call sits on the same twelve columns as `/exec` and
+ * `/calls` rather than in a column of its own invention. The measure a
+ * transcript needs is bought by the 6/6 split in `CallScreen.tsx`, not by
+ * capping the page — a cap leaves half a wide window empty and still runs
+ * the conversation at whatever width the cap happens to be.
+ */
+
+.nv-callpage-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 18px 0 14px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.nv-callpage-id {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* The same heading as every other page head, so a call does not announce
+   itself in a different voice from the screen it was opened from. */
+.nv-callpage-id h1 {
+  font:
+    600 26px/1.5 var(--display);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.nv-callpage-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+/* The facts row stands as a panel rather than as loose text under the
+   header, which is how every other screen opens. */
+.nv-callpage-facts {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: var(--r);
+  background: var(--surface);
+  gap: 10px 40px;
+}
+
+/* The two columns are independently tall — an open conversation runs well
+   past a collapsed set of layer panels — so each starts at the top of the
+   row rather than stretching to match the other. */
+.nv-callpage .nv-grid > .nv-c6 {
+  align-self: start;
+}

@@ -71,8 +71,7 @@ import { usePlaybook } from '@/shared/api/playbooks'
 import type { IssueKey } from '@/shared/actions/issueHref'
 import { ISSUE_KEYS, issueHref } from '@/shared/actions/issueHref'
 import { IssueCue } from '@/shared/actions/IssueLink'
-import { CallList } from '@/shared/design/drawer/Evidence'
-import { useDrawer } from '@/shared/design/drawer'
+import { useOpenCall } from '@/shared/calls/openCall'
 import { DataTable, Empty, EpistemicChip, KpiTile, Note, Panel } from '@/shared/design/primitives'
 import { useFilters } from '@/shared/filters/useFilters'
 import { Screen } from '@/shared/screens/Screen'
@@ -410,7 +409,7 @@ function FocusPanel({
  * yes/no that this screen already lists as its own issue.
  */
 function WhereItShowsUp({ issue, label }: { issue: Issue | undefined; label: string }) {
-  const { open } = useDrawer()
+  const openCall = useOpenCall()
 
   if (issue === undefined || issue.accounts.length === 0) {
     return (
@@ -475,11 +474,10 @@ function WhereItShowsUp({ issue, label }: { issue: Issue | undefined; label: str
               type="button"
               className="nv-callchip"
               onClick={() => {
-                open({
-                  title: `Call ${reference}`,
-                  chip: 'observed',
-                  body: <CallList callIds={[reference]} />,
-                })
+                // Straight to the call. Wrapping a single reference in a
+                // one-item evidence list was a drawer frame that existed
+                // only to be clicked through.
+                openCall(reference)
               }}
             >
               {reference}

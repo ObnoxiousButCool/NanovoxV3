@@ -30,8 +30,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { useCalls, useFilterOptions } from '@/shared/api/insights'
 import type { CallRow, CallsPage } from '@/shared/api/insights'
-import { useDrawer } from '@/shared/design/drawer'
-import { CallEvidence } from '@/shared/design/drawer/Evidence'
+import { useOpenCall } from '@/shared/calls/openCall'
 import { BigRow, Empty, KpiTile, Named } from '@/shared/design/primitives'
 import { OUTCOME_COLOR } from '@/shared/design/outcome'
 import { getConfig } from '@/shared/config/env'
@@ -65,7 +64,7 @@ export function CallsScreen() {
     [filterOptions?.signals],
   )
   const [params, setParams] = useSearchParams()
-  const { open } = useDrawer()
+  const openCall = useOpenCall()
 
   const q = params.get('q') ?? ''
   const sort = params.get('sort') ?? 'date'
@@ -183,13 +182,7 @@ export function CallsScreen() {
             onWrite={write}
             onSort={toggleSort}
             onSelect={setSelected}
-            onOpen={(reference) => {
-              open({
-                title: `Call ${reference}`,
-                chip: 'observed',
-                body: <CallEvidence callId={reference} />,
-              })
-            }}
+            onOpen={openCall}
             downloadUrl={downloadUrl}
           />
         )}

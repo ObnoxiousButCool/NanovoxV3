@@ -26,8 +26,7 @@ import type { AccountDetail } from '@/shared/api/insights'
 import { IssueCue } from '@/shared/actions/IssueLink'
 import { isIssueKey } from '@/shared/actions/issueHref'
 import { AccountTopics } from '@/app/screens/AccountPanels'
-import { CallEvidence } from '@/shared/design/drawer/Evidence'
-import { useDrawer } from '@/shared/design/drawer'
+import { useOpenCall } from '@/shared/calls/openCall'
 import {
   Empty,
   EpistemicChip,
@@ -111,7 +110,7 @@ function IndicatorEvidence({
   callIds: readonly string[]
   employerRef: string
 }) {
-  const { open } = useDrawer()
+  const openCall = useOpenCall()
   if (callIds.length === 0) return null
 
   return (
@@ -123,11 +122,7 @@ function IndicatorEvidence({
             type="button"
             className="nv-callchip"
             onClick={() => {
-              open({
-                title: `Call ${reference}`,
-                chip: 'observed',
-                body: <CallEvidence callId={reference} />,
-              })
+              openCall(reference)
             }}
           >
             {reference}

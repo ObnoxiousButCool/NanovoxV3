@@ -27,8 +27,7 @@ import { useActionBoard } from '@/shared/api/actionBoard'
 import type { Action } from '@/shared/api/actionBoard'
 import { useCalls } from '@/shared/api/insights'
 import type { AccountProfile, CallRow } from '@/shared/api/insights'
-import { CallEvidence } from '@/shared/design/drawer/Evidence'
-import { useDrawer } from '@/shared/design/drawer'
+import { useOpenCall } from '@/shared/calls/openCall'
 import { IssueCue, IssueValue } from '@/shared/actions/IssueLink'
 import { BarCell } from '@/shared/design/charts'
 import { BigRow, DataTable, Empty, EpistemicChip, KpiTile, Named, Note, Panel, Withheld } from '@/shared/design/primitives'
@@ -48,7 +47,7 @@ export function AccountCalls({
   employerRef: string
   search: string
 }) {
-  const { open } = useDrawer()
+  const openCall = useOpenCall()
 
   const query = useMemo(() => {
     const params = new URLSearchParams(search)
@@ -99,11 +98,7 @@ export function AccountCalls({
                     key={call.reference}
                     call={call}
                     onOpen={() => {
-                      open({
-                        title: `Call ${call.reference}`,
-                        chip: 'observed',
-                        body: <CallEvidence callId={call.reference} />,
-                      })
+                      openCall(call.reference)
                     }}
                   />
                 ))}

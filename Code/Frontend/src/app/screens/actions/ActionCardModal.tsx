@@ -13,8 +13,7 @@ import { Link } from 'react-router-dom'
 
 import type { Action, Lane, UpdateActionBody } from '@/shared/api/actionBoard'
 import { useUpdateAction } from '@/shared/api/actionBoard'
-import { useDrawer } from '@/shared/design/drawer'
-import { CallEvidence } from '@/shared/design/drawer/Evidence'
+import { useOpenCall } from '@/shared/calls/openCall'
 import { Note } from '@/shared/design/primitives'
 import {
   formatDue,
@@ -39,7 +38,7 @@ export function ActionCardModal({
   onClose: () => void
 }) {
   const update = useUpdateAction()
-  const { open: openDrawer } = useDrawer()
+  const goToCall = useOpenCall()
 
   const [ownerInput, setOwnerInput] = useState(action.owner ?? '')
   const [dueInput, setDueInput] = useState(action.due ?? '')
@@ -126,7 +125,7 @@ export function ActionCardModal({
 
   const openCall = (callId: string) => {
     onClose()
-    openDrawer({ title: `Call ${callId}`, chip: 'observed', body: <CallEvidence callId={callId} /> })
+    goToCall(callId)
   }
 
   let nextMoveText: string
