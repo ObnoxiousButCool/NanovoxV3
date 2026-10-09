@@ -39,3 +39,26 @@ export function RiskPill({ eligible, flagged }: { eligible: boolean; flagged: bo
   if (!eligible) return <StatusPill tone="ineligible" />
   return <StatusPill tone={flagged ? 'flagged' : 'notFlagged'} />
 }
+
+/**
+ * The Brokers table's risk column (leadership, 2026-10-09).
+ *
+ * A separate type and a separate set of classes from `StatusTone` on
+ * purpose, even though both render as a three-state pill: this tier is
+ * built from a different rule over different signals
+ * (`domain.aggregation.isolation.broker_risk_tier`), and sharing one status
+ * vocabulary between the two is the exact thing D12 warned against for the
+ * employer flag — "two scoring systems on one page, one of which quietly
+ * feeds the other."
+ */
+export type BrokerRiskTier = 'high' | 'medium' | 'low'
+
+const BROKER_RISK_LABELS: Record<BrokerRiskTier, string> = {
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+}
+
+export function BrokerRiskPill({ risk }: { risk: BrokerRiskTier }) {
+  return <span className={`nv-pill nv-pill-broker-${risk}`}>{BROKER_RISK_LABELS[risk]}</span>
+}

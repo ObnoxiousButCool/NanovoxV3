@@ -140,6 +140,35 @@
   border-radius: 999px;
 }
 
+/* The Brokers table's risk column (leadership, 2026-10-09). Own shapes, not
+ * borrowed from the flagged/not-flagged pills above — a different tier over
+ * a different rule, see BrokerRiskPill's own docstring. */
+.nv-pill-broker-high {
+  color: var(--critical);
+}
+
+.nv-pill-broker-high::before {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  border-radius: 0;
+}
+
+.nv-pill-broker-medium {
+  color: var(--warning);
+}
+
+.nv-pill-broker-medium::before {
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  border-radius: 0;
+}
+
+.nv-pill-broker-low {
+  color: var(--good-text);
+}
+
+.nv-pill-broker-low::before {
+  border-radius: 999px;
+}
+
 /* Rule provenance. Borrows `.nv-pill`'s shape mechanism rather than its
  * tones: a grade is not a status, and nothing here is good or bad on its
  * own — a misstated UNVERIFIED rule says the source is weak, a misstated

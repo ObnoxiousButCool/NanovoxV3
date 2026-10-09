@@ -14,6 +14,7 @@ import pytest
 from domain.aggregation.call_tags import CallContext, Window
 from domain.aggregation.isolation import broker_rows, complaint_ownership, region_rows
 from domain.dashboard_config import DashboardConfig
+from domain.value_objects.broker_risk_tier import BrokerRiskTier
 from domain.value_objects.broker_sentiment import BrokerSentiment
 from domain.value_objects.complaint import Complaint
 from domain.value_objects.complaint_attribution import ComplaintAttribution
@@ -174,6 +175,7 @@ class TestBrokerRows:
 
         assert (row.adverse_mentions, row.adverse_employers) == (3, 2)
         assert row.pattern_fires is True
+        assert row.risk is BrokerRiskTier.HIGH
 
     def test_a_broker_holding_nothing_in_scope_has_no_row(self, config: DashboardConfig) -> None:
         """Filters slice; they do not invent. A broker whose whole book is
@@ -188,6 +190,44 @@ class TestBrokerRows:
         )
 
         assert [row.broker_ref for row in rows] == ["BRK-01"]
+
+    def test_one_flagged_account_makes_the_broker_medium_risk(
+        self, config: DashboardConfig
+    ) -> None:
+        book = [employer("EMP-01", broker_ref="BRK-01")]
+        traffic = _flagging("EMP-01")
+
+        (row,) = broker_rows(config, [broker("BRK-01")], book, traffic, WINDOW, WINDOW)
+
+        assert row.flagged_accounts == 1
+        assert row.risk is BrokerRiskTier.MEDIUM
+
+    def test_two_flagged_accounts_make_the_broker_high_risk_without_a_firing_pattern(
+        self, config: DashboardConfig
+    ) -> None:
+        """High on flagged accounts alone — the pattern test never fires
+        here, since nobody named this broker adversely."""
+        book = [
+            employer("EMP-01", broker_ref="BRK-01"),
+            employer("EMP-02", broker_ref="BRK-01"),
+        ]
+        traffic = (*_flagging("EMP-01"), *_flagging("EMP-02"))
+
+        (row,) = broker_rows(config, [broker("BRK-01")], book, traffic, WINDOW, WINDOW)
+
+        assert row.flagged_accounts == 2
+        assert row.pattern_fires is False
+        assert row.risk is BrokerRiskTier.HIGH
+
+    def test_a_clean_broker_is_low_risk(self, config: DashboardConfig) -> None:
+        book = [employer("EMP-01", broker_ref="BRK-01")]
+        traffic = (call("C-0001", employer_ref="EMP-01", broker_of_record_ref="BRK-01"),)
+
+        (row,) = broker_rows(config, [broker("BRK-01")], book, traffic, WINDOW, WINDOW)
+
+        assert row.flagged_accounts == 0
+        assert row.adverse_mentions == 0
+        assert row.risk is BrokerRiskTier.LOW
 
     def test_brokers_are_ordered_by_adverse_mentions_first(self, config: DashboardConfig) -> None:
         book = [

@@ -27,6 +27,7 @@ from domain.aggregation.broker_friction import PatternTest, adverse_mentions, pa
 from domain.aggregation.call_tags import BrokerFacts, CallContext, EmployerFacts, Window
 from domain.aggregation.risk_flag import assess
 from domain.dashboard_config import DashboardConfig
+from domain.value_objects.broker_risk_tier import BrokerRiskTier
 from domain.value_objects.category import Category
 from domain.value_objects.complaint_attribution import ComplaintAttribution
 from domain.value_objects.outcome import Outcome
@@ -38,6 +39,7 @@ __all__ = [
     "PatternTest",
     "RegionNode",
     "RegionRow",
+    "broker_risk_tier",
     "broker_rows",
     "complaint_ownership",
     "drill_tree",
@@ -224,6 +226,11 @@ class BrokerRow:
     #: broker one mention short from one nobody has ever named.
     pattern_reached: str
     flagged_accounts: int
+    #: The Brokers table's risk column (leadership, 2026-10-09). Computed
+    #: by `broker_risk_tier` below from the two fields above it — see that
+    #: function for the rule, and `domain.value_objects.broker_risk_tier`
+    #: for why this is kept separate from the employer risk flag.
+    risk: BrokerRiskTier
 
 
 def region_rows(
@@ -269,6 +276,31 @@ def region_rows(
     )
 
 
+def broker_risk_tier(
+    *, flagged_accounts: int, adverse_mentions: int, pattern_fires: bool
+) -> BrokerRiskTier:
+    """The Brokers table's risk column (leadership, 2026-10-09).
+
+    High when the broker-conduct pattern test has already fired (its own
+    threshold: 3+ adverse mentions from 2+ employers, `config.broker_pattern_test`)
+    or two or more of the broker's accounts are independently flagged —
+    either is a broker in trouble on more than one front. Medium is one
+    flagged account, or any adverse mention that has not yet reached the
+    pattern test's threshold. Low is neither.
+
+    Unlike every other figure on this screen, this is not sourced from the
+    Metrics sheet — there is no workbook definition of a "broker risk tier",
+    and no outcome data exists to validate that it predicts anything (the
+    same caveat `risk_flag.py` states for the employer flag this reuses half
+    of). See `Documents/notes/Decisions-and-Questions.md`.
+    """
+    if pattern_fires or flagged_accounts >= 2:
+        return BrokerRiskTier.HIGH
+    if flagged_accounts >= 1 or adverse_mentions > 0:
+        return BrokerRiskTier.MEDIUM
+    return BrokerRiskTier.LOW
+
+
 def broker_rows(
     config: DashboardConfig,
     brokers: Sequence[BrokerFacts],
@@ -302,6 +334,9 @@ def broker_rows(
             continue
         pattern = pattern_test(config, broker.reference, calls, window)
         adverse = adverse_mentions(broker.reference, in_window, window)
+        flagged = sum(
+            1 for employer in book if assess(config, employer, calls, risk_window).flagged
+        )
         rows.append(
             BrokerRow(
                 broker_ref=broker.reference,
@@ -316,8 +351,11 @@ def broker_rows(
                 ),
                 pattern_fires=pattern.fires,
                 pattern_reached=pattern.reached(config),
-                flagged_accounts=sum(
-                    1 for employer in book if assess(config, employer, calls, risk_window).flagged
+                flagged_accounts=flagged,
+                risk=broker_risk_tier(
+                    flagged_accounts=flagged,
+                    adverse_mentions=len(adverse),
+                    pattern_fires=pattern.fires,
                 ),
             )
         )

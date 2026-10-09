@@ -1021,6 +1021,11 @@ export interface components {
             region: string;
         };
         /**
+         * BrokerRiskTier
+         * @enum {string}
+         */
+        BrokerRiskTier: "high" | "medium" | "low";
+        /**
          * BrokerRowResponse
          * @description One broker, as the "By broker" table counts it.
          *
@@ -1061,6 +1066,8 @@ export interface components {
             patternReached: string;
             /** Region */
             region: string;
+            /** @description Leadership's combined tier (2026-10-09), not a Metrics-sheet figure: high when the pattern test fires or 2+ accounts are flagged, medium on any single flagged account or adverse mention, low otherwise. */
+            risk: components["schemas"]["BrokerRiskTier"];
         };
         /** BucketResponse */
         BucketResponse: {
