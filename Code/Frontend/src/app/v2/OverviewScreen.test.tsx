@@ -240,6 +240,18 @@ function routeFor(url: string): unknown {
   return {}
 }
 
+/**
+ * A legend label's visible span, specifically — `LegendLabel` also renders
+ * a hidden, always-one-line twin of the same text for `useOverflowing` to
+ * measure (its own file has the full reasoning), so a plain `getByText`
+ * matches two nodes for every legend row and throws.
+ */
+function visibleLegendText(text: string) {
+  return screen.getByText(
+    (content, element) => content === text && (element?.classList.contains('nv2-legend-visible') ?? false),
+  )
+}
+
 function renderOverview(): void {
   vi.stubGlobal(
     'fetch',
@@ -306,11 +318,11 @@ describe('/v2/overview', () => {
 
     await screen.findByText('Risk Overview')
 
-    expect(screen.getByText('Repeat contact')).toBeInTheDocument()
-    expect(screen.getByText('Exit language')).toBeInTheDocument()
+    expect(visibleLegendText('Repeat contact')).toBeInTheDocument()
+    expect(visibleLegendText('Exit language')).toBeInTheDocument()
     // The 5th+ available drivers fold into one "Others" slice rather than a
     // fifth hand-picked hue.
-    expect(screen.getByText('Others (2 families)')).toBeInTheDocument()
+    expect(visibleLegendText('Others (2 families)')).toBeInTheDocument()
     // Unavailable families never appear, named or in the fold.
     expect(screen.queryByText(/No v9 field/)).not.toBeInTheDocument()
   })
@@ -377,13 +389,23 @@ describe('/v2/overview', () => {
     await screen.findByText('Risk Overview')
 
     // Fits the column: the label itself, no dots.
-    expect(screen.getByText('High member effort')).toBeInTheDocument()
+    expect(visibleLegendText('High member effort')).toBeInTheDocument()
+    expect(
+      within(visibleLegendText('High member effort').closest('li') as HTMLElement).queryByLabelText(
+        'Show the full label',
+      ),
+    ).not.toBeInTheDocument()
+
     // Does not fit: the full text is still in the DOM for an assistive-tech
     // reader — CSS ellipsis clips the render, never the content —
-    expect(screen.getByText('Repeat contact from the same caller')).toBeInTheDocument()
+    expect(visibleLegendText('Repeat contact from the same caller')).toBeInTheDocument()
     // — and a bubble sits beside it for anyone hovering or tabbing to let it
     // wrap back out in place.
-    expect(screen.getByLabelText('Show the full label')).toHaveTextContent('•••')
+    expect(
+      within(
+        visibleLegendText('Repeat contact from the same caller').closest('li') as HTMLElement,
+      ).getByLabelText('Show the full label'),
+    ).toHaveTextContent('•••')
   })
 
   it('shows the real call count on a rising issue instead of the mockup\'s percentage', async () => {

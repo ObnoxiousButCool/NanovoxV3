@@ -4,6 +4,12 @@
  * Same gap `useElementWidth.test.tsx` closes for the charts: jsdom has no
  * `ResizeObserver`, so this is pinned here rather than left to run only in
  * a real browser.
+ *
+ * The case that matters most here is the one that is not a layout fact at
+ * all: a consumer that measures `scrollWidth` on the same element whose CSS
+ * reacts to its own hover state. See `useOverflowing.ts`'s own note on the
+ * flicker loop that produced — this hook's two-ref shape exists to make
+ * that measurement impossible to write by accident, not just to work today.
  */
 
 import { render, screen, act } from '@testing-library/react'
@@ -34,31 +40,51 @@ class FakeResizeObserver {
   }
 }
 
-function Probe({ text }: { text: string }) {
-  const [ref, overflowing] = useOverflowing<HTMLSpanElement>(text)
-  return (
-    <span ref={ref} data-testid="measured">
-      {text}
-      <span data-testid="overflowing">{String(overflowing)}</span>
-    </span>
-  )
+/** jsdom reports 0 for both on every element, so each node's value is read
+ * off a data attribute instead — see `useElementWidth.test.tsx`'s own note
+ * on why a callback ref will not do this instead. Two separate elements,
+ * not one: that separation is the whole point of this hook. */
+function layout(): void {
+  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    return Number(this.dataset.mockScrollWidth ?? 0)
+  })
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    return Number(this.dataset.mockClientWidth ?? 0)
+  })
 }
 
-/** jsdom reports both at 0 for everything, so the comparison is stubbed on
- * the prototype rather than on the node — see `useElementWidth.test.tsx`'s
- * own note on why a callback ref will not do this instead. */
-function layout(scrollWidth: number, clientWidth: number): void {
-  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(scrollWidth)
-  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(clientWidth)
-}
-
-function resize(scrollWidth: number, clientWidth: number): void {
-  layout(scrollWidth, clientWidth)
+function resize(): void {
   act(() => {
     for (const observer of observers) {
       if (!observer.disconnected) observer.callback()
     }
   })
+}
+
+function Probe({
+  text,
+  scrollWidth,
+  clientWidth,
+}: {
+  text: string
+  scrollWidth: number
+  clientWidth: number
+}) {
+  const [containerRef, measureRef, overflowing] = useOverflowing<HTMLSpanElement, HTMLSpanElement>(
+    text,
+  )
+  return (
+    <span ref={containerRef} data-mock-client-width={clientWidth} data-testid="container">
+      <span data-testid="overflowing">{String(overflowing)}</span>
+      <span ref={measureRef} data-mock-scroll-width={scrollWidth}>
+        {text}
+      </span>
+    </span>
+  )
 }
 
 afterEach(() => {
@@ -70,18 +96,18 @@ afterEach(() => {
 describe('useOverflowing', () => {
   it('is false when the content fits on one line', () => {
     vi.stubGlobal('ResizeObserver', FakeResizeObserver)
-    layout(80, 120)
+    layout()
 
-    render(<Probe text="Repeat contact" />)
+    render(<Probe text="Repeat contact" scrollWidth={80} clientWidth={120} />)
 
     expect(screen.getByTestId('overflowing')).toHaveTextContent('false')
   })
 
   it('is true once the content is wider than the column it sits in', () => {
     vi.stubGlobal('ResizeObserver', FakeResizeObserver)
-    layout(220, 120)
+    layout()
 
-    render(<Probe text="Compliance control exception" />)
+    render(<Probe text="Compliance control exception" scrollWidth={220} clientWidth={120} />)
 
     expect(screen.getByTestId('overflowing')).toHaveTextContent('true')
   })
@@ -90,32 +116,55 @@ describe('useOverflowing', () => {
     // A legend column is as wide as its panel, and a panel resizes with the
     // window or a sibling opening — neither is a one-time fact.
     vi.stubGlobal('ResizeObserver', FakeResizeObserver)
-    layout(220, 120)
+    layout()
 
-    render(<Probe text="Compliance control exception" />)
+    const { rerender } = render(
+      <Probe text="Compliance control exception" scrollWidth={220} clientWidth={120} />,
+    )
     expect(screen.getByTestId('overflowing')).toHaveTextContent('true')
 
-    resize(220, 320)
+    rerender(<Probe text="Compliance control exception" scrollWidth={220} clientWidth={320} />)
+    resize()
 
     expect(screen.getByTestId('overflowing')).toHaveTextContent('false')
   })
 
   it('still measures once where ResizeObserver does not exist', () => {
     vi.stubGlobal('ResizeObserver', undefined)
-    layout(220, 120)
+    layout()
 
-    render(<Probe text="Compliance control exception" />)
+    render(<Probe text="Compliance control exception" scrollWidth={220} clientWidth={120} />)
 
     expect(screen.getByTestId('overflowing')).toHaveTextContent('true')
   })
 
   it('stops observing when the element goes away', () => {
     vi.stubGlobal('ResizeObserver', FakeResizeObserver)
-    layout(80, 120)
-    const { unmount } = render(<Probe text="Repeat contact" />)
+    layout()
+    const { unmount } = render(<Probe text="Repeat contact" scrollWidth={80} clientWidth={120} />)
 
     unmount()
 
     expect(observers.every((observer) => observer.disconnected)).toBe(true)
+  })
+
+  it('does not flip back and forth when only the measured element\'s own height changes', () => {
+    // The bug this hook exists to make unwritable: a consumer whose visible
+    // element wraps (grows taller, not wider) in reaction to this hook's
+    // own `overflowing` value must not see that height change read back as
+    // "no longer overflowing". Simulated here as a resize callback that
+    // fires with the width unchanged — the shape a height-only layout
+    // change actually produces.
+    vi.stubGlobal('ResizeObserver', FakeResizeObserver)
+    layout()
+
+    render(<Probe text="Compliance control exception" scrollWidth={220} clientWidth={120} />)
+    expect(screen.getByTestId('overflowing')).toHaveTextContent('true')
+
+    resize()
+    resize()
+    resize()
+
+    expect(screen.getByTestId('overflowing')).toHaveTextContent('true')
   })
 })

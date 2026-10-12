@@ -483,6 +483,7 @@ a.nv2-navitem:hover {
  * dots are a sighted, hover/focus affordance and carry their own short
  * label rather than repeating it. */
 .nv2-legend .nv2-legend-label {
+  position: relative;
   display: inline-flex;
   /* Held constant for the same reason as `.nv2-legend li` above — toggling
    * this on hover is its own, smaller version of the same loop. */
@@ -497,6 +498,18 @@ a.nv2-navitem:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* The hidden twin `useOverflowing` measures instead of `.nv2-legend-visible`
+ * — see that hook's own note on why. Absolutely positioned so it never
+ * affects `.nv2-legend-label`'s layout, and permanently `nowrap` so its
+ * `scrollWidth` is always the label's one-line width, regardless of
+ * whatever the visible span's hover state is doing. */
+.nv2-legend .nv2-legend-measure {
+  position: absolute;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .nv2-legend .nv2-legend-dots {

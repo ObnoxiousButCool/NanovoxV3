@@ -374,17 +374,20 @@ function DriversPanel({ drivers, totalAccounts }: { drivers: Driver[]; totalAcco
  * the rest of the card.
  */
 function LegendLabel({ text }: { text: string }) {
-  const [textRef, overflowing] = useOverflowing<HTMLSpanElement>(text)
+  const [containerRef, measureRef, overflowing] = useOverflowing<HTMLSpanElement, HTMLSpanElement>(text)
   return (
-    <span className="nv2-legend-label">
-      <span className="nv2-legend-visible" ref={textRef}>
-        {text}
-      </span>
+    <span className="nv2-legend-label" ref={containerRef}>
+      <span className="nv2-legend-visible">{text}</span>
       {overflowing ? (
         <span className="nv2-legend-dots" tabIndex={0} aria-label="Show the full label">
           •••
         </span>
       ) : null}
+      {/* Never shown — `useOverflowing`'s own note on why this measures
+          instead of the visible span above. */}
+      <span className="nv2-legend-measure" aria-hidden="true" ref={measureRef}>
+        {text}
+      </span>
     </span>
   )
 }
