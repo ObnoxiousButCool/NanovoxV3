@@ -241,11 +241,11 @@ function AttentionPanel({ flagged, names }: { flagged: AssessedAccount[]; names:
                 <span className="nv2-avatar-sm" aria-hidden="true">
                   {avatarInitials(name)}
                 </span>
-                <span className="nv2-attn-main">
+                <span className="nv2-attn-name">
                   <b>{name}</b>
-                  <small>
-                    {count} indicator{count === 1 ? '' : 's'} flagged
-                  </small>
+                </span>
+                <span className="nv2-attn-indicators">
+                  {count} indicator{count === 1 ? '' : 's'} flagged
                 </span>
                 <span className="nv2-flagged">Flagged</span>
                 <Renewal account={account} />

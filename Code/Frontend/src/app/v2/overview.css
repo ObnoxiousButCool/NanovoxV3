@@ -325,7 +325,8 @@ a.nv2-navitem:hover {
 }
 
 .nv2-attn li {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1.3fr) minmax(130px, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 16px 0;
@@ -348,20 +349,19 @@ a.nv2-navitem:hover {
   font: 600 14px/1 var(--nv2-font-display);
 }
 
-.nv2-attn-main {
-  flex: 1 1 auto;
+.nv2-attn-name {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
-.nv2-attn-main b {
+.nv2-attn-name b {
   font: 600 clamp(15px, 0.9vw, 16px)/1.2 var(--nv2-font-display);
   color: var(--nv2-ink);
 }
 
-.nv2-attn-main small {
+/* Its own column, not a subtitle under the name — the mockup's "N
+ * unresolved interactions" sits beside the name, not below it. */
+.nv2-attn-indicators {
+  min-width: 0;
   font: 400 clamp(12px, 0.75vw, 14px)/1.2 var(--nv2-font);
   color: var(--nv2-muted);
 }
@@ -921,13 +921,13 @@ a.nv2-navitem:hover {
     padding: 12px 0;
   }
 
-  .nv2-attn-main b,
+  .nv2-attn-name b,
   .nv2-action-main b,
   .nv2-emerging-main b {
     font-size: 15px;
   }
 
-  .nv2-attn-main small,
+  .nv2-attn-indicators,
   .nv2-action-main small,
   .nv2-emerging-main small {
     font-size: 13px;
@@ -984,12 +984,16 @@ a.nv2-navitem:hover {
 
   .nv2-avatar-sm {
     grid-column: 1;
-    grid-row: 1 / span 2;
+    grid-row: 1 / span 3;
     width: 36px;
     height: 36px;
   }
 
-  .nv2-attn-main {
+  .nv2-attn-name {
+    grid-column: 2;
+  }
+
+  .nv2-attn-indicators {
     grid-column: 2;
   }
 
@@ -1002,7 +1006,7 @@ a.nv2-navitem:hover {
 
   .nv2-renewal {
     grid-column: 3;
-    grid-row: 1 / span 2;
+    grid-row: 1 / span 3;
     min-width: 0;
   }
 
