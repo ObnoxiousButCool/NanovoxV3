@@ -174,27 +174,48 @@ a.nv2-navitem:hover {
 }
 
 .nv2-period {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
   box-sizing: border-box;
   flex: 0 0 145px;
   width: 145px;
   height: 42px;
-  padding: 0 8px 0 21px;
   border: 1px solid #184b95;
   border-radius: 8px;
+  background: #fff;
+}
+
+.nv2-period select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  min-width: 120px;
+  height: 100%;
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+  padding: 0 32px 0 21px;
   font: 600 14px/1 var(--nv2-font);
   color: #184b95;
-  background: #fff;
-  white-space: nowrap;
+  cursor: pointer;
+}
+
+.nv2-period select:focus-visible {
+  outline: 2px solid #184b95;
+  outline-offset: 2px;
 }
 
 .nv2-period svg {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
   flex: 0 0 24px;
   width: 24px;
   height: 24px;
+  pointer-events: none;
 }
 
 .nv2-ai-btn {

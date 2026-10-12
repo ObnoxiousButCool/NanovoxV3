@@ -9,7 +9,8 @@
  */
 
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -425,5 +426,59 @@ describe('/v2/overview', () => {
 
     expect(screen.getByText('Needs action')).toBeInTheDocument()
     expect(screen.getByText('In progress')).toBeInTheDocument()
+  })
+
+  it('filters every scoped query by the selected period, anchored on the corpus\'s own latest call', async () => {
+    const urls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) => {
+        urls.push(input)
+        return Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.includes('/insights/filters')
+                ? { ...OPTIONS, corpusPeriod: { from: '2026-07-06', to: '2026-09-25' } }
+                : routeFor(input),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }),
+    )
+
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <MemoryRouter initialEntries={['/v2/overview']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    await screen.findByText('Total accounts')
+
+    // The default preset ("Last 30 days"), anchored on the corpus's own
+    // last dated call — never the clock this test happens to run at.
+    await waitFor(() => {
+      expect(
+        urls.some(
+          (url) => url.includes('/insights/exec') && url.includes('from=2026-08-27') && url.includes('to=2026-09-25'),
+        ),
+      ).toBe(true)
+    })
+    // `/insights/filters` stays unfiltered — it is where the anchor itself
+    // comes from, and its employer list is the reference book, not a
+    // period-bounded figure.
+    expect(urls.some((url) => /\/insights\/filters(\?|$)/.test(url))).toBe(true)
+
+    await userEvent.selectOptions(screen.getByLabelText('Period'), '7d')
+
+    await waitFor(() => {
+      expect(
+        urls.some(
+          (url) => url.includes('/insights/exec') && url.includes('from=2026-09-19') && url.includes('to=2026-09-25'),
+        ),
+      ).toBe(true)
+    })
   })
 })

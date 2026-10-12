@@ -6,12 +6,18 @@
  * screens rather than replacing `/exec` — see `App.tsx` for how the two
  * trees coexist, and `OverviewLayout` for why this does not reuse `Shell`.
  *
- * ## No filter bar, no scope line
+ * ## No filter bar, one filter
  *
- * The mockup carries neither, so every query below is called unfiltered
- * (`''`) instead of through `useFilters`. "Last 30 days" is drawn as a
- * static label in `OverviewLayout` until a later page decides what it
- * narrows.
+ * The mockup carries no shared filter bar, so this does not route through
+ * `useFilters` — but "Last 30 days" is drawn as a real control (`periods.ts`),
+ * not a static label. Its presets anchor on the corpus's own extent rather
+ * than the browser's clock; see that file's banner for why. Everything this
+ * page reads is scoped by it except `/insights/filters` itself, which stays
+ * unfiltered on purpose: `options.data.employers` is the reference book
+ * (`FilterOptionsResponse.employers`'s own docstring — "every employer,
+ * including those with no calls"), not a period-bounded figure, and its
+ * `corpusPeriod.to` is what the preset needs to anchor on in the first
+ * place.
  *
  * ## Every number here is a real query, never invented
  *
@@ -41,6 +47,7 @@ import { useState } from 'react'
 
 import { laneColors } from '@/app/screens/actions/format'
 import { OverviewLayout } from '@/app/v2/OverviewLayout'
+import { DEFAULT_PERIOD_KEY, periodByKey, periodSearch } from '@/app/v2/periods'
 import { useOverflowing } from '@/app/v2/useOverflowing'
 import { useActionBoard } from '@/shared/api/actionBoard'
 import type { ActionBoard } from '@/shared/api/actionBoard'
@@ -66,16 +73,20 @@ const DRIVER_COLORS = ['#c9143f', '#1b4f98', '#7f96b7', '#c2d3e8']
 
 export function OverviewScreen() {
   const [aiInsightsOpen, setAiInsightsOpen] = useState(false)
+  const [periodKey, setPeriodKey] = useState(DEFAULT_PERIOD_KEY)
+  // Unfiltered on purpose — see the file banner. Its `corpusPeriod.to` is
+  // also where the preset below anchors "last N days" from.
   const options = useFilterOptions('')
-  const exec = useExec('')
-  const risk = useRisk('')
-  const board = useActionBoard('')
+  const search = periodSearch(periodByKey(periodKey), options.data?.corpusPeriod?.to ?? null)
+  const exec = useExec(search)
+  const risk = useRisk(search)
+  const board = useActionBoard(search)
   // The one query this page makes that no other v2 panel needs, purely for
   // `unresolvedCount` — the only honest corpus-wide reading of the mockup's
   // "Unresolved interactions" tile (`CallsPageResponse`'s own docstring:
   // "over every matching call, not only the page shown").
-  const calls = useCalls('')
-  const aiInsights = useGeneratedInsights('exec', '', undefined, { enabled: aiInsightsOpen })
+  const calls = useCalls(search)
+  const aiInsights = useGeneratedInsights('exec', search, undefined, { enabled: aiInsightsOpen })
 
   const insightsContent = aiInsights.isPending ? (
     <p className="nv2-insights-state">Generating insights…</p>
@@ -102,6 +113,8 @@ export function OverviewScreen() {
   return (
     <OverviewLayout
       title="Overview"
+      period={periodKey}
+      onPeriodChange={setPeriodKey}
       aiInsightsOpen={aiInsightsOpen}
       insightsContent={insightsContent}
       onToggleAIInsights={() => setAiInsightsOpen((open) => !open)}
