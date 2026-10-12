@@ -3,10 +3,8 @@
  *
  * Categorical identity (which driver, which category), never magnitude by
  * itself — the center number is the total the ring divides, not a measured
- * value of its own. Segments carry a 2px gap at both ends (the house style
- * for adjacent/stacked fills, `nv-chart`'s own convention) rather than
- * touching, so a reader can tell where one driver ends and the next begins
- * without relying on the colour boundary alone.
+ * value of its own. Segments meet edge-to-edge; colour distinguishes each
+ * driver without adding gaps to the ring.
  *
  * Direct labels live beside this component (its own legend), not inside
  * it: the ring is the same component whether five slices or two, and a
@@ -21,11 +19,11 @@ export interface DonutSlice {
 
 const SIZE = 160
 const CENTER = SIZE / 2
-const RADIUS = 60
-const STROKE = 20
+// At the 160px viewBox scale this gives an outer radius of 72px and an
+// inner radius of 54px, matching the reference ring's 75% hole ratio.
+const RADIUS = 63
+const STROKE = 18
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS
-const GAP = 2
-
 export function Donut({
   slices,
   centerValue,
@@ -57,8 +55,8 @@ export function Donut({
         {total > 0
           ? slices.map((slice) => {
               if (slice.value <= 0) return null
-              const length = Math.max((slice.value / total) * CIRCUMFERENCE - GAP, 0)
-              const dash = `${length.toFixed(1)} ${(CIRCUMFERENCE - length).toFixed(1)}`
+              const length = (slice.value / total) * CIRCUMFERENCE
+              const dash = `${length} ${CIRCUMFERENCE - length}`
               const rotation = (offset / CIRCUMFERENCE) * 360 - 90
               offset += (slice.value / total) * CIRCUMFERENCE
               return (
@@ -72,7 +70,7 @@ export function Donut({
                   strokeWidth={STROKE}
                   strokeDasharray={dash}
                   strokeLinecap={rounded ? 'round' : 'butt'}
-                  transform={`rotate(${rotation.toFixed(2)} ${String(CENTER)} ${String(CENTER)})`}
+                  transform={`rotate(${rotation} ${String(CENTER)} ${String(CENTER)})`}
                 />
               )
             })

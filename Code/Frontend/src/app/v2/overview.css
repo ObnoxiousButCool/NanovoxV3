@@ -269,14 +269,14 @@ a.nv2-navitem:hover {
 
 .nv2-stat-value {
   order: 1;
-  font: 700 clamp(28px, 1.9vw, 36px)/1.05 var(--nv2-font-display);
+  font: 700 clamp(28px, 1.8vw, 34px)/1.05 var(--nv2-font-display);
   color: var(--nv2-ink);
   font-variant-numeric: tabular-nums;
 }
 
 .nv2-stat-label {
   order: 0;
-  font: 400 clamp(13px, 0.85vw, 16px)/1.2 var(--nv2-font);
+  font: 400 clamp(13px, 0.8vw, 15px)/1.2 var(--nv2-font);
   color: #7789a4;
 }
 
@@ -299,13 +299,13 @@ a.nv2-navitem:hover {
 }
 
 .nv2-panel-head h2 {
-  font: 700 clamp(18px, 1.15vw, 22px)/1.15 var(--nv2-font-display);
+  font: 700 clamp(18px, 1.05vw, 20px)/1.15 var(--nv2-font-display);
   color: var(--nv2-ink);
   margin: 0;
 }
 
 .nv2-panel-head a {
-  font: 600 clamp(13px, 0.8vw, 15px)/1 var(--nv2-font);
+  font: 600 clamp(12px, 0.75vw, 14px)/1 var(--nv2-font);
   color: var(--brand);
   text-decoration: underline;
 }
@@ -357,12 +357,12 @@ a.nv2-navitem:hover {
 }
 
 .nv2-attn-main b {
-  font: 600 clamp(15px, 0.95vw, 18px)/1.2 var(--nv2-font-display);
+  font: 600 clamp(15px, 0.9vw, 16px)/1.2 var(--nv2-font-display);
   color: var(--nv2-ink);
 }
 
 .nv2-attn-main small {
-  font: 400 clamp(13px, 0.8vw, 15px)/1.2 var(--nv2-font);
+  font: 400 clamp(12px, 0.75vw, 14px)/1.2 var(--nv2-font);
   color: var(--nv2-muted);
 }
 
@@ -372,7 +372,7 @@ a.nv2-navitem:hover {
   flex: 0 0 auto;
   padding: 6px 14px;
   border-radius: 999px;
-  font: 500 clamp(13px, 0.8vw, 15px)/1 var(--nv2-font);
+  font: 500 clamp(12px, 0.75vw, 14px)/1 var(--nv2-font);
   background: color-mix(in srgb, var(--critical) 14%, white);
   color: var(--critical);
 }
@@ -387,12 +387,12 @@ a.nv2-navitem:hover {
 }
 
 .nv2-renewal small {
-  font: 400 13px/1 var(--nv2-font);
+  font: 400 12px/1 var(--nv2-font);
   color: var(--nv2-muted);
 }
 
 .nv2-renewal b {
-  font: 600 clamp(14px, 0.85vw, 16px)/1.2 var(--nv2-font-display);
+  font: 600 clamp(13px, 0.8vw, 15px)/1.2 var(--nv2-font-display);
   color: #364358;
 }
 
@@ -411,11 +411,11 @@ a.nv2-navitem:hover {
 }
 
 .nv2-donutwrap .nv-donut-center b {
-  font-size: 34px;
+  font-size: 32px;
 }
 
 .nv2-donutwrap .nv-donut-center span {
-  font-size: 16px;
+  font-size: 14px;
   color: var(--nv2-muted);
 }
 
@@ -426,21 +426,21 @@ a.nv2-navitem:hover {
   width: 100%;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 16px;
-  row-gap: 10px;
+  column-gap: clamp(16px, 2vw, 32px);
+  row-gap: 12px;
 }
 
 .nv2-legend li {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 8px;
-  font: 500 clamp(13px, 0.8vw, 15px)/1.25 var(--nv2-font);
+  gap: 6px;
+  font: 500 clamp(12px, 0.8vw, 14px)/1.25 var(--nv2-font);
   color: var(--nv2-muted);
 }
 
 .nv2-legend i {
-  width: 26px;
+  width: 24px;
   height: 14px;
   border-radius: 999px;
   display: inline-block;
@@ -455,7 +455,7 @@ a.nv2-navitem:hover {
 
 .nv2-legend b {
   color: #364358;
-  font: 600 15px/1 var(--nv2-font-display);
+  font: 600 clamp(13px, 0.8vw, 14px)/1 var(--nv2-font-display);
   font-variant-numeric: tabular-nums;
 }
 
@@ -490,12 +490,12 @@ a.nv2-navitem:hover {
 }
 
 .nv2-action-main b {
-  font: 600 18px/1.2 var(--nv2-font-display);
+  font: 600 16px/1.2 var(--nv2-font-display);
   color: var(--nv2-ink);
 }
 
 .nv2-action-main small {
-  font: 400 15px/1.2 var(--nv2-font);
+  font: 400 14px/1.2 var(--nv2-font);
   color: var(--nv2-muted);
 }
 
@@ -538,12 +538,12 @@ a.nv2-navitem:hover {
 }
 
 .nv2-emerging-main b {
-  font: 600 18px/1.2 var(--nv2-font-display);
+  font: 600 16px/1.2 var(--nv2-font-display);
   color: var(--nv2-ink);
 }
 
 .nv2-emerging-main small {
-  font: 400 15px/1.2 var(--nv2-font);
+  font: 400 14px/1.2 var(--nv2-font);
   color: var(--nv2-muted);
 }
 
@@ -655,7 +655,7 @@ a.nv2-navitem:hover {
   gap: 12px;
 }
 
-@container (max-width: 440px) {
+@container (max-width: 300px) {
   .nv2-legend {
     grid-template-columns: minmax(0, 1fr);
   }
