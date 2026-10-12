@@ -304,7 +304,7 @@ describe('/v2/overview', () => {
   it('breaks the donut down by indicator family, not the mockup\'s illustrative categories', async () => {
     renderOverview()
 
-    await screen.findByText('Top risk drivers')
+    await screen.findByText('Risk Overview')
 
     expect(screen.getByText('Repeat contact')).toBeInTheDocument()
     expect(screen.getByText('Exit language')).toBeInTheDocument()

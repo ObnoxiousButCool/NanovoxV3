@@ -298,7 +298,7 @@ function avatarInitials(name: string): string {
 }
 
 /**
- * "Top risk drivers" — the ten indicator families `/risk` already ranks,
+ * "Risk Overview" — the ten indicator families `/risk` already ranks,
  * not the mockup's illustrative categories (no aggregation groups calls by
  * `Category` into a ranked breakdown). Top four keep their own hue; the
  * rest fold into one "Others" slice, the dataviz skill's rule for a series
@@ -322,7 +322,7 @@ function DriversPanel({ drivers, totalAccounts }: { drivers: Driver[]; totalAcco
   return (
     <section className="nv2-panel">
       <header className="nv2-panel-head">
-        <h2>Top risk drivers</h2>
+        <h2>Risk Overview</h2>
         <Link to="/risk">View all</Link>
       </header>
       {available.length === 0 ? (
