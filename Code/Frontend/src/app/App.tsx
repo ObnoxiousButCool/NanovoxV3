@@ -12,6 +12,15 @@
  * endpoint is built and serves insights that render nowhere else, but
  * routing to a screen nobody has agreed to show would decide that question
  * by accident.
+ *
+ * ## `/v2/*`
+ *
+ * The designer's new perspective (chat, 2026-10-12) arrives as a second,
+ * parallel tree rather than edits to the one above: `<Routes>` matches
+ * top-to-bottom and the first match wins, so `/v2/overview` is claimed here,
+ * before the old tree's own `path="*"` ever sees it. Nothing above this
+ * comment changed to make room for it. The plan is to grow `/v2/*` screen by
+ * screen and only then retire `LegacyApp`, never to run both half-finished.
  */
 
 import { Navigate, Route, Routes } from 'react-router-dom'
@@ -27,9 +36,19 @@ import { HierarchyScreen } from '@/app/screens/HierarchyScreen'
 import { RiskScreen } from '@/app/screens/RiskScreen'
 import { RulesScreen } from '@/app/screens/RulesScreen'
 import { StatusPage } from '@/app/StatusPage'
+import { OverviewScreen } from '@/app/v2/OverviewScreen'
 import { Shell } from '@/shared/design/Shell'
 
 export function App() {
+  return (
+    <Routes>
+      <Route path="/v2/overview" element={<OverviewScreen />} />
+      <Route path="/*" element={<LegacyApp />} />
+    </Routes>
+  )
+}
+
+function LegacyApp() {
   return (
     <Shell>
       <Routes>

@@ -1,0 +1,963 @@
+/* The v2 shell and the Overview screen.
+ *
+ * Its own type and surface, scoped to `.nv2-shell`: the designer's mockup
+ * was built in Inter on a cool, soft-shadowed card surface, which is a
+ * different visual language from the rest of the application's flat,
+ * Archivo-on-warm-paper screens. This file sets its own type, surfaces,
+ * and dashboard palette rather than bending the shared ones. Everything
+ * remains scoped to `.nv2-shell`.
+ */
+
+.nv2-shell {
+  --nv2-font: 'Inter', var(--body);
+  --nv2-font-display: 'Inter', var(--display);
+  --nv2-bg: #f3f7fa;
+  --nv2-card: #ffffff;
+  --nv2-line: #e5ebf2;
+  --nv2-ink: #172033;
+  --nv2-muted: #91a2ba;
+  --nv2-shadow: 0 1px 2px rgba(16, 24, 40, 0.025);
+
+  display: grid;
+  grid-template-columns: clamp(220px, 16.7vw, 316px) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--nv2-bg);
+  font-family: var(--nv2-font);
+  color: var(--nv2-ink);
+}
+
+:root[data-theme='dark'] .nv2-shell {
+  --nv2-bg: #11151c;
+  --nv2-card: #171c25;
+  --nv2-line: #262d3a;
+  --nv2-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 10px rgba(0, 0, 0, 0.35);
+}
+
+.nv2-rail {
+  margin: 18px 0;
+  background: var(--nv2-card);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  padding: 32px 16px 24px;
+}
+
+.nv2-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 47px;
+  font: 700 21px/1 var(--nv2-font-display);
+  color: var(--nv2-ink);
+}
+
+.nv2-brandmark {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  width: 26px;
+  height: 20px;
+}
+
+.nv2-brandmark i {
+  display: block;
+  width: 6px;
+  border-radius: 2px 2px 0 0;
+  background: var(--brand);
+}
+
+.nv2-brandmark i:nth-child(1) {
+  height: 55%;
+}
+.nv2-brandmark i:nth-child(2) {
+  height: 100%;
+}
+.nv2-brandmark i:nth-child(3) {
+  height: 75%;
+}
+
+.nv2-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.nv2-navitem {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 0.75vw, 14px);
+  padding: clamp(10px, 0.85vw, 16px) clamp(12px, 1.16vw, 22px);
+  border-radius: 12px;
+  font: 600 clamp(14px, 0.95vw, 18px)/1.2 var(--nv2-font);
+  color: #536176;
+  text-decoration: none;
+}
+
+.nv2-navicon {
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+a.nv2-navitem:hover {
+  background: var(--nv2-bg);
+  color: var(--ink);
+}
+
+.nv2-navitem.nv2-active {
+  background: #dfeafb;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.nv2-navitem.nv2-active .nv2-navicon {
+  color: var(--brand);
+}
+
+.nv2-navitem-soon {
+  color: #536176;
+  cursor: default;
+}
+
+.nv2-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 14px 0;
+  border-top: 1px solid var(--nv2-line);
+  margin-top: 10px;
+}
+
+.nv2-avatar {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font: 600 12px/1 var(--nv2-font-display);
+}
+
+.nv2-profile div {
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+  line-height: 1.3;
+  font-family: var(--nv2-font);
+}
+
+.nv2-profile b {
+  color: var(--nv2-ink);
+  font-weight: 600;
+}
+
+.nv2-profile span {
+  color: var(--nv2-muted);
+}
+
+.nv2-profile::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  margin-left: auto;
+  border-top: 2px solid #91a2ba;
+  border-right: 2px solid #91a2ba;
+  transform: rotate(45deg);
+}
+
+.nv2-main {
+  min-width: 0;
+}
+
+.nv2-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 48px clamp(20px, 2.2vw, 42px) 20px;
+  background: transparent;
+}
+
+.nv2-topbar h1 {
+  font: 700 clamp(24px, 1.7vw, 32px)/1.15 var(--nv2-font-display);
+  color: var(--nv2-ink);
+  margin: 0;
+}
+
+.nv2-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nv2-period {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px clamp(14px, 1.15vw, 22px);
+  border: 1.5px solid #2860a8;
+  border-radius: 12px;
+  font: 500 clamp(14px, 0.9vw, 17px)/1 var(--nv2-font);
+  color: #285b9d;
+  background: #fff;
+}
+
+.nv2-ai-btn {
+  appearance: none;
+  border: none;
+  border-radius: 12px;
+  padding: 14px clamp(16px, 1.25vw, 24px);
+  font: 600 clamp(14px, 0.9vw, 17px)/1 var(--nv2-font-display);
+  background: linear-gradient(110deg, #205da3, #273a6e);
+  color: #fff;
+  cursor: pointer;
+}
+
+.nv2-ai-btn:hover {
+  filter: brightness(1.08);
+}
+
+.nv2-ai-btn:focus-visible,
+.nv2-insights-head button:focus-visible {
+  outline: 2px solid #1b4f98;
+  outline-offset: 3px;
+}
+
+.nv2-body {
+  padding: 22px clamp(20px, 2.2vw, 42px) 44px;
+  font-family: var(--nv2-font);
+}
+
+.nv2-row {
+  margin-top: clamp(22px, 1.8vw, 34px);
+  column-gap: clamp(18px, 1.4vw, 26px);
+}
+
+.nv2-stats + .nv2-row {
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+}
+
+.nv2-stats + .nv2-row > .nv-c8,
+.nv2-stats + .nv2-row > .nv-c4 {
+  grid-column: span 1;
+}
+
+/* Let the attention list determine its card height independently of the
+   taller chart beside it. */
+.nv2-stats + .nv2-row > .nv-c8 .nv2-panel {
+  height: auto;
+}
+
+.nv2-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.nv2-stat {
+  background: var(--nv2-card);
+  border: 1px solid var(--nv2-line);
+  border-radius: 16px;
+  box-shadow: var(--nv2-shadow);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 114px;
+}
+
+.nv2-stat-value {
+  order: 1;
+  font: 700 clamp(28px, 1.9vw, 36px)/1.05 var(--nv2-font-display);
+  color: var(--nv2-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.nv2-stat-label {
+  order: 0;
+  font: 400 clamp(13px, 0.85vw, 16px)/1.2 var(--nv2-font);
+  color: #7789a4;
+}
+
+.nv2-panel {
+  min-width: 0;
+  container-type: inline-size;
+  background: var(--nv2-card);
+  border: 1px solid var(--nv2-line);
+  border-radius: 16px;
+  box-shadow: var(--nv2-shadow);
+  padding: clamp(18px, 1.4vw, 26px) clamp(18px, 1.5vw, 28px);
+  height: 100%;
+}
+
+.nv2-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.nv2-panel-head h2 {
+  font: 700 clamp(18px, 1.15vw, 22px)/1.15 var(--nv2-font-display);
+  color: var(--nv2-ink);
+  margin: 0;
+}
+
+.nv2-panel-head a {
+  font: 600 clamp(13px, 0.8vw, 15px)/1 var(--nv2-font);
+  color: var(--brand);
+  text-decoration: underline;
+}
+
+.nv2-panel-head a:hover {
+  color: var(--brand-ink);
+}
+
+/* --- accounts that need attention --- */
+.nv2-attn {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nv2-attn li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid var(--nv2-line);
+}
+
+.nv2-attn li:first-child {
+  border-top: none;
+}
+
+.nv2-avatar-sm {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: var(--nv2-bg);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  font: 600 14px/1 var(--nv2-font-display);
+}
+
+.nv2-attn-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nv2-attn-main b {
+  font: 600 clamp(15px, 0.95vw, 18px)/1.2 var(--nv2-font-display);
+  color: var(--nv2-ink);
+}
+
+.nv2-attn-main small {
+  font: 400 clamp(13px, 0.8vw, 15px)/1.2 var(--nv2-font);
+  color: var(--nv2-muted);
+}
+
+/* A pastel badge, local to this page — see the file banner on why this
+ * does not reuse `StatusPill`'s shape-coded marker. */
+.nv2-flagged {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font: 500 clamp(13px, 0.8vw, 15px)/1 var(--nv2-font);
+  background: color-mix(in srgb, var(--critical) 14%, white);
+  color: var(--critical);
+}
+
+.nv2-renewal {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 92px;
+}
+
+.nv2-renewal small {
+  font: 400 13px/1 var(--nv2-font);
+  color: var(--nv2-muted);
+}
+
+.nv2-renewal b {
+  font: 600 clamp(14px, 0.85vw, 16px)/1.2 var(--nv2-font-display);
+  color: #364358;
+}
+
+/* --- top risk drivers --- */
+.nv2-donutwrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  margin-top: 18px;
+}
+
+.nv2-donutwrap .nv-donut {
+  width: clamp(160px, 12.7vw, 240px);
+  height: clamp(160px, 12.7vw, 240px);
+}
+
+.nv2-donutwrap .nv-donut-center b {
+  font-size: 34px;
+}
+
+.nv2-donutwrap .nv-donut-center span {
+  font-size: 16px;
+  color: var(--nv2-muted);
+}
+
+.nv2-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 10px;
+}
+
+.nv2-legend li {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  font: 500 clamp(13px, 0.8vw, 15px)/1.25 var(--nv2-font);
+  color: var(--nv2-muted);
+}
+
+.nv2-legend i {
+  width: 26px;
+  height: 14px;
+  border-radius: 999px;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.nv2-legend span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.nv2-legend b {
+  color: #364358;
+  font: 600 15px/1 var(--nv2-font-display);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- recent actions --- */
+.nv2-actions {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nv2-actions li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid var(--nv2-line);
+}
+
+.nv2-actions li:first-child {
+  border-top: none;
+}
+
+.nv2-action-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nv2-action-main b {
+  font: 600 18px/1.2 var(--nv2-font-display);
+  color: var(--nv2-ink);
+}
+
+.nv2-action-main small {
+  font: 400 15px/1.2 var(--nv2-font);
+  color: var(--nv2-muted);
+}
+
+.nv2-pill {
+  flex: 0 0 auto;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font: 500 14px/1 var(--nv2-font);
+  white-space: nowrap;
+}
+
+/* --- emerging issues --- */
+.nv2-emerging {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nv2-emerging li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid var(--nv2-line);
+}
+
+.nv2-emerging li:first-child {
+  border-top: none;
+}
+
+.nv2-emerging-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nv2-emerging-main b {
+  font: 600 18px/1.2 var(--nv2-font-display);
+  color: var(--nv2-ink);
+}
+
+.nv2-emerging-main small {
+  font: 400 15px/1.2 var(--nv2-font);
+  color: var(--nv2-muted);
+}
+
+.nv2-worse {
+  flex: 0 0 auto;
+  font: 600 14px/1 var(--nv2-font-display);
+  color: var(--critical);
+  white-space: nowrap;
+}
+
+.nv2-insights-drawer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #e3d8e7;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(30, 38, 58, 0.12);
+}
+
+@media (max-width: 1200px) {
+  .nv2-insights-drawer {
+    position: fixed;
+    z-index: 10;
+    inset: 12px 12px 12px auto;
+    width: min(380px, calc(100vw - 24px));
+    overflow: auto;
+  }
+}
+
+.nv2-insights-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--nv2-line);
+}
+
+.nv2-insights-head h2 {
+  margin: 0;
+  color: var(--nv2-ink);
+  font: 700 18px/1.2 var(--nv2-font-display);
+}
+
+.nv2-insights-head button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: #68758a;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nv2-insights-head button:hover {
+  background: var(--nv2-bg);
+}
+
+.nv2-insights-head svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.nv2-insights-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 12px;
+  overflow: auto;
+}
+
+.nv2-insights-state {
+  margin: 8px 0;
+  color: #68758a;
+  font: 400 14px/1.5 var(--nv2-font);
+}
+
+.nv2-insights-drawer .nv-panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.nv2-insights-drawer .nv-panel > header {
+  display: none;
+}
+
+.nv2-insights-drawer .nv-lenses {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.nv2-insights-drawer .nv-lens {
+  padding: 12px;
+}
+
+.nv2-insights-drawer .nv-lens ol {
+  gap: 12px;
+}
+
+@container (max-width: 440px) {
+  .nv2-legend {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nv2-donutwrap .nv-donut {
+    width: min(220px, 68cqw);
+    height: min(220px, 68cqw);
+  }
+
+}
+
+@media (min-width: 1201px) {
+  .nv2-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+  }
+
+  .nv2-topbar {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .nv2-body {
+    grid-column: 1;
+    grid-row: 2;
+    padding-right: 0;
+  }
+
+  .nv2-insights-open .nv2-main {
+    grid-template-columns: minmax(0, 1fr) clamp(260px, 22vw, 340px);
+    column-gap: 24px;
+  }
+
+  .nv2-insights-open .nv2-insights-drawer {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+    max-height: calc(100vh - 170px);
+    margin: 22px 20px 44px 0;
+  }
+}
+
+@media (max-width: 1200px) {
+  .nv2-shell {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .nv2-topbar {
+    padding: 34px 26px 18px;
+  }
+
+  .nv2-body {
+    padding: 18px 26px 36px;
+  }
+
+  .nv2-navitem {
+    gap: 10px;
+    padding: 13px 14px;
+    font-size: 15px;
+  }
+
+  .nv2-panel {
+    padding: 20px;
+  }
+
+  .nv2-panel-head h2 {
+    font-size: 19px;
+  }
+
+  .nv2-row {
+    margin-top: 24px;
+    column-gap: 20px;
+  }
+
+  .nv2-stat-value {
+    font-size: 30px;
+  }
+
+  .nv2-stat-label {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .nv2-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nv2-stats + .nv2-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nv2-stats + .nv2-row > .nv-c8,
+  .nv2-stats + .nv2-row > .nv-c4 {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .nv2-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .nv2-rail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    padding: 14px 16px;
+    border-radius: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--nv2-line);
+  }
+
+  .nv2-brand {
+    padding: 0 6px;
+    font-size: 18px;
+  }
+
+  .nv2-nav {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .nv2-navitem {
+    gap: 8px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .nv2-navicon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .nv2-profile {
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .nv2-avatar {
+    flex-basis: 34px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .nv2-profile div {
+    font-size: 12px;
+  }
+
+  .nv2-profile::after {
+    display: none;
+  }
+
+  .nv2-topbar {
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 22px 20px 16px;
+  }
+
+  .nv2-topbar-actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .nv2-period,
+  .nv2-ai-btn {
+    justify-content: center;
+    flex: 1 1 auto;
+    white-space: nowrap;
+  }
+
+  .nv2-body {
+    padding: 0 20px 28px;
+  }
+
+  .nv2-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .nv2-stat {
+    min-height: 92px;
+    padding: 14px 16px;
+    gap: 8px;
+  }
+
+  .nv2-stat-value {
+    font-size: 28px;
+  }
+
+  .nv2-stat-label {
+    font-size: 13px;
+  }
+
+  .nv2-panel {
+    padding: 18px;
+  }
+
+  .nv2-panel-head h2 {
+    font-size: 18px;
+  }
+
+  .nv2-attn li {
+    gap: 8px;
+    padding: 12px 0;
+  }
+
+  .nv2-attn-main b,
+  .nv2-action-main b,
+  .nv2-emerging-main b {
+    font-size: 15px;
+  }
+
+  .nv2-attn-main small,
+  .nv2-action-main small,
+  .nv2-emerging-main small {
+    font-size: 13px;
+  }
+
+  .nv2-stats + .nv2-row {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .nv2-stats + .nv2-row > .nv-c8,
+  .nv2-stats + .nv2-row > .nv-c4 {
+    grid-column: span 12;
+  }
+
+}
+
+@media (max-width: 520px) {
+  .nv2-rail {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 12px;
+  }
+
+  .nv2-profile div {
+    display: none;
+  }
+
+  .nv2-navitem {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .nv2-navitem svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .nv2-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .nv2-stat {
+    padding: 12px;
+  }
+
+  .nv2-donutwrap .nv-donut {
+    width: min(220px, 68vw);
+    height: min(220px, 68vw);
+  }
+
+  .nv2-attn li {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+  }
+
+  .nv2-avatar-sm {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 36px;
+    height: 36px;
+  }
+
+  .nv2-attn-main {
+    grid-column: 2;
+  }
+
+  .nv2-flagged {
+    grid-column: 2;
+    justify-self: start;
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  .nv2-renewal {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    min-width: 0;
+  }
+
+  .nv2-renewal b {
+    font-size: 13px;
+  }
+}

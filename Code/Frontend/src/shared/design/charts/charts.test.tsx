@@ -9,7 +9,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import { BarCell, Gauge, Heatmap, MiniBars, Sparkline, VBars, VLine } from '@/shared/design/charts'
+import { BarCell, Donut, Gauge, Heatmap, MiniBars, Sparkline, VBars, VLine } from '@/shared/design/charts'
 import { niceMax } from '@/shared/design/charts/useElementWidth'
 
 const WEEKS = ['1', '2', '3', '4']
@@ -198,6 +198,53 @@ describe('MiniBars and BarCell', () => {
     render(<MiniBars values={[1, 2, 5]} label="Rising across the quarter" />)
 
     expect(screen.getByRole('img', { name: 'Rising across the quarter' })).toBeInTheDocument()
+  })
+})
+
+describe('Donut', () => {
+  it('draws one segment per slice with a value, and skips the rest', () => {
+    const { container } = render(
+      <Donut
+        slices={[
+          { key: 'a', value: 10, color: 'var(--s1)' },
+          { key: 'b', value: 0, color: 'var(--s2)' },
+          { key: 'c', value: 5, color: 'var(--s3)' },
+        ]}
+        centerValue="248"
+        centerLabel="Accounts"
+        ariaLabel="Calls by indicator family"
+      />,
+    )
+
+    // The background track plus one circle per non-zero slice.
+    expect(container.querySelectorAll('circle')).toHaveLength(3)
+  })
+
+  it('draws only the track when every slice is zero, never a full ring of nothing', () => {
+    const { container } = render(
+      <Donut
+        slices={[{ key: 'a', value: 0, color: 'var(--s1)' }]}
+        centerValue="0"
+        centerLabel="Accounts"
+        ariaLabel="Calls by indicator family"
+      />,
+    )
+
+    expect(container.querySelectorAll('circle')).toHaveLength(1)
+  })
+
+  it('puts the hero number at the centre, not a figure recomputed from the slices', () => {
+    render(
+      <Donut
+        slices={[{ key: 'a', value: 10, color: 'var(--s1)' }]}
+        centerValue="248"
+        centerLabel="Accounts"
+        ariaLabel="Calls by indicator family"
+      />,
+    )
+
+    expect(screen.getByText('248')).toBeInTheDocument()
+    expect(screen.getByText('Accounts')).toBeInTheDocument()
   })
 })
 
