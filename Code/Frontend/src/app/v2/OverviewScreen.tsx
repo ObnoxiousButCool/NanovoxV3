@@ -41,6 +41,7 @@ import { useState } from 'react'
 
 import { laneColors } from '@/app/screens/actions/format'
 import { OverviewLayout } from '@/app/v2/OverviewLayout'
+import { useOverflowing } from '@/app/v2/useOverflowing'
 import { useActionBoard } from '@/shared/api/actionBoard'
 import type { ActionBoard } from '@/shared/api/actionBoard'
 import { useCalls, useExec, useFilterOptions, useGeneratedInsights, useRisk } from '@/shared/api/insights'
@@ -359,26 +360,31 @@ function DriversPanel({ drivers, totalAccounts }: { drivers: Driver[]; totalAcco
 }
 
 /**
- * A legend entry's label, keeping its first three words and collapsing
- * whatever comes after behind a hoverable "•••". The donut's own legend is
- * a fixed two-column grid (`overview.css`), and an indicator family's name
- * is server text this page does not control the length of — see the file
- * banner's note on `label` never being rewritten here. Every family's label
- * is three words or fewer today (`indicators.py`'s own `FAMILIES`), so this
- * is dormant on real data; it stays so the UI, not a human remembering a
- * convention, is what enforces the limit the day a longer one is added.
+ * A legend entry's label. By a word count this is three or fewer for every
+ * real indicator family today (`indicators.py`'s own `FAMILIES`) — but the
+ * donut's legend is a fixed two-column grid (`overview.css`) whose columns
+ * narrow with the panel, so a three-word label can still wrap where a wider
+ * column would have held it on one line. `useOverflowing` measures the
+ * rendered line itself rather than guessing from the word count, so the
+ * bubble appears exactly when the layout actually needs it, at any width.
+ *
+ * Collapsed to a single line with CSS ellipsis by default; hovering or
+ * focusing the bubble lets it wrap back to its full, multi-line self in
+ * place (`overview.css`'s `:has()` rule) rather than opening a popup over
+ * the rest of the card.
  */
 function LegendLabel({ text }: { text: string }) {
-  const words = text.trim().split(/\s+/).filter(Boolean)
-  if (words.length <= 3) return <span>{text}</span>
-  const visible = words.slice(0, 3).join(' ')
-  const rest = words.slice(3).join(' ')
+  const [textRef, overflowing] = useOverflowing<HTMLSpanElement>(text)
   return (
     <span className="nv2-legend-label">
-      <span className="nv2-legend-visible">{visible}</span>
-      <span className="nv2-legend-dots" tabIndex={0} aria-label={rest} data-full={rest}>
-        •••
+      <span className="nv2-legend-visible" ref={textRef}>
+        {text}
       </span>
+      {overflowing ? (
+        <span className="nv2-legend-dots" tabIndex={0} aria-label="Show the full label">
+          •••
+        </span>
+      ) : null}
     </span>
   )
 }

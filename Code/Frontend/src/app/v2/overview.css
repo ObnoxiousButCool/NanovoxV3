@@ -459,19 +459,30 @@ a.nv2-navitem:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* A legend label over three words keeps its first three and collapses the
- * rest behind this — see `LegendLabel` in OverviewScreen.tsx for the
- * threshold. The remaining words reach an assistive-tech reader via
- * `aria-label` on the dot bubble; the dots themselves are decorative. */
+/* A legend label that no longer fits its column on one line gets this
+ * instead of wrapping silently — see `LegendLabel` and `useOverflowing` in
+ * OverviewScreen.tsx, which measure the rendered line rather than guessing
+ * from a word count. The label's own text is unchanged underneath the
+ * ellipsis, so it reaches an assistive-tech reader in full regardless; the
+ * dots are a sighted, hover/focus affordance and carry their own short
+ * label rather than repeating it. */
 .nv2-legend .nv2-legend-label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+}
+
+.nv2-legend .nv2-legend-visible {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .nv2-legend .nv2-legend-dots {
   flex: 0 0 auto;
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -485,27 +496,26 @@ a.nv2-navitem:hover {
   cursor: default;
 }
 
-.nv2-legend .nv2-legend-dots:hover::after,
-.nv2-legend .nv2-legend-dots:focus-visible::after {
-  content: attr(data-full);
-  position: absolute;
-  left: 50%;
-  bottom: 100%;
-  transform: translateX(-50%);
-  margin-bottom: 8px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: var(--nv2-ink);
-  color: #fff;
-  font: 500 12px/1.3 var(--nv2-font);
-  white-space: nowrap;
-  z-index: 5;
-  box-shadow: 0 6px 16px rgba(16, 24, 40, 0.2);
-}
-
 .nv2-legend .nv2-legend-dots:focus-visible {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
+}
+
+/* Hovering or focusing the bubble lets its own label wrap back to full,
+ * multi-line text in place — the row grows to fit it — rather than opening
+ * a popup over whatever sits below. The bubble stays put throughout: if it
+ * vanished the moment the mouse left it, leaving would end the hover that
+ * made it vanish, which is a flicker loop rather than a dismissal. */
+.nv2-legend .nv2-legend-label:has(.nv2-legend-dots:hover),
+.nv2-legend .nv2-legend-label:has(.nv2-legend-dots:focus-visible) {
+  align-items: flex-start;
+}
+
+.nv2-legend .nv2-legend-label:has(.nv2-legend-dots:hover) .nv2-legend-visible,
+.nv2-legend .nv2-legend-label:has(.nv2-legend-dots:focus-visible) .nv2-legend-visible {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 /* --- recent actions --- */

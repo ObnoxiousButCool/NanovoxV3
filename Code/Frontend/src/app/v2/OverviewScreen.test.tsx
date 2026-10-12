@@ -315,7 +315,17 @@ describe('/v2/overview', () => {
     expect(screen.queryByText(/No v9 field/)).not.toBeInTheDocument()
   })
 
-  it('keeps a legend label\'s first three words and collapses the rest behind a hoverable dot bubble', async () => {
+  it('shows the dot bubble only when a label no longer fits its column, not by word count', async () => {
+    // jsdom reports 0 for scrollWidth and clientWidth on everything; stand
+    // in with a deterministic per-character width so a short and a long
+    // label land on opposite sides of the same measured column.
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return (this.textContent?.length ?? 0) * 8
+    })
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(200)
+
     vi.stubGlobal(
       'fetch',
       vi.fn((input: string) =>
@@ -327,8 +337,8 @@ describe('/v2/overview', () => {
                     ...RISK,
                     drivers: [
                       // Every real indicators.py label is three words or
-                      // fewer today; this is a synthetic six-word label so
-                      // the threshold itself stays exercised regardless.
+                      // fewer today; this is a synthetic one so the
+                      // measurement path stays exercised regardless.
                       {
                         code: 'synthetic_family',
                         label: 'Repeat contact from the same caller',
@@ -337,7 +347,7 @@ describe('/v2/overview', () => {
                         available: true,
                         unavailableBecause: '',
                       },
-                      // Below the threshold: shown as plain text, no bubble.
+                      // Fits the same column: no bubble.
                       {
                         code: 'high_effort',
                         label: 'High member effort',
@@ -366,15 +376,14 @@ describe('/v2/overview', () => {
 
     await screen.findByText('Risk Overview')
 
-    // Three words or fewer: the label itself, no dots.
+    // Fits the column: the label itself, no dots.
     expect(screen.getByText('High member effort')).toBeInTheDocument()
-    // Over three words: the full label never renders as one piece of text —
-    expect(screen.queryByText('Repeat contact from the same caller')).not.toBeInTheDocument()
-    // — its first three words stay visible —
-    expect(screen.getByText('Repeat contact from')).toBeInTheDocument()
-    // — and only the remainder moves behind a bubble, reachable by hover or
-    // tab, not dropped.
-    expect(screen.getByLabelText('the same caller')).toHaveTextContent('•••')
+    // Does not fit: the full text is still in the DOM for an assistive-tech
+    // reader — CSS ellipsis clips the render, never the content —
+    expect(screen.getByText('Repeat contact from the same caller')).toBeInTheDocument()
+    // — and a bubble sits beside it for anyone hovering or tabbing to let it
+    // wrap back out in place.
+    expect(screen.getByLabelText('Show the full label')).toHaveTextContent('•••')
   })
 
   it('shows the real call count on a rising issue instead of the mockup\'s percentage', async () => {
