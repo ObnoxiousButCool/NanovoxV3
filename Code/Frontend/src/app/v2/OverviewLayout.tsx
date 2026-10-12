@@ -59,11 +59,12 @@ export function OverviewLayout({
     <div className={`nv2-shell${aiInsightsOpen ? ' nv2-insights-open' : ''}`}>
       <aside className="nv2-rail">
         <div className="nv2-brand">
-          <span className="nv2-brandmark" aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
+          <svg className="nv2-brandmark" width="23" height="20" viewBox="0 0 23 20" fill="none" aria-hidden="true">
+            <rect y="6" width="3.5" height="14" rx="1.75" fill="#2563EB" />
+            <rect x="6.5" width="3.5" height="20" rx="1.75" fill="#2563EB" />
+            <rect x="13" y="10" width="3.5" height="10" rx="1.75" fill="#2563EB" />
+            <rect x="19.5" y="4" width="3.5" height="16" rx="1.75" fill="#2563EB" />
+          </svg>
           <b>NanoVox</b>
         </div>
 
@@ -109,8 +110,10 @@ export function OverviewLayout({
                 period yet, so a working dropdown would narrow nothing. */}
             <span className="nv2-period" title="Not yet wired to a filtered query">
               Last 30 days
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#64748B" aria-hidden="true">
+                <g transform="translate(-113 -9)">
+                  <path d="M125 21.9462L129.073 17.873C129.211 17.7347 129.386 17.6638 129.595 17.6605C129.805 17.6573 129.982 17.7282 130.127 17.873C130.272 18.018 130.344 18.1937 130.344 18.4C130.344 18.6063 130.272 18.782 130.127 18.927L125.633 23.4212C125.539 23.5147 125.44 23.5808 125.336 23.6193C125.233 23.6578 125.12 23.677 125 23.677C124.879 23.677 124.767 23.6578 124.663 23.6193C124.56 23.5808 124.461 23.5147 124.367 23.4212L119.873 18.927C119.735 18.7885 119.664 18.6144 119.660 18.4048C119.657 18.1953 119.728 18.018 119.873 17.873C120.018 17.7282 120.194 17.6558 120.4 17.6558C120.606 17.6558 120.782 17.7282 120.927 17.873L125 21.9462Z" />
+                </g>
               </svg>
             </span>
             <button

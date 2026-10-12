@@ -52,28 +52,10 @@
 }
 
 .nv2-brandmark {
-  display: inline-flex;
-  align-items: flex-end;
-  gap: 3px;
-  width: 26px;
-  height: 20px;
-}
-
-.nv2-brandmark i {
   display: block;
-  width: 6px;
-  border-radius: 2px 2px 0 0;
-  background: var(--brand);
-}
-
-.nv2-brandmark i:nth-child(1) {
-  height: 55%;
-}
-.nv2-brandmark i:nth-child(2) {
-  height: 100%;
-}
-.nv2-brandmark i:nth-child(3) {
-  height: 75%;
+  flex: 0 0 23px;
+  width: 23px;
+  height: 20px;
 }
 
 .nv2-nav {
@@ -188,28 +170,46 @@ a.nv2-navitem:hover {
 .nv2-topbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 13px;
 }
 
 .nv2-period {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px clamp(14px, 1.15vw, 22px);
-  border: 1.5px solid #2860a8;
-  border-radius: 12px;
-  font: 500 clamp(14px, 0.9vw, 17px)/1 var(--nv2-font);
-  color: #285b9d;
+  justify-content: space-between;
+  gap: 6px;
+  box-sizing: border-box;
+  flex: 0 0 145px;
+  width: 145px;
+  height: 42px;
+  padding: 0 8px 0 21px;
+  border: 1px solid #184b95;
+  border-radius: 8px;
+  font: 600 14px/1 var(--nv2-font);
+  color: #184b95;
   background: #fff;
+  white-space: nowrap;
+}
+
+.nv2-period svg {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
 }
 
 .nv2-ai-btn {
   appearance: none;
+  box-sizing: border-box;
   border: none;
-  border-radius: 12px;
-  padding: 14px clamp(16px, 1.25vw, 24px);
-  font: 600 clamp(14px, 0.9vw, 17px)/1 var(--nv2-font-display);
-  background: linear-gradient(110deg, #205da3, #273a6e);
+  flex: 0 0 105px;
+  width: 105px;
+  height: 42px;
+  border-radius: 8px;
+  padding: 0 12px;
+  font: 600 14px/1 var(--nv2-font-display);
+  /* The source SVG defines this gradient in the wider combined control row.
+     Extended stops preserve its subtle blue-to-burgundy crop on this button. */
+  background: linear-gradient(135deg, #184b95 36%, #670b20 145%);
   color: #fff;
   cursor: pointer;
 }
@@ -252,32 +252,34 @@ a.nv2-navitem:hover {
 .nv2-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 12px;
 }
 
 .nv2-stat {
   background: var(--nv2-card);
-  border: 1px solid var(--nv2-line);
-  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 12px;
   box-shadow: var(--nv2-shadow);
-  padding: 20px 22px;
+  box-sizing: border-box;
+  height: 87px;
+  padding: 16px 17px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 114px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .nv2-stat-value {
   order: 1;
-  font: 700 clamp(28px, 1.8vw, 34px)/1.05 var(--nv2-font-display);
-  color: var(--nv2-ink);
+  font: 700 28px/1.05 var(--nv2-font-display);
+  color: #0f172a;
   font-variant-numeric: tabular-nums;
 }
 
 .nv2-stat-label {
   order: 0;
-  font: 400 clamp(13px, 0.8vw, 15px)/1.2 var(--nv2-font);
-  color: #7789a4;
+  font: 400 12px/1.2 var(--nv2-font);
+  color: #64748b;
 }
 
 .nv2-panel {
@@ -370,11 +372,17 @@ a.nv2-navitem:hover {
  * does not reuse `StatusPill`'s shape-coded marker. */
 .nv2-flagged {
   flex: 0 0 auto;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font: 500 clamp(12px, 0.75vw, 14px)/1 var(--nv2-font);
-  background: color-mix(in srgb, var(--critical) 14%, white);
-  color: var(--critical);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 61px;
+  height: 19px;
+  padding: 0;
+  border-radius: 9.5px;
+  font: 400 11px/19px var(--nv2-font);
+  background: #fff1f2;
+  color: #e11d48;
 }
 
 .nv2-renewal {
@@ -890,13 +898,14 @@ a.nv2-navitem:hover {
 
   .nv2-topbar-actions {
     width: 100%;
-    gap: 8px;
+    justify-content: flex-end;
+    gap: 13px;
   }
 
   .nv2-period,
   .nv2-ai-btn {
     justify-content: center;
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     white-space: nowrap;
   }
 
@@ -910,8 +919,9 @@ a.nv2-navitem:hover {
   }
 
   .nv2-stat {
-    min-height: 92px;
-    padding: 14px 16px;
+    height: 87px;
+    min-height: 87px;
+    padding: 16px 17px;
     gap: 8px;
   }
 
@@ -920,7 +930,7 @@ a.nv2-navitem:hover {
   }
 
   .nv2-stat-label {
-    font-size: 13px;
+    font-size: 12px;
   }
 
   .nv2-panel {
