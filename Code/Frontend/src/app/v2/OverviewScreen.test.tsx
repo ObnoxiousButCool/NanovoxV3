@@ -241,18 +241,6 @@ function routeFor(url: string): unknown {
   return {}
 }
 
-/**
- * A legend label's visible span, specifically — `LegendLabel` also renders
- * a hidden, always-one-line twin of the same text for `useOverflowing` to
- * measure (its own file has the full reasoning), so a plain `getByText`
- * matches two nodes for every legend row and throws.
- */
-function visibleLegendText(text: string) {
-  return screen.getByText(
-    (content, element) => content === text && (element?.classList.contains('nv2-legend-visible') ?? false),
-  )
-}
-
 function renderOverview(): void {
   vi.stubGlobal(
     'fetch',
@@ -319,26 +307,19 @@ describe('/v2/overview', () => {
 
     await screen.findByText('Risk Overview')
 
-    expect(visibleLegendText('Repeat contact')).toBeInTheDocument()
-    expect(visibleLegendText('Exit language')).toBeInTheDocument()
+    expect(screen.getByText('Repeat contact')).toBeInTheDocument()
+    expect(screen.getByText('Exit language')).toBeInTheDocument()
     // The 5th+ available drivers fold into one "Others" slice rather than a
     // fifth hand-picked hue.
-    expect(visibleLegendText('Others (2 families)')).toBeInTheDocument()
+    expect(screen.getByText('Others (2 families)')).toBeInTheDocument()
     // Unavailable families never appear, named or in the fold.
     expect(screen.queryByText(/No v9 field/)).not.toBeInTheDocument()
   })
 
-  it('shows the dot bubble only when a label no longer fits its column, not by word count', async () => {
-    // jsdom reports 0 for scrollWidth and clientWidth on everything; stand
-    // in with a deterministic per-character width so a short and a long
-    // label land on opposite sides of the same measured column.
-    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (
-      this: HTMLElement,
-    ) {
-      return (this.textContent?.length ?? 0) * 8
-    })
-    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(200)
-
+  it('renders every legend label as plain text, however long, with no separate bubble', async () => {
+    // Overflow is CSS-only now (`.nv2-legend-text` ellipsis, revealed by
+    // `.nv2-legend li:hover`) — there is nothing left for this screen to
+    // compute or conditionally render, for a label of any length.
     vi.stubGlobal(
       'fetch',
       vi.fn((input: string) =>
@@ -349,9 +330,6 @@ describe('/v2/overview', () => {
                 ? {
                     ...RISK,
                     drivers: [
-                      // Every real indicators.py label is three words or
-                      // fewer today; this is a synthetic one so the
-                      // measurement path stays exercised regardless.
                       {
                         code: 'synthetic_family',
                         label: 'Repeat contact from the same caller',
@@ -360,7 +338,6 @@ describe('/v2/overview', () => {
                         available: true,
                         unavailableBecause: '',
                       },
-                      // Fits the same column: no bubble.
                       {
                         code: 'high_effort',
                         label: 'High member effort',
@@ -389,24 +366,10 @@ describe('/v2/overview', () => {
 
     await screen.findByText('Risk Overview')
 
-    // Fits the column: the label itself, no dots.
-    expect(visibleLegendText('High member effort')).toBeInTheDocument()
-    expect(
-      within(visibleLegendText('High member effort').closest('li') as HTMLElement).queryByLabelText(
-        'Show the full label',
-      ),
-    ).not.toBeInTheDocument()
-
-    // Does not fit: the full text is still in the DOM for an assistive-tech
-    // reader — CSS ellipsis clips the render, never the content —
-    expect(visibleLegendText('Repeat contact from the same caller')).toBeInTheDocument()
-    // — and a bubble sits beside it for anyone hovering or tabbing to let it
-    // wrap back out in place.
-    expect(
-      within(
-        visibleLegendText('Repeat contact from the same caller').closest('li') as HTMLElement,
-      ).getByLabelText('Show the full label'),
-    ).toHaveTextContent('•••')
+    expect(screen.getByText('High member effort')).toBeInTheDocument()
+    expect(screen.getByText('Repeat contact from the same caller')).toBeInTheDocument()
+    expect(screen.queryByText('•••')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Show the full label')).not.toBeInTheDocument()
   })
 
   it('shows the real call count on a rising issue instead of the mockup\'s percentage', async () => {

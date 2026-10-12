@@ -461,14 +461,11 @@ a.nv2-navitem:hover {
 
 .nv2-legend li {
   display: flex;
-  /* Not `center`. A hovered label that wraps to more lines makes this row
-   * taller, and centering would re-settle every child — including the dot
-   * bubble — around the new middle. The bubble is the hover target: moving
-   * it out from under a stationary cursor drops `:hover`, the row shrinks
-   * back, and the bubble snaps back under the cursor and re-triggers it —
-   * a flicker loop, not a reveal. Anchoring everything to the top instead
-   * means growth only ever happens downward, under whatever is already
-   * there. */
+  /* Not `center`. Hovering a row that then wraps to more lines makes it
+   * taller, and centering would re-settle every child around the new
+   * middle each time — a visible jump on every hover, not a smooth reveal.
+   * Anchored to the top, growth only ever happens downward, under whatever
+   * is already there. */
   align-items: flex-start;
   min-width: 0;
   gap: 6px;
@@ -496,24 +493,11 @@ a.nv2-navitem:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* A legend label that no longer fits its column on one line gets this
- * instead of wrapping silently — see `LegendLabel` and `useOverflowing` in
- * OverviewScreen.tsx, which measure the rendered line rather than guessing
- * from a word count. The label's own text is unchanged underneath the
- * ellipsis, so it reaches an assistive-tech reader in full regardless; the
- * dots are a sighted, hover/focus affordance and carry their own short
- * label rather than repeating it. */
-.nv2-legend .nv2-legend-label {
-  position: relative;
-  display: inline-flex;
-  /* Held constant for the same reason as `.nv2-legend li` above — toggling
-   * this on hover is its own, smaller version of the same loop. */
-  align-items: flex-start;
-  gap: 4px;
-  min-width: 0;
-}
-
-.nv2-legend .nv2-legend-visible {
+/* A legend label too wide for its column trails off with this instead of
+ * wrapping silently. The text underneath is unchanged — ellipsis is a
+ * paint-time clip, not a content change — so it reaches an assistive-tech
+ * reader in full regardless of hover. */
+.nv2-legend .nv2-legend-text {
   flex: 1 1 auto;
   min-width: 0;
   white-space: nowrap;
@@ -521,45 +505,14 @@ a.nv2-navitem:hover {
   text-overflow: ellipsis;
 }
 
-/* The hidden twin `useOverflowing` measures instead of `.nv2-legend-visible`
- * — see that hook's own note on why. Absolutely positioned so it never
- * affects `.nv2-legend-label`'s layout, and permanently `nowrap` so its
- * `scrollWidth` is always the label's one-line width, regardless of
- * whatever the visible span's hover state is doing. */
-.nv2-legend .nv2-legend-measure {
-  position: absolute;
-  visibility: hidden;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.nv2-legend .nv2-legend-dots {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 18px;
-  border-radius: 999px;
-  background: var(--nv2-bg);
-  color: var(--nv2-muted);
-  font: 700 12px/1 var(--nv2-font);
-  letter-spacing: 1px;
-  cursor: default;
-}
-
-.nv2-legend .nv2-legend-dots:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-}
-
-/* Hovering or focusing the bubble lets its own label wrap back to full,
- * multi-line text in place — the row grows to fit it — rather than opening
- * a popup over whatever sits below. The bubble stays put throughout: both
- * ancestors above are pinned to `flex-start` rather than `center`, so this
- * growth never moves the bubble itself — it only pushes what is below it. */
-.nv2-legend .nv2-legend-label:has(.nv2-legend-dots:hover) .nv2-legend-visible,
-.nv2-legend .nv2-legend-label:has(.nv2-legend-dots:focus-visible) .nv2-legend-visible {
+/* Hovering the row lets its label wrap back to its full, multi-line self
+ * in place — the row grows to fit it, pushing whatever is below it down.
+ * No separate control to hover: the row itself is the target, and it only
+ * ever grows (see `align-items: flex-start` above), so growing it can
+ * never move it out from under a cursor already inside it. A label that
+ * already fits ignores this entirely — `white-space: normal` on text with
+ * no overflow changes nothing to look at. */
+.nv2-legend li:hover .nv2-legend-text {
   white-space: normal;
   overflow: visible;
   text-overflow: unset;

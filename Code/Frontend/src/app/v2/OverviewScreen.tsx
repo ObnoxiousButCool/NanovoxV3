@@ -48,7 +48,6 @@ import { useState } from 'react'
 import { laneColors } from '@/app/screens/actions/format'
 import { OverviewLayout } from '@/app/v2/OverviewLayout'
 import { DEFAULT_PERIOD_KEY, periodByKey, periodSearch } from '@/app/v2/periods'
-import { useOverflowing } from '@/app/v2/useOverflowing'
 import { useActionBoard } from '@/shared/api/actionBoard'
 import type { ActionBoard } from '@/shared/api/actionBoard'
 import { useCalls, useExec, useFilterOptions, useGeneratedInsights, useRisk } from '@/shared/api/insights'
@@ -373,36 +372,15 @@ function DriversPanel({ drivers, totalAccounts }: { drivers: Driver[]; totalAcco
 }
 
 /**
- * A legend entry's label. By a word count this is three or fewer for every
- * real indicator family today (`indicators.py`'s own `FAMILIES`) — but the
- * donut's legend is a fixed two-column grid (`overview.css`) whose columns
- * narrow with the panel, so a three-word label can still wrap where a wider
- * column would have held it on one line. `useOverflowing` measures the
- * rendered line itself rather than guessing from the word count, so the
- * bubble appears exactly when the layout actually needs it, at any width.
- *
- * Collapsed to a single line with CSS ellipsis by default; hovering or
- * focusing the bubble lets it wrap back to its full, multi-line self in
- * place (`overview.css`'s `:has()` rule) rather than opening a popup over
- * the rest of the card.
+ * A legend entry's label. Collapsed to one line with a trailing CSS
+ * ellipsis whenever the column is too narrow for it; hovering the row lets
+ * it wrap back to its full, multi-line self in place (`overview.css`'s
+ * `.nv2-legend li:hover` rule) — no separate bubble to hover, and nothing
+ * to measure: a label that already fits just ignores the hover, since
+ * `white-space: normal` on text with no overflow changes nothing.
  */
 function LegendLabel({ text }: { text: string }) {
-  const [containerRef, measureRef, overflowing] = useOverflowing<HTMLSpanElement, HTMLSpanElement>(text)
-  return (
-    <span className="nv2-legend-label" ref={containerRef}>
-      <span className="nv2-legend-visible">{text}</span>
-      {overflowing ? (
-        <span className="nv2-legend-dots" tabIndex={0} aria-label="Show the full label">
-          •••
-        </span>
-      ) : null}
-      {/* Never shown — `useOverflowing`'s own note on why this measures
-          instead of the visible span above. */}
-      <span className="nv2-legend-measure" aria-hidden="true" ref={measureRef}>
-        {text}
-      </span>
-    </span>
-  )
+  return <span className="nv2-legend-text">{text}</span>
 }
 
 /** "Recent actions" — the board's own newest-first order, five rows, each
