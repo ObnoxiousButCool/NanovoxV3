@@ -115,7 +115,7 @@ const RISK = {
     },
     {
       code: 'exit_language',
-      label: 'Exit or market-test language, verbatim',
+      label: 'Exit or market-test',
       calls: 0,
       callIds: [],
       topCategory: null,
@@ -173,7 +173,7 @@ const FAMILIES = [
   },
   {
     code: 'broker_adverse',
-    label: 'Broker named adversely by the caller',
+    label: 'Broker named adversely',
     observed: false,
     hits: 0,
     employerCalls: 9,
@@ -2113,7 +2113,7 @@ describe('which problems drive the risk', () => {
     await screen.findByText('Which problems drive the risk')
 
     expect(
-      screen.getByText('Exit or market-test language, verbatim'),
+      screen.getByText('Exit or market-test'),
     ).toBeInTheDocument()
   })
 
@@ -2205,7 +2205,7 @@ const UNASSESSED_FAMILY_REASON =
 const THIN_FAMILIES = [
   {
     code: 'complaint_choice',
-    label: 'Complaint attributed to Choice',
+    label: 'Complaint against Choice',
     observed: false,
     hits: 2,
     employerCalls: 3,
@@ -2218,7 +2218,7 @@ const THIN_FAMILIES = [
   },
   {
     code: 'exit_language',
-    label: 'Exit or market-test language, verbatim',
+    label: 'Exit or market-test',
     observed: false,
     hits: 0,
     employerCalls: 3,
@@ -2321,7 +2321,7 @@ const GATED_FAMILIES = [
   FAMILIES[0],
   {
     code: 'escalation_missed',
-    label: 'Escalation warranted, not handled',
+    label: 'Escalation not handled',
     observed: false,
     hits: 2,
     employerCalls: 9,

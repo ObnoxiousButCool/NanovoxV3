@@ -144,13 +144,13 @@ def _knowledge_failure(call: CallContext) -> bool:
 #: The ten, in the prototype's own order.
 FAMILIES: tuple[Family, ...] = (
     Family("unresolved", "Unresolved outcome", lambda c: c.tags.outcome is Outcome.UNRESOLVED),
-    Family("escalation_missed", "Escalation warranted, not handled", _escalation_missed),
-    Family("complaint_choice", "Complaint attributed to Choice", _complaint_against_choice),
+    Family("escalation_missed", "Escalation not handled", _escalation_missed),
+    Family("complaint_choice", "Complaint against Choice", _complaint_against_choice),
     # Repeat contact is derived, not tagged — `repeat_of` is a Transcript
     # Tracker column and not one of the sixteen schema fields. The set is
     # computed per employer in `observe()`, so this predicate is never used.
-    Family("repeat_contact", "Repeat contact from the same caller"),
-    Family("exit_language", "Exit or market-test language, verbatim", _exit_language),
+    Family("repeat_contact", "Repeat contact"),
+    Family("exit_language", "Exit or market-test", _exit_language),
     Family("critical_signal", "Critical-severity signal raised", _critical_signal),
     Family(
         "control_exception",
@@ -160,7 +160,7 @@ FAMILIES: tuple[Family, ...] = (
     # NOT "agent stated a published rule incorrectly" — that is the
     # `knowledge_error` signal's definition, and D7 is open on the two being
     # conflated. This family reads schema field 8 and says only that.
-    Family("knowledge_failure", "Knowledge failure recorded against a rule", _knowledge_failure),
+    Family("knowledge_failure", "Knowledge failure", _knowledge_failure),
     Family(
         "high_effort",
         "High member effort",
@@ -173,7 +173,7 @@ FAMILIES: tuple[Family, ...] = (
     ),
     Family(
         "broker_adverse",
-        "Broker named adversely by the caller",
+        "Broker named adversely",
         lambda c: SignalType.BROKER_CONDUCT_ADVERSE in c.tags.signals,
     ),
 )
