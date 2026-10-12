@@ -432,7 +432,15 @@ a.nv2-navitem:hover {
 
 .nv2-legend li {
   display: flex;
-  align-items: center;
+  /* Not `center`. A hovered label that wraps to more lines makes this row
+   * taller, and centering would re-settle every child — including the dot
+   * bubble — around the new middle. The bubble is the hover target: moving
+   * it out from under a stationary cursor drops `:hover`, the row shrinks
+   * back, and the bubble snaps back under the cursor and re-triggers it —
+   * a flicker loop, not a reveal. Anchoring everything to the top instead
+   * means growth only ever happens downward, under whatever is already
+   * there. */
+  align-items: flex-start;
   min-width: 0;
   gap: 6px;
   font: 500 clamp(12px, 0.8vw, 14px)/1.25 var(--nv2-font);
@@ -468,7 +476,9 @@ a.nv2-navitem:hover {
  * label rather than repeating it. */
 .nv2-legend .nv2-legend-label {
   display: inline-flex;
-  align-items: center;
+  /* Held constant for the same reason as `.nv2-legend li` above — toggling
+   * this on hover is its own, smaller version of the same loop. */
+  align-items: flex-start;
   gap: 4px;
   min-width: 0;
 }
@@ -503,14 +513,9 @@ a.nv2-navitem:hover {
 
 /* Hovering or focusing the bubble lets its own label wrap back to full,
  * multi-line text in place — the row grows to fit it — rather than opening
- * a popup over whatever sits below. The bubble stays put throughout: if it
- * vanished the moment the mouse left it, leaving would end the hover that
- * made it vanish, which is a flicker loop rather than a dismissal. */
-.nv2-legend .nv2-legend-label:has(.nv2-legend-dots:hover),
-.nv2-legend .nv2-legend-label:has(.nv2-legend-dots:focus-visible) {
-  align-items: flex-start;
-}
-
+ * a popup over whatever sits below. The bubble stays put throughout: both
+ * ancestors above are pinned to `flex-start` rather than `center`, so this
+ * growth never moves the bubble itself — it only pushes what is below it. */
 .nv2-legend .nv2-legend-label:has(.nv2-legend-dots:hover) .nv2-legend-visible,
 .nv2-legend .nv2-legend-label:has(.nv2-legend-dots:focus-visible) .nv2-legend-visible {
   white-space: normal;
