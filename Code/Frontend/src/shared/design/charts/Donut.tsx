@@ -56,7 +56,7 @@ export function Donut({
           ? slices.map((slice) => {
               if (slice.value <= 0) return null
               const length = (slice.value / total) * CIRCUMFERENCE
-              const dash = `${length} ${CIRCUMFERENCE - length}`
+              const dash = `${String(length)} ${String(CIRCUMFERENCE - length)}`
               const rotation = (offset / CIRCUMFERENCE) * 360 - 90
               offset += (slice.value / total) * CIRCUMFERENCE
               return (
@@ -70,7 +70,7 @@ export function Donut({
                   strokeWidth={STROKE}
                   strokeDasharray={dash}
                   strokeLinecap={rounded ? 'round' : 'butt'}
-                  transform={`rotate(${rotation} ${String(CENTER)} ${String(CENTER)})`}
+                  transform={`rotate(${String(rotation)} ${String(CENTER)} ${String(CENTER)})`}
                 />
               )
             })

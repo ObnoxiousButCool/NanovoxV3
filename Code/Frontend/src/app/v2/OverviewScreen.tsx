@@ -91,11 +91,11 @@ export function OverviewScreen() {
     <p className="nv2-insights-state">Generating insights…</p>
   ) : aiInsights.error ? (
     <p className="nv2-insights-state" role="alert">AI insights could not be loaded.</p>
-  ) : aiInsights.data?.status.code === 'UNAVAILABLE' ? (
+  ) : aiInsights.data.status.code === 'UNAVAILABLE' ? (
     <p className="nv2-insights-state">
       Insights are unavailable: {aiInsights.data.reason?.label ?? 'no reason provided'}.
     </p>
-  ) : aiInsights.data?.insights.length ? (
+  ) : aiInsights.data.insights.length ? (
     <InsightLenses data={aiInsights.data} />
   ) : (
     <p className="nv2-insights-state">No insights were generated for this overview.</p>
@@ -116,8 +116,12 @@ export function OverviewScreen() {
       onPeriodChange={setPeriodKey}
       aiInsightsOpen={aiInsightsOpen}
       insightsContent={insightsContent}
-      onToggleAIInsights={() => setAiInsightsOpen((open) => !open)}
-      onCloseAIInsights={() => setAiInsightsOpen(false)}
+      onToggleAIInsights={() => {
+        setAiInsightsOpen((open) => !open)
+      }}
+      onCloseAIInsights={() => {
+        setAiInsightsOpen(false)
+      }}
     >
       {error !== null ? (
         <div className="nv-screenstate" role="alert">
