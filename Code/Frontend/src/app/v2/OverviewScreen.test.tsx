@@ -315,6 +315,68 @@ describe('/v2/overview', () => {
     expect(screen.queryByText(/No v9 field/)).not.toBeInTheDocument()
   })
 
+  it('keeps a legend label\'s first three words and collapses the rest behind a hoverable dot bubble', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: string) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify(
+              input.includes('/insights/risk')
+                ? {
+                    ...RISK,
+                    drivers: [
+                      // Every real indicators.py label is three words or
+                      // fewer today; this is a synthetic six-word label so
+                      // the threshold itself stays exercised regardless.
+                      {
+                        code: 'synthetic_family',
+                        label: 'Repeat contact from the same caller',
+                        calls: 40,
+                        callIds: [],
+                        available: true,
+                        unavailableBecause: '',
+                      },
+                      // Below the threshold: shown as plain text, no bubble.
+                      {
+                        code: 'high_effort',
+                        label: 'High member effort',
+                        calls: 10,
+                        callIds: [],
+                        available: true,
+                        unavailableBecause: '',
+                      },
+                    ],
+                  }
+                : routeFor(input),
+            ),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+
+    render(
+      <QueryClientProvider client={createQueryClient()}>
+        <MemoryRouter initialEntries={['/v2/overview']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+
+    await screen.findByText('Risk Overview')
+
+    // Three words or fewer: the label itself, no dots.
+    expect(screen.getByText('High member effort')).toBeInTheDocument()
+    // Over three words: the full label never renders as one piece of text —
+    expect(screen.queryByText('Repeat contact from the same caller')).not.toBeInTheDocument()
+    // — its first three words stay visible —
+    expect(screen.getByText('Repeat contact from')).toBeInTheDocument()
+    // — and only the remainder moves behind a bubble, reachable by hover or
+    // tab, not dropped.
+    expect(screen.getByLabelText('the same caller')).toHaveTextContent('•••')
+  })
+
   it('shows the real call count on a rising issue instead of the mockup\'s percentage', async () => {
     renderOverview()
 

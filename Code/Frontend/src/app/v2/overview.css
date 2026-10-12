@@ -459,6 +459,55 @@ a.nv2-navitem:hover {
   font-variant-numeric: tabular-nums;
 }
 
+/* A legend label over three words keeps its first three and collapses the
+ * rest behind this — see `LegendLabel` in OverviewScreen.tsx for the
+ * threshold. The remaining words reach an assistive-tech reader via
+ * `aria-label` on the dot bubble; the dots themselves are decorative. */
+.nv2-legend .nv2-legend-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nv2-legend .nv2-legend-dots {
+  flex: 0 0 auto;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--nv2-bg);
+  color: var(--nv2-muted);
+  font: 700 12px/1 var(--nv2-font);
+  letter-spacing: 1px;
+  cursor: default;
+}
+
+.nv2-legend .nv2-legend-dots:hover::after,
+.nv2-legend .nv2-legend-dots:focus-visible::after {
+  content: attr(data-full);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--nv2-ink);
+  color: #fff;
+  font: 500 12px/1.3 var(--nv2-font);
+  white-space: nowrap;
+  z-index: 5;
+  box-shadow: 0 6px 16px rgba(16, 24, 40, 0.2);
+}
+
+.nv2-legend .nv2-legend-dots:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
 /* --- recent actions --- */
 .nv2-actions {
   list-style: none;

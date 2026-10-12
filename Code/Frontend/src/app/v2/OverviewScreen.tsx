@@ -340,14 +340,14 @@ function DriversPanel({ drivers, totalAccounts }: { drivers: Driver[]; totalAcco
             {top.map((driver, index) => (
               <li key={driver.code}>
                 <i style={{ background: DRIVER_COLORS[index] ?? '#e9edf3' }} />
-                <span>{driver.label}</span>
+                <LegendLabel text={driver.label} />
                 <b>{driver.calls}</b>
               </li>
             ))}
             {rest.length > 0 ? (
               <li>
                 <i style={{ background: '#e9edf3' }} />
-                <span>Others ({rest.length} families)</span>
+                <LegendLabel text={`Others (${String(rest.length)} families)`} />
                 <b>{othersCalls}</b>
               </li>
             ) : null}
@@ -355,6 +355,31 @@ function DriversPanel({ drivers, totalAccounts }: { drivers: Driver[]; totalAcco
         </div>
       )}
     </section>
+  )
+}
+
+/**
+ * A legend entry's label, keeping its first three words and collapsing
+ * whatever comes after behind a hoverable "•••". The donut's own legend is
+ * a fixed two-column grid (`overview.css`), and an indicator family's name
+ * is server text this page does not control the length of — see the file
+ * banner's note on `label` never being rewritten here. Every family's label
+ * is three words or fewer today (`indicators.py`'s own `FAMILIES`), so this
+ * is dormant on real data; it stays so the UI, not a human remembering a
+ * convention, is what enforces the limit the day a longer one is added.
+ */
+function LegendLabel({ text }: { text: string }) {
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  if (words.length <= 3) return <span>{text}</span>
+  const visible = words.slice(0, 3).join(' ')
+  const rest = words.slice(3).join(' ')
+  return (
+    <span className="nv2-legend-label">
+      <span className="nv2-legend-visible">{visible}</span>
+      <span className="nv2-legend-dots" tabIndex={0} aria-label={rest} data-full={rest}>
+        •••
+      </span>
+    </span>
   )
 }
 
